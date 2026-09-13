@@ -75,8 +75,12 @@ extension View {
       .contextMenu(menuItems: {
         PostLinkContext(post: post)
         
-        if let permalink = post.data?.permalink, let permaURL = URL(string: "https://reddit.com\(permalink.escape.urlEncoded)") {
-          ShareLink(item: permaURL) { Label("Share", systemImage: "square.and.arrow.up") }
+        if let permalink = post.data?.permalink {
+          // ShareLink inside a .contextMenu is a known SwiftUI bug (menu dismisses, share sheet
+          // never presents), so present the activity sheet imperatively instead.
+          Button {
+            ShareUtils.shareItem(item: "https://reddit.com\(permalink.escape.urlEncoded)")
+          } label: { Label("Share", systemImage: "square.and.arrow.up") }
         }
         
       }, preview: { PostLinkContextPreview(post: post, sub: sub) })

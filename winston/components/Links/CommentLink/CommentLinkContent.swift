@@ -299,8 +299,11 @@ struct CommentLinkContent: View {
             }
           }
           
-          if let permalink = data.permalink, let permaURL = URL(string: "https://reddit.com\(permalink.escape.urlEncoded)") {
-            ShareLink(item: permaURL) { Label("Share", systemImage: "square.and.arrow.up") }
+          if let permalink = data.permalink {
+            // ShareLink inside a .contextMenu is a known SwiftUI bug; present imperatively instead.
+            Button {
+              ShareUtils.shareItem(item: "https://reddit.com\(permalink.escape.urlEncoded)")
+            } label: { Label("Share", systemImage: "square.and.arrow.up") }
           }
           
         }

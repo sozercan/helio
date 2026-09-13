@@ -18,6 +18,9 @@ struct PostView: View, Equatable {
   var post: Post
   var subreddit: Subreddit
   var forceCollapse: Bool
+  /// When true, this PostView is being rendered inside a non-interactive context-menu preview,
+  /// so the floating pill (whose buttons can never receive taps there) is hidden.
+  var isPreview: Bool
   var highlightID: String?
   @Default(.PostPageDefSettings) private var defSettings
   @Default(.CommentsSectionDefSettings) var commentsSectionDefSettings
@@ -32,10 +35,11 @@ struct PostView: View, Equatable {
   @SilentState private var previousScrollTarget: String? = nil
   @State private var comments: [Comment] = []
   
-  init(post: Post, subreddit: Subreddit, forceCollapse: Bool = false, highlightID: String? = nil) {
+  init(post: Post, subreddit: Subreddit, forceCollapse: Bool = false, isPreview: Bool = false, highlightID: String? = nil) {
     self.post = post
     self.subreddit = subreddit
     self.forceCollapse = forceCollapse
+    self.isPreview = isPreview
     self.highlightID = highlightID
     
     let defSettings = Defaults[.PostPageDefSettings]
@@ -79,7 +83,7 @@ struct PostView: View, Equatable {
               }
               //              .equatable()
               
-              if selectedTheme.posts.inlineFloatingPill {
+              if selectedTheme.posts.inlineFloatingPill && !isPreview {
                 PostFloatingPill(post: post, subreddit: subreddit, showUpVoteRatio: defSettings.showUpVoteRatio)
                   .padding(-10)
               }
@@ -132,7 +136,7 @@ struct PostView: View, Equatable {
           await asyncFetch(true)
         }
         .overlay(alignment: .bottomTrailing) {
-          if !selectedTheme.posts.inlineFloatingPill {
+          if !selectedTheme.posts.inlineFloatingPill && !isPreview {
             PostFloatingPill(post: post, subreddit: subreddit, showUpVoteRatio: defSettings.showUpVoteRatio)
           }
         }

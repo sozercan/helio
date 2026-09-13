@@ -61,20 +61,33 @@ class ShareImage: UIActivityItemProvider {
 }
 
 class ShareUtils {
+  /// Walk to the top-most presented view controller so presentation works even when a context
+  /// menu, sheet, or fullscreen cover is on screen.
+  static func topViewController(_ base: UIViewController? = nil) -> UIViewController? {
+    let scenes = UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }
+    let scene = scenes.first(where: { $0.activationState == .foregroundActive }) ?? scenes.first
+    let root = base ?? (scene?.keyWindow ?? scene?.windows.first)?.rootViewController
+    if let nav = root as? UINavigationController { return topViewController(nav.visibleViewController ?? nav) }
+    if let tab = root as? UITabBarController { return topViewController(tab.selectedViewController ?? tab) }
+    if let presented = root?.presentedViewController { return topViewController(presented) }
+    return root
+  }
+
   static func shareItem(item: String, sourceView: UIView? = nil) {
     guard let url = URL(string: item) else { return }
-    
-    DispatchQueue.main.async {
+    // The small delay lets a dismissing context menu clear first; presenting on the top-most VC
+    // makes this work from a context-menu Button (SwiftUI's ShareLink inside .contextMenu is broken
+    // — the menu dismisses but the share sheet never presents).
+    DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+      guard let top = topViewController() else { return }
       let activityViewController = UIActivityViewController(activityItems: [url], applicationActivities: nil)
-      
-      // Set the source view for iPad
+      // Source for iPad popover.
       if let popoverController = activityViewController.popoverPresentationController {
-        popoverController.sourceView = sourceView ?? UIApplication.shared.windows.first
-        popoverController.sourceRect = sourceView?.bounds ?? CGRect(x: UIScreen.main.bounds.midX, y: UIScreen.main.bounds.midY, width: 0, height: 0)
+        popoverController.sourceView = sourceView ?? top.view
+        popoverController.sourceRect = sourceView?.bounds ?? CGRect(x: top.view.bounds.midX, y: top.view.bounds.midY, width: 0, height: 0)
         popoverController.permittedArrowDirections = []
       }
-      
-      UIApplication.shared.windows.first?.rootViewController?.present(activityViewController, animated: true, completion: nil)
+      top.present(activityViewController, animated: true, completion: nil)
     }
   }
 }
