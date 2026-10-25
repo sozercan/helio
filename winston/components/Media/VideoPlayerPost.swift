@@ -17,9 +17,13 @@ final class VideoPlayerHolder: ObservableObject {
   let player: AVPlayer?
   /// False until the current item can play; the cell shows the post's preview image until then.
   @Published private(set) var isReadyToPlay = false
+  private let url: URL?
   private var statusObservation: NSKeyValueObservation?
+  private var reloads = 0
+  private let maxReloads = 2
   
   init(url: URL?) {
+    self.url = url
     if let url = url {
       let p = AVPlayer(playerItem: AVPlayerItem(url: url))
       p.volume = 0.0
@@ -29,6 +33,19 @@ final class VideoPlayerHolder: ObservableObject {
     }
     observeCurrentItem()
   }
+  
+  /// Swaps in a fresh item for a failed or stuck one. Returns false once retries are used up.
+  @discardableResult
+  func reload() -> Bool {
+    guard let player, let url, reloads < maxReloads else { return false }
+    reloads += 1
+    isReadyToPlay = false
+    player.replaceCurrentItem(with: AVPlayerItem(url: url))
+    observeCurrentItem()
+    return true
+  }
+  
+  var hasFailed: Bool { player?.status == .failed || player?.currentItem?.status == .failed }
   
   private func observeCurrentItem() {
     statusObservation = player?.currentItem?.observe(\.status, options: [.initial, .new]) { [weak self] item, _ in
@@ -96,7 +113,6 @@ struct VideoPlayerPost: View, Equatable {
   var contentWidth: CGFloat
   var url: URL
   var size: CGSize
-  let resetVideo: ((SharedVideo) -> ())?
   var maxMediaHeightScreenPercentage: CGFloat
   @State private var firstFullscreen = false
   @State private var fullscreen = false
@@ -111,7 +127,7 @@ struct VideoPlayerPost: View, Equatable {
   private var muteVideos: Bool { videoDefSettings.mute }
   private var pauseBackgroundAudioOnFullscreen: Bool { videoDefSettings.pauseBGAudioOnFullscreen }
   
-  init(controller: UIViewController?, cachedVideo: SharedVideo?, markAsSeen: (() async -> ())?, compact: Bool = false, contentWidth: CGFloat, url: URL, resetVideo: ((SharedVideo) -> ())?, maxMediaHeightScreenPercentage: CGFloat) {
+  init(controller: UIViewController?, cachedVideo: SharedVideo?, markAsSeen: (() async -> ())?, compact: Bool = false, contentWidth: CGFloat, url: URL, maxMediaHeightScreenPercentage: CGFloat) {
     self.controller = controller
     self.sharedVideo = cachedVideo
     self.markAsSeen = markAsSeen
@@ -119,7 +135,6 @@ struct VideoPlayerPost: View, Equatable {
     self.contentWidth = contentWidth
     self.url = url
     self.size = cachedVideo?.size ?? .zero
-    self.resetVideo = resetVideo
     self.maxMediaHeightScreenPercentage = maxMediaHeightScreenPercentage
     _holder = StateObject(wrappedValue: VideoPlayerHolder(url: cachedVideo != nil ? url : nil))
   }
@@ -199,86 +214,87 @@ struct VideoPlayerPost: View, Equatable {
         }
         .onAppear {
           isVisible = true
-          if loopVideos {
-            addObserver(player)
-          }
-          
-          if (player.status == .failed) {
-            resetVideo?(sharedVideo)
-          }
-
+          observePlayback(player)
+          if holder.hasFailed { reload(player) }
           if autoPlayVideos {
             player.play()
           }
         }
         .onChange(of: scenePhase) { _, newPhase in
           if newPhase == .active {
-            if (player.status == .failed) {
-              resetVideo?(sharedVideo)
-            }
-
-            if autoPlayVideos {
+            if holder.hasFailed { reload(player) }
+            if autoPlayVideos && isVisible && !PictureInPicture.shared.isPlaying(player) {
               player.play()
             }
           }
         }
         .onDisappear() {
-            isVisible = false
-            removeObserver()
-          Task(priority: .background) {
-//            setAudioToMixWithOthers(false)
-            player.seek(to: .zero)
-            player.pause()
-          }
+          isVisible = false
+          removeObserver()
+          // Synchronous on purpose: a deferred pause could land after the cell reappeared and
+          // leave its video stopped at 0:00.
+          guard !PictureInPicture.shared.isPlaying(player) else { return }
+          player.pause()
+          player.seek(to: .zero)
         }
         .onChange(of: fullscreen) { _, val in
+          let inPictureInPicture = PictureInPicture.shared.isPlaying(player)
           if !firstFullscreen {
             firstFullscreen = true
-						player.isMuted = muteVideos
+            player.isMuted = muteVideos
             player.play()
           }
-					if !val && !autoPlayVideos {
-						player.seek(to: .zero)
-						player.pause()
-						firstFullscreen = false
-					 }
+          if !val && !autoPlayVideos && !inPictureInPicture {
+            player.seek(to: .zero)
+            player.pause()
+            firstFullscreen = false
+          }
           
-//          if pauseBackgroundAudioOnFullscreen {
-//            Task(priority: .background) {
-//              setAudioToMixWithOthers(val)
-//            }
-//          }
+          if pauseBackgroundAudioOnFullscreen && !inPictureInPicture {
+            // Off the main thread: audio session calls can block while audio is playing.
+            Task.detached(priority: .userInitiated) {
+              setAudioToMixWithOthers(!val)
+            }
+          }
           
-          player.volume = val ? 1.0 : 0.0
+          if !inPictureInPicture {
+            player.volume = val ? 1.0 : 0.0
+          }
         }
         .fullScreenCover(isPresented: $fullscreen) {
-          FullScreenVP(player: player, size: sharedVideo.size)
+          FullScreenVP(player: player, size: sharedVideo.size, holder: holder)
         }
       }
     }
   }
   
-  func addObserver(_ player: AVPlayer) {
-    guard let sharedVideo = sharedVideo else { return }
+  /// Swaps in a fresh item and re-attaches the observers, which are tied to the old one.
+  func reload(_ player: AVPlayer) {
+    guard holder.reload() else { return }
+    observePlayback(player)
+    if autoPlayVideos && isVisible { player.play() }
+  }
+  
+  func observePlayback(_ player: AVPlayer) {
     let center = NotificationCenter.default
     let item = player.currentItem
-    let reset = resetVideo
+    let loop = loopVideos
+    // With .none the player keeps rolling at the end, so seeking back loops without a pause.
+    player.actionAtItemEnd = loop ? .none : .pause
     // Store the tokens so they can actually be removed; the bag's deinit is the safety net.
     observerBag.set([
-      center.addObserver(forName: .AVPlayerItemDidPlayToEndTime, object: item, queue: nil) { _ in
-        Task(priority: .background) {
-          player.seek(to: .zero)
-          player.play()
-        }
+      center.addObserver(forName: .AVPlayerItemDidPlayToEndTime, object: item, queue: .main) { _ in
+        if loop { player.seek(to: .zero) }
       },
-      center.addObserver(forName: .AVPlayerItemFailedToPlayToEndTime, object: item, queue: nil) { _ in
-        Task { @MainActor in
-          reset?(sharedVideo)
-        }
+      center.addObserver(forName: .AVPlayerItemFailedToPlayToEndTime, object: item, queue: .main) { _ in
+        reload(player)
       },
-      center.addObserver(forName: .AVPlayerItemPlaybackStalled, object: item, queue: nil) { _ in
-        Task { @MainActor in
-          reset?(sharedVideo)
+      center.addObserver(forName: .AVPlayerItemPlaybackStalled, object: item, queue: .main) { _ in
+        // Stalls usually recover once the buffer refills; only reload if it's still stuck.
+        DispatchQueue.main.asyncAfter(deadline: .now() + 4) {
+          if player.currentItem === item, player.timeControlStatus == .waitingToPlayAtSpecifiedRate {
+            reload(player)
+          }
         }
       },
     ])
@@ -325,6 +341,7 @@ struct InlinePlayerLayer: UIViewRepresentable {
 struct FullScreenVP: View {
   var player: AVPlayer
   var size: CGSize
+  var holder: VideoPlayerHolder
   @Environment(\.dismiss) private var dismiss
   @State private var cancelDrag: Bool?
   @State private var isPinching: Bool = false
@@ -335,7 +352,7 @@ struct FullScreenVP: View {
   @State private var altSize: CGSize = .zero
   var body: some View {
     let interpolate = interpolatorBuilder([0, 100], value: abs(drag.height))
-    VideoPlayer(player: player)
+    FullScreenPlayerView(player: player, holder: holder, onPictureInPictureStart: { dismiss() })
       .background(
         size != .zero
         ? nil
@@ -377,6 +394,75 @@ struct FullScreenVP: View {
             }
           }
       )
+  }
+}
+
+/// Keeps a video's player (and its controller) alive while it plays in Picture in Picture,
+/// since the feed cell that owns it can scroll away or be destroyed in the meantime.
+final class PictureInPicture {
+  static let shared = PictureInPicture()
+  private var holder: VideoPlayerHolder?
+  private var controller: AVPlayerViewController?
+  
+  func isPlaying(_ player: AVPlayer) -> Bool { holder?.player === player }
+  
+  func begin(_ holder: VideoPlayerHolder, controller: AVPlayerViewController) {
+    self.holder = holder
+    self.controller = controller
+  }
+  
+  func end(_ controller: AVPlayerViewController) {
+    guard self.controller === controller else { return }
+    // Back to the feed's muted inline playback.
+    holder?.player?.volume = 0
+    holder = nil
+    self.controller = nil
+  }
+}
+
+/// The fullscreen player, with a Picture in Picture button. PiP only starts from that button,
+/// not automatically when the app goes to the background.
+struct FullScreenPlayerView: UIViewControllerRepresentable {
+  let player: AVPlayer
+  let holder: VideoPlayerHolder
+  var onPictureInPictureStart: () -> Void
+  
+  func makeUIViewController(context: Context) -> AVPlayerViewController {
+    let controller = AVPlayerViewController()
+    controller.player = player
+    controller.allowsPictureInPicturePlayback = true
+    controller.canStartPictureInPictureAutomaticallyFromInline = false
+    controller.delegate = context.coordinator
+    return controller
+  }
+  
+  func updateUIViewController(_ controller: AVPlayerViewController, context: Context) {
+    context.coordinator.parent = self
+  }
+  
+  func makeCoordinator() -> Coordinator { Coordinator(parent: self) }
+  
+  final class Coordinator: NSObject, AVPlayerViewControllerDelegate {
+    var parent: FullScreenPlayerView
+    init(parent: FullScreenPlayerView) { self.parent = parent }
+    
+    func playerViewControllerDidStartPictureInPicture(_ controller: AVPlayerViewController) {
+      PictureInPicture.shared.begin(parent.holder, controller: controller)
+      // Leave fullscreen so the feed is usable while the video floats.
+      parent.onPictureInPictureStart()
+    }
+    
+    func playerViewControllerDidStopPictureInPicture(_ controller: AVPlayerViewController) {
+      PictureInPicture.shared.end(controller)
+    }
+    
+    func playerViewControllerShouldAutomaticallyDismissAtPictureInPictureStart(_ controller: AVPlayerViewController) -> Bool {
+      false
+    }
+    
+    func playerViewController(_ controller: AVPlayerViewController, restoreUserInterfaceForPictureInPictureStopWithCompletionHandler completionHandler: @escaping (Bool) -> Void) {
+      completionHandler(true)
+    }
   }
 }
 

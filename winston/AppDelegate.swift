@@ -46,9 +46,18 @@ class CustomSceneDelegate: UIResponder, UIWindowSceneDelegate {
   }
 }
 
-public func setAudioToMixWithOthers() {
+/// - Parameter mix: when false, our audio interrupts other apps' audio (e.g. pauses music);
+///   switching back lets the interrupted audio resume.
+public func setAudioToMixWithOthers(_ mix: Bool = true) {
+    let session = AVAudioSession.sharedInstance()
     do {
-        try AVAudioSession.sharedInstance().setCategory(.playback, options: .mixWithOthers)
+        if mix {
+            try session.setCategory(.playback, options: .mixWithOthers)
+            try? session.setActive(false, options: .notifyOthersOnDeactivation)
+        } else {
+            try session.setCategory(.playback)
+            try session.setActive(true)
+        }
     } catch {
         print("Error setting audio session: \(error)")
     }

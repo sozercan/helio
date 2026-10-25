@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		B22D122C7BADA94439DA1379 /* VideoPlayerHolderTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0D12522F9AA3AD8665CB4B4A /* VideoPlayerHolderTests.swift */; };
 		81A48ED9F47B05C45C08EE77 /* MediaExtractorTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 02EC4013432B6C1FBE3364FD /* MediaExtractorTests.swift */; };
 		44048F3EE31F3EBA54BD85DA /* SearchHistoryTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A6E6796D65FB57C5DBCC1EE /* SearchHistoryTests.swift */; };
 		0B44DC83C9A1F8C3B73A6189 /* SearchHistory.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0F019ADD176C9FA4B7430402 /* SearchHistory.swift */; };
@@ -586,6 +587,7 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
+		0D12522F9AA3AD8665CB4B4A /* VideoPlayerHolderTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VideoPlayerHolderTests.swift; sourceTree = "<group>"; };
 		02EC4013432B6C1FBE3364FD /* MediaExtractorTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MediaExtractorTests.swift; sourceTree = "<group>"; };
 		1A6E6796D65FB57C5DBCC1EE /* SearchHistoryTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SearchHistoryTests.swift; sourceTree = "<group>"; };
 		0F019ADD176C9FA4B7430402 /* SearchHistory.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SearchHistory.swift; sourceTree = "<group>"; };
@@ -1196,6 +1198,7 @@
 			isa = PBXGroup;
 			children = (
 				36B6CBEC3EE2D45DB930E4F3 /* CommentTreeTests.swift */,
+				0D12522F9AA3AD8665CB4B4A /* VideoPlayerHolderTests.swift */,
 				02EC4013432B6C1FBE3364FD /* MediaExtractorTests.swift */,
 				1A6E6796D65FB57C5DBCC1EE /* SearchHistoryTests.swift */,
 				BF957CB3C47930A165F4B542 /* ApolloReadHistoryTests.swift */,
@@ -2790,6 +2793,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				478A338E52F7341A0A93339C /* CommentTreeTests.swift in Sources */,
+				B22D122C7BADA94439DA1379 /* VideoPlayerHolderTests.swift in Sources */,
 				81A48ED9F47B05C45C08EE77 /* MediaExtractorTests.swift in Sources */,
 				44048F3EE31F3EBA54BD85DA /* SearchHistoryTests.swift in Sources */,
 				320364E976AC2F0427EF6745 /* ApolloReadHistoryTests.swift in Sources */,

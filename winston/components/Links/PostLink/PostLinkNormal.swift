@@ -56,22 +56,13 @@ struct PostLinkNormal: View, Equatable, Identifiable {
     }
   }
   
-  func resetVideo(video: SharedVideo) {
-    DispatchQueue.main.async {
-      let newVideo: MediaExtractedType = .video(SharedVideo.get(url: video.url, size: video.size, resetCache: true))
-      post.winstonData?.extractedMedia = newVideo
-      post.winstonData?.extractedMediaForcedNormal = newVideo
-      
-    }
-  }
-  
   var over18: Bool { post.data?.over_18 ?? false }
   
   @ViewBuilder
   func mediaComponentCall() -> some View {
     if let data = post.data {
       if let extractedMedia = winstonData.extractedMedia {
-        MediaPresenter(winstonData: winstonData, controller: controller, postTitle: data.title, badgeKit: data.badgeKit, avatarImageRequest: winstonData.avatarImageRequest, markAsSeen: !defSettings.lightboxReadsPost ? nil : markAsRead, cornerRadius: theme.theme.mediaCornerRadius, blurPostLinkNSFW: defSettings.blurNSFW, media: extractedMedia, over18: over18, compact: false, contentWidth: winstonData.postDimensions.mediaSize?.width ?? 0, maxMediaHeightScreenPercentage: defSettings.maxMediaHeightScreenPercentage, resetVideo: resetVideo)
+        MediaPresenter(winstonData: winstonData, controller: controller, postTitle: data.title, badgeKit: data.badgeKit, avatarImageRequest: winstonData.avatarImageRequest, markAsSeen: !defSettings.lightboxReadsPost ? nil : markAsRead, cornerRadius: theme.theme.mediaCornerRadius, blurPostLinkNSFW: defSettings.blurNSFW, media: extractedMedia, over18: over18, compact: false, contentWidth: winstonData.postDimensions.mediaSize?.width ?? 0, maxMediaHeightScreenPercentage: defSettings.maxMediaHeightScreenPercentage)
           .allowsHitTesting(defSettings.isMediaTappable)
         
         if case .repost(let repost) = extractedMedia {

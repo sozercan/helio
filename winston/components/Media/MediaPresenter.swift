@@ -55,7 +55,6 @@ struct MediaPresenter: View, Equatable {
   let compact: Bool
   let contentWidth: CGFloat
   let maxMediaHeightScreenPercentage: CGFloat
-  let resetVideo: ((SharedVideo) -> ())?
   
   var body: some View {
     let mediaSize = (fullPage ? winstonData.postDimensionsForcedNormal : winstonData.postDimensions).mediaSize
@@ -73,7 +72,7 @@ struct MediaPresenter: View, Equatable {
       }
     case .video(let sharedVideo):
       if !showURLInstead {
-        VideoPlayerPost(controller: controller, cachedVideo: sharedVideo, markAsSeen: markAsSeen, compact: compact, contentWidth: contentWidth, url: sharedVideo.url, resetVideo: resetVideo, maxMediaHeightScreenPercentage: maxMediaHeightScreenPercentage)
+        VideoPlayerPost(controller: controller, cachedVideo: sharedVideo, markAsSeen: markAsSeen, compact: compact, contentWidth: contentWidth, url: sharedVideo.url, maxMediaHeightScreenPercentage: maxMediaHeightScreenPercentage)
           .nsfw(over18 && blurPostLinkNSFW, smallIcon: compact, size: mediaSize)
       }
       
