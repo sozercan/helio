@@ -137,23 +137,22 @@ extension Post {
   static func initMultiple(datas: [T], sub: Subreddit? = nil, contentWidth: CGFloat = 0) -> [Post] {
     let context = PersistenceController.shared.container.newBackgroundContext()
     let fetchRequest = NSFetchRequest<SeenPost>(entityName: "SeenPost")
+    fetchRequest.predicate = NSPredicate(format: "postID IN %@", datas.map(\.id))
     let theme = InMemoryTheme.shared.currentTheme
     
     if let results = (context.performAndWait { try? context.fetch(fetchRequest) }) {
+      let seenByID = context.performAndWait {
+        Dictionary(results.compactMap { seen in seen.postID.map { ($0, (numComments: Int(seen.numComments), comments: seen.seenComments)) } }, uniquingKeysWith: { first, _ in first })
+      }
       
       let posts = Array(datas.enumerated()).concurrentMap { i, data in
-        let isSeen = context.performAndWait { results.contains(where: { $0.postID == data.id }) }
+        let seen = seenByID[data.id]
         let newPost = Post(data: data, sub: sub, contentWidth: contentWidth, theme: theme, fetchAvatar: false)
-        newPost.data?.winstonSeen = isSeen
+        newPost.data?.winstonSeen = seen != nil
         
-        if (isSeen) {
-          Task {
-            await context.perform {
-              let foundPost =  results.first(where: { $0.postID == data.id })
-              newPost.winstonData?.seenCommentsCount = Int(foundPost?.numComments ?? 0)
-              newPost.winstonData?.seenComments = foundPost?.seenComments
-            }
-          }
+        if let seen {
+          newPost.winstonData?.seenCommentsCount = seen.numComments
+          newPost.winstonData?.seenComments = seen.comments
         }
         
         return newPost
@@ -255,6 +254,7 @@ extension Post {
       }
     }
     let fetchRequest = NSFetchRequest<SeenPost>(entityName: "SeenPost")
+    fetchRequest.predicate = NSPredicate(format: "postID == %@", id)
     if let results = (await context.perform(schedule: .enqueued) { try? context.fetch(fetchRequest) }) {
       await context.perform(schedule: .enqueued) {
         let foundPost = results.first(where: { obj in obj.postID == self.id })
@@ -301,6 +301,7 @@ extension Post {
     let context = PersistenceController.shared.primaryBGContext
     
     let fetchRequest = NSFetchRequest<SeenPost>(entityName: "SeenPost")
+    fetchRequest.predicate = NSPredicate(format: "postID == %@", id)
     if let results = (await context.perform(schedule: .enqueued) { try? context.fetch(fetchRequest) }) {
       await context.perform(schedule: .enqueued) {
         let foundPost = results.first(where: { obj in obj.postID == self.id })
@@ -336,6 +337,7 @@ extension Post {
     let newComments = self.getCommentIds(comments: comments)
     
     let fetchRequest = NSFetchRequest<SeenPost>(entityName: "SeenPost")
+    fetchRequest.predicate = NSPredicate(format: "postID == %@", id)
     if let results = (await context.perform(schedule: .enqueued) { try? context.fetch(fetchRequest) }) {
       await context.perform(schedule: .enqueued) {
         let foundPost = results.first(where: { obj in obj.postID == self.id })
@@ -366,6 +368,7 @@ extension Post {
     let context = PersistenceController.shared.primaryBGContext
     
     let fetchRequest = NSFetchRequest<SeenPost>(entityName: "SeenPost")
+    fetchRequest.predicate = NSPredicate(format: "postID == %@", id)
     if let results = (await context.perform(schedule: .enqueued) { try? context.fetch(fetchRequest) }) {
       await context.perform(schedule: .enqueued) {
         let foundPost = results.first(where: { obj in obj.postID == self.id })

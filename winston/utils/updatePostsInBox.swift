@@ -35,6 +35,7 @@ func updatePostsInBox(_ redditAPI: RedditAPI, force: Bool = false) async {
     
     let context = PersistenceController.shared.container.newBackgroundContext()
     let fetchRequest = NSFetchRequest<SeenPost>(entityName: "SeenPost")
+    fetchRequest.predicate = NSPredicate(format: "postID IN %@", postsInBox.map(\.id))
     if let results = (await context.perform(schedule: .enqueued) { try? context.fetch(fetchRequest) }) {
       await context.perform(schedule: .enqueued) {
         newPostsInBox = postsInBox.map({ post in

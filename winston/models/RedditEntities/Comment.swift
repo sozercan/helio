@@ -103,22 +103,24 @@ extension Comment {
   }
   
   static func initMultiple(datas: [ListingChild<T>], parent: [GenericRedditEntity<T, B>]? = nil) -> [Comment] {
+    let comments = datas.compactMap { x in
+      x.data.map { Comment.init(data: $0, kind: x.kind, parent: parent) }
+    }
+    func walk(_ comments: [Comment], _ body: (Comment) -> Void) {
+      comments.forEach { body($0); walk($0.childrenWinston, body) }
+    }
+    var ids: [String] = []
+    walk(comments) { ids.append($0.id) }
+    // toggleCollapsed stores the entity id, which has the kind appended (e.g. "abct1").
     let context = PersistenceController.shared.primaryBGContext
     let fetchRequest = NSFetchRequest<CollapsedComment>(entityName: "CollapsedComment")
-    if let results = (context.performAndWait { try? context.fetch(fetchRequest) }) {
-      return datas.compactMap { x in
-        context.performAndWait {
-          if let data = x.data {
-            let isCollapsed = results.contains(where: { $0.commentID == data.id })
-            let newComment = Comment.init(data: data, kind: x.kind, parent: parent)
-            newComment.data?.collapsed = isCollapsed
-            return newComment
-          }
-          return nil
-        }
-      }
+    fetchRequest.predicate = NSPredicate(format: "commentID IN %@", ids)
+    let collapsedIDs = context.performAndWait { Set(((try? context.fetch(fetchRequest)) ?? []).compactMap(\.commentID)) }
+    // Keep Reddit's own collapsed flag (low score, crowd control) unless the user collapsed it.
+    if !collapsedIDs.isEmpty {
+      walk(comments) { if collapsedIDs.contains($0.id) { $0.data?.collapsed = true } }
     }
-    return []
+    return comments
   }
   
   func toggleCollapsed(_ collapsed: Bool? = nil, optimistic: Bool = false) {
