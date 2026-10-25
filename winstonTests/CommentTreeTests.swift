@@ -1,3 +1,4 @@
+import Foundation
 import Testing
 @testable import winston
 
@@ -80,5 +81,14 @@ struct CommentTreeTests {
     guard case .more(let parent) = rows[6].kind else { Issue.record("expected more row"); return }
     #expect(parent?.data?.id == "a")
     guard case .continueThread = rows[3].kind else { Issue.record("expected continue row"); return }
+  }
+}
+
+struct CommentDataTests {
+  @Test func decodesHiddenScores() throws {
+    let hidden = try JSONDecoder().decode(CommentData.self, from: Data(#"{"id":"abc","ups":1,"score_hidden":true}"#.utf8))
+    #expect(hidden.score_hidden == true)
+    let shown = try JSONDecoder().decode(CommentData.self, from: Data(#"{"id":"def","ups":12}"#.utf8))
+    #expect(shown.score_hidden == nil)
   }
 }

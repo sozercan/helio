@@ -452,7 +452,8 @@ struct CommentData: GenericRedditEntityDataType {
   //  let gildings: [String: String]?
   //  let unrepliable_reason: String?
   //  let author_flair_text_color: String?
-  //  let score_hidden: Bool?
+  /// Reddit hides scores on new comments in some subreddits.
+  var score_hidden: Bool?
   var permalink: String?
   //  let subreddit_type: String?
   //  let locked: Bool?
