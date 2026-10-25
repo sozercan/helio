@@ -7,6 +7,8 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		320364E976AC2F0427EF6745 /* ApolloReadHistoryTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = BF957CB3C47930A165F4B542 /* ApolloReadHistoryTests.swift */; };
+		1CD4BCE586D61910BB979FF0 /* importApolloReadHistory.swift in Sources */ = {isa = PBXBuildFile; fileRef = BC1437E6245094248ADEE373 /* importApolloReadHistory.swift */; };
 		821EFD443395C383E58D626E /* FeedItemsManagerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6D14EE8EACE472069874317D /* FeedItemsManagerTests.swift */; };
 		478A338E52F7341A0A93339C /* CommentTreeTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 36B6CBEC3EE2D45DB930E4F3 /* CommentTreeTests.swift */; };
 		650ACAFC2A87A36900A7C600 /* calcVotes.swift in Sources */ = {isa = PBXBuildFile; fileRef = 650ACAFB2A87A36900A7C600 /* calcVotes.swift */; };
@@ -580,6 +582,8 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
+		BF957CB3C47930A165F4B542 /* ApolloReadHistoryTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ApolloReadHistoryTests.swift; sourceTree = "<group>"; };
+		BC1437E6245094248ADEE373 /* importApolloReadHistory.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = importApolloReadHistory.swift; sourceTree = "<group>"; };
 		6D14EE8EACE472069874317D /* FeedItemsManagerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FeedItemsManagerTests.swift; sourceTree = "<group>"; };
 		36B6CBEC3EE2D45DB930E4F3 /* CommentTreeTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = CommentTreeTests.swift; sourceTree = "<group>"; };
 		650ACAFB2A87A36900A7C600 /* calcVotes.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = calcVotes.swift; sourceTree = "<group>"; };
@@ -1183,6 +1187,7 @@
 			isa = PBXGroup;
 			children = (
 				36B6CBEC3EE2D45DB930E4F3 /* CommentTreeTests.swift */,
+				BF957CB3C47930A165F4B542 /* ApolloReadHistoryTests.swift */,
 				6D14EE8EACE472069874317D /* FeedItemsManagerTests.swift */,
 			);
 			name = winstonTests;
@@ -2268,6 +2273,7 @@
 				EC97F0272ACB006A001814A6 /* importTheme.swift */,
 				EC4F8F092AE7070500801104 /* getTagsFromTitle.swift */,
 				65840EE72AE11BFD000315E1 /* exportImportSettings.swift */,
+				BC1437E6245094248ADEE373 /* importApolloReadHistory.swift */,
 				65C169EB2AFFA60B007764D5 /* isImageUrl.swift */,
 				BB0D15282B069A9700668448 /* getItemId.swift */,
 				65E544BF2B0F70D500FF6965 /* createPaletteFromColors.swift */,
@@ -2772,6 +2778,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				478A338E52F7341A0A93339C /* CommentTreeTests.swift in Sources */,
+				320364E976AC2F0427EF6745 /* ApolloReadHistoryTests.swift in Sources */,
 				821EFD443395C383E58D626E /* FeedItemsManagerTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -2840,6 +2847,7 @@
 				EC31881C2A92BBFB00CB3738 /* Multi.swift in Sources */,
 				EC982A362B4A4C8900FFE582 /* GuidedLoadingRefreshTokenScene.swift in Sources */,
 				65840EE82AE11BFD000315E1 /* exportImportSettings.swift in Sources */,
+				1CD4BCE586D61910BB979FF0 /* importApolloReadHistory.swift in Sources */,
 				ECC2C7B22AAB48D1000E196C /* ThemesPanel.swift in Sources */,
 				ECAA8B892A764A3C00D9D636 /* YTMediaPost.swift in Sources */,
 				ECC3A2282B721CAB00CF1CC7 /* StickiedPostLink.swift in Sources */,

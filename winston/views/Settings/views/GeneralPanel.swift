@@ -20,6 +20,11 @@ struct GeneralPanel: View {
     @State var isMoving: Bool = false
     @State var settingsFileURL: String = ""
     @State var doImport: Bool = false
+    @State private var importKind: ImportKind = .settings
+    @State private var importingApolloReadHistory = false
+    @State private var apolloImportMessage: String?
+    
+    enum ImportKind { case settings, apolloReadHistory }
     @State private var showClearReadHistoryAlert = false
     var body: some View {
         List{
@@ -62,24 +67,42 @@ struct GeneralPanel: View {
                     })
                     
                     WListButton {
+                        importKind = .settings
                         doImport.toggle()
                     } label: {
                         Label("Import Settings", systemImage: "square.and.arrow.down")
-                    }.fileImporter(isPresented: $doImport, allowedContentTypes: [UTType.json], allowsMultipleSelection: false, onCompletion: { result in
-                        switch result {
-                        case .success(let file):
-                            let success = importUserDefaultsFromJSON(jsonFilePath: file[0])
-                            if success {
-                                print("success")
-                            } else {
-                                print("error")
+                    }
+                    
+                    WListButton {
+                        importKind = .apolloReadHistory
+                        doImport.toggle()
+                    } label: {
+                        HStack {
+                            Label("Import Apollo read history", systemImage: "eye")
+                            if importingApolloReadHistory {
+                                Spacer()
+                                ProgressView()
                             }
-                        case .failure(let error):
-                            print(error.localizedDescription)
                         }
-                        
-                    })
+                    }
+                    .disabled(importingApolloReadHistory)
                 }
+                // One importer for both buttons: sibling .fileImporter modifiers can shadow each other.
+                .fileImporter(isPresented: $doImport, allowedContentTypes: importKind == .apolloReadHistory ? [.zip, .propertyList] : [UTType.json], allowsMultipleSelection: false, onCompletion: { result in
+                    switch (importKind, result) {
+                    case (.settings, .success(let file)):
+                        let success = importUserDefaultsFromJSON(jsonFilePath: file[0])
+                        if success {
+                            print("success")
+                        } else {
+                            print("error")
+                        }
+                    case (.apolloReadHistory, .success(let files)):
+                        if let file = files.first { importApolloReadHistory(file) }
+                    case (_, .failure(let error)):
+                        print(error.localizedDescription)
+                    }
+                })
                 
                 Section("Advanced") {
                     
@@ -120,6 +143,11 @@ struct GeneralPanel: View {
             
         }
         .themedListBG(theme.lists.bg)
+        .alert("Apollo read history", isPresented: Binding(get: { apolloImportMessage != nil }, set: { if !$0 { apolloImportMessage = nil } })) {
+            Button("OK") {}
+        } message: {
+            Text(apolloImportMessage ?? "")
+        }
         .alert("Clear read history?", isPresented: $showClearReadHistoryAlert) {
             Button("Clear", role: .destructive) { clearReadHistory() }
         } message: {
@@ -127,6 +155,23 @@ struct GeneralPanel: View {
         }
         .navigationTitle("General")
         .navigationBarTitleDisplayMode(.inline)
+    }
+    
+    func importApolloReadHistory(_ file: URL) {
+        importingApolloReadHistory = true
+        Task {
+            let message: String
+            do {
+                let result = try await ApolloReadHistory.importBackup(at: file)
+                message = "Marked \(result.imported) posts as read (\(result.found - result.imported) already were). Reload feeds to update posts already on screen."
+            } catch {
+                message = error.localizedDescription
+            }
+            await MainActor.run {
+                importingApolloReadHistory = false
+                apolloImportMessage = message
+            }
+        }
     }
     
     func calculateTotalCacheSize() {
