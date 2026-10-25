@@ -94,6 +94,12 @@ func mediaExtractor(compact: Bool, contentWidth: Double = .screenW, _ data: Post
 
   let contentWidth = contentWidth - ((theme?.postLinks.theme.innerPadding.horizontal ?? 0) * 2) - ((theme?.postLinks.theme.outerHPadding ?? 0) * 2)
   
+  // A crosspost's own url and media describe the original post's media (often a bare
+  // v.redd.it link with no `media`), which can't be played from here. Show the original.
+  if let postEmbed = data.crosspost_parent_list?.first {
+    return .repost(Post(data: postEmbed, contentWidth: contentWidth, secondary: true, theme: theme))
+  }
+  
   if let is_gallery = data.is_gallery, is_gallery, let galleryData = data.gallery_data?.items, let metadata = data.media_metadata {
     
     let halfWidth = (contentWidth - ImageMediaPost.gallerySpacing) / 2
@@ -120,29 +126,31 @@ func mediaExtractor(compact: Bool, contentWidth: Double = .screenW, _ data: Post
       }
       return nil
     }
-    return .imgs(galleryArr)
+    // If no item had usable metadata, fall through instead of showing an empty gallery.
+    if !galleryArr.isEmpty {
+      return .imgs(galleryArr)
+    }
   }
   
-  if let videoPreview = data.preview?.reddit_video_preview, let url = videoPreview.hls_url, let videoURL = URL(string: url), let width = videoPreview.width, let height = videoPreview.height  {
-    return .video(SharedVideo.get(url: videoURL, size: CGSize(width: CGFloat(width), height: CGFloat(height))))
+  // Prefer the HLS stream, but play the MP4 fallback when Reddit omits it.
+  if let videoPreview = data.preview?.reddit_video_preview, let videoURL = (videoPreview.hls_url ?? videoPreview.fallback_url).flatMap(URL.init(string:)) {
+    return .video(SharedVideo.get(url: videoURL, size: videoSize(data, width: videoPreview.width, height: videoPreview.height)))
   }
   
-  if let redditVideo = data.media?.reddit_video, let url = redditVideo.hls_url, let videoURL = URL(string: url), let width = redditVideo.width, let height = redditVideo.height {
-    return .video(SharedVideo.get(url: videoURL, size: CGSize(width: CGFloat(width), height: CGFloat(height))))
+  if let redditVideo = data.media?.reddit_video, let videoURL = (redditVideo.hls_url ?? redditVideo.fallback_url).flatMap(URL.init(string:)) {
+    return .video(SharedVideo.get(url: videoURL, size: videoSize(data, width: redditVideo.width.map(Double.init), height: redditVideo.height.map(Double.init))))
   }
   
-  if data.media?.type == "youtube.com", let oembed = data.media?.oembed, let html = oembed.html, let ytID = extractYoutubeIdFromOEmbed(html), let width = oembed.width, let height = oembed.height, let author_name = oembed.author_name, let author_url = oembed.author_url, let authorURL = URL(string: author_url), let thumb = oembed.thumbnail_url, let thumbURL = URL(string: thumb) {
+  // Only the video id is required; the rest of the oEmbed payload is often missing.
+  if data.media?.type == "youtube.com", let oembed = data.media?.oembed, let html = oembed.html, let ytID = extractYoutubeIdFromOEmbed(html), let thumbURL = oembed.thumbnail_url.flatMap(URL.init(string:)) ?? URL(string: "https://i.ytimg.com/vi/\(ytID)/hqdefault.jpg"), let watchURL = URL(string: "https://www.youtube.com/watch?v=\(ytID)") {
     let thumbReq = ImageRequest(url: thumbURL, processors: [.resize(width: getPostContentWidth(contentWidth: contentWidth, theme: theme))], priority: .normal)
-    let size = CGSize(width: CGFloat(width), height: CGFloat(height))
-    let newExtracted = YTMediaExtracted(videoID: ytID, size: size, thumbnailURL: thumbURL, thumbnailRequest: thumbReq, player: YouTubePlayer(source: .video(id: ytID)), author: author_name, authorURL: authorURL)
+    let size = CGSize(width: CGFloat(oembed.width ?? 16), height: CGFloat(oembed.height ?? 9))
+    let newExtracted = YTMediaExtracted(videoID: ytID, size: size, thumbnailURL: thumbURL, thumbnailRequest: thumbReq, player: YouTubePlayer(source: .video(id: ytID)), author: oembed.author_name ?? "", authorURL: oembed.author_url.flatMap(URL.init(string:)) ?? watchURL)
     return .yt(newExtracted)
   }
   
-  if let postEmbed = data.crosspost_parent_list?.first {
-    return .repost(Post(data: postEmbed, contentWidth: contentWidth, secondary: true, theme: theme))
-  }
-  
-  if IMAGES_FORMATS.contains(where: { data.url.hasSuffix($0) }), let url = rootURL(data.url) {
+  if let rawImageURL = URL(string: data.url.escape), IMAGES_FORMATS.contains(".\(rawImageURL.pathExtension.lowercased())") {
+    let url = loadableMediaURL(rawImageURL)
     var actualWidth = 0
     var actualHeight = 0
     if let images = data.preview?.images, images.count > 0, let image = images[0].source, let width = image.width, let height = image.height {
@@ -160,7 +168,8 @@ func mediaExtractor(compact: Bool, contentWidth: Double = .screenW, _ data: Post
     return .imgs([imgExtracted])
   }
   
-  if let images = data.preview?.images, images.count > 0, let image = images[0].source, let src = image.url?.replacing("/preview.", with: "/i."), !src.contains("external-preview"), let imgURL = rootURL(src.escape), let width = image.width, let height = image.height {
+  // Prefer the full-size i.redd.it image, falling back to the (signed) preview URL.
+  if let images = data.preview?.images, images.count > 0, let image = images[0].source, let rawSrc = image.url, !rawSrc.contains("external-preview"), let imgURL = rootURL(rawSrc.replacing("/preview.", with: "/i.").escape) ?? loadableMediaURL(rawSrc.escape), let width = image.width, let height = image.height {
     
     let size = compact ? scaledCompactModeThumbSize() : contentWidth
     let processors: [ImageProcessing] = contentWidth == 0 ? [] : [ImageProcessors.Resize(size: CGSize(width: size, height: size), unit: .points, contentMode: .aspectFill, crop: false, upscale: true)]
@@ -233,6 +242,27 @@ func mediaExtractor(compact: Bool, contentWidth: Double = .screenW, _ data: Post
   }
   
   return nil
+}
+
+/// The video's own size, or the preview image's when Reddit leaves it out.
+private func videoSize(_ data: PostData, width: Double?, height: Double?) -> CGSize {
+  if let width, let height, width > 0, height > 0 { return CGSize(width: width, height: height) }
+  let source = data.preview?.images?.first?.source
+  return CGSize(width: source?.width ?? 0, height: source?.height ?? 0)
+}
+
+/// Drops tracking queries, except on Reddit's preview hosts, whose URLs only load with
+/// their signature query.
+private func loadableMediaURL(_ url: URL) -> URL {
+  if url.query?.isEmpty == false, let host = url.host?.lowercased(),
+     host == "preview.redd.it" || host == "external-preview.redd.it" || host.hasSuffix(".redditmedia.com") {
+    return url
+  }
+  return rootURL(url) ?? url
+}
+
+private func loadableMediaURL(_ string: String) -> URL? {
+  URL(string: string).map(loadableMediaURL)
 }
 
 private func extractYoutubeIdFromOEmbed(_ text: String) -> String? {
