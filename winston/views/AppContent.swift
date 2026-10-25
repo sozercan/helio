@@ -34,14 +34,9 @@ struct AppContent: View {
             }
         }
         .whatsNewSheet()
-        .tipJarModalProvider()
         .environment(\.tabBarHeight, tabBarHeight)
         .environment(\.setTabBarHeight, setTabBarHeight)
         .environment(\.useTheme, InMemoryTheme.shared.currentTheme)
-        .task {
-            IAPManager.shared.startListeningForUpdates()
-            await IAPManager.shared.fetchAllProducts()
-        }
         .onAppear {
             Defaults[.ThemesDefSettings].themesPresets = Defaults[.ThemesDefSettings].themesPresets.filter { $0.id != "default" }
         }

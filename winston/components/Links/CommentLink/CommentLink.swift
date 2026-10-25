@@ -7,7 +7,6 @@
 
 import SwiftUI
 import Defaults
-import SwiftUIIntrospect
 
 let ZINDEX_SLOTS_COMMENT = 100000
 

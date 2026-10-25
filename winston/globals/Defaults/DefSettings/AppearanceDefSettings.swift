@@ -34,6 +34,5 @@ struct AppearanceDefSettings: Equatable, Hashable, Codable, Defaults.Serializabl
   var showUsernameInTabBar: Bool = false
   var disableAlphabetLettersSectionsInSubsList: Bool = false
   var themeStoreTint: Bool = true
-  var shinyTextAndButtons: Bool = false
   var colorScheme: AppColorScheme = .system
 }

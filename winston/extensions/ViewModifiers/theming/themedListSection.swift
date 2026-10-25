@@ -8,7 +8,6 @@
 import SwiftUI
 import Foundation
 import SwiftUI
-import Shiny
 
 /// A view modifier to apply a themed background to a list row.
 struct ThemedListSectionModifier: ViewModifier {

@@ -10,7 +10,6 @@ import NukeUI
 import Nuke
 import NukeExtensions
 import VisionKit
-import SwiftyUI
 
 struct URLImage: View, Equatable {
     static func == (lhs: URLImage, rhs: URLImage) -> Bool {

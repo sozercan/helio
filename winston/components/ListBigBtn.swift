@@ -6,7 +6,6 @@
 //
 
 import SwiftUI
-import Shiny
 import Defaults
 
 /// A button with an icon, label, and optional shiny gradient, used in a list.

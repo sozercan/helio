@@ -7,7 +7,6 @@
 
 import SwiftUI
 import Defaults
-import SwiftUIIntrospect
 import MarkdownUI
 
 struct CommentLinkContentPreview: View {
@@ -264,9 +263,6 @@ struct CommentLinkContent: View {
           .mask(Color.black.padding(.top, -(data.depth != 0 ? 42 : 30)).padding(.bottom, -8))
           .id("\(data.id)-body\(forcedBodySize == nil ? "" : "-preview")")
         }
-      }
-      .introspect(.listCell, on: .iOS(.v16, .v17)) { cell in
-        cell.layer.masksToBounds = false
       }
       .background(Color.accentColor.opacity(highlight ? 0.2 : 0))
       .background(showReplies ? theme.theme.bg() : .clear)

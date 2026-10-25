@@ -1,5 +1,5 @@
 {
-  "originHash" : "6f0faa2bf7c692b2aa970e7f12e136cf8e9a9769e340ec55b3e131da49a959a2",
+  "originHash" : "2b8296702ebbf49844a5adeafee87703b5e6ec15c5471d36003e9f3f775c8b4e",
   "pins" : [
     {
       "identity" : "alamofire",
@@ -20,24 +20,6 @@
       }
     },
     {
-      "identity" : "chtcollectionviewwaterfalllayout",
-      "kind" : "remoteSourceControl",
-      "location" : "https://github.com/chiahsien/CHTCollectionViewWaterfallLayout.git",
-      "state" : {
-        "revision" : "1fe42247efc8aea1ad03332d2b44f2d7fb1644bc",
-        "version" : "0.9.10"
-      }
-    },
-    {
-      "identity" : "cloudstorage",
-      "kind" : "remoteSourceControl",
-      "location" : "https://github.com/nonstrict-hq/CloudStorage.git",
-      "state" : {
-        "revision" : "35700218d35579df091974b6e7765db94c83448b",
-        "version" : "0.4.0"
-      }
-    },
-    {
       "identity" : "debouncedonchange",
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/Tunous/DebouncedOnChange.git",
@@ -53,15 +35,6 @@
       "state" : {
         "revision" : "38925e3cfacf3fb89a81a35b1cd44fd5a5b7e0fa",
         "version" : "8.2.0"
-      }
-    },
-    {
-      "identity" : "disk",
-      "kind" : "remoteSourceControl",
-      "location" : "https://github.com/saoudrizwan/Disk.git",
-      "state" : {
-        "revision" : "b0cb4fdf23e51849cc2460bdc6de795c3bcca99d",
-        "version" : "0.6.4"
       }
     },
     {
@@ -146,15 +119,6 @@
       }
     },
     {
-      "identity" : "shiny",
-      "kind" : "remoteSourceControl",
-      "location" : "https://github.com/maustinstar/shiny.git",
-      "state" : {
-        "branch" : "master",
-        "revision" : "862360b8ab6b9ea9eb1156569a30f154b22625a5"
-      }
-    },
-    {
       "identity" : "smoothgradient",
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/raymondjavaxx/SmoothGradient.git",
@@ -179,15 +143,6 @@
       "state" : {
         "revision" : "5d943224c3bb173e6ecf27295611615eba90c80e",
         "version" : "7.0.0"
-      }
-    },
-    {
-      "identity" : "swiftui-introspect",
-      "kind" : "remoteSourceControl",
-      "location" : "https://github.com/siteline/swiftui-introspect",
-      "state" : {
-        "revision" : "121c146fe591b1320238d054ae35c81ffa45f45a",
-        "version" : "0.12.0"
       }
     },
     {

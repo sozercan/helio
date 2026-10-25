@@ -7,7 +7,6 @@
 
 import SwiftUI
 import Defaults
-import SwiftUIIntrospect
 
 enum MultiViewType: Hashable {
   case posts(Multi)

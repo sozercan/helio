@@ -9,7 +9,6 @@ import SwiftUI
 import Defaults
 import Combine
 import SwiftDate
-import Shiny
 
 let alphabetLetters = Array("ABCDEFGHIJKLMNOPQRSTUVWXYZ").map { String($0) }
 
