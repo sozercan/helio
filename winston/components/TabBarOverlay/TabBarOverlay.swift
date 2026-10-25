@@ -39,8 +39,6 @@ struct TabBarOverlay: View {
           }
         }
         .frame(overlaySize)
-        .swipeAnywhere(size: overlaySize, activeTab: Nav.shared.activeTab)
-        .frame(overlaySize)
         .contentShape(Rectangle())
         .padding(.bottom, bottomSafeArea)
         .frame(width: geo.size.width, height: geo.size.height, alignment: .bottom)

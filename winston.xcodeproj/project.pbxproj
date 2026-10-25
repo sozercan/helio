@@ -83,7 +83,6 @@
 		EC143B2B2B223DC3008A567F /* AVLooperPlayer.swift in Sources */ = {isa = PBXBuildFile; fileRef = EC143B2A2B223DC3008A567F /* AVLooperPlayer.swift */; };
 		EC16852E2AEF4B18000DD701 /* GIFViewer.swift in Sources */ = {isa = PBXBuildFile; fileRef = EC16852D2AEF4B18000DD701 /* GIFViewer.swift */; };
 		EC1685312AEF4BF2000DD701 /* Gifu in Frameworks */ = {isa = PBXBuildFile; productRef = EC1685302AEF4BF2000DD701 /* Gifu */; };
-		EC1884482A8D7C1C00CAFB7A /* SwipeAnywhere.swift in Sources */ = {isa = PBXBuildFile; fileRef = EC1884472A8D7C1C00CAFB7A /* SwipeAnywhere.swift */; };
 		EC1906ED2A55293500A0300E /* AppearancePanel.swift in Sources */ = {isa = PBXBuildFile; fileRef = EC1906EC2A55293500A0300E /* AppearancePanel.swift */; };
 		EC1906EF2A552A3100A0300E /* CredentialsPanel.swift in Sources */ = {isa = PBXBuildFile; fileRef = EC1906EE2A552A3100A0300E /* CredentialsPanel.swift */; };
 		EC1906F12A552A6800A0300E /* BehaviorPanel.swift in Sources */ = {isa = PBXBuildFile; fileRef = EC1906F02A552A6800A0300E /* BehaviorPanel.swift */; };
@@ -663,7 +662,6 @@
 		EC13D4472BB06E1D00741E39 /* blackhole.mp4 */ = {isa = PBXFileReference; lastKnownFileType = file; path = blackhole.mp4; sourceTree = "<group>"; };
 		EC143B2A2B223DC3008A567F /* AVLooperPlayer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AVLooperPlayer.swift; sourceTree = "<group>"; };
 		EC16852D2AEF4B18000DD701 /* GIFViewer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GIFViewer.swift; sourceTree = "<group>"; };
-		EC1884472A8D7C1C00CAFB7A /* SwipeAnywhere.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SwipeAnywhere.swift; sourceTree = "<group>"; };
 		EC1906EC2A55293500A0300E /* AppearancePanel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppearancePanel.swift; sourceTree = "<group>"; };
 		EC1906EE2A552A3100A0300E /* CredentialsPanel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CredentialsPanel.swift; sourceTree = "<group>"; };
 		EC1906F02A552A6800A0300E /* BehaviorPanel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BehaviorPanel.swift; sourceTree = "<group>"; };
@@ -1832,7 +1830,6 @@
 		EC77EC0E2B2555770053B966 /* swipers */ = {
 			isa = PBXGroup;
 			children = (
-				EC1884472A8D7C1C00CAFB7A /* SwipeAnywhere.swift */,
 				EC8F34652A6A348F00EB8249 /* SwipeActions.swift */,
 				EC3BC5EB2ACC21AA0050CA8F /* SwipeRevolution.swift */,
 				EC684C822AF1FD9E00BC2A84 /* ScrollSwipe_WIP.swift */,
@@ -3109,7 +3106,6 @@
 				EC3B32462AC64F4C002C1291 /* SubredditPostsIPAD.swift in Sources */,
 				EC2A39132AC1FF63001E5354 /* PostLinkCompact.swift in Sources */,
 				EC8EF5A32B608F63009E51D2 /* ThemeColor.swift in Sources */,
-				EC1884482A8D7C1C00CAFB7A /* SwipeAnywhere.swift in Sources */,
 				EC5A1E432B178FF800EBBE96 /* calculateDistance.swift in Sources */,
 				EC3AC9E72AAD1F7F0078EC78 /* FakeSection.swift in Sources */,
 				ECF1478D2AB61AE100572352 /* LabeledMultiline.swift in Sources */,

@@ -15,43 +15,33 @@ class ViewControllerHolder: Identifiable, Equatable {
   
   var id: String { "ctrl-holder-\(self.routerID)" }
   let routerID: String
-  var globalGesture: UIPanGestureRecognizer
-  var tabBarGesture: UIPanGestureRecognizer
-  var navController: UINavigationController?
   var controller: UIViewController? {
-    willSet {
-      if let newController = newValue, controller != newController {
-        newController.navigationController?.addFullSwipeGesture(globalGesture)
-        newController.navigationController?.addFullSwipeGesture(tabBarGesture)
-      }
-    }
+    didSet { updateContentPopGesture() }
   }
+  
+  /// "Navigation everywhere" setting. Off by default because the full-width pop gesture
+  /// competes with the horizontal post/comment swipe actions, which are disabled while it's on.
+  private var swipeAnywhereEnabled = false
+  private var isAtRoot = true
   
   init(routerID: String) {
     self.routerID = routerID
-    self.globalGesture = Self.newGesture("swipe-anywhere-gesture:router-\(routerID)")
-    self.globalGesture.isEnabled = false
-    self.tabBarGesture = Self.newGesture("swipe-tabbar-gesture:router-\(routerID)")
-    self.tabBarGesture.isEnabled = false
   }
   
-  static func newGesture(_ id: String) -> UIPanGestureRecognizer {
-    let gesture = UIPanGestureRecognizer()
-    gesture.name = "\(id)-\(UUID().uuidString)"
-    gesture.isEnabled = true
-    gesture.cancelsTouchesInView = false
-    return gesture
+  func setSwipeAnywhereEnabled(_ enabled: Bool) {
+    swipeAnywhereEnabled = enabled
+    updateContentPopGesture()
   }
   
-  func addGestureToViews() {
-    removeGestureFromViews();
-    controller?.navigationController?.view.addGestureRecognizer(globalGesture)
+  func setAtRoot(_ atRoot: Bool) {
+    isAtRoot = atRoot
+    updateContentPopGesture()
   }
   
-  func removeGestureFromViews() {
-    if let existingGesture = controller?.navigationController?.view.gestureRecognizers?.first(where: { $0.name == (globalGesture.name ?? "none") }) {
-      controller?.navigationController?.view.removeGestureRecognizer(existingGesture)
-    }
+  /// iOS 26's built-in full-width back swipe. The edge swipe (`interactivePopGestureRecognizer`)
+  /// is left untouched.
+  private func updateContentPopGesture() {
+    controller?.navigationController?.interactiveContentPopGestureRecognizer?.isEnabled = swipeAnywhereEnabled && !isAtRoot
   }
 }
 
@@ -78,10 +68,7 @@ class Router: Hashable, Equatable, Identifiable {
     }
   }
   private(set) var isAtRoot = true {
-    willSet {
-      self.navController.tabBarGesture.isEnabled = !newValue
-      self.navController.globalGesture.isEnabled = !newValue
-    }
+    didSet { navController.setAtRoot(isAtRoot) }
   }
   var navController: ViewControllerHolder
     
@@ -143,12 +130,4 @@ class Router: Hashable, Equatable, Identifiable {
     hasher.combine(firstSelected)
     hasher.combine(path)
   }
-}
-
-extension UINavigationController {
-    func addFullSwipeGesture(_ gesture: UIPanGestureRecognizer) {
-        guard let gestureSelector = interactivePopGestureRecognizer?.value(forKey: "targets") else { return }
-        
-        gesture.setValue(gestureSelector, forKey: "targets")
-    }
 }

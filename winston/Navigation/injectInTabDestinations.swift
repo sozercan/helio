@@ -94,11 +94,7 @@ fileprivate struct AttachViewControllerToRouterView: UIViewRepresentable {
       if let controller = uiView.parentViewController {
         Nav.shared[tabID].navController.controller = controller
       }
-      if disable {
-        Nav.shared.activeRouter.navController.removeGestureFromViews()
-      } else {
-        Nav.shared.activeRouter.navController.addGestureToViews()
-      }
+      Nav.shared[tabID].navController.setSwipeAnywhereEnabled(!disable)
     }
   }
 }
