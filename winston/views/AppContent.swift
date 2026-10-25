@@ -14,6 +14,7 @@ struct AppContent: View {
     //  @Default(.ThemesDefSettings) private var themesDefSettings
     @Default(.GeneralDefSettings) private var generalDefSettings
     @Default(.AppearanceDefSettings) private var appearanceDefSettings
+    @Default(.BehaviorDefSettings) private var behaviorDefSettings
     
     //  var selectedTheme: WinstonTheme { themesDefSettings.themesPresets.first { $0.id == themesDefSettings.selectedThemeID } ?? defaultTheme }
     
@@ -37,6 +38,7 @@ struct AppContent: View {
         .environment(\.tabBarHeight, tabBarHeight)
         .environment(\.setTabBarHeight, setTabBarHeight)
         .environment(\.useTheme, InMemoryTheme.shared.currentTheme)
+        .environment(\.enableSwipeAnywhere, behaviorDefSettings.enableSwipeAnywhere)
         .onAppear {
             Defaults[.ThemesDefSettings].themesPresets = Defaults[.ThemesDefSettings].themesPresets.filter { $0.id != "default" }
         }

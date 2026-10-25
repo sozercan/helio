@@ -45,20 +45,18 @@ final class PreviewModel: Equatable {
         if let imgURL = URL(string: og[.image] ?? "") {
           newImageReq = ImageRequest(url: imgURL, processors: [.resize(width:  compact ? scaledCompactModeThumbSize() : 76)])
         }
+        // Not animated: this usually lands while the feed is scrolling, where an animated
+        // commit causes a hitch.
         await MainActor.run { [newImageReq] in
-          withAnimation {
-            imageReq = newImageReq
-            title = og[.title]?.escape
-            description = og[.description]?.escape
-            url = URL(string: og[.url] ?? "")
-            loading = false
-          }
+          imageReq = newImageReq
+          title = og[.title]?.escape
+          description = og[.description]?.escape
+          url = URL(string: og[.url] ?? "")
+          loading = false
         }
       } else {
         await MainActor.run {
-          withAnimation {
-            loading = false
-          }
+          loading = false
         }
     }
   }

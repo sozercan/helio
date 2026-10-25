@@ -37,6 +37,10 @@ private struct TabBarHeightKey: EnvironmentKey {
   static let defaultValue: Double? = nil
 }
 
+private struct EnableSwipeAnywhereKey: EnvironmentKey {
+  static let defaultValue = false
+}
+
 private struct IsInSidebarKey: EnvironmentKey {
   static let defaultValue = false
 }
@@ -81,6 +85,11 @@ extension EnvironmentValues {
   var tabBarHeight: Double? {
     get { self[TabBarHeightKey.self] }
     set { self[TabBarHeightKey.self] = newValue }
+  }
+  /// BehaviorDefSettings.enableSwipeAnywhere, read once at the root instead of per swipeable row.
+  var enableSwipeAnywhere: Bool {
+    get { self[EnableSwipeAnywhereKey.self] }
+    set { self[EnableSwipeAnywhereKey.self] = newValue }
   }
   var brighterBG: Bool {
     get { self[BrighterBGKey.self] }

@@ -19,7 +19,7 @@ enum TriggeredAction: Int {
 
 
 struct SwipeUI<T: GenericRedditEntityDataType, B: Hashable>: ViewModifier {
-  @Default(.BehaviorDefSettings) private var behaviorDefSettings
+  @Environment(\.enableSwipeAnywhere) private var enableSwipeAnywhere
   @State private var dragAmount: CGFloat = 0
   @State private var offset: CGFloat?
   @State private var triggeredAction: TriggeredAction = .none
@@ -81,7 +81,6 @@ struct SwipeUI<T: GenericRedditEntityDataType, B: Hashable>: ViewModifier {
     let actualOffsetX = controlledDragAmount?.wrappedValue ?? dragAmount
     let offsetXInterpolate = interpolatorBuilder([0, firstActionThreshold], value: actualOffsetX)
     let offsetXNegativeInterpolate = interpolatorBuilder([0, -firstActionThreshold], value: actualOffsetX)
-    let enableSwipeAnywhere = behaviorDefSettings.enableSwipeAnywhere
     let actualOffset = controlledDragAmount != nil ? 0 : dragAmount
     
     content

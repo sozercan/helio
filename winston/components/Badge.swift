@@ -40,23 +40,17 @@ struct BadgeKit: Equatable {
   let created: Double
 }
 
+private let flairEmojiRegex = try? NSRegularExpression(pattern: ":(.*?):")
+
 func flairWithoutEmojis(str: String?) -> [String]? {
-  do {
-    let emojiRegex = try NSRegularExpression(pattern: ":(.*?):")
-    if let s = str {
-      let sep = "<separator>"
-      return emojiRegex.stringByReplacingMatches(in: s, range: NSMakeRange(0, s.count), withTemplate: sep)
-        .components(separatedBy: sep).map{ str in
-          return str.replacingOccurrences(of: sep, with: "").trimmingCharacters(in: .whitespacesAndNewlines)
-        }.filter { str in
-          return !str.isEmpty
-        }
-    } else {
-      return nil
+  guard let flairEmojiRegex, let s = str else { return nil }
+  let sep = "<separator>"
+  return flairEmojiRegex.stringByReplacingMatches(in: s, range: NSMakeRange(0, s.count), withTemplate: sep)
+    .components(separatedBy: sep).map{ str in
+      return str.replacingOccurrences(of: sep, with: "").trimmingCharacters(in: .whitespacesAndNewlines)
+    }.filter { str in
+      return !str.isEmpty
     }
-  } catch {
-    return nil
-  }
 }
 
 struct BadgeView: View, Equatable {

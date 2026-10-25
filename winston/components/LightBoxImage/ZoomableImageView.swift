@@ -39,6 +39,7 @@ struct ZoomableScrollView<Content: View>: UIViewRepresentable {
         hostedView.autoresizingMask = [.flexibleWidth, .flexibleHeight]
         hostedView.frame = scrollView.bounds
         scrollView.addSubview(hostedView)
+        scrollView.contentSize = hostedView.frame.size
         
         
         let doubleTapGesture = UITapGestureRecognizer(target: context.coordinator, action: #selector(Coordinator.handleDoubleTap(_:)))
@@ -58,6 +59,14 @@ struct ZoomableScrollView<Content: View>: UIViewRepresentable {
         // update the hosting controller's SwiftUI content
         context.coordinator.hostingController.rootView = self.content
         assert(context.coordinator.hostingController.view.superview == uiView)
+        
+        // While not zoomed, keep contentSize matching the view, so the next pinch scales
+        // from the right baseline instead of a stale or zero size (black bars, erratic panning).
+        if uiView.zoomScale == uiView.minimumZoomScale {
+            let hostedView = context.coordinator.hostingController.view!
+            hostedView.frame = uiView.bounds
+            uiView.contentSize = hostedView.frame.size
+        }
     }
     
     func makeCoordinator() -> Coordinator {
