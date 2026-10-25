@@ -23,7 +23,7 @@ struct RedditListingFeed<Header: View, Footer: View, S: Sorting>: View {
     @Default(.SubredditFeedDefSettings) private var subredditFeedDefSettings
     @Default(.GeneralDefSettings) private var generalDefSettings
     
-    init(feedId: String, showSubInPosts: Bool = false, title: String, theme: ThemeBG, fetch: @escaping FeedItemsManager<S>.ItemsFetchFn, @ViewBuilder header: @escaping () -> Header = { EmptyView() }, @ViewBuilder footer: @escaping () -> Footer = { EmptyView() }, initialSorting: S? = nil, disableSearch: Bool = true, subreddit: Subreddit? = nil, forceRefresh: Binding<Bool>? = nil) where S == SubListingSortOption {
+    init(feedId: String, showSubInPosts: Bool = false, title: String, theme: ThemeBG, fetch: @escaping FeedItemsManager<S>.ItemsFetchFn, @ViewBuilder header: @escaping () -> Header = { EmptyView() }, @ViewBuilder footer: @escaping () -> Footer = { EmptyView() }, initialSorting: S? = nil, disableSearch: Bool = true, subreddit: Subreddit? = nil, forceRefresh: Binding<Bool>? = nil, hideReadPosts: Bool = false) where S == SubListingSortOption {
         self.showSubInPosts = showSubInPosts
         self.feedId = feedId
         self.title = title
@@ -33,7 +33,7 @@ struct RedditListingFeed<Header: View, Footer: View, S: Sorting>: View {
         self.subreddit = subreddit
         self.disableSearch = disableSearch
         self.forceRefresh = forceRefresh // Assign the optional forceRefresh Binding
-        self._itemsManager = .init(initialValue: FeedItemsManager(sorting: initialSorting, fetchFn: fetch))
+        self._itemsManager = .init(initialValue: FeedItemsManager(sorting: initialSorting, hideReadPosts: hideReadPosts, fetchFn: fetch))
         self._searchEnabled = .init(initialValue: disableSearch)
         self._filters = FetchRequest<CachedFilter>(sortDescriptors: [NSSortDescriptor(key: "text", ascending: true)], predicate: NSPredicate(format: "subID == %@", (subreddit?.data?.display_name ?? feedId) as CVarArg), animation: .default)
     }

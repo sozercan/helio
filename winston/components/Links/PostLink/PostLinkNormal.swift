@@ -65,17 +65,6 @@ struct PostLinkNormal: View, Equatable, Identifiable {
     }
   }
   
-  func onDisappear() {
-    Task(priority: .background) {
-      if defSettings.readOnScroll {
-        await post.toggleSeen(true, optimistic: true)
-      }
-      if defSettings.hideOnRead {
-        await post.hide(true)
-      }
-    }
-  }
-  
   var over18: Bool { post.data?.over_18 ?? false }
   
   @ViewBuilder
@@ -140,7 +129,7 @@ struct PostLinkNormal: View, Equatable, Identifiable {
           
         }
       }
-      .postLinkStyle(post: post, sub: sub, theme: theme.theme, size: winstonData.postDimensions.size, secondary: secondary, openPost: openPost, readPostOnScroll: defSettings.readOnScroll, hideReadPosts: defSettings.hideOnRead)
+      .postLinkStyle(post: post, sub: sub, theme: theme.theme, size: winstonData.postDimensions.size, secondary: secondary, openPost: openPost, readPostOnScroll: defSettings.readOnScroll)
       .swipyUI(onTap: openPost, actionsSet: defSettings.swipeActions, entity: post, secondary: secondary)
     }
   }

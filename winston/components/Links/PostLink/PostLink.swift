@@ -60,7 +60,7 @@ struct PostLink: View, Equatable, Identifiable {
 }
 
 extension View {
-  func postLinkStyle(showSubBottom: Bool = false, post: Post, sub: Subreddit, theme: PostLinkTheme, size: CGSize, secondary: Bool, openPost: @escaping () -> (), readPostOnScroll: Bool, hideReadPosts: Bool) -> some View {
+  func postLinkStyle(showSubBottom: Bool = false, post: Post, sub: Subreddit, theme: PostLinkTheme, size: CGSize, secondary: Bool, openPost: @escaping () -> (), readPostOnScroll: Bool) -> some View {
     let seen = (post.data?.winstonSeen ?? false)
     let fadeReadPosts = theme.unseenType == .fade
     return self
@@ -86,16 +86,25 @@ extension View {
       }, preview: { PostLinkContextPreview(post: post, sub: sub) })
       .foregroundStyle(.primary)
       .multilineTextAlignment(.leading)
-      .onDisappear {
-        Task(priority: .background) {
-          if readPostOnScroll {
-            await post.toggleSeen(true, optimistic: true)
-          }
-          if hideReadPosts {
-            await post.hide(true)
-          }
-        }
+      .modifier(ReadOnScrollModifier(post: post, enabled: readPostOnScroll))
+  }
+}
+
+/// Marks a post read once it has scrolled fully past the top of the screen. Unlike
+/// `onDisappear`, this doesn't fire when scrolling back up, switching tabs or opening a post.
+struct ReadOnScrollModifier: ViewModifier {
+  var post: Post
+  var enabled: Bool
+
+  func body(content: Content) -> some View {
+    if enabled {
+      content.onGeometryChange(for: Bool.self) { $0.frame(in: .global).maxY <= 0 } action: { scrolledPast in
+        guard scrolledPast, !(post.data?.winstonSeen ?? false) else { return }
+        Task(priority: .background) { await post.toggleSeen(true, optimistic: true) }
       }
+    } else {
+      content
+    }
   }
 }
 

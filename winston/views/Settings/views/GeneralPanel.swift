@@ -20,6 +20,7 @@ struct GeneralPanel: View {
     @State var isMoving: Bool = false
     @State var settingsFileURL: String = ""
     @State var doImport: Bool = false
+    @State private var showClearReadHistoryAlert = false
     var body: some View {
         List{
             
@@ -92,13 +93,19 @@ struct GeneralPanel: View {
                     WListButton {
                         clearCache()
                         resetCaches()
-                        resetCoreData()
                     } label: {
                         Label("Clear Cache (" + totalCacheSize + ")", systemImage: "trash")
                             .foregroundColor(.red)
                     }
                     .onAppear{
                         calculateTotalCacheSize()
+                    }
+                    
+                    WListButton {
+                        showClearReadHistoryAlert = true
+                    } label: {
+                        Label("Clear read history", systemImage: "eye.slash")
+                            .foregroundColor(.red)
                     }
                     
                     WListButton {
@@ -113,6 +120,11 @@ struct GeneralPanel: View {
             
         }
         .themedListBG(theme.lists.bg)
+        .alert("Clear read history?", isPresented: $showClearReadHistoryAlert) {
+            Button("Clear", role: .destructive) { clearReadHistory() }
+        } message: {
+            Text("Every post will show as unread again. Reload feeds to update posts already on screen.")
+        }
         .navigationTitle("General")
         .navigationBarTitleDisplayMode(.inline)
     }
@@ -182,8 +194,8 @@ struct GeneralPanel: View {
         flushFilesInDirectoryButNotFolders(temporaryDirectory)
         flushFilesInDirectoryButNotFolders(cacheDirectory)
         
-        // Resetting Core Data
-        resetCoreData()
+        // Resetting Core Data, except read history
+        resetCoreData(keeping: ["SeenPost"])
         
         totalCacheSize = "0 bytes"
         print("Cache cleared successfully.")

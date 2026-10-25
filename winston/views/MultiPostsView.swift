@@ -40,6 +40,6 @@ struct MultiPostsView: View {
   }
   
   var body: some View {
-    RedditListingFeed(feedId: multi.id, showSubInPosts: true, title: "\(subFeedSettings.showPrefixOnFeedTitle ? "m/" : "")\(multi.data?.name ?? "Multi")", theme: selectedTheme.postLinks.bg, fetch: caller, initialSorting: subFeedSettings.preferredSort, disableSearch: true)
+    RedditListingFeed(feedId: multi.id, showSubInPosts: true, title: "\(subFeedSettings.showPrefixOnFeedTitle ? "m/" : "")\(multi.data?.name ?? "Multi")", theme: selectedTheme.postLinks.bg, fetch: caller, initialSorting: subFeedSettings.preferredSort, disableSearch: true, hideReadPosts: true)
   }
 }

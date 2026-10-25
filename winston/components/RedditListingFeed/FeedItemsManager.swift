@@ -33,62 +33,82 @@ class FeedItemsManager<S> {
     private var onScreenEntities: [(entity: RedditEntityType, index: Int)] = []
     private var fetchFn: ItemsFetchFn
     private let prefetchRange = 2
+    /// Whether this feed drops already-read posts when "Hide read posts" is on.
+    private let hideReadPosts: Bool
+    /// Pages fetched in a row whose posts were all hidden, before giving up.
+    private let maxHiddenPagesInARow = 5
     
-    init(sorting: S?, fetchFn: @escaping ItemsFetchFn) {
+    init(sorting: S?, hideReadPosts: Bool = false, fetchFn: @escaping ItemsFetchFn) {
         self.sorting = sorting
+        self.hideReadPosts = hideReadPosts
         self.fetchFn = fetchFn
         self.chunkSize = Defaults[.SubredditFeedDefSettings].chunkLoadSize
     }
     
     func fetchCaller(loadingMore: Bool) async {
+        await fetchPage(loadingMore: loadingMore, after: loadingMore ? lastElementId : nil, hiddenPagesInARow: 0)
+        self.currentTask = nil
+    }
+    
+    private func fetchPage(loadingMore: Bool, after lastElementId: String?, hiddenPagesInARow: Int) async {
         if !loadingMore, let currentTask, !currentTask.isCancelled {
             currentTask.cancel()
         }
 
-        let lastElementId = loadingMore ? self.lastElementId : nil
         let searchQuery = selectedFilter?.type == .custom ? selectedFilter?.text : searchQuery.debounced.isEmpty ? nil : searchQuery.debounced
         let filter = selectedFilter?.type != .custom ? selectedFilter?.text : nil
 
-        if let (fetchedEntities, after) = await fetchFn(lastElementId, sorting, searchQuery, filter), let fetchedEntities {
+        guard let (fetchedEntities, after) = await fetchFn(lastElementId, sorting, searchQuery, filter), let fetchedEntities else {
+            withAnimation { displayMode = .error }
+            return
+        }
+        
+        let reachedEnd = fetchedEntities.count < chunkSize
+        let shownEntities = withoutReadPosts(fetchedEntities)
+        // Every post on this page was already read: keep paging instead of showing a gap.
+        let skipPage = shownEntities.isEmpty && !fetchedEntities.isEmpty && !reachedEnd && after != nil && hiddenPagesInARow < maxHiddenPagesInARow
             
-            if !loadingMore {
-                var newLoadedEntitiesIds = Set<String>()
-                fetchedEntities.forEach { ent in
-                    newLoadedEntitiesIds.insert(ent.fullname)
-                }
-                withAnimation {
-                    displayMode = fetchedEntities.count == 0 ? .empty : fetchedEntities.count < chunkSize ? .endOfFeed : .items
-                    entities = fetchedEntities
-                    //          self.lastElementId = fetchedEntities.count == 0 ? nil : fetchedEntities[fetchedEntities.count - 1].fullname
-                    self.lastElementId = after
-                    loadedEntitiesIds = newLoadedEntitiesIds
-                }
-                return
+        if !loadingMore {
+            var newLoadedEntitiesIds = Set<String>()
+            shownEntities.forEach { ent in
+                newLoadedEntitiesIds.insert(ent.fullname)
             }
-            
+            withAnimation {
+                displayMode = skipPage ? .items : shownEntities.isEmpty ? .empty : reachedEnd ? .endOfFeed : .items
+                entities = shownEntities
+                self.lastElementId = after
+                loadedEntitiesIds = newLoadedEntitiesIds
+            }
+        } else {
             var newLoadedEntitiesIds = loadedEntitiesIds
             var newEntities = entities
             
-            fetchedEntities.forEach { ent in
+            shownEntities.forEach { ent in
                 if newLoadedEntitiesIds.contains(ent.fullname) { return }
                 newLoadedEntitiesIds.insert(ent.fullname)
                 newEntities.append(ent)
             }
             
-            
-            
             DispatchQueue.main.async { [newEntities, newLoadedEntitiesIds] in
                 // Don't animate appending — it causes scroll position jumps
-                self.displayMode = fetchedEntities.count < self.chunkSize ? .endOfFeed : .items
+                self.displayMode = reachedEnd ? .endOfFeed : .items
                 self.entities = newEntities
                 self.lastElementId = after
                 self.loadedEntitiesIds = newLoadedEntitiesIds
             }
-            
-        } else {
-            withAnimation { displayMode = .error }
         }
-        self.currentTask = nil
+        
+        if skipPage {
+            await fetchPage(loadingMore: true, after: after, hiddenPagesInARow: hiddenPagesInARow + 1)
+        }
+    }
+    
+    private func withoutReadPosts(_ entities: [RedditEntityType]) -> [RedditEntityType] {
+        guard hideReadPosts, Defaults[.PostLinkDefSettings].hideOnRead else { return entities }
+        return entities.filter { entity in
+            if case .post(let post) = entity { return !(post.data?.winstonSeen ?? false) }
+            return true
+        }
     }
     
     func elementAppeared(entity: RedditEntityType, index: Int) async {

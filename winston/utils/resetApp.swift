@@ -37,10 +37,11 @@ func resetCaches() {
   Caches.videos.cache.removeAll()
 }
 
-func resetCoreData() {
+/// - Parameter keeping: entity names to leave untouched.
+func resetCoreData(keeping: Set<String> = []) {
   let container = PersistenceController.shared.container
   let entities = container.managedObjectModel.entities
-  for entity in entities {
+  for entity in entities where !keeping.contains(entity.name ?? "") {
         delete(entityName: entity.name!)
   }
   
@@ -56,4 +57,9 @@ func resetCoreData() {
       debugPrint(error)
     }
   }
+}
+
+/// Forgets which posts have been read.
+func clearReadHistory() {
+  resetCoreData(keeping: Set(PersistenceController.shared.container.managedObjectModel.entities.compactMap(\.name)).subtracting(["SeenPost"]))
 }
