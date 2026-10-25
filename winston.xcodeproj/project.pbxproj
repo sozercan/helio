@@ -7,6 +7,8 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		44048F3EE31F3EBA54BD85DA /* SearchHistoryTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A6E6796D65FB57C5DBCC1EE /* SearchHistoryTests.swift */; };
+		0B44DC83C9A1F8C3B73A6189 /* SearchHistory.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0F019ADD176C9FA4B7430402 /* SearchHistory.swift */; };
 		4D0337041B5FEF610FD3F07D /* SelectableTextSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4F1FE4A000F34D8D3B0244B4 /* SelectableTextSheet.swift */; };
 		320364E976AC2F0427EF6745 /* ApolloReadHistoryTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = BF957CB3C47930A165F4B542 /* ApolloReadHistoryTests.swift */; };
 		1CD4BCE586D61910BB979FF0 /* importApolloReadHistory.swift in Sources */ = {isa = PBXBuildFile; fileRef = BC1437E6245094248ADEE373 /* importApolloReadHistory.swift */; };
@@ -583,6 +585,8 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
+		1A6E6796D65FB57C5DBCC1EE /* SearchHistoryTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SearchHistoryTests.swift; sourceTree = "<group>"; };
+		0F019ADD176C9FA4B7430402 /* SearchHistory.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SearchHistory.swift; sourceTree = "<group>"; };
 		4F1FE4A000F34D8D3B0244B4 /* SelectableTextSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = SelectableTextSheet.swift; path = "winston/components/Markdown Handling/SelectableTextSheet.swift"; sourceTree = SOURCE_ROOT; };
 		BF957CB3C47930A165F4B542 /* ApolloReadHistoryTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ApolloReadHistoryTests.swift; sourceTree = "<group>"; };
 		BC1437E6245094248ADEE373 /* importApolloReadHistory.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = importApolloReadHistory.swift; sourceTree = "<group>"; };
@@ -1190,6 +1194,7 @@
 			isa = PBXGroup;
 			children = (
 				36B6CBEC3EE2D45DB930E4F3 /* CommentTreeTests.swift */,
+				1A6E6796D65FB57C5DBCC1EE /* SearchHistoryTests.swift */,
 				BF957CB3C47930A165F4B542 /* ApolloReadHistoryTests.swift */,
 				6D14EE8EACE472069874317D /* FeedItemsManagerTests.swift */,
 			);
@@ -1658,6 +1663,7 @@
 				ECE08B5C2AA9C93E00F84DC9 /* WinstonTheme */,
 				ECDD514F2A726F2600FD9498 /* DebouncedText.swift */,
 				EC50B0E32A84563C00AB8F72 /* SwipeAction.swift */,
+				0F019ADD176C9FA4B7430402 /* SearchHistory.swift */,
 				ECF5B3042AC837F500355589 /* IconManager.swift */,
 				EC4C7CB32B2E17D00007A4DA /* Hap.swift */,
 				EC982A332B4A436600FFE582 /* TimerHolder.swift */,
@@ -2781,6 +2787,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				478A338E52F7341A0A93339C /* CommentTreeTests.swift in Sources */,
+				44048F3EE31F3EBA54BD85DA /* SearchHistoryTests.swift in Sources */,
 				320364E976AC2F0427EF6745 /* ApolloReadHistoryTests.swift in Sources */,
 				821EFD443395C383E58D626E /* FeedItemsManagerTests.swift in Sources */,
 			);
@@ -2918,6 +2925,7 @@
 				ECD5EE992B11E7A1002CA158 /* TakeSnapshotView.swift in Sources */,
 				EC3AC9EB2AB34E6A0078EC78 /* ClosestNumber.swift in Sources */,
 				EC50B0E42A84563C00AB8F72 /* SwipeAction.swift in Sources */,
+				0B44DC83C9A1F8C3B73A6189 /* SearchHistory.swift in Sources */,
 				ECA5E6482AA5D36E00F6C7A5 /* resetApp.swift in Sources */,
 				ECF0B7E52A541449002B9FAD /* newReply.swift in Sources */,
 				ECB155142B25A1B60069CA2C /* BigInfoCredential.swift in Sources */,
