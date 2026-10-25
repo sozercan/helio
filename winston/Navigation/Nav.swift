@@ -34,6 +34,7 @@ class Nav: Identifiable, Equatable {
     case onboarding
     case editingCredential(RedditCredential)
     case editingTheme(WinstonTheme)
+    case selectText(String)
 
     var id: String {
       var newID: String = ""
@@ -41,6 +42,7 @@ class Nav: Identifiable, Equatable {
       case .editingCredential(let cred): newID = cred.id.uuidString
       case .onboarding: newID = "onboarding"
       case .editingTheme(let theme): newID = theme.id
+      case .selectText(let text): newID = "select-text-\(text.hashValue)"
       }
       return "\(newID)-presenting-sheet-Nav"
     }

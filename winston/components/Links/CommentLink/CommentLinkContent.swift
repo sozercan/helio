@@ -302,6 +302,12 @@ struct CommentLinkContent: View {
             }
           }
           
+          if let body = data.body, !body.isEmpty {
+            Button {
+              Nav.present(.selectText(body))
+            } label: { Label("Select Text", systemImage: "selection.pin.in.out") }
+          }
+          
           if let permalink = data.permalink {
             // ShareLink inside a .contextMenu is a known SwiftUI bug; present imperatively instead.
             Button {

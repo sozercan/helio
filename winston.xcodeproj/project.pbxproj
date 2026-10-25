@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		4D0337041B5FEF610FD3F07D /* SelectableTextSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4F1FE4A000F34D8D3B0244B4 /* SelectableTextSheet.swift */; };
 		320364E976AC2F0427EF6745 /* ApolloReadHistoryTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = BF957CB3C47930A165F4B542 /* ApolloReadHistoryTests.swift */; };
 		1CD4BCE586D61910BB979FF0 /* importApolloReadHistory.swift in Sources */ = {isa = PBXBuildFile; fileRef = BC1437E6245094248ADEE373 /* importApolloReadHistory.swift */; };
 		821EFD443395C383E58D626E /* FeedItemsManagerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6D14EE8EACE472069874317D /* FeedItemsManagerTests.swift */; };
@@ -582,6 +583,7 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
+		4F1FE4A000F34D8D3B0244B4 /* SelectableTextSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = SelectableTextSheet.swift; path = "winston/components/Markdown Handling/SelectableTextSheet.swift"; sourceTree = SOURCE_ROOT; };
 		BF957CB3C47930A165F4B542 /* ApolloReadHistoryTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ApolloReadHistoryTests.swift; sourceTree = "<group>"; };
 		BC1437E6245094248ADEE373 /* importApolloReadHistory.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = importApolloReadHistory.swift; sourceTree = "<group>"; };
 		6D14EE8EACE472069874317D /* FeedItemsManagerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FeedItemsManagerTests.swift; sourceTree = "<group>"; };
@@ -1179,6 +1181,7 @@
 				BB978B382B4F3BE200BE90D1 /* MDEditor.swift */,
 				BB978B422B4F756400BE90D1 /* External to Internal Links.swift */,
 				BBD6E9DF2B51B45D00901C1C /* Winston MD.swift */,
+				4F1FE4A000F34D8D3B0244B4 /* SelectableTextSheet.swift */,
 			);
 			path = "Markdown Handling";
 			sourceTree = "<group>";
@@ -3147,6 +3150,7 @@
 				ECAEFF662A77C43B0052FCD3 /* isVideoPlayer.swift in Sources */,
 				EC982A322B4A3E4B00FFE582 /* Timer.swift in Sources */,
 				BBD6E9E02B51B45D00901C1C /* Winston MD.swift in Sources */,
+				4D0337041B5FEF610FD3F07D /* SelectableTextSheet.swift in Sources */,
 				653E2DA52A8E278800833556 /* GeneralPanel.swift in Sources */,
 				EC620EEE2B0CD59700206A66 /* ThemeBG.swift in Sources */,
 				EC8B77A42AB4D89A00875C98 /* Dividers.swift in Sources */,

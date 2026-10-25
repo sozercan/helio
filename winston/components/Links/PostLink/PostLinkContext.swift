@@ -36,5 +36,11 @@ struct PostLinkContext: View {
         }
       }
     }
+    
+    if let selftext = post.data?.selftext, !selftext.isEmpty {
+      Button {
+        Nav.present(.selectText(selftext))
+      } label: { Label("Select Text", systemImage: "selection.pin.in.out") }
+    }
   }
 }

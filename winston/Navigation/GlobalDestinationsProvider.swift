@@ -24,6 +24,7 @@ struct GlobalDestinationsProvider<C: View>: View {
             case .editingTheme(let theme): ThemeEditPanel(theme: theme)
             case .editingCredential(let cred): CredentialEditStack(credential: cred).id("editing-credential-view-\(cred.id)")
             case .onboarding: Onboarding().interactiveDismissDisabled(true)
+            case .selectText(let text): SelectableTextSheet(markdown: text)
             }
           }
           .environment(\.tabBarHeight, tabBarHeight)

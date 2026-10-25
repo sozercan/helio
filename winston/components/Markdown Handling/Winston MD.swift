@@ -19,33 +19,33 @@ extension Theme {
                 configuration.label
                     .lineSpacing(lineSpacing)
                     .fontSize(fontSize)
-                    .textSelection(WinstonTextSelectability(allowsSelection: textSelection))
+                    .winstonTextSelection(textSelection)
             }
             .heading1 { configuration in
                 configuration.label
                     .markdownTextStyle {
                         FontSize(fontSize * 2)
                     }
-                    .textSelection(WinstonTextSelectability(allowsSelection: textSelection))
+                    .winstonTextSelection(textSelection)
             }
             .heading2 { configuration in
                 configuration.label
                     .markdownTextStyle {
                         FontSize(fontSize * 1.5)
                     }
-                    .textSelection(WinstonTextSelectability(allowsSelection: textSelection))
+                    .winstonTextSelection(textSelection)
             }
             .heading3 { configuration in
                 configuration.label
                     .markdownTextStyle {
                         FontSize(fontSize * 1.25)
                     }
-                    .textSelection(WinstonTextSelectability(allowsSelection: textSelection))
+                    .winstonTextSelection(textSelection)
             }
             .listItem { configuration in
                 configuration.label
                     .markdownMargin(top: .em(0.3))
-                    .textSelection(WinstonTextSelectability(allowsSelection: textSelection))
+                    .winstonTextSelection(textSelection)
             }
             .codeBlock { configuration in
                 configuration.label
@@ -57,7 +57,7 @@ extension Theme {
                     .background(Color(.secondarySystemBackground))
                     .clipShape(RoundedRectangle(cornerRadius: 8))
                     .markdownMargin(top: .zero, bottom: .em(0.8))
-                    .textSelection(WinstonTextSelectability(allowsSelection: textSelection))
+                    .winstonTextSelection(textSelection)
             }
             .table { configuration in
                 ScrollView (.horizontal) {
@@ -101,14 +101,16 @@ extension Theme {
     }
 }
 
-struct WinstonTextSelectability: TextSelectability {
-    let allowsSelection: Bool
-    
-    init(allowsSelection: Bool) {
-        self.allowsSelection = allowsSelection
-    }
-    
-    static var allowsSelection: Bool {
-        return true
+private extension View {
+    /// `TextSelectability` is read from the type (`static var allowsSelection`), so a single
+    /// conformance can't switch selection on and off: the old one always allowed it. Branch on
+    /// the concrete types instead, so bodies are only selectable when asked.
+    @ViewBuilder
+    func winstonTextSelection(_ enabled: Bool) -> some View {
+        if enabled {
+            textSelection(.enabled)
+        } else {
+            textSelection(.disabled)
+        }
     }
 }
