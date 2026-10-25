@@ -6,6 +6,7 @@
 //
 
 import SwiftUI
+import AuthenticationServices
 
 let questions: [PeakQuestion] = [
   .init(question: "Why do I need an extension?", answer: "To make the process of generating a new API credentials in your Reddit account."),
@@ -27,8 +28,28 @@ struct CredentialEditAssistantMode: View {
   @State private var commonScene: AssistantCommonScene? = nil
   @State private var loading = false
   @State private var timer = TimerHolder()
+  @Environment(\.webAuthenticationSession) private var webAuthenticationSession
   
   func enableEmptyView() { withAnimation(.spring) { commonScene = .empty } }
+  
+  func authorize() {
+    Task {
+      switch await RedditAPI.shared.authorize(appID: draftCredential.apiAppID, using: webAuthenticationSession) {
+      case .cancelled:
+        break
+      case .failed:
+        withAnimation(.spring) { scene = .urlError }
+      case .code(let authCode):
+        withAnimation(.spring) { scene = .loadingRefreshToken }
+        var tempCred = draftCredential
+        let success = await RedditAPI.shared.injectFirstAccessTokenInto(&tempCred, authCode: authCode)
+        withAnimation(.spring) {
+          draftCredential = tempCred
+          scene = success ? .authSuccess : .authError
+        }
+      }
+    }
+  }
   
   var body: some View {
     ZStack {
@@ -45,7 +66,7 @@ struct CredentialEditAssistantMode: View {
           case .loadingRefreshToken:
             GuidedLoadingRefreshTokenScene()
           case .credsCaptured:
-            GuidedCredsCapturedScene(draftCredential: draftCredential, enableEmptyView: enableEmptyView)
+            GuidedCredsCapturedScene(authorize: authorize)
           case .authError:
             GuidedErrorScene(text: "It seems that your credentials aren't working!", nav: $nav, scene: $scene)
           case .authSuccess:
@@ -91,29 +112,6 @@ struct CredentialEditAssistantMode: View {
           }
           return
         }
-      }
-      
-      if let authCode = RedditAPI.shared.getAuthCodeFromURL(url) {
-        doThisAfter(0.3) {
-          withAnimation(.spring) {
-            commonScene = nil
-            scene = .loadingRefreshToken
-          }
-          doThisAfter(0.5) {
-            Task(priority: .background) {
-              var tempCred = draftCredential
-              let success = await RedditAPI.shared.injectFirstAccessTokenInto(&tempCred, authCode: authCode)
-              await MainActor.run {
-                withAnimation(.spring) {
-                  draftCredential = tempCred
-                  scene = success ? .authSuccess : .authError
-                  commonScene = nil
-                }
-              }
-            }
-          }
-        }
-        return
       }
       
       withAnimation(.spring) {

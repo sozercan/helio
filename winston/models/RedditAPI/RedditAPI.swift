@@ -11,15 +11,16 @@ import Alamofire
 import SwiftUI
 import Defaults
 import Combine
+import AuthenticationServices
 
 @Observable
 class RedditAPI {
     static let shared = RedditAPI()
     static let redditApiURLBase = "https://oauth.reddit.com"
     static let redditWWWApiURLBase = "https://www.reddit.com"
-    static let appRedirectURI: String = "https://www.phfactor.net/winston/auth-success"
+    static let appURLScheme = "winstonapp"
+    static let appRedirectURI: String = "\(appURLScheme)://auth-success"
     
-    var lastAuthState: String?
     var me: User?
     
     // This is a replacement for getRequestHeader. We need to replace every instance of the former by this one
@@ -151,7 +152,7 @@ class RedditAPI {
             if code.hasSuffix("#_") {
                 code = "\(code.dropLast(2))"
             }
-            let payload = GetAccessTokenPayload(code: authCode)
+            let payload = GetAccessTokenPayload(code: code)
             let response = await AF.request(
                 "\(RedditAPI.redditWWWApiURLBase)/api/v1/access_token",
                 method: .post,
@@ -182,25 +183,44 @@ class RedditAPI {
         return false
     }
     
-    func getAuthCodeFromURL(_ rawUrl: URL) -> String? {
-        if let url = URL(string: rawUrl.absoluteString.replacingOccurrences(of: "winstonapp://", with: "https://app.winston.cafe/")), url.lastPathComponent == "auth-success", let query = URLComponents(url: url, resolvingAgainstBaseURL: false), let state = query.queryItems?.first(where: { $0.name == "state" })?.value, let code = query.queryItems?.first(where: { $0.name == "code" })?.value, state == lastAuthState {
-            //      let res = await injectFirstAccessTokenInto(&credential, authCode: code)
-            //      lastAuthState = nil
-            //      return res
-            return code
-        } else {
-            return nil
+    enum AuthorizationResult { case code(String), cancelled, failed }
+    
+    /// Runs Reddit's OAuth consent page in an in-app browser session and returns the
+    /// authorization code from the `winstonapp://auth-success` redirect.
+    @MainActor
+    func authorize(appID: String, using session: WebAuthenticationSession) async -> AuthorizationResult {
+        let state = UUID().uuidString
+        do {
+            let callbackURL = try await session.authenticate(
+                using: getAuthorizationCodeURL(appID, state: state),
+                callbackURLScheme: Self.appURLScheme,
+                preferredBrowserSession: .shared
+            )
+            guard let code = Self.authCode(from: callbackURL, state: state) else { return .failed }
+            return .code(code)
+        } catch let error as ASWebAuthenticationSessionError where error.code == .canceledLogin {
+            return .cancelled
+        } catch {
+            return .failed
         }
     }
     
-    func  getAuthorizationCodeURL(_ appID: String) -> URL {
+    static func authCode(from url: URL, state: String) -> String? {
+        guard
+            url.scheme == appURLScheme,
+            url.host == "auth-success",
+            let query = URLComponents(url: url, resolvingAgainstBaseURL: false)?.queryItems,
+            query.first(where: { $0.name == "state" })?.value == state,
+            let code = query.first(where: { $0.name == "code" })?.value
+        else { return nil }
+        return code
+    }
+    
+    func getAuthorizationCodeURL(_ appID: String, state: String) -> URL {
         let response_type: String = "code"
-        let state: String = UUID().uuidString
         let redirect_uri: String = RedditAPI.appRedirectURI
         let duration: String = "permanent"
         let scope: String = "identity,edit,flair,history,modconfig,modflair,modlog,modposts,modwiki,mysubreddits,privatemessages,read,report,save,submit,subscribe,vote,wikiedit,wikiread"
-        
-        lastAuthState = state
         
         return URL(string: "https://www.reddit.com/api/v1/authorize.compact?client_id=\(appID.trimmingCharacters(in: .whitespaces))&response_type=\(response_type)&state=\(state)&redirect_uri=\(redirect_uri)&duration=\(duration)&scope=\(scope)".addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed)!)!
     }

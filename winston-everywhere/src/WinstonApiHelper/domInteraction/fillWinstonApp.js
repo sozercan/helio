@@ -6,7 +6,7 @@ function fillWinstonApp() {
     "A developer's tool for devs to test their API keys."
   document.querySelector("#create-app input[name=about_url]").value = "https://winston.cafe"
   document.querySelector("#create-app input[name=redirect_uri]").value =
-    "https://app.winston.cafe/auth-success"
+    "winstonapp://auth-success"
   const recaptchaEl = document.querySelector(".c-form-group.g-recaptcha")
   recaptchaEl.scrollIntoView({ behavior: "smooth", block: "center", inline: "nearest" })
   recaptchaEl.focus()

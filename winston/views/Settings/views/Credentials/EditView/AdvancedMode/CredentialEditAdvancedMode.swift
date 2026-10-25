@@ -10,7 +10,6 @@ import SwiftUI
 struct CredentialEditAdvancedMode: View {
   var credential: RedditCredential
   @Binding var draftCredential: RedditCredential
-  @State private var waitingForCallback: Bool? = nil
   
   @Environment(\.useTheme) private var theme
   @Environment(\.dismiss) private var dismiss
@@ -103,22 +102,6 @@ struct CredentialEditAdvancedMode: View {
       if let queryParams = url.queryParameters, let appID = queryParams["appID"], let appSecret = queryParams["appSecret"] {
         draftCredential.apiAppID = appID
         draftCredential.apiAppSecret = appSecret
-        if draftCredential.validationStatus != .invalid {
-          openURL(RedditAPI.shared.getAuthorizationCodeURL(draftCredential.apiAppID))
-        }
-      } else if waitingForCallback == true {
-        Task(priority: .background) {
-          var tempCred = draftCredential
-          //          if let authCode = await RedditAPI.shared.monitorAuthCallback( url)
-          await MainActor.run {
-            //            if success {
-            //              withAnimation { draftCredential = tempCred }
-            //            }
-            //            withAnimation {
-            //              waitingForCallback = success ? nil : false
-            //            }
-          }
-        }
       }
     }
   }

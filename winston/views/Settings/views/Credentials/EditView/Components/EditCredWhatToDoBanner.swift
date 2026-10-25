@@ -6,6 +6,7 @@
 //
 
 import SwiftUI
+import AuthenticationServices
 
 struct EditCredWhatToDoBannerBody: View, Equatable {
   static func == (lhs: EditCredWhatToDoBannerBody, rhs: EditCredWhatToDoBannerBody) -> Bool {
@@ -14,7 +15,7 @@ struct EditCredWhatToDoBannerBody: View, Equatable {
   
   var status: RedditCredential.CredentialValidationState
   var advanced: Bool
-  var openURL: () -> ()
+  var authorize: () -> ()
   @Binding var completionStatus: EditCredWhatToDoBanner.BannerStatus
   @Environment(\.colorScheme) private var cs
   
@@ -39,7 +40,7 @@ struct EditCredWhatToDoBannerBody: View, Equatable {
               case .success: break
               case .onHold:
                 withAnimation(.spring) { completionStatus = .waitingForCallback }
-                openURL()
+                authorize()
               }
             } label: { pressed in
               HStack(spacing: 4) {
@@ -101,10 +102,34 @@ struct EditCredWhatToDoBanner: View, Equatable {
   var padding: EdgeInsets = .init(top: 12, leading: 16, bottom: 14, trailing: 16)
   var advanced = false
   
-  @Environment(\.openURL) private var openURL
+  @Environment(\.webAuthenticationSession) private var webAuthenticationSession
   @State private var completionStatus: BannerStatus = .onHold
   
   enum BannerStatus: String { case fetchError, wrongUrl, success, waitingForCallback, onHold }
+  
+  func authorize() {
+    Task {
+      let result = await RedditAPI.shared.authorize(appID: draftCredential.apiAppID, using: webAuthenticationSession)
+      guard completionStatus == .waitingForCallback else { return }
+      switch result {
+      case .cancelled:
+        withAnimation(.spring) { completionStatus = .onHold }
+      case .failed:
+        withAnimation(.spring) { completionStatus = .wrongUrl }
+      case .code(let authCode):
+        var tempCred = draftCredential
+        let success = await RedditAPI.shared.injectFirstAccessTokenInto(&tempCred, authCode: authCode)
+        withAnimation(.spring) {
+          completionStatus = success ? .success : .fetchError
+        }
+        if success {
+          doThisAfter(2) {
+            withAnimation { draftCredential = tempCred }
+          }
+        }
+      }
+    }
+  }
   
   var body: some View {
     let status = draftCredential.validationStatus
@@ -120,9 +145,7 @@ struct EditCredWhatToDoBanner: View, Equatable {
         
         Divider()
         
-        EditCredWhatToDoBannerBody(status: status, advanced: advanced, openURL: {
-          openURL(RedditAPI.shared.getAuthorizationCodeURL(draftCredential.apiAppID))
-        }, completionStatus: $completionStatus).equatable()
+        EditCredWhatToDoBannerBody(status: status, advanced: advanced, authorize: authorize, completionStatus: $completionStatus).equatable()
         .transition(.identity)
         .id(statusMeta.label)
         .padding(EdgeInsets(top: 0, leading: padding.leading, bottom: padding.bottom, trailing: padding.trailing))
@@ -133,32 +156,6 @@ struct EditCredWhatToDoBanner: View, Equatable {
 //      .animation(.spring, value: statusMeta.label)
       .zIndex(completionStatus == .success ? -1 : 0)
       .multilineTextAlignment(.leading)
-      .onOpenURL { url in
-        if completionStatus == .waitingForCallback {
-          Task(priority: .background) {
-            var tempCred = draftCredential
-            if let authToken = RedditAPI.shared.getAuthCodeFromURL(url) {
-              let success = await RedditAPI.shared.injectFirstAccessTokenInto(&tempCred, authCode: authToken)
-              await MainActor.run {
-                withAnimation(.spring) {
-                  completionStatus = success ? .success : .fetchError
-                }
-                if completionStatus == .success {
-                  doThisAfter(2) {
-                    withAnimation { draftCredential = tempCred }
-                  }
-                }
-              }
-            } else {
-              await MainActor.run {
-                withAnimation(.spring) {
-                  completionStatus = .wrongUrl
-                }
-              }
-            }
-          }
-        }
-      }
     }
   }
 }

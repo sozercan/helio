@@ -8,9 +8,7 @@
 import SwiftUI
 
 struct GuidedCredsCapturedScene: View {
-  var draftCredential: RedditCredential
-  let enableEmptyView: ()->()
-  @Environment(\.openURL) private var openURL
+  let authorize: ()->()
     var body: some View {
       VStack {
         VStack(alignment: .center, spacing: 24) {
@@ -24,8 +22,7 @@ struct GuidedCredsCapturedScene: View {
           }
           
           WinstonButton(config: .success) {
-            enableEmptyView()
-            openURL(RedditAPI.shared.getAuthorizationCodeURL(draftCredential.apiAppID))
+            authorize()
           } label: {
             Text("Take me there!")
           }

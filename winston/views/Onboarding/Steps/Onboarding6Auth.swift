@@ -6,6 +6,7 @@
 //
 
 import SwiftUI
+import AuthenticationServices
 
 struct Onboarding6Auth: View {
   var prevStep: ()->()
@@ -15,7 +16,36 @@ struct Onboarding6Auth: View {
   @State private var loading = false
   @State private var error = false
   
-  @Environment(\.openURL) private var openURL
+  @Environment(\.webAuthenticationSession) private var webAuthenticationSession
+  
+  func authorize() {
+    withAnimation {
+      loading = true
+      error = false
+    }
+    Task {
+      var success = false
+      var cancelled = false
+      switch await RedditAPI.shared.authorize(appID: appID, using: webAuthenticationSession) {
+      case .cancelled:
+        cancelled = true
+      case .failed:
+        break
+      case .code(let authCode):
+        var credential = RedditCredential(apiAppID: appID, apiAppSecret: appSecret)
+        success = await RedditAPI.shared.injectFirstAccessTokenInto(&credential, authCode: authCode)
+        if success { credential.save() }
+      }
+      if success {
+        nextStep()
+      } else {
+        withAnimation {
+          loading = false
+          error = !cancelled
+        }
+      }
+    }
+  }
   var body: some View {
     VStack(spacing: 16) {
       OnboardingBigStep(step: 6)
@@ -32,12 +62,7 @@ struct Onboarding6Auth: View {
         MasterButton(icon: "arrowshape.backward.fill", label: "Go back", mode: .soft, color: .primary, colorHoverEffect: .animated, textSize: 18, height: 48, cornerRadius: 16, action: {
           prevStep()
         })
-        MasterButton(icon: "flag.checkered", label: "Authorize API key", colorHoverEffect: .animated, textSize: 18, height: 48, fullWidth: true, cornerRadius: 16, action: {
-          withAnimation {
-            loading = true
-          }
-          openURL(RedditAPI.shared.getAuthorizationCodeURL(appID))
-        })
+        MasterButton(icon: "flag.checkered", label: "Authorize API key", colorHoverEffect: .animated, textSize: 18, height: 48, fullWidth: true, cornerRadius: 16, action: authorize)
       }
       .padding(.top, 32)
       
@@ -62,21 +87,5 @@ struct Onboarding6Auth: View {
       : ProgressView()
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     )
-    .onOpenURL { url in
-      Task(priority: .background) {
-//        await RedditAPI.shared.monitorAuthCallback(appID, appSecret, url) { success in
-//          DispatchQueue.main.async {
-//            if success {
-//              nextStep()
-//            } else {
-//              withAnimation {
-//                loading = false
-//                error = true
-//              }
-//            }
-//          }
-//        }
-      }
-    }
   }
 }
