@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		478A338E52F7341A0A93339C /* CommentTreeTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 36B6CBEC3EE2D45DB930E4F3 /* CommentTreeTests.swift */; };
 		650ACAFC2A87A36900A7C600 /* calcVotes.swift in Sources */ = {isa = PBXBuildFile; fileRef = 650ACAFB2A87A36900A7C600 /* calcVotes.swift */; };
 		6514FFEC2AFD01520051D264 /* WhatsNewKit in Frameworks */ = {isa = PBXBuildFile; productRef = 6514FFEB2AFD01520051D264 /* WhatsNewKit */; };
 		652F24082B0E219700BB95A3 /* Pixelate.metal in Sources */ = {isa = PBXBuildFile; fileRef = 652F24072B0E219700BB95A3 /* Pixelate.metal */; };
@@ -36,6 +37,7 @@
 		65E45A702AFD3E48007DBBFC /* whatsNew.swift in Sources */ = {isa = PBXBuildFile; fileRef = 65E45A6F2AFD3E48007DBBFC /* whatsNew.swift */; };
 		65E544BE2B0F6D4F00FF6965 /* Shiny.swift in Sources */ = {isa = PBXBuildFile; fileRef = 65E544BD2B0F6D4F00FF6965 /* Shiny.swift */; };
 		65E544C02B0F70D500FF6965 /* createPaletteFromColors.swift in Sources */ = {isa = PBXBuildFile; fileRef = 65E544BF2B0F70D500FF6965 /* createPaletteFromColors.swift */; };
+		82B1325D2D9DE2E4DF65D18B /* CommentTree.swift in Sources */ = {isa = PBXBuildFile; fileRef = 86AB0BE19A199AE30F020C5B /* CommentTree.swift */; };
 		ABC2180F2ABA528D00F0DABA /* Biometrics.swift in Sources */ = {isa = PBXBuildFile; fileRef = ABC2180E2ABA528D00F0DABA /* Biometrics.swift */; };
 		BB0D15272B0698FD00668448 /* MixedContentFeedView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB0D15262B0698FD00668448 /* MixedContentFeedView.swift */; };
 		BB0D15292B069A9700668448 /* getItemId.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB0D15282B069A9700668448 /* getItemId.swift */; };
@@ -546,6 +548,13 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
+		DC8C978547CD36AF94E4EA89 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = EC593ACC2A4673B2002D6454 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = EC593AD32A4673B2002D6454;
+			remoteInfo = winston;
+		};
 		ECAA8B7B2A75261000D9D636 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
 			containerPortal = EC593ACC2A4673B2002D6454 /* Project object */;
@@ -570,6 +579,7 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
+		36B6CBEC3EE2D45DB930E4F3 /* CommentTreeTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = CommentTreeTests.swift; sourceTree = "<group>"; };
 		650ACAFB2A87A36900A7C600 /* calcVotes.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = calcVotes.swift; sourceTree = "<group>"; };
 		652F24072B0E219700BB95A3 /* Pixelate.metal */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.metal; path = Pixelate.metal; sourceTree = "<group>"; };
 		652F24092B0E222B00BB95A3 /* SpoilerModifer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpoilerModifer.swift; sourceTree = "<group>"; };
@@ -601,6 +611,7 @@
 		65E45A6F2AFD3E48007DBBFC /* whatsNew.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = whatsNew.swift; sourceTree = "<group>"; };
 		65E544BD2B0F6D4F00FF6965 /* Shiny.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Shiny.swift; sourceTree = "<group>"; };
 		65E544BF2B0F70D500FF6965 /* createPaletteFromColors.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = createPaletteFromColors.swift; sourceTree = "<group>"; };
+		86AB0BE19A199AE30F020C5B /* CommentTree.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CommentTree.swift; sourceTree = "<group>"; };
 		ABC2180E2ABA528D00F0DABA /* Biometrics.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Biometrics.swift; sourceTree = "<group>"; };
 		BB0D15262B0698FD00668448 /* MixedContentFeedView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MixedContentFeedView.swift; sourceTree = "<group>"; };
 		BB0D15282B069A9700668448 /* getItemId.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = getItemId.swift; sourceTree = "<group>"; };
@@ -910,6 +921,7 @@
 		EC8F349E2A6FC28400EB8249 /* fetchPosts.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = fetchPosts.swift; sourceTree = "<group>"; };
 		EC8F34A02A6FC99000EB8249 /* updatePostsInBox.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = updatePostsInBox.swift; sourceTree = "<group>"; };
 		EC8F34A22A6FCB3500EB8249 /* timeSince.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = timeSince.swift; sourceTree = "<group>"; };
+		EC911E9FB619495F0625487C /* winstonTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = winstonTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		EC91C8532AB9601000F2AD30 /* TabBarOverlay.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TabBarOverlay.swift; sourceTree = "<group>"; };
 		EC91C8552AB9838D00F2AD30 /* CommonListsThemingPanel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CommonListsThemingPanel.swift; sourceTree = "<group>"; };
 		EC91C8572AB9884F00F2AD30 /* GeneralTheme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GeneralTheme.swift; sourceTree = "<group>"; };
@@ -1098,6 +1110,13 @@
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
+		BEB5C82C499B8F932D28C404 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		EC593AD12A4673B2002D6454 /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
@@ -1156,6 +1175,15 @@
 				BBD6E9DF2B51B45D00901C1C /* Winston MD.swift */,
 			);
 			path = "Markdown Handling";
+			sourceTree = "<group>";
+		};
+		DDFB4A972ADEB64F608DD4F2 /* winstonTests */ = {
+			isa = PBXGroup;
+			children = (
+				36B6CBEC3EE2D45DB930E4F3 /* CommentTreeTests.swift */,
+			);
+			name = winstonTests;
+			path = winstonTests;
 			sourceTree = "<group>";
 		};
 		EC051C292ACAEFC500E9D9ED /* Frameworks */ = {
@@ -1299,6 +1327,7 @@
 			isa = PBXGroup;
 			children = (
 				EC200C852A7795B500E69543 /* PostReplies.swift */,
+				86AB0BE19A199AE30F020C5B /* CommentTree.swift */,
 				EC200C872A7795BA00E69543 /* PostContent.swift */,
 				EC0854122A4BE13000E88389 /* PostView.swift */,
 			);
@@ -1545,6 +1574,7 @@
 				65DC42D62B12696000E78C27 /* Localizable.xcstrings */,
 				EC051C292ACAEFC500E9D9ED /* Frameworks */,
 				EC593AD52A4673B2002D6454 /* Products */,
+				DDFB4A972ADEB64F608DD4F2 /* winstonTests */,
 			);
 			sourceTree = "<group>";
 		};
@@ -1553,6 +1583,7 @@
 			children = (
 				EC593AD42A4673B2002D6454 /* winston.app */,
 				ECAA8B652A75261000D9D636 /* winston-everywhere.appex */,
+				EC911E9FB619495F0625487C /* winstonTests.xctest */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -2456,6 +2487,24 @@
 /* End PBXHeadersBuildPhase section */
 
 /* Begin PBXNativeTarget section */
+		3E6D10D91CD253C32E5B0F5C /* winstonTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = A887DE87A6F53928B198372A /* Build configuration list for PBXNativeTarget "winstonTests" */;
+			buildPhases = (
+				2192F4BF1D29A8C1C6E3FF15 /* Sources */,
+				BEB5C82C499B8F932D28C404 /* Frameworks */,
+				8F7147DED0EA7B60D035A99A /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				D8F252F9321A58A3FEA46F19 /* PBXTargetDependency */,
+			);
+			name = winstonTests;
+			productName = winstonTests;
+			productReference = EC911E9FB619495F0625487C /* winstonTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
 		EC593AD32A4673B2002D6454 /* winston */ = {
 			isa = PBXNativeTarget;
 			buildConfigurationList = EC593AE82A4673B3002D6454 /* Build configuration list for PBXNativeTarget "winston" */;
@@ -2582,11 +2631,19 @@
 			targets = (
 				EC593AD32A4673B2002D6454 /* winston */,
 				ECAA8B642A75261000D9D636 /* winston-everywhere */,
+				3E6D10D91CD253C32E5B0F5C /* winstonTests */,
 			);
 		};
 /* End PBXProject section */
 
 /* Begin PBXResourcesBuildPhase section */
+		8F7147DED0EA7B60D035A99A /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		EC593AD22A4673B2002D6454 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -2707,6 +2764,14 @@
 /* End PBXShellScriptBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
+		2192F4BF1D29A8C1C6E3FF15 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				478A338E52F7341A0A93339C /* CommentTreeTests.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		EC593AD02A4673B2002D6454 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -2847,6 +2912,7 @@
 				ECF82A192B216A8600CBF45D /* themedListSection.swift in Sources */,
 				EC7FBE2A2B41193D0082FA44 /* ComingFrom.swift in Sources */,
 				EC200C862A7795B500E69543 /* PostReplies.swift in Sources */,
+				82B1325D2D9DE2E4DF65D18B /* CommentTree.swift in Sources */,
 				EC3AC9ED2AB3913E0078EC78 /* resetter.swift in Sources */,
 				EC08541E2A4BFEFE00E88389 /* fetchSubPosts.swift in Sources */,
 				ECF0B7DF2A53DD82002B9FAD /* VideoPlayerPost.swift in Sources */,
@@ -3168,6 +3234,12 @@
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXTargetDependency section */
+		D8F252F9321A58A3FEA46F19 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			name = winston;
+			target = EC593AD32A4673B2002D6454 /* winston */;
+			targetProxy = DC8C978547CD36AF94E4EA89 /* PBXContainerItemProxy */;
+		};
 		ECAA8B7C2A75261000D9D636 /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
 			target = ECAA8B642A75261000D9D636 /* winston-everywhere */;
@@ -3198,6 +3270,43 @@
 /* End PBXVariantGroup section */
 
 /* Begin XCBuildConfiguration section */
+		C7C5799CC90DE9ED6FE82E43 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CLANG_ENABLE_OBJC_WEAK = NO;
+				CODE_SIGN_STYLE = Automatic;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
+				PRODUCT_BUNDLE_IDENTIFIER = net.phfactor.winston.winstonTests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/winston.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/winston";
+			};
+			name = Debug;
+		};
+		D932BEBE7A4CF04A045B9F9A /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CLANG_ENABLE_OBJC_WEAK = NO;
+				CODE_SIGN_STYLE = Automatic;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
+				PRODUCT_BUNDLE_IDENTIFIER = net.phfactor.winston.winstonTests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/winston.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/winston";
+				VALIDATE_PRODUCT = YES;
+			};
+			name = Release;
+		};
 		EC593AE62A4673B3002D6454 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
@@ -3487,6 +3596,15 @@
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
+		A887DE87A6F53928B198372A /* Build configuration list for PBXNativeTarget "winstonTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				D932BEBE7A4CF04A045B9F9A /* Release */,
+				C7C5799CC90DE9ED6FE82E43 /* Debug */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
 		EC593ACF2A4673B2002D6454 /* Build configuration list for PBXProject "winston" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (

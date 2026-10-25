@@ -92,7 +92,7 @@ struct CommentLink: View, Equatable {
       Group {
         Group {
           if let kind = comment.kind, kind == "more" {
-            if comment.id == "_" {
+            if data.id == "_" {
               if let post = post {
                 CommentLinkFull(post: post, arrowKinds: arrowKinds, comment: comment, indentLines: indentLines)
               }

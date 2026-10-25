@@ -48,6 +48,8 @@ struct CommentLinkContent: View {
   var comment: Comment
   var winstonData: CommentWinstonData
   var avatarsURL: [String:String]?
+  /// Replies hidden under this comment while it's collapsed.
+  var hiddenReplyCount = 0
 
   @SilentState private var size: CGSize = .zero
   @State private var offsetX: CGFloat = 0
@@ -161,10 +163,15 @@ struct CommentLinkContent: View {
               .scaleEffect(1)
               
               if collapsed {
-                Image(systemName: "eye.slash.fill")
-                  .fontSize(14, .medium)
-                  .opacity(0.5)
-                  .allowsHitTesting(false)
+                HStack(spacing: 2) {
+                  Image(systemName: "eye.slash.fill")
+                  if hiddenReplyCount > 0 {
+                    Text("+\(formatBigNumber(hiddenReplyCount))")
+                  }
+                }
+                .fontSize(14, .medium)
+                .opacity(0.5)
+                .allowsHitTesting(false)
               }
               
             }
