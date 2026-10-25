@@ -26,22 +26,17 @@ class Biometrics {
 
     func biometricType() -> String {
         if context.canEvaluatePolicy(.deviceOwnerAuthenticationWithBiometrics, error: &error) {
-            if #available(iOS 11.0, *) {
-                switch context.biometryType {
-                case .opticID:
-                    return "Optic ID"
-                case .faceID:
-                    return "Face ID"
-                case .touchID:
-                    return "Touch ID"
-                case .none:
-                    return "None"
-                @unknown default:
-                    return "Unknown"
-                }
-            } else {
-                // Fallback on earlier versions
+            switch context.biometryType {
+            case .opticID:
+                return "Optic ID"
+            case .faceID:
+                return "Face ID"
+            case .touchID:
                 return "Touch ID"
+            case .none:
+                return "None"
+            @unknown default:
+                return "Unknown"
             }
         }
         else {
