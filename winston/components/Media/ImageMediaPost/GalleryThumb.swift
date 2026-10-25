@@ -19,11 +19,12 @@ struct GalleryThumb: View, Equatable {
     var height: CGFloat?
     var url: URL
     var imgRequest: ImageRequest? = nil
+    var posterURL: URL? = nil
     
     //  @Environment(\.useTheme) private var selectedTheme
     
     var body: some View {
-        URLImage(url: url, imgRequest: imgRequest, processors: [.resize(width: width)], size: CGSize(width: width, height: height ?? 0))
+        URLImage(url: url, imgRequest: imgRequest, processors: [.resize(width: width)], size: CGSize(width: width, height: height ?? 0), posterURL: posterURL)
             .scaledToFill()
             .zIndex(1)
             .fixedSize(horizontal: false, vertical: height == nil)

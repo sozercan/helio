@@ -52,13 +52,16 @@ struct ImageMediaPost: View, Equatable {
     VStack {
       if images.count == 1 || compact && images.count > 0 {
         let img = images[0]
-        let sourceHeight = img.size.height
-        let sourceWidth = img.size.width
+        // Square until Reddit gives us real dimensions, matching getPostDimensions, so the
+        // row doesn't change height once the image loads.
+        let knownSize = img.size.width > 0 && img.size.height > 0
+        let sourceHeight = knownSize ? img.size.height : contentWidth
+        let sourceWidth = knownSize ? img.size.width : contentWidth
         
         let propHeight = (contentWidth * sourceHeight) / sourceWidth
         let finalHeight = maxMediaHeightScreenPercentage != 110 ? Double(min(maxHeight, propHeight)) : Double(propHeight)
         
-        GalleryThumb(cornerRadius: cornerRadius, width: compact ? scaledCompactModeThumbSize() : contentWidth, height: compact ? scaledCompactModeThumbSize() : sourceHeight > 0 ? finalHeight : nil, url: img.url, imgRequest: images.count > 0 ? images[0].request : nil)
+        GalleryThumb(cornerRadius: cornerRadius, width: compact ? scaledCompactModeThumbSize() : contentWidth, height: compact ? scaledCompactModeThumbSize() : finalHeight, url: img.url, imgRequest: images.count > 0 ? images[0].request : nil, posterURL: img.posterURL)
               .equatable()
 //          .background(sourceHeight > 0 || compact ? nil : GeometryReader { geo in Color.clear.onAppear { winstonData.postDimensions.mediaSize = geo.size }.onChange(of: geo.size) { winstonData.postDimensions.mediaSize = $0 } })
           .onTapGesture { withAnimation(spring) { fullscreenIndex = 0 } }

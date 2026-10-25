@@ -77,4 +77,24 @@ struct MediaExtractorTests {
     guard case .imgs(let imgs) = result else { Issue.record("expected preview image, got \(String(describing: result))"); return }
     #expect(imgs.first?.url.absoluteString == "https://i.redd.it/abc.jpg")
   }
+
+  @Test func givesVideosAndGIFsThePreviewAsPoster() throws {
+    let preview: [String: Any] = ["images": [["source": ["url": "https://preview.redd.it/abc.jpg?width=640&amp;s=sig", "width": 640, "height": 480]]]]
+
+    let video = try extract([
+      "media": ["reddit_video": ["hls_url": "https://v.redd.it/abc/HLSPlaylist.m3u8", "width": 640, "height": 480]],
+      "preview": preview,
+    ])
+    guard case .video(let shared) = video else { Issue.record("expected video, got \(String(describing: video))"); return }
+    #expect(shared.posterURL?.host == "preview.redd.it")
+    #expect(shared.posterURL?.query?.contains("s=sig") == true)
+
+    let gif = try extract(["url": "https://i.redd.it/abc.gif", "preview": preview])
+    guard case .imgs(let imgs) = gif else { Issue.record("expected image, got \(String(describing: gif))"); return }
+    #expect(imgs.first?.posterURL?.host == "preview.redd.it")
+
+    let still = try extract(["url": "https://i.redd.it/abc.png", "preview": preview])
+    guard case .imgs(let stills) = still else { Issue.record("expected image, got \(String(describing: still))"); return }
+    #expect(stills.first?.posterURL == nil)
+  }
 }

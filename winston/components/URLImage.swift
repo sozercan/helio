@@ -23,6 +23,8 @@ struct URLImage: View, Equatable {
     var pipeline: ImagePipeline? = nil
     var processors: [ImageProcessing]? = nil
     var size: CGSize?
+    /// Static preview shown behind the spinner while a GIF loads.
+    var posterURL: URL? = nil
     
     var body: some View {
         if url.absoluteString.hasSuffix(".gif") {
@@ -36,7 +38,16 @@ struct URLImage: View, Equatable {
                     Color.red.opacity(0.1)
                         .overlay(Image(systemName: "xmark.circle.fill").foregroundColor(.red))
                 } else {
-                    URLImageLoader(size: 50).scaledToFit()
+                    ZStack {
+                        if let posterURL {
+                            LazyImageOpt(url: posterURL) { posterState in
+                                posterState.image?
+                                    .resizable()
+                                    .scaledToFill()
+                            }
+                        }
+                        URLImageLoader(size: 50).scaledToFit()
+                    }
                 }
             }
             .onDisappear(.cancel)

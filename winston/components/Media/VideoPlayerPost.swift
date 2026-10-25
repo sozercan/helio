@@ -15,6 +15,10 @@ import Combine
 /// guarantees teardown.
 final class VideoPlayerHolder: ObservableObject {
   let player: AVPlayer?
+  /// False until the current item can play; the cell shows the post's preview image until then.
+  @Published private(set) var isReadyToPlay = false
+  private var statusObservation: NSKeyValueObservation?
+  
   init(url: URL?) {
     if let url = url {
       let p = AVPlayer(playerItem: AVPlayerItem(url: url))
@@ -23,8 +27,18 @@ final class VideoPlayerHolder: ObservableObject {
     } else {
       player = nil
     }
+    observeCurrentItem()
   }
+  
+  private func observeCurrentItem() {
+    statusObservation = player?.currentItem?.observe(\.status, options: [.initial, .new]) { [weak self] item, _ in
+      let ready = item.status == .readyToPlay
+      DispatchQueue.main.async { self?.isReadyToPlay = ready }
+    }
+  }
+  
   deinit {
+    statusObservation?.invalidate()
     player?.pause()
     player?.replaceCurrentItem(with: nil)
   }
@@ -37,18 +51,20 @@ struct SharedVideo: Equatable {
 
   var url: URL
   var size: CGSize
+  var posterURL: URL? = nil
 
-  static func get(url: URL, size: CGSize, resetCache: Bool = false) -> SharedVideo {
-    return SharedVideo(url: url, size: size)
+  static func get(url: URL, size: CGSize, posterURL: URL? = nil, resetCache: Bool = false) -> SharedVideo {
+    return SharedVideo(url: url, size: size, posterURL: posterURL)
   }
 
   static func cacheKey(url: URL, size: CGSize) -> String {
     return "\(url.absoluteString):\(size.width)x\(size.height)"
   }
 
-  init(url: URL, size: CGSize) {
+  init(url: URL, size: CGSize, posterURL: URL? = nil) {
     self.url = url
     self.size = size
+    self.posterURL = posterURL
   }
 }
 
@@ -113,8 +129,10 @@ struct VideoPlayerPost: View, Equatable {
   
   var body: some View {
     let maxHeight: CGFloat = (maxMediaHeightScreenPercentage / 100) * (.screenH)
-    let sourceWidth = size.width
-    let sourceHeight = size.height
+    // Square until Reddit gives us real dimensions, matching getPostDimensions.
+    let knownSize = size.width > 0 && size.height > 0
+    let sourceWidth = knownSize ? size.width : contentWidth
+    let sourceHeight = knownSize ? size.height : contentWidth
     let propHeight = (contentWidth * sourceHeight) / sourceWidth
     let finalHeight = maxMediaHeightScreenPercentage != 110 ? Double(min(maxHeight, propHeight)) : Double(propHeight)
     
@@ -146,6 +164,13 @@ struct VideoPlayerPost: View, Equatable {
             }
           }
           .frame(width: compact ? scaledCompactModeThumbSize() : contentWidth, height: compact ? scaledCompactModeThumbSize() : CGFloat(finalHeight))
+          .overlay {
+            // Covers the player's black frame while the video buffers.
+            if !holder.isReadyToPlay, let posterURL = sharedVideo.posterURL {
+              URLImage(url: posterURL)
+                .allowsHitTesting(false)
+            }
+          }
           .clipped()
           .fixedSize()
           .mask(RR(12, Color.black))

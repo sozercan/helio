@@ -20,6 +20,8 @@ struct ImgExtracted: Equatable, Identifiable {
   let url: URL
   let size: CGSize
   let request: ImageRequest
+  /// Static preview shown while an animated image loads.
+  var posterURL: URL? = nil
   var id: String { self.url.absoluteString }
 }
 
@@ -134,11 +136,11 @@ func mediaExtractor(compact: Bool, contentWidth: Double = .screenW, _ data: Post
   
   // Prefer the HLS stream, but play the MP4 fallback when Reddit omits it.
   if let videoPreview = data.preview?.reddit_video_preview, let videoURL = (videoPreview.hls_url ?? videoPreview.fallback_url).flatMap(URL.init(string:)) {
-    return .video(SharedVideo.get(url: videoURL, size: videoSize(data, width: videoPreview.width, height: videoPreview.height)))
+    return .video(SharedVideo.get(url: videoURL, size: videoSize(data, width: videoPreview.width, height: videoPreview.height), posterURL: previewPosterURL(data)))
   }
   
   if let redditVideo = data.media?.reddit_video, let videoURL = (redditVideo.hls_url ?? redditVideo.fallback_url).flatMap(URL.init(string:)) {
-    return .video(SharedVideo.get(url: videoURL, size: videoSize(data, width: redditVideo.width.map(Double.init), height: redditVideo.height.map(Double.init))))
+    return .video(SharedVideo.get(url: videoURL, size: videoSize(data, width: redditVideo.width.map(Double.init), height: redditVideo.height.map(Double.init)), posterURL: previewPosterURL(data)))
   }
   
   // Only the video id is required; the rest of the oEmbed payload is often missing.
@@ -164,7 +166,8 @@ func mediaExtractor(compact: Bool, contentWidth: Double = .screenW, _ data: Post
     if compact && !url.absoluteString.hasSuffix(".gif") {
       userInfo[.thumbnailKey] = ImageRequest.ThumbnailOptions(size: .init(width: scaledCompactModeThumbSize(), height: scaledCompactModeThumbSize()), unit: .points, contentMode: .aspectFill)
     }
-    let imgExtracted = ImgExtracted(url: url, size: CGSize(width: actualWidth, height: actualHeight), request: ImageRequest(url: url, processors: processors + [ImageProcessors.ScaleFixer()], userInfo: userInfo))
+    let posterURL = url.pathExtension.lowercased() == "gif" ? previewPosterURL(data) : nil
+    let imgExtracted = ImgExtracted(url: url, size: CGSize(width: actualWidth, height: actualHeight), request: ImageRequest(url: url, processors: processors + [ImageProcessors.ScaleFixer()], userInfo: userInfo), posterURL: posterURL)
     return .imgs([imgExtracted])
   }
   
@@ -182,7 +185,7 @@ func mediaExtractor(compact: Bool, contentWidth: Double = .screenW, _ data: Post
   }
   
   if VIDEOS_FORMATS.contains(where: { data.url.hasSuffix($0) }), let url = URL(string: data.url) {
-    return .video(SharedVideo.get(url: url, size: CGSize(width: 0, height: 0)))
+    return .video(SharedVideo.get(url: url, size: videoSize(data, width: nil, height: nil), posterURL: previewPosterURL(data)))
   }
   
   if data.url.contains("streamable.com") {
@@ -242,6 +245,11 @@ func mediaExtractor(compact: Bool, contentWidth: Double = .screenW, _ data: Post
   }
   
   return nil
+}
+
+/// Reddit's static preview of a post, used as a poster while its video or GIF loads.
+func previewPosterURL(_ data: PostData) -> URL? {
+  data.preview?.images?.first?.source?.url.flatMap { loadableMediaURL($0.escape) }
 }
 
 /// The video's own size, or the preview image's when Reddit leaves it out.
