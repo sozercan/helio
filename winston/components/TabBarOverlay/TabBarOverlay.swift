@@ -112,3 +112,14 @@ struct SimpleTappableView: UIViewRepresentable {
     }
   }
 }
+
+class TappableUIView: UIButton {
+  init() {
+    super.init(frame: .zero)
+    backgroundColor = .clear
+  }
+
+  required init?(coder aDecoder: NSCoder) {
+    fatalError()
+  }
+}

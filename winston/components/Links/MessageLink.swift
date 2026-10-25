@@ -9,7 +9,6 @@ import SwiftUI
 import Defaults
 
 struct MessageLink: View {
-  @State private var pressed = false
   var message: Message
   
   var body: some View {
@@ -30,18 +29,24 @@ struct MessageLink: View {
       .frame(maxWidth: .infinity, alignment: .topLeading)
       .themedListRowLikeBG()
       .mask(RR(20, .black))
-      .allowsHitTesting(false)
       .compositingGroup()
       .opacity(!(data.new ?? false) ? 0.65 : 1)
-      .swipyActions(pressing: $pressed, onTap: {
-        if data.context != nil {
-          Nav.to(.reddit(.postHighlighted(Post(id: getPostId(from: data.context!) ?? "lol", subID: subreddit), actualParentID)))
-        }
-      }, rightActionIcon: !(data.new ?? false) ? "eye.slash.fill" : "eye.fill", rightActionHandler: {
-        Task(priority: .background) {
-          await message.toggleRead()
-        }
-      })
+      .contentShape(Rectangle())
+      .swipyUI(
+        onTap: {
+          if data.context != nil {
+            Nav.to(.reddit(.postHighlighted(Post(id: getPostId(from: data.context!) ?? "lol", subID: subreddit), actualParentID)))
+          }
+        },
+        actionsSet: SwipeActionsSet(
+          id: "message-link-actions",
+          leftFirst: AnySwipeAction(NoneAction()),
+          leftSecond: AnySwipeAction(NoneAction()),
+          rightFirst: AnySwipeAction(ToggleReadMessageAction()),
+          rightSecond: AnySwipeAction(NoneAction())
+        ),
+        entity: message
+      )
     }
   }
 }

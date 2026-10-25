@@ -374,3 +374,15 @@ struct NoneAction: SwipeAction {
   func active(_ entity: Comment) -> Bool { false }
   func enabled(_ entity: Comment) -> Bool { false }
 }
+
+/// MessageLink's fixed swipe action. Not user-configurable, so it isn't listed in `allSwipeActions`.
+struct ToggleReadMessageAction: SwipeAction {
+  var id = "toggle-read-message-swipe-action"
+  var label = "Read/Unread"
+  var icon = SwipeActionItem(normal: "eye.fill", active: "eye.slash.fill")
+  var color = SwipeActionItem(normal: "FFFFFF")
+  var bgColor = SwipeActionItem(normal: "0B84FE")
+  func action(_ entity: Message) async { _ = await entity.toggleRead() }
+  func active(_ entity: Message) -> Bool { !(entity.data?.new ?? false) }
+  func enabled(_ entity: Message) -> Bool { true }
+}

@@ -142,7 +142,6 @@
 		EC2A39152AC20155001E5354 /* PostLinkTitle.swift in Sources */ = {isa = PBXBuildFile; fileRef = EC2A39142AC20155001E5354 /* PostLinkTitle.swift */; };
 		EC2A39172AC2035F001E5354 /* PostLinkNormal.swift in Sources */ = {isa = PBXBuildFile; fileRef = EC2A39162AC2035F001E5354 /* PostLinkNormal.swift */; };
 		EC2D275C2A4FBF00006444D6 /* ShrinkOnTap.swift in Sources */ = {isa = PBXBuildFile; fileRef = EC2D275B2A4FBF00006444D6 /* ShrinkOnTap.swift */; };
-		EC2D275E2A4FC512006444D6 /* TappableView.swift in Sources */ = {isa = PBXBuildFile; fileRef = EC2D275D2A4FC512006444D6 /* TappableView.swift */; };
 		EC2D27652A4FCE42006444D6 /* SubredditInfo.swift in Sources */ = {isa = PBXBuildFile; fileRef = EC2D27642A4FCE42006444D6 /* SubredditInfo.swift */; };
 		EC2D72B32AC5335E002601E0 /* CHTCollectionViewWaterfallLayout in Frameworks */ = {isa = PBXBuildFile; productRef = EC2D72B22AC5335E002601E0 /* CHTCollectionViewWaterfallLayout */; };
 		EC30CBF62B2263DD0037DA86 /* getOffsetAroundCircleForIndex.swift in Sources */ = {isa = PBXBuildFile; fileRef = EC30CBF52B2263DD0037DA86 /* getOffsetAroundCircleForIndex.swift */; };
@@ -258,7 +257,6 @@
 		EC5BA2662BCB92A0003DF7E6 /* FetchImageOpt.swift in Sources */ = {isa = PBXBuildFile; fileRef = EC5BA2652BCB92A0003DF7E6 /* FetchImageOpt.swift */; };
 		EC5BA2682BCB93BC003DF7E6 /* LazyImageOpt.swift in Sources */ = {isa = PBXBuildFile; fileRef = EC5BA2672BCB93BC003DF7E6 /* LazyImageOpt.swift */; };
 		EC5BA26A2BCB9659003DF7E6 /* LazyImageStateOpt.swift in Sources */ = {isa = PBXBuildFile; fileRef = EC5BA2692BCB9659003DF7E6 /* LazyImageStateOpt.swift */; };
-		EC5EDA712A4DA94A00140A08 /* SwipeActionsOld.swift in Sources */ = {isa = PBXBuildFile; fileRef = EC5EDA702A4DA94A00140A08 /* SwipeActionsOld.swift */; };
 		EC5EDA732A4E8EC400140A08 /* fetchSub.swift in Sources */ = {isa = PBXBuildFile; fileRef = EC5EDA722A4E8EC400140A08 /* fetchSub.swift */; };
 		EC5EDA752A4E937700140A08 /* GenericRedditEntity.swift in Sources */ = {isa = PBXBuildFile; fileRef = EC5EDA742A4E937700140A08 /* GenericRedditEntity.swift */; };
 		EC5EDA772A4EA03800140A08 /* subscribeSubs.swift in Sources */ = {isa = PBXBuildFile; fileRef = EC5EDA762A4EA03800140A08 /* subscribeSubs.swift */; };
@@ -729,7 +727,6 @@
 		EC2CD9512B1B3D770040EF85 /* .parcelrc */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = .parcelrc; sourceTree = "<group>"; };
 		EC2CD9522B1B3D770040EF85 /* .prettierrc */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = .prettierrc; sourceTree = "<group>"; };
 		EC2D275B2A4FBF00006444D6 /* ShrinkOnTap.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShrinkOnTap.swift; sourceTree = "<group>"; };
-		EC2D275D2A4FC512006444D6 /* TappableView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TappableView.swift; sourceTree = "<group>"; };
 		EC2D27642A4FCE42006444D6 /* SubredditInfo.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SubredditInfo.swift; sourceTree = "<group>"; };
 		EC30CBF52B2263DD0037DA86 /* getOffsetAroundCircleForIndex.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = getOffsetAroundCircleForIndex.swift; sourceTree = "<group>"; };
 		EC30CBF72B226E050037DA86 /* floatingBounceEffect.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = floatingBounceEffect.swift; sourceTree = "<group>"; };
@@ -840,7 +837,6 @@
 		EC5BA2652BCB92A0003DF7E6 /* FetchImageOpt.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FetchImageOpt.swift; sourceTree = "<group>"; };
 		EC5BA2672BCB93BC003DF7E6 /* LazyImageOpt.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LazyImageOpt.swift; sourceTree = "<group>"; };
 		EC5BA2692BCB9659003DF7E6 /* LazyImageStateOpt.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LazyImageStateOpt.swift; sourceTree = "<group>"; };
-		EC5EDA702A4DA94A00140A08 /* SwipeActionsOld.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SwipeActionsOld.swift; sourceTree = "<group>"; };
 		EC5EDA722A4E8EC400140A08 /* fetchSub.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = fetchSub.swift; sourceTree = "<group>"; };
 		EC5EDA742A4E937700140A08 /* GenericRedditEntity.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GenericRedditEntity.swift; sourceTree = "<group>"; };
 		EC5EDA762A4EA03800140A08 /* subscribeSubs.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = subscribeSubs.swift; sourceTree = "<group>"; };
@@ -1839,7 +1835,6 @@
 				EC1884472A8D7C1C00CAFB7A /* SwipeAnywhere.swift */,
 				EC8F34652A6A348F00EB8249 /* SwipeActions.swift */,
 				EC3BC5EB2ACC21AA0050CA8F /* SwipeRevolution.swift */,
-				EC5EDA702A4DA94A00140A08 /* SwipeActionsOld.swift */,
 				EC684C822AF1FD9E00BC2A84 /* ScrollSwipe_WIP.swift */,
 			);
 			path = swipers;
@@ -2312,7 +2307,6 @@
 				EC08540D2A4BD26600E88389 /* ObservedScrollView.swift */,
 				EC0854252A4C013B00E88389 /* Avatar.swift */,
 				EC0854422A4D6A4800E88389 /* MasterButton.swift */,
-				EC2D275D2A4FC512006444D6 /* TappableView.swift */,
 				ECE2859A2A5010E2009CF9DD /* DataBlock.swift */,
 				657643792ACF1E1A00805641 /* AppDetailScreenshots.swift */,
 				6576437B2ACF1E3900805641 /* ScrolViewContentRTLFriendly.swift */,
@@ -2834,7 +2828,6 @@
 				EC63735D2A791E47000A03A3 /* Onboarding7Ending.swift in Sources */,
 				ECDD515C2A73A90700FD9498 /* PreviewLink.swift in Sources */,
 				ECD5EE972B11D59F002CA158 /* AccountSwitcherOverlayView.swift in Sources */,
-				EC5EDA712A4DA94A00140A08 /* SwipeActionsOld.swift in Sources */,
 				EC3AC9F02AB39BE50078EC78 /* FeedThemingPanel.swift in Sources */,
 				ECF0B7E92A543795002B9FAD /* fetchUsers.swift in Sources */,
 				EC796DCF2B1455D400B425A1 /* AccountSwitcherProvider.swift in Sources */,
@@ -3036,7 +3029,6 @@
 				EC982A342B4A436600FFE582 /* TimerHolder.swift in Sources */,
 				ECE08B802AA9F9BA00F84DC9 /* defaultTheme.swift in Sources */,
 				EC77EC0B2B2549AA0053B966 /* GlobalDestinationsProvider.swift in Sources */,
-				EC2D275E2A4FC512006444D6 /* TappableView.swift in Sources */,
 				6576437E2ACF20DA00805641 /* AppDetailDescription.swift in Sources */,
 				EC3B32442AC64F43002C1291 /* SubredditPostsIOS.swift in Sources */,
 				EC58D5142B62055500AEDE87 /* SubredditData.swift in Sources */,
