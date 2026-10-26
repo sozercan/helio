@@ -17,6 +17,9 @@ final class VideoPlayerHolder: ObservableObject {
   let player: AVPlayer?
   /// False until the current item can play; the cell shows the post's preview image until then.
   @Published private(set) var isReadyToPlay = false
+  /// The current item failed to load. Failing to become playable posts no notification, so
+  /// the view watches this to retry.
+  @Published private(set) var itemFailed = false
   private let url: URL?
   private var statusObservation: NSKeyValueObservation?
   private var reloads = 0
@@ -40,6 +43,7 @@ final class VideoPlayerHolder: ObservableObject {
     guard let player, let url, reloads < maxReloads else { return false }
     reloads += 1
     isReadyToPlay = false
+    itemFailed = false
     player.replaceCurrentItem(with: AVPlayerItem(url: url))
     observeCurrentItem()
     return true
@@ -50,7 +54,11 @@ final class VideoPlayerHolder: ObservableObject {
   private func observeCurrentItem() {
     statusObservation = player?.currentItem?.observe(\.status, options: [.initial, .new]) { [weak self] item, _ in
       let ready = item.status == .readyToPlay
-      DispatchQueue.main.async { self?.isReadyToPlay = ready }
+      let failed = item.status == .failed
+      DispatchQueue.main.async {
+        self?.isReadyToPlay = ready
+        self?.itemFailed = failed
+      }
     }
   }
   
@@ -220,6 +228,9 @@ struct VideoPlayerPost: View, Equatable {
             player.play()
           }
         }
+        .onChange(of: holder.itemFailed) { _, failed in
+          if failed && isVisible { reload(player) }
+        }
         .onChange(of: scenePhase) { _, newPhase in
           if newPhase == .active {
             if holder.hasFailed { reload(player) }
@@ -244,10 +255,13 @@ struct VideoPlayerPost: View, Equatable {
             player.isMuted = muteVideos
             player.play()
           }
-          if !val && !autoPlayVideos && !inPictureInPicture {
-            player.seek(to: .zero)
-            player.pause()
+          if !val && !autoPlayVideos {
+            // Opening fullscreen again plays it, even after leaving it for PiP.
             firstFullscreen = false
+            if !inPictureInPicture {
+              player.seek(to: .zero)
+              player.pause()
+            }
           }
           
           if pauseBackgroundAudioOnFullscreen && !inPictureInPicture {
