@@ -67,6 +67,12 @@ struct MediaExtractorTests {
     #expect(imgs.first?.url.absoluteString == "https://i.imgur.com/abc.png")
   }
 
+  @Test func keepsOtherQueriesOnImageURLs() throws {
+    let result = try extract(["url": "https://cdn.example.com/photo.png?token=abc&utm_source=reddit"])
+    guard case .imgs(let imgs) = result else { Issue.record("expected image, got \(String(describing: result))"); return }
+    #expect(imgs.first?.url.absoluteString == "https://cdn.example.com/photo.png?token=abc")
+  }
+
   @Test func fallsThroughWhenNoGalleryItemIsUsable() throws {
     let result = try extract([
       "is_gallery": true,

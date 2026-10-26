@@ -264,14 +264,20 @@ private func videoSize(_ data: PostData, width: Double?, height: Double?) -> CGS
   return CGSize(width: source?.width ?? 0, height: source?.height ?? 0)
 }
 
-/// Drops tracking queries, except on Reddit's preview hosts, whose URLs only load with
-/// their signature query.
+/// Drops tracking parameters and keeps the rest of the query: signed images (Reddit's
+/// previews, CDNs with tokens) only load with theirs.
 private func loadableMediaURL(_ url: URL) -> URL {
-  if url.query?.isEmpty == false, let host = url.host?.lowercased(),
-     host == "preview.redd.it" || host == "external-preview.redd.it" || host.hasSuffix(".redditmedia.com") {
-    return url
-  }
-  return rootURL(url) ?? url
+  guard var components = URLComponents(url: url, resolvingAgainstBaseURL: false),
+        let items = components.queryItems, !items.isEmpty else { return url }
+  let kept = items.filter { !isTrackingParameter($0.name) }
+  guard kept.count < items.count else { return url }
+  components.queryItems = kept.isEmpty ? nil : kept
+  return components.url ?? url
+}
+
+private func isTrackingParameter(_ name: String) -> Bool {
+  let name = name.lowercased()
+  return name.hasPrefix("utm_") || ["fbclid", "gclid", "igshid", "mc_cid", "mc_eid", "ref", "ref_src"].contains(name)
 }
 
 private func loadableMediaURL(_ string: String) -> URL? {
