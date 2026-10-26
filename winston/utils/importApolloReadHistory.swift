@@ -35,7 +35,7 @@ enum ApolloReadHistory {
   /// Reads Apollo's read post ids from a backup .zip or preferences.plist and marks them read.
   static func importBackup(at url: URL) async throws -> ImportResult {
     let parsed = try postIDs(inBackupAt: url)
-    let imported = await markRead(postIDs: parsed.ids)
+    let imported = try await markRead(postIDs: parsed.ids)
     return ImportResult(found: parsed.ids.count, imported: imported, invalid: parsed.invalid)
   }
 
@@ -92,21 +92,23 @@ enum ApolloReadHistory {
   }
 
   /// Adds read entries for posts that don't have one. Returns how many were added.
-  static func markRead(postIDs ids: [String]) async -> Int {
-    let context = PersistenceController.shared.primaryBGContext
-    return await context.perform(schedule: .enqueued) {
+  /// Uses its own context, so a failed import leaves nothing half-inserted in the shared one.
+  static func markRead(postIDs ids: [String]) async throws -> Int {
+    let context = PersistenceController.shared.container.newBackgroundContext()
+    context.mergePolicy = NSMergePolicy.mergeByPropertyObjectTrump
+    return try await context.perform(schedule: .enqueued) {
       var added = 0
       for start in stride(from: 0, to: ids.count, by: 500) {
         let chunk = Array(ids[start..<min(start + 500, ids.count)])
         let fetchRequest = NSFetchRequest<SeenPost>(entityName: "SeenPost")
         fetchRequest.predicate = NSPredicate(format: "postID IN %@", chunk)
-        let existing = Set(((try? context.fetch(fetchRequest)) ?? []).compactMap(\.postID))
+        let existing = Set(try context.fetch(fetchRequest).compactMap(\.postID))
         for id in chunk where !existing.contains(id) {
           SeenPost(context: context).postID = id
           added += 1
         }
       }
-      try? context.save()
+      try context.save()
       return added
     }
   }
