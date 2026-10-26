@@ -124,12 +124,12 @@ struct Search: View {
   }
   
   func search(_ item: SearchHistoryItem) {
-    let typeChanged = searchType != item.type
+    let unchanged = searchType == item.type && searchQuery.debounced == item.query
     searchType = item.type
-    searchQuery.value = item.query
+    // Skips the debounce, so the change below fetches once, now.
+    searchQuery.setNow(item.query)
     rememberSearch()
-    // Changing the type already triggers a fetch.
-    if !typeChanged { fetch() }
+    if unchanged { fetch() }
     UIApplication.shared.dismissKeyboard()
   }
   
@@ -255,9 +255,9 @@ struct Search: View {
         fetch()
       }
       .navigationTitle("Search")
-      .onChange(of: searchType) { _ in fetch() }
-      .onChange(of: searchQuery.debounced) { val in
-        if val == "" {
+      // One handler, so changing the type and the query together fetches once.
+      .onChange(of: [searchType.rawValue, searchQuery.debounced]) {
+        if searchQuery.debounced == "" {
           resultsSubs = []
           resultsUsers = []
           resultPosts = []
