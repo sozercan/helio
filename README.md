@@ -18,12 +18,29 @@ Winston is a privacy-focused, open-source Reddit client for iOS. No analytics, n
 
 ## Installing
 
-Winston requires iOS 17+ and your own Reddit API credentials.
+Winston requires iOS 26+ and your own Reddit API credentials.
 
-1. Clone the repo and open `winston.xcodeproj` in Xcode
+1. Clone the repo and open `App/winston.xcodeproj` in Xcode
 2. Set your development team and bundle identifier in the project settings
 3. Build and run on your device
-4. Follow the in-app credential setup to connect your Reddit account
+4. Follow the in-app credential setup to connect your Reddit account. Your Reddit app's redirect URI must be `winstonapp://auth-success`.
+
+## Development
+
+The app's code, dependencies and unit tests are a Swift package (`Package.swift`, `Sources/WinstonKit`, `Tests/WinstonKitTests`). `App/winston.xcodeproj` is a thin shell that builds the iOS app bundle and the Safari extension on top of the `WinstonKit` library. It owns the entry point (`App/winston/WinstonApp.swift`), `Info.plist`, entitlements and every resource: the asset catalog, strings, the Core Data model, shaders, Lottie animations and media. Code in `WinstonKit` looks those up in `Bundle.main`.
+
+```bash
+# Build the package for the simulator
+swift build --triple arm64-apple-ios26.0-simulator --sdk "$(xcrun --sdk iphonesimulator --show-sdk-path)"
+
+# Unit tests (run from the repository root)
+xcodebuild -scheme WinstonKit -destination 'platform=iOS Simulator,name=iPhone 17 Pro' test
+
+# App
+xcodebuild -project App/winston.xcodeproj -scheme winston -destination 'generic/platform=iOS Simulator' build
+```
+
+Add dependencies in `Package.swift`, not in the Xcode project. Asset catalog symbols used from `WinstonKit` (e.g. `Image(.winstonFlat)`) are declared in `Sources/WinstonKit/globals/AppAssets.swift`.
 
 ## Changes from upstream
 

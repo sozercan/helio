@@ -36,6 +36,12 @@ playground.xcworkspace
 
 # Swift Package Manager
 #
+.build/
+# Keep the package's shared schemes; ignore the rest of Xcode's package state.
+/.swiftpm/*
+!/.swiftpm/xcode/
+/.swiftpm/xcode/*
+!/.swiftpm/xcode/xcshareddata/
 # Add this line if you want to avoid checking in source code from Swift Package Manager dependencies.
 # Packages/
 # Package.pins
