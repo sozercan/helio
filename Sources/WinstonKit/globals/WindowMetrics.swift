@@ -12,30 +12,50 @@ import SwiftUI
 import UIKit
 
 @Observable
-final class WindowMetrics {
+final class WindowMetrics: @unchecked Sendable {
   static let shared = WindowMetrics()
 
+  // Background work reads these (post setup, image processing) while the main thread updates
+  // them, so they live behind a lock and report access and changes to Observation by hand.
+  @ObservationIgnored private let lock = NSLock()
+  @ObservationIgnored private var _size: CGSize
+  @ObservationIgnored private var _isWide: Bool
+  @ObservationIgnored private var _displayScale: CGFloat
+
   /// The window's full size, including the safe area.
-  private(set) var size: CGSize
+  var size: CGSize {
+    access(keyPath: \.size)
+    return lock.withLock { _size }
+  }
   /// Regular width: unfolded iPhone Duo, full-screen iPad, Mac. Compact: iPhone, folded Duo,
   /// narrow iPad split.
-  private(set) var isWide: Bool
-  private(set) var displayScale: CGFloat
+  var isWide: Bool {
+    access(keyPath: \.isWide)
+    return lock.withLock { _isWide }
+  }
+  var displayScale: CGFloat {
+    access(keyPath: \.displayScale)
+    return lock.withLock { _displayScale }
+  }
 
   private init() {
     let screen = (UIApplication.shared.connectedScenes.first as? UIWindowScene)?.screen
-    size = screen?.bounds.size ?? CGSize(width: 390, height: 844)
-    isWide = UIDevice.current.userInterfaceIdiom != .phone
-    displayScale = screen?.scale ?? 3
+    _size = screen?.bounds.size ?? CGSize(width: 390, height: 844)
+    _isWide = UIDevice.current.userInterfaceIdiom != .phone
+    _displayScale = screen?.scale ?? 3
   }
 
   func update(size: CGSize? = nil, horizontalSizeClass: UserInterfaceSizeClass? = nil, displayScale: CGFloat? = nil) {
-    if let size, size.width > 0, size.height > 0, size != self.size { self.size = size }
+    if let size, size.width > 0, size.height > 0, size != self.size {
+      withMutation(keyPath: \.size) { lock.withLock { _size = size } }
+    }
     if let horizontalSizeClass {
       let wide = horizontalSizeClass == .regular
-      if wide != isWide { isWide = wide }
+      if wide != isWide { withMutation(keyPath: \.isWide) { lock.withLock { _isWide = wide } } }
     }
-    if let displayScale, displayScale > 0, displayScale != self.displayScale { self.displayScale = displayScale }
+    if let displayScale, displayScale > 0, displayScale != self.displayScale {
+      withMutation(keyPath: \.displayScale) { lock.withLock { _displayScale = displayScale } }
+    }
   }
 }
 
