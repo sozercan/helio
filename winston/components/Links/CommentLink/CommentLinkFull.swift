@@ -49,7 +49,12 @@ struct CommentLinkFull: View {
       .background(curveColor)
       .contentShape(Rectangle())
       .onTapGesture {
-        Nav.to(.reddit(.post(post)))
+        // Reddit cut the thread off below this stub's parent: open the thread from there.
+        if let parentID = data.parent_id, parentID.hasPrefix("t1_") {
+          Nav.to(.reddit(.postHighlighted(post, parentID)))
+        } else {
+          Nav.to(.reddit(.post(post)))
+        }
       }
       .allowsHitTesting(!loadMoreLoading)
       .opacity(loadMoreLoading ? 0.5 : 1)
