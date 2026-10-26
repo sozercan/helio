@@ -170,6 +170,13 @@ struct LightBoxImage: View {
         }
       }
     }
+    // Pages are a window wide, so a resize moves them: keep the current one in view.
+    .onChange(of: CGFloat.screenW) {
+      drag = .zero
+      dragOffset = nil
+      dragAxis = nil
+      xPos = -CGFloat(activeIndex) * (.screenW + SPACING)
+    }
     .onAppear {
       if let markAsSeen { Task(priority: .background) { await markAsSeen() } }
       xPos = -CGFloat(i) * (.screenW + SPACING)
