@@ -40,9 +40,17 @@ extension Post {
     self.winstonData = newWinstonData
   }
   
-  func setupWinstonData(data: PostData? = nil, winstonData: PostWinstonData? = nil, contentWidth: Double = .screenW, secondary: Bool = false, theme: WinstonTheme, sub: Subreddit? = nil, fetchAvatar: Bool = true) {
+  static func isCompact(_ data: PostData, sub: Subreddit?) -> Bool {
+    Defaults[.SubredditFeedDefSettings].compactPerSubreddit[sub?.id ?? data.subreddit_id ?? ""] ?? Defaults[.PostLinkDefSettings].compactMode.enabled
+  }
+  
+  /// Without a `contentWidth` (refreshing a post, changing theme), keeps the width the post
+  /// was last laid out for: the full window would be wrong in a split view's column.
+  func setupWinstonData(data: PostData? = nil, winstonData: PostWinstonData? = nil, contentWidth: Double? = nil, secondary: Bool = false, theme: WinstonTheme, sub: Subreddit? = nil, fetchAvatar: Bool = true) {
+    let lastWidth = self.winstonData?.layoutWidth ?? 0
+    let contentWidth = contentWidth ?? (lastWidth > 0 ? lastWidth : .screenW)
     if let data = data ?? self.data {
-      let compact = Defaults[.SubredditFeedDefSettings].compactPerSubreddit[sub?.id ?? data.subreddit_id ?? ""] ?? Defaults[.PostLinkDefSettings].compactMode.enabled
+      let compact = Post.isCompact(data, sub: sub)
       if self.winstonData == nil { self.winstonData = .init() }
       
       self.winstonData?.permaURL = URL(string: "https://reddit.com\(data.permalink.urlEncoded)")
@@ -84,6 +92,8 @@ extension Post {
       
       self.winstonData?.postDimensions = getPostDimensions(post: self, winstonData: self.winstonData, columnWidth: contentWidth, secondary: secondary, rawTheme: theme, subId: sub?.id)
       self.winstonData?.postDimensionsForcedNormal = getPostDimensions(post: self, winstonData: self.winstonData, columnWidth: contentWidth, secondary: secondary, rawTheme: theme, compact: false)
+      self.winstonData?.layoutWidth = contentWidth
+      self.winstonData?.layoutWindowHeight = .screenH
       
       self.winstonData?.titleAttr = createTitleTagsAttrString(titleTheme: theme.postLinks.theme.titleText, postData: data, textColor: theme.postLinks.theme.titleText.color.uiColor())
       
