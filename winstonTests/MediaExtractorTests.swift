@@ -97,4 +97,11 @@ struct MediaExtractorTests {
     guard case .imgs(let stills) = still else { Issue.record("expected image, got \(String(describing: still))"); return }
     #expect(stills.first?.posterURL == nil)
   }
+
+  @Test func recognizesGIFsByPathExtension() {
+    #expect(URL(string: "https://i.redd.it/abc.gif")!.isGIF)
+    #expect(URL(string: "https://i.redd.it/abc.GIF")!.isGIF)
+    #expect(URL(string: "https://i.redd.it/abc.gif?s=signature")!.isGIF)
+    #expect(!URL(string: "https://i.redd.it/abc.png?x=.gif")!.isGIF)
+  }
 }

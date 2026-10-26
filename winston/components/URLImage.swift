@@ -27,7 +27,7 @@ struct URLImage: View, Equatable {
     var posterURL: URL? = nil
     
     var body: some View {
-        if url.absoluteString.hasSuffix(".gif") {
+        if url.isGIF {
             LazyImageOpt(url: url) { state in
                 if let imageData = state.imageContainer?.data {
                     GIFImage(data: imageData, size: size)
