@@ -285,9 +285,10 @@ private func loadableMediaURL(_ string: String) -> URL? {
 }
 
 private func extractYoutubeIdFromOEmbed(_ text: String) -> String? {
-  let pattern = "(?<=www\\.youtube\\.com/embed/)[^?]*"
+  // Only ID characters: without a query, the URL is followed by a quote and the rest of the HTML.
+  let pattern = "(?<=www\\.youtube\\.com/embed/)[A-Za-z0-9_-]+"
   let regex = try? NSRegularExpression(pattern: pattern)
-  return regex?.firstMatch(in: text, options: [], range: NSRange(location: 0, length: text.count)).map {
+  return regex?.firstMatch(in: text, options: [], range: NSRange(text.startIndex..., in: text)).map {
     String(text[Range($0.range, in: text)!])
   }
 }

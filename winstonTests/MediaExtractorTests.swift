@@ -55,6 +55,14 @@ struct MediaExtractorTests {
     #expect(yt.thumbnailURL.absoluteString == "https://i.ytimg.com/vi/dQw4w9WgXcQ/hqdefault.jpg")
   }
 
+  @Test func readsTheYouTubeIDFromAnEmbedURLWithoutAQuery() throws {
+    let result = try extract([
+      "media": ["type": "youtube.com", "oembed": ["html": "<iframe width=\"356\" src=\"https://www.youtube.com/embed/dQw4w9WgXcQ\" frameborder=\"0\"></iframe>"]],
+    ])
+    guard case .yt(let yt) = result else { Issue.record("expected youtube, got \(String(describing: result))"); return }
+    #expect(yt.videoID == "dQw4w9WgXcQ")
+  }
+
   @Test func keepsTheSignatureOnPreviewImageURLs() throws {
     let result = try extract(["url": "https://preview.redd.it/abc.jpg?width=640&s=signature"])
     guard case .imgs(let imgs) = result else { Issue.record("expected image, got \(String(describing: result))"); return }
