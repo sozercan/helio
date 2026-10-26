@@ -88,9 +88,14 @@ struct SubredditsStack: View {
         }
       }
       .environment(\.contentWidth, postContentWidth)
+      // Fill the column so this measures it rather than the content (the placeholder is 200pt).
+      .frame(maxWidth: .infinity, maxHeight: .infinity)
       .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { detailWidth = $0 }
     }
 //    .swipeAnywhere()
+    // Side by side unless the sidebar is toggled off. In narrower wide windows (unfolded iPhone
+    // Duo) the automatic style overlays the sidebar on the posts instead.
+    .navigationSplitViewStyle(.balanced)
     .environment(\.contentWidth, postContentWidth)
   }
 }

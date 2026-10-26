@@ -20,10 +20,16 @@ extension View {
   /// Re-lays out `posts` when the column width changes, after it has settled: resizing a Mac
   /// window changes the width every frame.
   func relayoutPosts(_ posts: @escaping () -> [Post], contentWidth: Double, theme: WinstonTheme) -> some View {
-    task(id: contentWidth) {
-      try? await Task.sleep(for: .milliseconds(250))
-      guard !Task.isCancelled else { return }
-      posts().forEach { $0.relayout(contentWidth: contentWidth, theme: theme) }
-    }
+    self
+      .task(id: contentWidth) {
+        try? await Task.sleep(for: .milliseconds(250))
+        guard !Task.isCancelled else { return }
+        posts().forEach { $0.relayout(contentWidth: contentWidth, theme: theme) }
+      }
+      // Feeds fetch with the width they were created with, so posts that arrive after the
+      // width changed (the sidebar appearing on launch) were set up for the old one.
+      .onChange(of: posts().map(\.id)) {
+        posts().forEach { $0.relayout(contentWidth: contentWidth, theme: theme) }
+      }
   }
 }
