@@ -124,7 +124,7 @@ struct RedditListingFeed<Header: View, Footer: View, S: Sorting>: View {
                     case .empty:
                         Text("Nothing around here :(")
                             .frame(maxWidth: .infinity)
-                    case .error, .endOfFeed, .items:
+                    case .error, .endOfFeed, .items, .onlyReadPosts:
                         
                         Section {
                             ForEach(itemsManager.entities) { el in
@@ -191,6 +191,26 @@ struct RedditListingFeed<Header: View, Footer: View, S: Sorting>: View {
                             }
                         }
                         
+                        if itemsManager.displayMode == .onlyReadPosts {
+                            Section {
+                                VStack {
+                                    Text("Only posts you've read so far")
+
+                                    Button("Load more", systemImage: "arrow.down") {
+                                        withAnimation {
+                                            itemsManager.displayMode = .items
+                                        }
+                                        Task { await itemsManager.fetchCaller(loadingMore: true) }
+                                    }
+                                    .buttonStyle(.actionSecondary)
+                                }
+                                .frame(maxWidth: .infinity)
+                                .compositingGroup()
+                                .opacity(0.5)
+                                .id("only-read-load-more")
+                            }
+                        }
+
                         if itemsManager.displayMode == .error {
                             Section {
                                 VStack {

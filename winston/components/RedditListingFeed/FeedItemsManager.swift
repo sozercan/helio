@@ -13,7 +13,8 @@ import Nuke
 class FeedItemsManager<S> {
     typealias ItemsFetchFn = (_ lastElementId: String?, _ sorting: S?, _ searchQuery: String?, _ flair: String?) async -> (entities: [RedditEntityType]?, after: String?)?
     
-    enum DisplayMode: String { case loading, empty, items, endOfFeed, error }
+    /// `onlyReadPosts`: paging stopped after several pages in a row held only hidden read posts.
+    enum DisplayMode: String { case loading, empty, items, endOfFeed, error, onlyReadPosts }
     
     private var currentTask: Task<(), Never>? = nil
     var displayMode: DisplayMode = .loading
@@ -63,10 +64,14 @@ class FeedItemsManager<S> {
             return
         }
         
-        let reachedEnd = fetchedEntities.count < chunkSize
+        // Without a cursor, the next fetch would start over from the first page.
+        let reachedEnd = fetchedEntities.count < chunkSize || after == nil
         let shownEntities = withoutReadPosts(fetchedEntities)
+        let onlyReadPosts = shownEntities.isEmpty && !fetchedEntities.isEmpty && !reachedEnd
         // Every post on this page was already read: keep paging instead of showing a gap.
-        let skipPage = shownEntities.isEmpty && !fetchedEntities.isEmpty && !reachedEnd && after != nil && hiddenPagesInARow < maxHiddenPagesInARow
+        let skipPage = onlyReadPosts && hiddenPagesInARow < maxHiddenPagesInARow
+        // Stop paging, but offer to continue: no new row will appear to trigger the next page.
+        let gaveUp = onlyReadPosts && !skipPage
             
         if !loadingMore {
             var newLoadedEntitiesIds = Set<String>()
@@ -74,7 +79,7 @@ class FeedItemsManager<S> {
                 newLoadedEntitiesIds.insert(ent.fullname)
             }
             withAnimation {
-                displayMode = skipPage ? .items : shownEntities.isEmpty ? .empty : reachedEnd ? .endOfFeed : .items
+                displayMode = skipPage ? .items : gaveUp ? .onlyReadPosts : shownEntities.isEmpty ? .empty : reachedEnd ? .endOfFeed : .items
                 entities = shownEntities
                 self.lastElementId = after
                 loadedEntitiesIds = newLoadedEntitiesIds
@@ -91,7 +96,7 @@ class FeedItemsManager<S> {
             
             DispatchQueue.main.async { [newEntities, newLoadedEntitiesIds] in
                 // Don't animate appending — it causes scroll position jumps
-                self.displayMode = reachedEnd ? .endOfFeed : .items
+                self.displayMode = reachedEnd ? .endOfFeed : gaveUp ? .onlyReadPosts : .items
                 self.entities = newEntities
                 self.lastElementId = after
                 self.loadedEntitiesIds = newLoadedEntitiesIds
