@@ -123,14 +123,12 @@ extension Comment {
     return comments
   }
   
+  /// Collapses or expands the comment (toggles when `collapsed` is nil) and stores the result.
+  /// The record follows the new state: Reddit can collapse a comment that has no record.
   func toggleCollapsed(_ collapsed: Bool? = nil, optimistic: Bool = false) {
-    if optimistic {
-      let previousState = data?.collapsed ?? false
-      let newState = collapsed ?? !previousState
-      
-      if previousState != newState {
-        data?.collapsed = newState
-      }
+    let newState = collapsed ?? !(data?.collapsed ?? false)
+    if optimistic, data?.collapsed != newState {
+      data?.collapsed = newState
     }
 
     let context = PersistenceController.shared.primaryBGContext
@@ -142,28 +140,23 @@ extension Comment {
       do {
         let results = try context.fetch(fetchRequest)
 
-        if let foundPost = results.first {
-          if collapsed == nil || collapsed == false {
-            context.delete(foundPost)
-            try? context.save()
-            if !optimistic {
-              data?.collapsed = false
-            }
-          }
-        } else if collapsed == nil || collapsed == true {
+        if newState, results.isEmpty {
           let newCollapsedComment = CollapsedComment(context: context)
           newCollapsedComment.commentID = id
+          try context.save()
+        } else if !newState, !results.isEmpty {
+          results.forEach(context.delete)
+          try context.save()
+        }
 
-          try? context.save()
-
-          if !optimistic {
-            data?.collapsed = true
-          }
+        if !optimistic {
+          data?.collapsed = newState
         }
       } catch {
+        context.rollback()
         print("Error fetching or updating data in Core Data: \(error)")
       }
-    }    
+    }
   }
   
   func loadChildren(parent: CommentParentElement, postFullname: String, avatarSize: Double, post: Post?) async {
