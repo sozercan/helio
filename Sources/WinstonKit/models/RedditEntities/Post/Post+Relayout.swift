@@ -6,13 +6,10 @@
 import SwiftUI
 
 extension MediaExtractedType {
-  /// Image requests and reposts are sized for the column; link previews, videos and embeds
-  /// aren't, and extracting a link again would fetch its preview again.
+  /// Image requests are sized for the column; link previews, videos and embeds aren't, and
+  /// extracting a link again would fetch its preview again. Reposts are laid out in place.
   var dependsOnWidth: Bool {
-    switch self {
-    case .imgs, .repost: true
-    default: false
-    }
+    if case .imgs = self { true } else { false }
   }
 }
 
@@ -20,7 +17,7 @@ extension Post {
   /// Recomputes media requests and row sizes for a new column width or window height (window
   /// resized, iPhone Duo folded or unfolded). Does nothing if the post was already laid out
   /// for both.
-  func relayout(contentWidth: Double, theme: WinstonTheme) {
+  func relayout(contentWidth: Double, theme: WinstonTheme, secondary: Bool = false) {
     guard let winstonData, let data, contentWidth > 0 else { return }
     let windowHeight = Double.screenH
     guard winstonData.layoutWidth != contentWidth || winstonData.layoutWindowHeight != windowHeight else { return }
@@ -31,8 +28,15 @@ extension Post {
     if winstonData.extractedMediaForcedNormal?.dependsOnWidth == true {
       winstonData.extractedMediaForcedNormal = mediaExtractor(compact: false, contentWidth: contentWidth, data, theme: theme)
     }
-    winstonData.postDimensions = getPostDimensions(post: self, winstonData: winstonData, columnWidth: contentWidth, rawTheme: theme, subId: sub?.id)
-    winstonData.postDimensionsForcedNormal = getPostDimensions(post: self, winstonData: winstonData, columnWidth: contentWidth, rawTheme: theme, compact: false)
+    // Extracting a repost again would build a new embedded post, losing its votes and
+    // previews, so lay the existing one out instead.
+    for media in [winstonData.extractedMedia, winstonData.extractedMediaForcedNormal] {
+      if case .repost(let embedded) = media {
+        embedded.relayout(contentWidth: contentWidth, theme: theme, secondary: true)
+      }
+    }
+    winstonData.postDimensions = getPostDimensions(post: self, winstonData: winstonData, columnWidth: contentWidth, secondary: secondary, rawTheme: theme, subId: sub?.id)
+    winstonData.postDimensionsForcedNormal = getPostDimensions(post: self, winstonData: winstonData, columnWidth: contentWidth, secondary: secondary, rawTheme: theme, compact: false)
     winstonData.layoutWidth = contentWidth
     winstonData.layoutWindowHeight = windowHeight
   }

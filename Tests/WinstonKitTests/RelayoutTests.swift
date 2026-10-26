@@ -49,6 +49,21 @@ struct RelayoutTests {
     #expect(post.winstonData?.layoutWidth == 900)
   }
 
+  @Test func relayoutKeepsEmbeddedReposts() throws {
+    var json = try JSONSerialization.jsonObject(with: JSONEncoder().encode(postSampleData)) as! [String: Any]
+    json["crosspost_parent_list"] = [try JSONSerialization.jsonObject(with: JSONEncoder().encode(postSampleData))]
+    let data = try JSONDecoder().decode(PostData.self, from: JSONSerialization.data(withJSONObject: json))
+    let post = Post(id: data.id)
+    post.data = data
+    post.setupWinstonData(contentWidth: 400, theme: theme, fetchAvatar: false)
+    guard case .repost(let before) = post.winstonData?.extractedMedia else { Issue.record("expected a repost"); return }
+
+    post.relayout(contentWidth: 900, theme: theme)
+    guard case .repost(let after) = post.winstonData?.extractedMedia else { Issue.record("expected a repost"); return }
+    #expect(after === before)
+    #expect(after.winstonData?.layoutWidth == 900)
+  }
+
   @Test func settingUpAgainKeepsTheLastWidth() throws {
     let post = try post()
     post.setupWinstonData(contentWidth: 400, theme: theme, fetchAvatar: false)
