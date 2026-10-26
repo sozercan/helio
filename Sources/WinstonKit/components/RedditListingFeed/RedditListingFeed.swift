@@ -248,7 +248,9 @@ struct RedditListingFeed<Header: View, Footer: View, S: Sorting>: View {
                 footer()
             }
             .themedListBG(theme)
-            .if(!disableSearch) { $0.searchable(text: $itemsManager.searchQuery.value) }
+            // In the toolbar (the default in a split view's detail on iOS 26+), closing search
+            // re-focuses it as soon as the dismiss animation ends.
+            .if(!disableSearch) { $0.searchable(text: $itemsManager.searchQuery.value, placement: .navigationBarDrawer(displayMode: .automatic)) }
             .scrollIndicators(.never)
             .listStyle(.plain)
             .navigationTitle(title)
