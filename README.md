@@ -23,7 +23,7 @@ Winston requires iOS 26+ and your own Reddit API credentials.
 1. Clone the repo and open `App/winston.xcodeproj` in Xcode
 2. Set your development team and bundle identifier in the project settings
 3. Build and run on your device
-4. Follow the in-app credential setup to connect your Reddit account. Your Reddit app's redirect URI must be `winstonapp://auth-success`.
+4. Follow the in-app credential setup to connect your Reddit account. Your Reddit app's redirect URI must be `https://www.phfactor.net/winston/auth-success`: Reddit only accepts https redirects for web apps, and that page forwards to the app. If your app was created with another redirect URI, change it under "edit" at https://www.reddit.com/prefs/apps.
 
 ## Development
 
