@@ -37,6 +37,8 @@ struct AppContent: View {
         .whatsNewSheet()
         .environment(\.tabBarHeight, tabBarHeight)
         .environment(\.setTabBarHeight, setTabBarHeight)
+        // The current width for every tab's feeds; the posts column overrides it with its own.
+        .environment(\.contentWidth, WindowMetrics.shared.contentWidth)
         .environment(\.useTheme, InMemoryTheme.shared.currentTheme)
         .environment(\.enableSwipeAnywhere, behaviorDefSettings.enableSwipeAnywhere)
         .readsWindowMetrics()
