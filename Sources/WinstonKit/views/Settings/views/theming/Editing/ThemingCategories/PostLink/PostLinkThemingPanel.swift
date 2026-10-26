@@ -21,6 +21,9 @@ struct PostLinkThemingPanel: View {
   @Default(.PostLinkDefSettings) private var postLinkDefSettings
   
   @Environment(\.contentWidth) private var contentWidth
+  /// The panel's own width: in an iPad form sheet it's narrower than the window.
+  @State private var panelWidth: Double = 0
+  private var previewWidth: Double { panelWidth > 0 ? panelWidth : contentWidth }
   
   var body: some View {
     
@@ -48,7 +51,7 @@ struct PostLinkThemingPanel: View {
       
       VStack {
         if let winstonData = previewPostSample.winstonData {
-          PostLink(id: previewPostSample.id, theme: theme.postLinks, showSub: true, secondary: false, compactPerSubreddit: nil, contentWidth: contentWidth, defSettings: postLinkDefSettings)
+          PostLink(id: previewPostSample.id, theme: theme.postLinks, showSub: true, secondary: false, compactPerSubreddit: nil, contentWidth: previewWidth, defSettings: postLinkDefSettings)
 //          .equatable()
             .environment(\.contextPost, previewPostSample)
             .environment(\.contextSubreddit, previewPostSubSample)
@@ -80,8 +83,10 @@ struct PostLinkThemingPanel: View {
       
       
     }
-    .onAppear { previewPostSample.setupWinstonData(winstonData: previewPostSample.winstonData, theme: theme) }
-    .onChange(of: theme) { x in previewPostSample.setupWinstonData(winstonData: previewPostSample.winstonData, theme: x) }
+    .onAppear { previewPostSample.setupWinstonData(winstonData: previewPostSample.winstonData, contentWidth: previewWidth, theme: theme) }
+    .onChange(of: theme) { x in previewPostSample.setupWinstonData(winstonData: previewPostSample.winstonData, contentWidth: previewWidth, theme: x) }
+    .onGeometryChange(for: Double.self) { $0.size.width } action: { panelWidth = $0 }
+    .relayoutPosts({ [previewPostSample] }, contentWidth: previewWidth, theme: theme)
     .themedListBG(theme.lists.bg)
     .scrollContentBackground(.hidden)
     .listStyle(.plain)

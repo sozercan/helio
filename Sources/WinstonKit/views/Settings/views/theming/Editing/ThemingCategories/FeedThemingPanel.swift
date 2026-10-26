@@ -16,6 +16,9 @@ struct FeedThemingPanel: View {
   @Default(.PostLinkDefSettings) private var postLinkDefSettings
   
   @Environment(\.contentWidth) private var contentWidth
+  /// The panel's own width: in an iPad form sheet it's narrower than the window.
+  @State private var panelWidth: Double = 0
+  private var previewWidth: Double { panelWidth > 0 ? panelWidth : contentWidth }
   
   
   var body: some View {
@@ -53,14 +56,14 @@ struct FeedThemingPanel: View {
       ScrollView(showsIndicators: false) {
         if let winstonData = previewPostSample.winstonData {
           VStack(spacing: theme.postLinks.spacing) {
-            PostLink(id: previewPostSample.id, theme: theme.postLinks, showSub: true, secondary: true, compactPerSubreddit: nil, contentWidth: contentWidth, defSettings: postLinkDefSettings)
+            PostLink(id: previewPostSample.id, theme: theme.postLinks, showSub: true, secondary: true, compactPerSubreddit: nil, contentWidth: previewWidth, defSettings: postLinkDefSettings)
             .equatable()
             .environment(\.useTheme, theme)
             //            .allowsHitTesting(false)
             
             NiceDivider(divider: theme.postLinks.divider)
             
-            PostLink(id: previewPostSample.id, theme: theme.postLinks, showSub: true, secondary: true, compactPerSubreddit: nil, contentWidth: contentWidth, defSettings: postLinkDefSettings)
+            PostLink(id: previewPostSample.id, theme: theme.postLinks, showSub: true, secondary: true, compactPerSubreddit: nil, contentWidth: previewWidth, defSettings: postLinkDefSettings)
             .equatable()
             .environment(\.useTheme, theme)
           }
@@ -76,8 +79,10 @@ struct FeedThemingPanel: View {
       .frame(height: (.screenH - getSafeArea().top - getSafeArea().bottom) / 2, alignment: .top)
       .clipped()
     }
-    .onAppear { previewPostSample.setupWinstonData(winstonData: previewPostSample.winstonData, theme: theme) }
-    .onChange(of: theme) { x in previewPostSample.setupWinstonData(winstonData: previewPostSample.winstonData, theme: x) }
+    .onAppear { previewPostSample.setupWinstonData(winstonData: previewPostSample.winstonData, contentWidth: previewWidth, theme: theme) }
+    .onChange(of: theme) { x in previewPostSample.setupWinstonData(winstonData: previewPostSample.winstonData, contentWidth: previewWidth, theme: x) }
+    .onGeometryChange(for: Double.self) { $0.size.width } action: { panelWidth = $0 }
+    .relayoutPosts({ [previewPostSample] }, contentWidth: previewWidth, theme: theme)
     .scrollContentBackground(.hidden)
     .themedListBG(theme.lists.bg)
     .navigationTitle("Posts feed")

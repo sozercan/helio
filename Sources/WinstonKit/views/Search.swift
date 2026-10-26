@@ -100,7 +100,7 @@ struct Search: View {
     case .post:
       resultPosts.removeAll()
       Task(priority: .background) {
-        let newPosts = await dummyAllSub?.fetchPosts(searchText: searchQuery.value)?.0 ?? []
+        let newPosts = await dummyAllSub?.fetchPosts(searchText: searchQuery.value, contentWidth: contentWidth)?.0 ?? []
         let actualNewPosts = newPosts.compactMap {
           if case .post(let post) = $0 {
             return post
@@ -255,6 +255,7 @@ struct Search: View {
         fetch()
       }
       .navigationTitle("Search")
+      .relayoutPosts({ resultPosts }, contentWidth: contentWidth, theme: theme)
       // One handler, so changing the type and the query together fetches once.
       .onChange(of: [searchType.rawValue, searchQuery.debounced]) {
         if searchQuery.debounced == "" {
