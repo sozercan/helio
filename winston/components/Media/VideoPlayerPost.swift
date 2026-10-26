@@ -403,12 +403,17 @@ final class PictureInPicture {
   static let shared = PictureInPicture()
   private var holder: VideoPlayerHolder?
   private var controller: AVPlayerViewController?
+  /// The controller holds its delegate weakly, and the fullscreen view that owned it is gone.
+  private var delegate: AVPlayerViewControllerDelegate?
+  /// Fullscreen players on screen, which own the audio session while they're up.
+  var fullscreenPlayers = 0
   
   func isPlaying(_ player: AVPlayer) -> Bool { holder?.player === player }
   
-  func begin(_ holder: VideoPlayerHolder, controller: AVPlayerViewController) {
+  func begin(_ holder: VideoPlayerHolder, controller: AVPlayerViewController, delegate: AVPlayerViewControllerDelegate) {
     self.holder = holder
     self.controller = controller
+    self.delegate = delegate
   }
   
   func end(_ controller: AVPlayerViewController) {
@@ -417,6 +422,11 @@ final class PictureInPicture {
     holder?.player?.volume = 0
     holder = nil
     self.controller = nil
+    delegate = nil
+    // Fullscreen paused other apps' audio, and leaving it for PiP skipped resuming it.
+    if Defaults[.VideoDefSettings].pauseBGAudioOnFullscreen && fullscreenPlayers == 0 {
+      Task.detached(priority: .userInitiated) { setAudioToMixWithOthers(true) }
+    }
   }
 }
 
@@ -433,11 +443,16 @@ struct FullScreenPlayerView: UIViewControllerRepresentable {
     controller.allowsPictureInPicturePlayback = true
     controller.canStartPictureInPictureAutomaticallyFromInline = false
     controller.delegate = context.coordinator
+    PictureInPicture.shared.fullscreenPlayers += 1
     return controller
   }
   
   func updateUIViewController(_ controller: AVPlayerViewController, context: Context) {
     context.coordinator.parent = self
+  }
+  
+  static func dismantleUIViewController(_ controller: AVPlayerViewController, coordinator: Coordinator) {
+    PictureInPicture.shared.fullscreenPlayers -= 1
   }
   
   func makeCoordinator() -> Coordinator { Coordinator(parent: self) }
@@ -447,7 +462,7 @@ struct FullScreenPlayerView: UIViewControllerRepresentable {
     init(parent: FullScreenPlayerView) { self.parent = parent }
     
     func playerViewControllerDidStartPictureInPicture(_ controller: AVPlayerViewController) {
-      PictureInPicture.shared.begin(parent.holder, controller: controller)
+      PictureInPicture.shared.begin(parent.holder, controller: controller, delegate: self)
       // Leave fullscreen so the feed is usable while the video floats.
       parent.onPictureInPictureStart()
     }
@@ -460,8 +475,10 @@ struct FullScreenPlayerView: UIViewControllerRepresentable {
       false
     }
     
+    // Starting PiP dismissed the fullscreen player, and its feed row may be gone too, so
+    // there's no player to return to.
     func playerViewController(_ controller: AVPlayerViewController, restoreUserInterfaceForPictureInPictureStopWithCompletionHandler completionHandler: @escaping (Bool) -> Void) {
-      completionHandler(true)
+      completionHandler(false)
     }
   }
 }
