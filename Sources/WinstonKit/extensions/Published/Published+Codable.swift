@@ -6,6 +6,7 @@
 //
 
 import Foundation
+import Combine
 
 extension Published: Decodable where Value: Decodable {
     public init(from decoder: Decoder) throws {
