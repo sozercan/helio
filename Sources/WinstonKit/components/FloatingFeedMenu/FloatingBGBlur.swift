@@ -29,6 +29,9 @@ struct FloatingBGBlur: View, Equatable {
         )
         .animation(.smooth, value: active)
       )
+      // The zero-radius mask alone doesn't hide the material (iOS 27 shows it as a frosted block).
+      .opacity(active ? 1 : 0)
+      .animation(.smooth, value: active)
       .contentShape(Rectangle())
       .frame(width: contentWidth)
       .simultaneousGesture(DragGesture(minimumDistance: 0).onChanged { _ in dismiss() } )
