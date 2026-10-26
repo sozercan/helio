@@ -46,6 +46,14 @@ class CustomSceneDelegate: UIResponder, UIWindowSceneDelegate {
   }
 }
 
+private let audioSessionQueue = DispatchQueue(label: "audio-session", qos: .userInitiated)
+
+/// Runs `setAudioToMixWithOthers` off the main thread, where its session calls can block while
+/// audio plays, one at a time and in the order requested, so the last request wins.
+func scheduleAudioMixing(_ mix: Bool) {
+    audioSessionQueue.async { setAudioToMixWithOthers(mix) }
+}
+
 /// - Parameter mix: when false, our audio interrupts other apps' audio (e.g. pauses music);
 ///   switching back lets the interrupted audio resume.
 public func setAudioToMixWithOthers(_ mix: Bool = true) {

@@ -265,10 +265,7 @@ struct VideoPlayerPost: View, Equatable {
           }
           
           if pauseBackgroundAudioOnFullscreen && !inPictureInPicture {
-            // Off the main thread: audio session calls can block while audio is playing.
-            Task.detached(priority: .userInitiated) {
-              setAudioToMixWithOthers(!val)
-            }
+            scheduleAudioMixing(!val)
           }
           
           if !inPictureInPicture {
@@ -439,7 +436,7 @@ final class PictureInPicture {
     delegate = nil
     // Fullscreen paused other apps' audio, and leaving it for PiP skipped resuming it.
     if Defaults[.VideoDefSettings].pauseBGAudioOnFullscreen && fullscreenPlayers == 0 {
-      Task.detached(priority: .userInitiated) { setAudioToMixWithOthers(true) }
+      scheduleAudioMixing(true)
     }
   }
 }
