@@ -24,7 +24,7 @@ enum CommentBGSide {
   case single
   
   static func getFromArray(count: Int, i: Int) -> Self {
-    if !IPAD { return .middle }
+    if !isWideLayout { return .middle }
     let finalIndex = count - 1
     if count == 1 { return .single }
     if i == 0 { return .top }

@@ -13,20 +13,21 @@ struct SubredditsStack: View {
   @Default(.BehaviorDefSettings) private var behaviorDefSettings // handle default feed selection routing
   @Default(.GeneralDefSettings) private var generalDefSettings // handle default feed selection routing
   @State private var columnVisibility: NavigationSplitViewVisibility = .automatic
-  @State private var sidebarSize: CGSize = .zero
+  /// The posts column's measured width. Follows window resizes, unlike a screen-size calculation.
+  @State private var detailWidth: CGFloat = 0
   
   init(router: Router) {
     self._router = .init(initialValue: router)
   }
   
-  var postContentWidth: CGFloat { .screenW - (!IPAD || columnVisibility == .detailOnly ? 0 : sidebarSize.width) }
+  var postContentWidth: CGFloat { detailWidth > 0 ? detailWidth : .screenW }
   
   @State private var loaded = false
   var body: some View {
     NavigationSplitView(columnVisibility: $columnVisibility) {
       if let redditCredentialSelectedID = generalDefSettings.redditCredentialSelectedID {
         Subreddits(firstDestination: $router.firstSelected, loaded: loaded, currentCredentialID: redditCredentialSelectedID)
-          .measure($sidebarSize).id("subreddits-list-\(redditCredentialSelectedID)")
+          .id("subreddits-list-\(redditCredentialSelectedID)")
           .attachViewControllerToRouter(tabID: .posts)
       }
     } detail: {
@@ -87,6 +88,7 @@ struct SubredditsStack: View {
         }
       }
       .environment(\.contentWidth, postContentWidth)
+      .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { detailWidth = $0 }
     }
 //    .swipeAnywhere()
     .environment(\.contentWidth, postContentWidth)

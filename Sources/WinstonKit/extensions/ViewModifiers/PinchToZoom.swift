@@ -316,7 +316,7 @@ struct PinchToZoom: ViewModifier {
   
   func body(content: Content) -> some View {
     content
-      .frame(width: IPAD ? (.screenH * size.width) / size.height : .screenW, height: IPAD ? .screenH : (.screenW * size.height) / size.width)
+      .frame(width: isWideLayout ? (.screenH * size.width) / size.height : .screenW, height: isWideLayout ? .screenH : (.screenW * size.height) / size.width)
       .scaleEffect(scale, anchor: anchor)
       .offset(offset)
       .frame(.screenSize,  .center)

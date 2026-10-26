@@ -10,6 +10,7 @@ let package = Package(
   defaultLocalization: "en",
   platforms: [
     .iOS("26.0"),
+    .macCatalyst("26.0"),
   ],
   products: [
     .library(name: "WinstonKit", targets: ["WinstonKit"]),

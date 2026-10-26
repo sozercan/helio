@@ -26,6 +26,7 @@ struct PostView: View, Equatable {
   @Default(.CommentsSectionDefSettings) var commentsSectionDefSettings
   @Environment(\.useTheme) private var selectedTheme
   @Environment(\.globalLoaderStart) private var globalLoaderStart
+  @Environment(\.contentWidth) private var contentWidth
   @State private var ignoreSpecificComment = false
   @State private var hideElements = true
   @State private var sort: CommentSortOption
@@ -141,6 +142,7 @@ struct PostView: View, Equatable {
           }
         }
         .navigationBarTitle("\(navtitle)", displayMode: .inline)
+        .relayoutPosts({ [post] }, contentWidth: contentWidth, theme: selectedTheme)
         .toolbar { Toolbar(title: navtitle, subtitle: subnavtitle, hideElements: hideElements, subreddit: subreddit, post: post, sort: $sort) }
         .onChange(of: sort) { val in
           updatePost()
@@ -195,7 +197,7 @@ private struct Toolbar: ToolbarContent {
   @Binding var sort: CommentSortOption
   
   var body: some ToolbarContent {
-    if !IPAD {
+    if !isWideLayout {
       ToolbarItem(id: "postview-title", placement: .principal) {
         VStack {
           Text(title)

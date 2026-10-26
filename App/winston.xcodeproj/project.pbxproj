@@ -74,7 +74,7 @@
 		ECA30A172A5FA08500BB19D1 /* WhatToTest.en-US.txt in Resources */ = {isa = PBXBuildFile; fileRef = ECA30A162A5FA08500BB19D1 /* WhatToTest.en-US.txt */; };
 		ECA3700B2B47D68900C73CB0 /* auth-ext.mov in Resources */ = {isa = PBXBuildFile; fileRef = ECA3700A2B47D68900C73CB0 /* auth-ext.mov */; };
 		ECAA8B682A75261000D9D636 /* SafariWebExtensionHandler.swift in Sources */ = {isa = PBXBuildFile; fileRef = ECAA8B672A75261000D9D636 /* SafariWebExtensionHandler.swift */; };
-		ECAA8B7D2A75261000D9D636 /* winston-everywhere.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = ECAA8B652A75261000D9D636 /* winston-everywhere.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		ECAA8B7D2A75261000D9D636 /* winston-everywhere.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = ECAA8B652A75261000D9D636 /* winston-everywhere.appex */; platformFilter = ios; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		ECAD01B62BC8738B008C18C0 /* book-opening.json in Resources */ = {isa = PBXBuildFile; fileRef = ECAD01B52BC8738B008C18C0 /* book-opening.json */; };
 		ECAD01B82BC87E29008C18C0 /* article.json in Resources */ = {isa = PBXBuildFile; fileRef = ECAD01B72BC87E29008C18C0 /* article.json */; };
 		ECD77F7D2BAFECE1006382F7 /* supernova.mp4 in Resources */ = {isa = PBXBuildFile; fileRef = ECD77F7C2BAFECE1006382F7 /* supernova.mp4 */; };
@@ -726,6 +726,7 @@
 		};
 		ECAA8B7C2A75261000D9D636 /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
+			platformFilter = ios;
 			target = ECAA8B642A75261000D9D636 /* winston-everywhere */;
 			targetProxy = ECAA8B7B2A75261000D9D636 /* PBXContainerItemProxy */;
 		};
@@ -956,6 +957,8 @@
 				PRODUCT_BUNDLE_IDENTIFIER = net.phfactor.winston;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SCAN_ALL_SOURCE_FILES_FOR_INCLUDES = NO;
+				SUPPORTS_MACCATALYST = YES;
+				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
@@ -1001,6 +1004,8 @@
 				PRODUCT_BUNDLE_IDENTIFIER = net.phfactor.winston;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SCAN_ALL_SOURCE_FILES_FOR_INCLUDES = NO;
+				SUPPORTS_MACCATALYST = YES;
+				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";

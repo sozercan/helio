@@ -16,7 +16,7 @@ struct ScrollWithPreview<Content: View, Preview: View>: View {
   var theme: ThemeBG?
   @State private var previewBG: PreviewBG = .theme
   @State private var scrollOffset = CGFloat.zero
-  @State private var contentSize = CGSize(width: 0, height: .screenH)
+  @State private var contentSize = CGSize(width: 0, height: CGFloat.screenH)
   @State private var previewContentSize: CGSize = .zero
   @State private var containerSize: CGSize = .screenSize
   @State private var pro: Double = 0

@@ -50,7 +50,7 @@ struct SubItem: View, Equatable {
       let favorite = cachedSub.user_has_favorited
 //      let localFav = likedButNotSubbed.contains(sub)
 //      let isActive = selectedSub == .reddit(.subFeed(sub))
-      WListButton(showArrow: !IPAD, active: isActive) {
+      WListButton(showArrow: !isWideLayout, active: isActive) {
         action(sub)
       } label: {
         HStack {

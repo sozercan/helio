@@ -95,7 +95,7 @@ extension Theme {
             }
             .image { configuration in
                 configuration.label
-                    .relativePadding(.horizontal, length: .em(IPAD ? 4: 1))
+                    .relativePadding(.horizontal, length: .em(isWideLayout ? 4: 1))
             }
         return theme
     }

@@ -20,6 +20,7 @@ public class AppDelegate: UIResponder, UIApplicationDelegate {
   
   public func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey : Any]? = nil) -> Bool {
     AppDelegate.instance = self
+    _ = WindowMetrics.shared // first read touches UIApplication, so do it on the main thread
     setAudioToMixWithOthers()
     
     let hapticCapability = CHHapticEngine.capabilitiesForHardware()

@@ -96,7 +96,7 @@ struct AccountSwitcherProvider<Content: View>: View {
     let showOverlay = (transmitter.positionInfo != nil && transmitter.showing) || accTransKit.focusCloser
     //    let completelyFree = true
     let focusFramePadding: Double = !showOverlay ? 0 : accTransKit.focusCloser ? 40 : 16
-    let frameSlideOffsetX = accTransKit.passLens ? (.screenW * (accTransKit.willLensHeadLeft ? -1 : 1)) : 0
+    let frameSlideOffsetX = accTransKit.passLens ? (CGFloat.screenW * (accTransKit.willLensHeadLeft ? -1 : 1)) : 0
     let somethingGoinOnYet = accTransKit.focusCloser || transmitter.showing
     //    let parallaxW = .screenW * 0.25
     ZStack {

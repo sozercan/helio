@@ -19,7 +19,7 @@ struct FloatingBGBlur: View, Equatable {
   var body: some View {
     Rectangle()
       .fill(.bar)
-      .frame(width: .screenW * 5, height: (!IPAD ? .screenW * 1.65 : .screenH * 0.75), alignment: .bottomTrailing)
+      .frame(width: .screenW * 5, height: (!isWideLayout ? .screenW * 1.65 : .screenH * 0.75), alignment: .bottomTrailing)
       .mask(
         EllipticalGradient(
           gradient: .smooth(from: .black, to: .black.opacity(0), curve: .easeIn),

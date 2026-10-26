@@ -36,7 +36,7 @@ struct ThemedForegroundRawBG<S: Shape>: View, Equatable {
   @Environment(\.brighterBG) private var brighter
   @Environment(\.isInSidebar) private var isInSidebar
   var body: some View {
-    let isActive = active && IPAD && isInSidebar
+    let isActive = active && isWideLayout && isInSidebar
     ZStack {
       if let shiny {
         shape.winstonShiny(shiny)
@@ -49,12 +49,12 @@ struct ThemedForegroundRawBG<S: Shape>: View, Equatable {
           }
         }
       }
-      shape.fill(IPAD && isInSidebar && !brighter ? .clear : theme.color(brighter: !theme.blurry && brighter, brighterRatio: 0.075))
-      shape.fill(Color.primary.opacity(pressed || (!IPAD && active) ? 0.1 : 0))
+      shape.fill(isWideLayout && isInSidebar && !brighter ? .clear : theme.color(brighter: !theme.blurry && brighter, brighterRatio: 0.075))
+      shape.fill(Color.primary.opacity(pressed || (!isWideLayout && active) ? 0.1 : 0))
         .animation(active ? nil : .default.speed(2), value: active)
       
       if isActive { shape.fill(Color.accentColor) }
     }
-    .if(IPAD && isInSidebar) { $0.clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous)) }
+    .if(isWideLayout && isInSidebar) { $0.clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous)) }
   }
 }

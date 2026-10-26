@@ -11,13 +11,11 @@ import SwiftUI
 import HighlightedTextEditor
 import Lottie
 
-let IPAD = UIDevice.current.userInterfaceIdiom == .pad
 let spring = Animation.interpolatingSpring(stiffness: 300, damping: 30, initialVelocity: 0)
 let draggingAnimation = Animation.interpolatingSpring(stiffness: 1000, damping: 75, initialVelocity: 0)
 let collapsedPresentation = PresentationDetent.height(75)
 let redditApiSettingsUrl = URL(string: "https://old.reddit.com/prefs/apps")!
 let compactModeThumbSize: CGFloat = 75
-let screenScale = UIScreen.main.scale
 let colorLottieKeypath = AnimationKeypath(keypath: "**.Color")
 let emptyColorLottieKeypath = AnimationKeypath(keypath: "**.EmptyKeyPath")
 let savedKeyword = "winstonSaved"

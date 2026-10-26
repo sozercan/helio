@@ -296,6 +296,7 @@ struct RedditListingFeed<Header: View, Footer: View, S: Sorting>: View {
                 }
             }
             .floatingMenu(subId: subreddit?.id, filters: shallowCachedFilters, selectedFilter: $itemsManager.selectedFilter)
+            .relayoutPosts({ itemsManager.entities.compactMap { if case .post(let post) = $0 { post } else { nil } } }, contentWidth: contentWidth, theme: selectedTheme)
             //    .onChange(of: itemsManager.selectedFilter) { searchEnabled = $1?.type != .custom }
             .refreshable { await refetch() }
             .onChange(of: generalDefSettings.redditCredentialSelectedID) { _, _ in

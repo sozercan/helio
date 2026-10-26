@@ -8,5 +8,6 @@
 import Foundation
 
 extension CGSize {
-  static let screenSize = CGSize(width: .screenW, height: .screenH)
+  /// The current window's size (see `WindowMetrics`).
+  static var screenSize: CGSize { WindowMetrics.shared.size }
 }

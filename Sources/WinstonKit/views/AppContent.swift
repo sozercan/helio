@@ -39,6 +39,7 @@ struct AppContent: View {
         .environment(\.setTabBarHeight, setTabBarHeight)
         .environment(\.useTheme, InMemoryTheme.shared.currentTheme)
         .environment(\.enableSwipeAnywhere, behaviorDefSettings.enableSwipeAnywhere)
+        .readsWindowMetrics()
         .onAppear {
             Defaults[.ThemesDefSettings].themesPresets = Defaults[.ThemesDefSettings].themesPresets.filter { $0.id != "default" }
         }
@@ -55,7 +56,7 @@ struct AppContent: View {
         .onChange(of: scenePhase) { _, newPhase in
             // No auth on MacOS
             var runningOnMac = false
-#if os(macOS)
+#if os(macOS) || targetEnvironment(macCatalyst)
             runningOnMac = true
 #endif
             

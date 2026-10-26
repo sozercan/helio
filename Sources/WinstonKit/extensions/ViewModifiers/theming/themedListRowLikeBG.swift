@@ -24,7 +24,7 @@ struct ThemedListRowLikeBGModifier: ViewModifier {
   /// - Parameter content: The content to which the modifier is applied.
   /// - Returns: A modified version of the content.
   func body(content: Content) -> some View {
-    let isActive = active && IPAD
+    let isActive = active && isWideLayout
     return content
       .padding(.horizontal, enablePadding ? 16 : 0)
       .padding(.vertical, enablePadding ? 8 : 0)

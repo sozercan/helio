@@ -12,13 +12,7 @@ import Defaults
 func getPostContentWidth(contentWidth: Double = .screenW, secondary: Bool = false, theme: WinstonTheme? = nil) -> CGFloat {
   let selectedTheme = theme ?? InMemoryTheme.shared.currentTheme
   let theme = selectedTheme.postLinks.theme
-  var value: CGFloat = 0
-  if IPAD {
-    value = (contentWidth / 2) - ((theme.innerPadding.horizontal * (secondary ? 2 : 1)) * 2) - 24
-  } else {
-    value = contentWidth - (((theme.innerPadding.horizontal * (secondary ? 2 : 1)) + theme.outerHPadding) * 2)
-  }
-  return value
+  return contentWidth - (((theme.innerPadding.horizontal * (secondary ? 2 : 1)) + theme.outerHPadding) * 2)
 }
 
 struct PostDimensions: Hashable, Equatable {
@@ -78,12 +72,7 @@ func getPostDimensions(post: Post, winstonData: PostWinstonData? = nil, columnWi
     var ACC_titleHeight: Double = 0
     var ACC_bodyHeight: Double = 0
     
-    var contentWidth: CGFloat = 0
-    if IPAD {
-      contentWidth = (columnWidth / 2) - ((theme.innerPadding.horizontal * (secondary ? 2 : 1)) * 2) - 24
-    } else {
-      contentWidth = columnWidth - (((theme.innerPadding.horizontal * (secondary ? 2 : 1)) + theme.outerHPadding) * 2)
-    }
+    let contentWidth: CGFloat = columnWidth - (((theme.innerPadding.horizontal * (secondary ? 2 : 1)) + theme.outerHPadding) * 2)
     
     var ACC_mediaSize: CGSize = .zero
     let compactMediaSize = CGSize(width: compactImgSize, height: compactImgSize)

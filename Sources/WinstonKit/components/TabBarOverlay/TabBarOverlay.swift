@@ -17,7 +17,10 @@ struct TabBarOverlay: View {
   
   @Environment(\.tabBarHeight) private var tabBarHeight
   var body: some View {
-    if let tabBarHeight {
+    // Only for a tab bar along the bottom (`measureTabBar` reports 0 otherwise). Wide windows
+    // (iPad, unfolded iPhone Duo, Mac) put it at the top and folded iPhone Duo down the side,
+    // where hit areas pinned to the bottom would only swallow taps meant for the content.
+    if let tabBarHeight, tabBarHeight > 0, !isWideLayout {
       GeometryReader { geo in
         let overlaySize = CGSize(width: geo.size.width, height: max(0, (tabBarHeight)))
         HStack(spacing: 0) {
