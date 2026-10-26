@@ -60,7 +60,7 @@ class FeedItemsManager<S> {
         let filter = selectedFilter?.type != .custom ? selectedFilter?.text : nil
 
         guard let (fetchedEntities, after) = await fetchFn(lastElementId, sorting, searchQuery, filter), let fetchedEntities else {
-            withAnimation { displayMode = .error }
+            await MainActor.run { withAnimation { displayMode = .error } }
             return
         }
         
@@ -94,7 +94,9 @@ class FeedItemsManager<S> {
                 newEntities.append(ent)
             }
             
-            DispatchQueue.main.async { [newEntities, newLoadedEntitiesIds] in
+            // Awaited, so it lands before the next page's (a skipped page fetches on right away)
+            // and can't overwrite that page's error.
+            await MainActor.run { [newEntities, newLoadedEntitiesIds] in
                 // Don't animate appending — it causes scroll position jumps
                 self.displayMode = reachedEnd ? .endOfFeed : gaveUp ? .onlyReadPosts : .items
                 self.entities = newEntities
