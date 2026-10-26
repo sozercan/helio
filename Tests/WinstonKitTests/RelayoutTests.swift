@@ -64,6 +64,46 @@ struct RelayoutTests {
     #expect(after.winstonData?.layoutWidth == 900)
   }
 
+  @Test func relayoutKeepsTheYouTubePlayerAndResizesItsThumbnail() throws {
+    var json = try JSONSerialization.jsonObject(with: JSONEncoder().encode(postSampleData)) as! [String: Any]
+    json["media"] = ["type": "youtube.com", "oembed": ["html": "<iframe src=\"https://www.youtube.com/embed/dQw4w9WgXcQ?feature=oembed\"></iframe>"]]
+    let data = try JSONDecoder().decode(PostData.self, from: JSONSerialization.data(withJSONObject: json))
+    let post = Post(id: data.id)
+    post.data = data
+    post.setupWinstonData(contentWidth: 400, theme: theme, fetchAvatar: false)
+    guard case .yt(let before) = post.winstonData?.extractedMedia else { Issue.record("expected youtube"); return }
+
+    post.relayout(contentWidth: 900, theme: theme)
+    guard case .yt(let after) = post.winstonData?.extractedMedia else { Issue.record("expected youtube"); return }
+    #expect(after.player === before.player)
+    #expect(after.thumbnailRequest.processors.map(\.identifier) != before.thumbnailRequest.processors.map(\.identifier))
+  }
+
+  @Test func relayoutForAnotherPresentationRecomputes() throws {
+    let post = try post()
+    post.setupWinstonData(contentWidth: 400, theme: theme, fetchAvatar: false)
+    post.relayout(contentWidth: 400, theme: theme, secondary: true)
+    let embedded = try #require(post.winstonData?.postDimensions)
+    #expect(abs(embedded.contentWidth - getPostContentWidth(contentWidth: 400, secondary: true, theme: theme)) < 0.5)
+  }
+
+  @Test func imagesWithoutDimensionsIgnoreTheCachedLayout() throws {
+    var json = try JSONSerialization.jsonObject(with: JSONEncoder().encode(postSampleData)) as! [String: Any]
+    json["url"] = "https://i.redd.it/abc.jpg"
+    json["preview"] = nil
+    let data = try JSONDecoder().decode(PostData.self, from: JSONSerialization.data(withJSONObject: json))
+    let post = Post(id: data.id)
+    post.data = data
+    post.setupWinstonData(contentWidth: 400, theme: theme, fetchAvatar: false)
+    let fresh = try #require(post.winstonData?.postDimensions.mediaSize)
+
+    // A layout capped by a short window isn't the image's shape.
+    post.winstonData?.postDimensions.mediaSize = CGSize(width: 1000, height: 100)
+    post.relayout(contentWidth: 401, theme: theme)
+    let relaid = try #require(post.winstonData?.postDimensions.mediaSize)
+    #expect(abs(relaid.height - (fresh.height + 1)) < 0.5)
+  }
+
   @Test func settingUpAgainKeepsTheLastWidth() throws {
     let post = try post()
     post.setupWinstonData(contentWidth: 400, theme: theme, fetchAvatar: false)

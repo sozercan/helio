@@ -25,9 +25,11 @@ class PostWinstonData: Hashable {
   var avatarImageRequest: ImageRequest? = nil
   var postDimensions: PostDimensions = .zero
   var postDimensionsForcedNormal: PostDimensions = .zero
-  /// The column width and window height the dimensions were computed for.
+  /// The column width, window height and presentation (embedded or not) the dimensions were
+  /// computed for.
   var layoutWidth: Double = 0
   var layoutWindowHeight: Double = 0
+  var layoutSecondary = false
   var titleAttr: NSAttributedString?
   var linkMedia: PreviewModel?
   var videoMedia: SharedVideo?

@@ -81,10 +81,10 @@ func getPostDimensions(post: Post, winstonData: PostWinstonData? = nil, columnWi
     if compact { ACC_mediaSize = extractedMedia != nil || showSelfPostThumbnails ? compactMediaSize : .zero } else {
       if let extractedMedia = extractedMedia {
         func defaultMediaSize(_ size: CGSize) -> CGSize {
-          // Square when Reddit gives no dimensions, so the row doesn't start empty and
-          // jump once the media loads.
-          let cachedSize = winstonData?.postDimensions.mediaSize ?? .zero
-          let knownSize = size.width > 0 && size.height > 0 ? size : cachedSize.width > 0 && cachedSize.height > 0 ? cachedSize : CGSize(width: contentWidth, height: contentWidth)
+          // Square when Reddit gives no dimensions, like the media views, so the row doesn't
+          // start empty and jump once the media loads. Not the cached layout's size: it was
+          // capped to the window height, so it isn't the media's shape.
+          let knownSize = size.width > 0 && size.height > 0 ? size : CGSize(width: contentWidth, height: contentWidth)
           let sourceHeight = knownSize.height
           let sourceWidth = knownSize.width
           let propHeight = (contentWidth * sourceHeight) / (sourceWidth == 0 ? 1 : sourceWidth)

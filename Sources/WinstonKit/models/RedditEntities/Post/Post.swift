@@ -96,6 +96,7 @@ extension Post {
       self.winstonData?.postDimensionsForcedNormal = getPostDimensions(post: self, winstonData: self.winstonData, columnWidth: contentWidth, secondary: secondary, rawTheme: theme, compact: false)
       self.winstonData?.layoutWidth = contentWidth
       self.winstonData?.layoutWindowHeight = .screenH
+      self.winstonData?.layoutSecondary = secondary
       
       self.winstonData?.titleAttr = createTitleTagsAttrString(titleTheme: theme.postLinks.theme.titleText, postData: data, textColor: theme.postLinks.theme.titleText.color.uiColor())
       

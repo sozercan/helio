@@ -145,7 +145,7 @@ func mediaExtractor(compact: Bool, contentWidth: Double = .screenW, _ data: Post
   
   // Only the video id is required; the rest of the oEmbed payload is often missing.
   if data.media?.type == "youtube.com", let oembed = data.media?.oembed, let html = oembed.html, let ytID = extractYoutubeIdFromOEmbed(html), let thumbURL = oembed.thumbnail_url.flatMap(URL.init(string:)) ?? URL(string: "https://i.ytimg.com/vi/\(ytID)/hqdefault.jpg"), let watchURL = URL(string: "https://www.youtube.com/watch?v=\(ytID)") {
-    let thumbReq = ImageRequest(url: thumbURL, processors: [.resize(width: getPostContentWidth(contentWidth: contentWidth, theme: theme))], priority: .normal)
+    let thumbReq = youTubeThumbnailRequest(thumbURL, contentWidth: contentWidth, theme: theme)
     let size = CGSize(width: CGFloat(oembed.width ?? 16), height: CGFloat(oembed.height ?? 9))
     let newExtracted = YTMediaExtracted(videoID: ytID, size: size, thumbnailURL: thumbURL, thumbnailRequest: thumbReq, player: YouTubePlayer(source: .video(id: ytID)), author: oembed.author_name ?? "", authorURL: oembed.author_url.flatMap(URL.init(string:)) ?? watchURL)
     return .yt(newExtracted)
@@ -250,6 +250,11 @@ func mediaExtractor(compact: Bool, contentWidth: Double = .screenW, _ data: Post
 extension URL {
   /// By path extension, so signed URLs (`….gif?s=…`) and `.GIF` count too.
   var isGIF: Bool { pathExtension.lowercased() == "gif" }
+}
+
+/// A YouTube embed's thumbnail, downsampled for the column.
+func youTubeThumbnailRequest(_ url: URL, contentWidth: Double, theme: WinstonTheme?) -> ImageRequest {
+  ImageRequest(url: url, processors: [.resize(width: getPostContentWidth(contentWidth: contentWidth, theme: theme))], priority: .normal)
 }
 
 /// Reddit's static preview of a post, used as a poster while its video or GIF loads.
