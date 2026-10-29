@@ -119,6 +119,7 @@
 /* Begin PBXFileReference section */
 		5A22E1780AA90B99053F6B14 /* winstonUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = winstonUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		6098C07B080AC8AD13D1179B /* Pixelate.metal */ = {isa = PBXFileReference; includeInIndex = 1; path = Pixelate.metal; sourceTree = "<group>"; };
+		5292F74B257C9DE07E7CA6DE /* en */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = en; path = en.lproj/InfoPlist.strings; sourceTree = "<group>"; };
 		65C3A1C32B136430004609CA /* de */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = de; path = de.lproj/InfoPlist.strings; sourceTree = "<group>"; };
 		65C3A1C62B136430004609CA /* de */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = de; path = de.lproj/InfoPlist.strings; sourceTree = "<group>"; };
 		65C3A1C82B136445004609CA /* fr */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = fr; path = fr.lproj/InfoPlist.strings; sourceTree = "<group>"; };
@@ -746,6 +747,7 @@
 		65C3A1C52B136430004609CA /* InfoPlist.strings */ = {
 			isa = PBXVariantGroup;
 			children = (
+				5292F74B257C9DE07E7CA6DE /* en */,
 				65C3A1C62B136430004609CA /* de */,
 				65C3A1CA2B136460004609CA /* it */,
 			);
@@ -794,7 +796,6 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
-				"ASSETCATALOG_COMPILER_ALTERNATE_APPICON_NAMES[sdk=*]" = "iconExplode iconPeak iconSimpleFaceBlack iconSimpleFaceBlue iconSimpleEyesBlack iconSimpleEyesBlue iconSide";
 				ASSETCATALOG_COMPILER_APPICON_NAME = iconStandard;
 				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
 				ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS = YES;
@@ -861,7 +862,6 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
-				"ASSETCATALOG_COMPILER_ALTERNATE_APPICON_NAMES[sdk=*]" = "iconExplode iconPeak iconSimpleFaceBlack iconSimpleFaceBlue iconSimpleEyesBlack iconSimpleEyesBlue iconSide";
 				ASSETCATALOG_COMPILER_APPICON_NAME = iconStandard;
 				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
 				ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS = YES;
@@ -923,7 +923,6 @@
 			buildSettings = {
 				ALWAYS_EMBED_SWIFT_STANDARD_LIBRARIES = YES;
 				ASSETCATALOG_COMPILER_ALTERNATE_APPICON_NAMES = "";
-				"ASSETCATALOG_COMPILER_ALTERNATE_APPICON_NAMES[sdk=*]" = "iconExplode iconPeak iconSimpleFaceBlack iconSimpleFaceBlue iconSimpleEyesBlack iconSimpleEyesBlue iconSide";
 				ASSETCATALOG_COMPILER_APPICON_NAME = iconStandard;
 				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
@@ -937,12 +936,12 @@
 				FRAMEWORK_SEARCH_PATHS = "$(SRCROOT)/**";
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = winston/Info.plist;
-				INFOPLIST_KEY_CFBundleDisplayName = Marlowe;
+				INFOPLIST_KEY_CFBundleDisplayName = Helio;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.social-networking";
 				INFOPLIST_KEY_LSSupportsOpeningDocumentsInPlace = YES;
-				INFOPLIST_KEY_NSDocumentsFolderUsageDescription = "Marlowe needs access to your documents to save/import themes.";
-				INFOPLIST_KEY_NSFaceIDUsageDescription = "Uses FaceID to lock and unlock Marlowe";
-				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "Marlowe needs access to your library to be able to download images.";
+				INFOPLIST_KEY_NSDocumentsFolderUsageDescription = "Helio needs access to your documents to save/import themes.";
+				INFOPLIST_KEY_NSFaceIDUsageDescription = "Uses FaceID to lock and unlock Helio";
+				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "Helio needs access to your library to be able to download images.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -970,7 +969,6 @@
 			buildSettings = {
 				ALWAYS_EMBED_SWIFT_STANDARD_LIBRARIES = YES;
 				ASSETCATALOG_COMPILER_ALTERNATE_APPICON_NAMES = "";
-				"ASSETCATALOG_COMPILER_ALTERNATE_APPICON_NAMES[sdk=*]" = "iconExplode iconPeak iconSimpleFaceBlack iconSimpleFaceBlue iconSimpleEyesBlack iconSimpleEyesBlue iconSide";
 				ASSETCATALOG_COMPILER_APPICON_NAME = iconStandard;
 				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
@@ -984,12 +982,12 @@
 				FRAMEWORK_SEARCH_PATHS = "$(SRCROOT)/**";
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = winston/Info.plist;
-				INFOPLIST_KEY_CFBundleDisplayName = Marlowe;
+				INFOPLIST_KEY_CFBundleDisplayName = Helio;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.social-networking";
 				INFOPLIST_KEY_LSSupportsOpeningDocumentsInPlace = YES;
-				INFOPLIST_KEY_NSDocumentsFolderUsageDescription = "Marlowe needs access to your documents to save/import themes.";
-				INFOPLIST_KEY_NSFaceIDUsageDescription = "Uses FaceID to lock and unlock Marlowe";
-				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "Marlowe needs access to your library to be able to download images.";
+				INFOPLIST_KEY_NSDocumentsFolderUsageDescription = "Helio needs access to your documents to save/import themes.";
+				INFOPLIST_KEY_NSFaceIDUsageDescription = "Uses FaceID to lock and unlock Helio";
+				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "Helio needs access to your library to be able to download images.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -1022,7 +1020,7 @@
 				ENABLE_USER_SCRIPT_SANDBOXING = NO;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = "winston-everywhere/Info.plist";
-				INFOPLIST_KEY_CFBundleDisplayName = "Marlowe Everywhere";
+				INFOPLIST_KEY_CFBundleDisplayName = "Helio Everywhere";
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
 				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -1056,7 +1054,7 @@
 				ENABLE_USER_SCRIPT_SANDBOXING = NO;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = "winston-everywhere/Info.plist";
-				INFOPLIST_KEY_CFBundleDisplayName = "Marlowe Everywhere";
+				INFOPLIST_KEY_CFBundleDisplayName = "Helio Everywhere";
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
 				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
 				LD_RUNPATH_SEARCH_PATHS = (

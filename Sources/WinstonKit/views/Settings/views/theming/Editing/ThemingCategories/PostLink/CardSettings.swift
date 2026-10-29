@@ -37,10 +37,8 @@ struct CardSettings: View {
           Text("Placeholder image")
           
           HStack(spacing: 2) {
-            Image(.winstonFlat)
-              .resizable()
-              .aspectRatio(1, contentMode: .fit)
-              .frame(height: 24)
+            Image(systemName: "sun.max")
+              .fontSize(24)
               .frame(maxWidth: .infinity, maxHeight: .infinity)
               .background(RR(8, .primary.opacity(theme.compactSelftextPostLinkPlaceholderImg.type == .winston ? 0.1 : 0)))
               .contentShape(Rectangle())

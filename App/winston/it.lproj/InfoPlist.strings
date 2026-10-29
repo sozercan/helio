@@ -1,18 +1,18 @@
 /* Bundle display name */
-"CFBundleDisplayName" = "Winston";
+"CFBundleDisplayName" = "Helio";
 
 /* Bundle name */
-"CFBundleName" = "winston";
+"CFBundleName" = "Helio";
 
 /* Privacy - Documents Folder Usage Description */
-"NSDocumentsFolderUsageDescription" = "A Winston è necessario l'accesso ai tuoi documenti per salvare/importare temi.";
+"NSDocumentsFolderUsageDescription" = "A Helio è necessario l'accesso ai tuoi documenti per salvare/importare temi.";
 
 /* Privacy - Face ID Usage Description */
-"NSFaceIDUsageDescription" = "Usa FaceID per bloccare e sbloccare Winston";
+"NSFaceIDUsageDescription" = "Usa FaceID per bloccare e sbloccare Helio";
 
 /* Privacy - Photo Library Usage Description */
-"NSPhotoLibraryUsageDescription" = "A Winston serve l'accesso alla tua libreria per poter scaricare le immagini.";
+"NSPhotoLibraryUsageDescription" = "A Helio serve l'accesso alla tua libreria per poter scaricare le immagini.";
 
 /* (No Comment) */
-"Winston theme file" = "File tema di Winston";
+"Helio theme file" = "File tema di Helio";
 

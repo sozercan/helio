@@ -91,7 +91,9 @@ struct AccountSwitcherTarget: View, Equatable {
           if let picture = cred.profilePicture, let url = URL(string: picture) {
             URLImage(url: url).equatable()
           } else {
-            Image(.emptyCredential).resizable()
+            Image(systemName: "person.crop.circle.fill")
+              .resizable()
+              .foregroundStyle(.gray)
           }
         }
         .scaledToFill()

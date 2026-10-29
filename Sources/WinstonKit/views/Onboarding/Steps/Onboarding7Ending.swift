@@ -21,11 +21,11 @@ struct Onboarding7Ending: View {
       Text("It worked!")
         .fontSize(32, .bold)
         .foregroundColor(.green)
-      Text("Marlowe is ready to be used!")
+      Text("Helio is ready to be used!")
         .opacity(0.75)
       
       
-      MasterButton(icon: "party.popper.fill", label: "Start using Marlowe!", colorHoverEffect: .animated, textSize: 18, height: 48, fullWidth: true, cornerRadius: 16, action: {
+      MasterButton(icon: "party.popper.fill", label: "Start using Helio!", colorHoverEffect: .animated, textSize: 18, height: 48, fullWidth: true, cornerRadius: 16, action: {
         withAnimation {
           dismiss()
         }

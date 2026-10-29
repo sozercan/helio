@@ -22,7 +22,6 @@ class QuirkyMessageUtil {
       "The feed may be over, but your curiosity never ends. 💡",
       "Be excellent to each other!",
       "Maybe it’s time to go outside?",
-      "Meow meow, you reached the bottom or something, meow meow meow",
       "That's enough internet for today... (pls come back)",
       "You've made it to the bottom! Now go touch grass!",
       "AAAAAAAAAAH! It's the end of the feed!!!",

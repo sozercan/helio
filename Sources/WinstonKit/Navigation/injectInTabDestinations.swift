@@ -73,8 +73,6 @@ extension View {
             FAQPanel()
           case .themes:
             ThemesPanel()
-          case .appIcon:
-            AppIconSetting()
           }
         }
       })

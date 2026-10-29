@@ -60,20 +60,8 @@ struct SubredditsStack: View {
               EmptyView()
             }
           } else {
-            VStack(spacing: 24) {
-              Image(.winstonEyes)
-                .resizable()
-                .scaledToFit()
-                .frame(width: 200)
-              VStack {
-                Text("Meow, I mean...")
-                  .opacity(0.38)
-                  .fontSize(24, .bold)
-                Text("Where are the subs?")
-                  .opacity(0.35)
-              }
-            }
-            .attachViewControllerToRouter(tabID: .posts)
+            ContentUnavailableView("No Feed Selected", systemImage: "rectangle.stack", description: Text("Pick a feed or subreddit."))
+              .attachViewControllerToRouter(tabID: .posts)
           }
         }
         .injectInTabDestinations()

@@ -1,7 +1,7 @@
 {
   "name": "winston-everywhere",
   "version": "1.0.0",
-  "description": "Winston app safari extension companion",
+  "description": "Helio app Safari extension companion",
   "scripts": {
     "build": "parcel build src/manifest.json --no-content-hash --no-cache",
     "build-report": "parcel build src/manifest.json --no-cache --reporter @parcel/reporter-bundle-analyzer",

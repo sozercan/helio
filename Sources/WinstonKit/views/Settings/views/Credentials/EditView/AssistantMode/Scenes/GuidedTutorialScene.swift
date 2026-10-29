@@ -23,7 +23,7 @@ struct GuidedTutorialScene: View {
       VStack(alignment: .center, spacing: 24) {
         
         VStack(alignment: .center, spacing: 12) {
-          Image(.winstonSide).size(104, .fit)
+          AppMark(size: 96)
           
           VStack(alignment: .center, spacing: 4) {
             Text("Enabling the extension").fontSize(32, .bold)

@@ -117,10 +117,9 @@ struct ThemeNavLink: View {
     HStack(spacing: 8) {
       Group {
         if isDefault {
-          Image("winstonFlat")
-            .resizable()
-            .scaledToFit()
-            .frame(height: 36)
+          Image(systemName: "sun.max.fill")
+            .fontSize(24)
+            .foregroundColor(.white)
         } else {
           Image(systemName: theme.metadata.icon)
             .fontSize(24)

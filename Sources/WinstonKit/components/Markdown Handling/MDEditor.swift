@@ -21,7 +21,7 @@ private let placeholders: [String] = [
   "— Don’t you hate that?\n— What?\n— Uncomfortable silences...",
   "All we have to decide is what to do with the time that is given us...",
   "FLY, YOU FOOLS! ...yes, it's fly, not run...",
-  "Winston, I mean, Houston, we have a problem!...",
+  "Houston, we have a problem!...",
   "I would have gone with you to the end, into the very fires of mordor...",
 ]
 

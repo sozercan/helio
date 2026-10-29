@@ -1,6 +1,6 @@
 ---
 name: Feature request
-about: Suggest an idea for Winston
+about: Suggest an idea for Helio
 title: "[FR]"
 labels: feature/enhancement
 assignees: ''

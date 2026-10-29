@@ -9,7 +9,7 @@ import Foundation
 
 func getCommentSampleData(_ withChild: Bool = true) -> CommentData {
   var commentSampleData = CommentData(id: "winstonSample")
-  commentSampleData.author = "Winston"
+  commentSampleData.author = "Helio"
   commentSampleData.author_fullname = "t2_winston_empty_sample"
   commentSampleData.author_flair_text = "flair"
   commentSampleData.body = "My best friend was called apollo, but he passed away a few ago :("

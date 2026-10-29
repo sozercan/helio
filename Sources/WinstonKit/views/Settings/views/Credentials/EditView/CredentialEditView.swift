@@ -22,7 +22,7 @@ struct CredentialEditView: View {
   @ViewBuilder
   func showBtns() -> some View {
     VStack(spacing: creating ? 16 : 14) {
-      BigCredBtn(nav: $navPath, img: { Image(.winstonSide).size(56) }, title: !creating ? "Guided replace" : "Guided mode", description: "A guided walkthrough to \(!creating ? "replace this credential by another" : "generate or select a credential").", page: .assistant, recommended: true)
+      BigCredBtn(nav: $navPath, img: { AppMark(size: 52) }, title: !creating ? "Guided replace" : "Guided mode", description: "A guided walkthrough to \(!creating ? "replace this credential by another" : "generate or select a credential").", page: .assistant, recommended: true)
       BigCredBtn(nav: $navPath, img: { Image(systemName: "gear").fontSize(44, .semibold).foregroundStyle(Color.accentColor) }, title: !creating ? "Advanced settings" : "Advanced mode", description: "Manually \(creating ? "enter" : "edit") your credentials and get nerd info.", page: .advanced)
     }
     .frame(maxWidth: .infinity)

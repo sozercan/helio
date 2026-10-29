@@ -12,10 +12,9 @@ struct CredentialsPanelEmptyView: View {
   var body: some View {
     VStack(spacing: 20) {
       VStack(spacing: 16) {
-        Image(.emptyCredential)
-          .resizable()
-          .frame(136)
-          .clipShape(Circle())
+        Image(systemName: "person.crop.circle.badge.questionmark")
+          .fontSize(96)
+          .foregroundStyle(.secondary)
         VStack(spacing: 4) {
           Text("Omg, no credentials!")
             .fontSize(24, .bold)
@@ -36,8 +35,7 @@ struct CredentialsPanelEmptyView: View {
           Label {
             Text("Restart welcome tutorial")
           } icon: {
-            Image(.winstonFlat)
-              .asFontSize(17)
+            Image(systemName: "sun.max.fill")
           }
         })
         .buttonStyle(.actionOutlined)

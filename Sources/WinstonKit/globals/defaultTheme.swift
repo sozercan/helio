@@ -32,7 +32,7 @@ let badgeTheme: BadgeTheme = .init(
 let defaultTheme = WinstonTheme(
   metadata: .init(
     name: "Default",
-    description: "The default Winston theme. Follows iOS style.",
+    description: "The default Helio theme. Follows iOS style.",
     color: .init(hex: "0B84FE"),
     icon: "paintbrush.fill",
     author: "lo.cafe"

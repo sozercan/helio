@@ -1,4 +1,4 @@
-![Winston Logo](https://i.imgur.com/axc6Rq3.png)
+# Helio
 
 [![Build](https://github.com/phubbard/winston/actions/workflows/build.yml/badge.svg)](https://github.com/phubbard/winston/actions/workflows/build.yml)
 ![License](https://img.shields.io/github/license/phubbard/winston)
@@ -6,7 +6,7 @@
 ![GitHub issues](https://img.shields.io/github/issues-raw/phubbard/winston)
 ![GitHub release](https://img.shields.io/github/v/release/phubbard/winston)
 
-Winston is a privacy-focused, open-source Reddit client for iOS. No analytics, no tracking, no ads, no third-party data collection — your data stays on your device and the app communicates only with Reddit's API. This is an actively maintained fork of the original [lo-cafe/winston](https://github.com/lo-cafe/winston).
+Helio is a privacy-focused, open-source Reddit client for iOS and Mac. No analytics, no tracking, no ads, no third-party data collection — your data stays on your device and the app communicates only with Reddit's API. This is an actively maintained fork of the original [lo-cafe/winston](https://github.com/lo-cafe/winston).
 
 ## Privacy
 
@@ -18,7 +18,7 @@ Winston is a privacy-focused, open-source Reddit client for iOS. No analytics, n
 
 ## Installing
 
-Winston requires iOS 26+ and your own Reddit API credentials.
+Helio requires iOS 26+ (or macOS 26+) and your own Reddit API credentials.
 
 1. Clone the repo and open `App/winston.xcodeproj` in Xcode
 2. Set your development team and bundle identifier in the project settings
@@ -40,7 +40,7 @@ xcodebuild -scheme WinstonKit -destination 'platform=iOS Simulator,name=iPhone 1
 xcodebuild -project App/winston.xcodeproj -scheme winston -destination 'generic/platform=iOS Simulator' build
 ```
 
-Add dependencies in `Package.swift`, not in the Xcode project. Asset catalog symbols used from `WinstonKit` (e.g. `Image(.winstonFlat)`) are declared in `Sources/WinstonKit/globals/AppAssets.swift`.
+Add dependencies in `Package.swift`, not in the Xcode project. Asset catalog symbols used from `WinstonKit` (e.g. `Image(.loader)`) are declared in `Sources/WinstonKit/globals/AppAssets.swift`.
 
 ## Changes from upstream
 
@@ -72,4 +72,4 @@ Pull requests welcome against `main`. Please open an issue first for larger chan
 
 ## License
 
-Winston is open-source, licensed under the GPL-3.0 license. See the LICENSE file for details.
+Helio is open-source, licensed under the GPL-3.0 license. See the LICENSE file for details.

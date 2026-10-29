@@ -17,13 +17,10 @@ struct AboutPanel: View {
       Group {
         Section {
           HStack {
-            Image("winstonNoBG")
-              .resizable()
-              .scaledToFit()
-              .frame(width: 48, height: 48)
+            AppMark(size: 44)
             
             VStack(alignment: .leading) {
-              Text("Marlowe")
+              Text("Helio")
                 .fontSize(20, .bold)
               HStack{
                 Text("v" + (appVersion ?? "-1") + " Build \(build ?? "-1")")
@@ -31,7 +28,7 @@ struct AboutPanel: View {
             }
           }
           
-          Text("Marlowe is a privacy-focused, open-source Reddit client. No analytics, no tracking, no ads, no third-party data collection. Your data stays on your device.")
+          Text("Helio is a privacy-focused, open-source Reddit client. No analytics, no tracking, no ads, no third-party data collection. Your data stays on your device.")
 
           WListButton {
             openURL(URL(string: "https://github.com/phubbard/winston")!)
@@ -49,7 +46,7 @@ struct AboutPanel: View {
         }
 
         Section {
-          Text("Marlowe is free and open source software — a fork of the original Winston by the lo.cafe team, maintained by phubbard.")
+          Text("Helio is free and open source software, built on phubbard's fork of the original Winston by the lo.cafe team.")
           WListButton {
             openURL(URL(string: "https://github.com/lo-cafe/winston")!)
           } label: {

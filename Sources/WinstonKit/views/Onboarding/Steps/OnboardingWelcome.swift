@@ -11,8 +11,7 @@ import SwiftUI
 
 struct OnboardingWelcome: View {
   var nextStep: ()->()
-  @State var showCat = false
-  @State var showMeow = false
+  @State var showMark = false
   @State var showHello = false
   @State var showAppName = false
   @State var showBtn = false
@@ -20,25 +19,21 @@ struct OnboardingWelcome: View {
   var body: some View {
     VStack(spacing: 20) {
       VStack(spacing: 12) {
-        if showCat {
-          Image(.winstonNoBG)
-            .resizable()
-            .scaledToFit()
-            .frame(height: 128)
+        if showMark {
+          AppMark(size: 128)
             .transition(.scaleAndBlur)
         }
         
         VStack(spacing: -2) {
-          if showMeow || showHello {
-            Text(showHello ? "I mean, hello!" : "Meow!")
-              .foregroundColor(showHello ? .primary.opacity(0.75) : .yellow)
-              .fontSize(showHello ? 20 : 24, showHello ? .medium : .bold)
-              .id(showHello ? "Hello!" : "Meow")
+          if showHello {
+            Text("Hello!")
+              .foregroundColor(.primary.opacity(0.75))
+              .fontSize(20, .medium)
               .transition(.scaleAndBlur)
           }
           
           if showAppName {
-            (Text("I'm ").font(Font.system(size: 24, weight: .semibold)).foregroundColor(.primary.opacity(0.75)) + Text("Marlowe").font(Font.system(size: 34, weight: .bold)).foregroundColor(.yellow))
+            (Text("I'm ").font(Font.system(size: 24, weight: .semibold)).foregroundColor(.primary.opacity(0.75)) + Text("Helio").font(Font.system(size: 34, weight: .bold)).foregroundColor(.yellow))
               .transition(.scaleAndBlur)
           }
         }
@@ -52,7 +47,7 @@ struct OnboardingWelcome: View {
       }
         
         if showBtn {
-          MasterButton(label: "👋 Hi, Marlowe!", colorHoverEffect: .animated, textSize: 18, height: 48, cornerRadius: 16, action: nextStep)
+          MasterButton(label: "👋 Hi, Helio!", colorHoverEffect: .animated, textSize: 18, height: 48, cornerRadius: 16, action: nextStep)
             .padding(.top, 16)
             .transition(.scaleAndBlur)
         }
@@ -62,20 +57,17 @@ struct OnboardingWelcome: View {
     .multilineTextAlignment(.center)
     .frame(maxWidth: .infinity)
     .onAppear {
-      if !showCat {
+      if !showMark {
         doThisAfter(0.5) {
-          withAnimation(spring) { showCat = true }
+          withAnimation(spring) { showMark = true }
           doThisAfter(0.85) {
-            withAnimation(spring) { showMeow = true }
-            doThisAfter(0.75) {
-              withAnimation(spring) { showHello = true }
-              doThisAfter(1.25) {
-                withAnimation(spring) { showAppName = true }
-                doThisAfter(1.0) {
-                  withAnimation(spring) { showText = true }
-                  doThisAfter(1.25) {
-                    withAnimation(spring) { showBtn = true }
-                  }
+            withAnimation(spring) { showHello = true }
+            doThisAfter(1.25) {
+              withAnimation(spring) { showAppName = true }
+              doThisAfter(1.0) {
+                withAnimation(spring) { showText = true }
+                doThisAfter(1.25) {
+                  withAnimation(spring) { showBtn = true }
                 }
               }
             }

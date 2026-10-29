@@ -12,29 +12,19 @@ struct EndOfFeedView: View {
   @State private var showAlert = false
 
   var body: some View {
-    ZStack(alignment: .top) {
-      Image(.winstonEOF)
-        .resizable()
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
-        .aspectRatio(contentMode: .fill)
-        .scaledToFill()
-
-      ZStack {
-        Text(QuirkyMessageUtil.quirkyEndOfFeed())
-          .fixedSize(horizontal: false, vertical: true)
-          .font(.system(size: 16, weight: .bold))
-          .foregroundColor(.white)
-          .padding()
-          .background(Color.black.opacity(0.3))
-          .background(Material.ultraThin)
-          .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
-          .multilineTextAlignment(.center)
-          .lineLimit(4)
-      }
-      .padding()
-      .frame(maxWidth: .infinity)
+    VStack(spacing: 10) {
+      Image(systemName: "sun.horizon.fill")
+        .font(.system(size: 36))
+        .foregroundStyle(.orange.gradient)
+      Text(QuirkyMessageUtil.quirkyEndOfFeed())
+        .fixedSize(horizontal: false, vertical: true)
+        .font(.system(size: 16, weight: .bold))
+        .multilineTextAlignment(.center)
+        .lineLimit(4)
     }
-    .overlay(Color.winstonEOFOverlay.opacity(0.5))
+    .padding()
+    .frame(maxWidth: .infinity, maxHeight: .infinity)
+    .background(.quaternary)
     .frame(minWidth: 0, maxWidth: .infinity, minHeight: 150, maxHeight: 150, alignment: .center)
 //    .fixedSize()
     .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
@@ -77,7 +67,6 @@ func quirkyEndOfFeed() -> String {
     "The feed may be over, but your curiosity never ends. 💡",
     "Be excellent to each other!",
     "Maybe it’s time to go outside?",
-    "Meow meow, you reached the bottom or something, meow meow meow",
     "That's enough internet for today... (pls come back)",
     "You've made it to the bottom! Now go touch grass!",
     "AAAAAAAAAAH! It's the end of the feed!!!",

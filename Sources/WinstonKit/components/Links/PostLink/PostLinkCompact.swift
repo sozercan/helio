@@ -17,7 +17,7 @@ struct PostLinkCompactThumbPlaceholder: View, Equatable {
     let scaledCompactModeThumbSize = scaledCompactModeThumbSize()
     Group {
       if theme.type == .winston {
-        Image(.winstonFlat)
+        Image(systemName: "sun.max")
           .resizable()
       } else {
         Image(systemName: "square.text.square")

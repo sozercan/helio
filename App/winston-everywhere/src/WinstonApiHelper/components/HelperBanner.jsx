@@ -146,7 +146,7 @@ const HelperBanner = () => {
   }
 
   function dismiss() {
-    if (confirm("Are you sure you want to dismiss Winston API keys assistant?")) {
+    if (confirm("Are you sure you want to dismiss Helio API keys assistant?")) {
       unzoomRecaptcha()
       setIsWatchingCreds(false)
       setIsWatchingGCaptcha(false)
@@ -224,8 +224,8 @@ const HelperBanner = () => {
             <motion.img
               layout="position"
               layoutId="logo"
-              src="https://winston.cafe/side-winston-tinyfied.png"
-              alt="Winston Logo"
+              src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ccircle cx='50' cy='50' r='19' fill='%23FFC733'/%3E%3Cg stroke='%23FFC733' stroke-width='7' stroke-linecap='round'%3E%3Cpath d='M50 8v12M50 80v12M8 50h12M80 50h12M20.3 20.3l8.5 8.5M71.2 71.2l8.5 8.5M20.3 79.7l8.5-8.5M71.2 28.8l8.5-8.5'/%3E%3C/g%3E%3C/svg%3E"
+              alt="Helio Logo"
             />
             <motion.div layout="position">
               <h1>{title}</h1>
