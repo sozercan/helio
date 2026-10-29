@@ -29,6 +29,10 @@ struct SubredditsStack: View {
         Subreddits(firstDestination: $router.firstSelected, loaded: loaded, currentCredentialID: redditCredentialSelectedID)
           .id("subreddits-list-\(redditCredentialSelectedID)")
           .attachViewControllerToRouter(tabID: .posts)
+#if targetEnvironment(macCatalyst)
+          // The window toolbar has the Mac's sidebar button (`MacTabToolbar`).
+          .toolbar(removing: .sidebarToggle)
+#endif
       }
     } detail: {
       NavigationStack(path: $router.path) {

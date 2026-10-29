@@ -12,12 +12,12 @@ import SwiftDate
 
 let alphabetLetters = Array("ABCDEFGHIJKLMNOPQRSTUVWXYZ").map { String($0) }
 
-/// Mac windows show the subs list on the system's glass sidebar instead of the theme's
-/// background, which would cover it.
+/// Mac windows paint the subs list with the window background instead of the theme's, so it
+/// continues the title bar above it rather than starting below it in another shade.
 #if targetEnvironment(macCatalyst)
-private let usesSystemSidebar = true
+private let usesWindowBackground = true
 #else
-private let usesSystemSidebar = false
+private let usesWindowBackground = false
 #endif
 
 struct Subreddits: View, Equatable {
@@ -188,19 +188,34 @@ struct Subreddits: View, Equatable {
             
           }
         }
-        .themedListSection(disable: usesSystemSidebar)
+        .themedListSection(disable: usesWindowBackground)
       }
       .environment(\.isInSidebar, true)
-      .themedListBG(selectedTheme.lists.bg, disable: usesSystemSidebar)
+      .themedListBG(selectedTheme.lists.bg, disable: usesWindowBackground)
+      .background {
+        if usesWindowBackground { Color(uiColor: .systemBackground).ignoresSafeArea() }
+      }
+      .overlay(alignment: .trailing) {
+        // Without the sidebar's own shade, a hairline marks where the posts start.
+        if usesWindowBackground { Color(uiColor: .separator).frame(width: 1).ignoresSafeArea() }
+      }
       .scrollIndicators(.hidden)
       .listStyle(.sidebar)
       .scrollDismissesKeyboard(.immediately)
       .loader(!loaded && subreddits.count == 0)
       .searchable(text: $searchText, prompt: "Search my subreddits")
       .toolbar {
+#if targetEnvironment(macCatalyst)
+        // A plain text button, as in Mac sidebars, rather than a glass capsule.
         ToolbarItem(placement: .navigationBarTrailing) {
           EditButton()
         }
+        .sharedBackgroundVisibility(.hidden)
+#else
+        ToolbarItem(placement: .navigationBarTrailing) {
+          EditButton()
+        }
+#endif
       }
       .overlay(
         AlphabetJumper(letters: sections.keys.sorted(), proxy: proxy)

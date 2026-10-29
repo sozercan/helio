@@ -13,6 +13,9 @@ import UIKit
 /// sidebar, so anything centered or leading in it, the tab bar and window title included, moved
 /// sideways whenever the tab changed. The trailing edge is the same with or without a sidebar,
 /// so the tabs sit there and the title is hidden. `Tabber` hides UIKit's own tab bar on Mac.
+///
+/// The Posts tab also gets the standard sidebar button, which leads the toolbar like in other
+/// Mac apps, instead of SwiftUI's button inside the subs list.
 final class MacTabToolbar: NSObject, NSToolbarDelegate {
   private static let tabsID = NSToolbarItem.Identifier("winston.tabs")
   private static let tabs: [(Nav.TabIdentifier, String)] = [
@@ -20,6 +23,7 @@ final class MacTabToolbar: NSObject, NSToolbarDelegate {
   ]
 
   private var group: NSToolbarItemGroup?
+  private weak var toolbar: NSToolbar?
 
   /// Gives the scene's window this toolbar, once.
   func install(in scene: UIWindowScene) {
@@ -28,15 +32,25 @@ final class MacTabToolbar: NSObject, NSToolbarDelegate {
     toolbar.delegate = self
     toolbar.displayMode = .iconOnly
     toolbar.allowsUserCustomization = false
+    self.toolbar = toolbar
     titlebar.toolbar = toolbar
     titlebar.toolbarStyle = .unified
     titlebar.titleVisibility = .hidden
   }
 
-  /// Shows `tab` as selected, for tab changes made elsewhere (menu commands, links).
+  /// Shows `tab` as selected, for tab changes made elsewhere (menu commands, links), and the
+  /// sidebar button only where there's a sidebar.
   func select(_ tab: Nav.TabIdentifier) {
-    guard let index = Self.tabs.firstIndex(where: { $0.0 == tab }), group?.selectedIndex != index else { return }
-    group?.selectedIndex = index
+    if let index = Self.tabs.firstIndex(where: { $0.0 == tab }), group?.selectedIndex != index {
+      group?.selectedIndex = index
+    }
+    guard let toolbar else { return }
+    let toggleIndex = toolbar.items.firstIndex { $0.itemIdentifier == .toggleSidebar }
+    if tab == .posts, toggleIndex == nil {
+      toolbar.insertItem(withItemIdentifier: .toggleSidebar, at: 0)
+    } else if tab != .posts, let toggleIndex {
+      toolbar.removeItem(at: toggleIndex)
+    }
   }
 
   @objc private func tabPicked(_ sender: NSToolbarItemGroup) {
@@ -45,11 +59,11 @@ final class MacTabToolbar: NSObject, NSToolbarDelegate {
   }
 
   func toolbarDefaultItemIdentifiers(_ toolbar: NSToolbar) -> [NSToolbarItem.Identifier] {
-    [.flexibleSpace, Self.tabsID]
+    (Nav.shared.activeTab == .posts ? [.toggleSidebar] : []) + [.flexibleSpace, Self.tabsID]
   }
 
   func toolbarAllowedItemIdentifiers(_ toolbar: NSToolbar) -> [NSToolbarItem.Identifier] {
-    toolbarDefaultItemIdentifiers(toolbar)
+    [.toggleSidebar, .flexibleSpace, Self.tabsID]
   }
 
   func toolbar(_ toolbar: NSToolbar, itemForItemIdentifier itemIdentifier: NSToolbarItem.Identifier, willBeInsertedIntoToolbar flag: Bool) -> NSToolbarItem? {
