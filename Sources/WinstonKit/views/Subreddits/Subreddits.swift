@@ -12,6 +12,14 @@ import SwiftDate
 
 let alphabetLetters = Array("ABCDEFGHIJKLMNOPQRSTUVWXYZ").map { String($0) }
 
+/// Mac windows show the subs list on the system's glass sidebar instead of the theme's
+/// background, which would cover it.
+#if targetEnvironment(macCatalyst)
+private let usesSystemSidebar = true
+#else
+private let usesSystemSidebar = false
+#endif
+
 struct Subreddits: View, Equatable {
   static func == (lhs: Subreddits, rhs: Subreddits) -> Bool {
     return lhs.loaded == rhs.loaded && lhs.currentCredentialID == rhs.currentCredentialID
@@ -180,10 +188,10 @@ struct Subreddits: View, Equatable {
             
           }
         }
-        .themedListSection()
+        .themedListSection(disable: usesSystemSidebar)
       }
       .environment(\.isInSidebar, true)
-      .themedListBG(selectedTheme.lists.bg)
+      .themedListBG(selectedTheme.lists.bg, disable: usesSystemSidebar)
       .scrollIndicators(.hidden)
       .listStyle(.sidebar)
       .scrollDismissesKeyboard(.immediately)
