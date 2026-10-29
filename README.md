@@ -1,12 +1,12 @@
 # Helio
 
-[![Build](https://github.com/phubbard/winston/actions/workflows/build.yml/badge.svg)](https://github.com/phubbard/winston/actions/workflows/build.yml)
-![License](https://img.shields.io/github/license/phubbard/winston)
+[![Build](https://github.com/sozercan/winston/actions/workflows/build.yml/badge.svg)](https://github.com/sozercan/winston/actions/workflows/build.yml)
+![License](https://img.shields.io/github/license/sozercan/winston)
 [![Platform](http://img.shields.io/badge/platform-iOS/iPadOS-blue.svg)](https://developer.apple.com/iphone/index.action)
-![GitHub issues](https://img.shields.io/github/issues-raw/phubbard/winston)
-![GitHub release](https://img.shields.io/github/v/release/phubbard/winston)
+![GitHub issues](https://img.shields.io/github/issues-raw/sozercan/winston)
+![GitHub release](https://img.shields.io/github/v/release/sozercan/winston)
 
-Helio is a privacy-focused, open-source Reddit client for iOS and Mac. No analytics, no tracking, no ads, no third-party data collection — your data stays on your device and the app communicates only with Reddit's API. This is an actively maintained fork of the original [lo-cafe/winston](https://github.com/lo-cafe/winston).
+Helio is a privacy-focused, open-source Reddit client for iOS and Mac. No analytics, no tracking, no ads, no third-party data collection — your data stays on your device and the app communicates only with Reddit's API. It builds on [Winston](https://github.com/lo-cafe/winston) by lo.cafe and several of its forks; see [Credits](#credits).
 
 ## Privacy
 
@@ -67,8 +67,13 @@ Pull requests welcome against `main`. Please open an issue first for larger chan
 
 ## Links
 
-- [Report a bug](https://github.com/phubbard/winston/issues)
-- [Original Winston by lo.cafe](https://github.com/lo-cafe/winston)
+- [Report a bug](https://github.com/sozercan/winston/issues)
+
+## Credits
+
+- [Winston](https://github.com/lo-cafe/winston) by the lo.cafe team: the original app
+- [phubbard/winston](https://github.com/phubbard/winston): the fork Helio is based on
+- [eliburke/winston](https://github.com/eliburke/winston) and [d0lb33/winston](https://github.com/d0lb33/winston): forks with fixes ported to Helio
 
 ## License
 

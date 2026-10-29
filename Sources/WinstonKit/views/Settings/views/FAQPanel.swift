@@ -18,8 +18,8 @@ struct FAQPanel: View {
         QuestionAnswer(question: "What's Helio Everywhere?", answer: "Helio Everywhere is a Safari extension that automatically redirects Reddit links to Helio.", systemImage: "safari")
         QuestionAnswer(question: "Is Helio against Reddit's TOS?", answer: "Helio uses your own Reddit API key, which is within Reddit's API terms. It's open source and free, and works similarly to any other API client.", systemImage: "checkmark.shield")
         QuestionAnswer(question: "Why do I need my own API key?", answer: "Reddit requires each app to use API credentials. Helio lets you create your own so you're not dependent on anyone else's quota or keys.", systemImage: "key.horizontal")
-        QuestionAnswer(question: "Where do I report bugs?", answer: "File an issue on GitHub at [phubbard/winston](https://github.com/phubbard/winston/issues).", systemImage: "ladybug")
-        QuestionAnswer(question: "Who maintains this fork?", answer: "This fork is maintained by [phubbard](https://github.com/phubbard). It is based on Winston, originally created by the lo.cafe team — [see the original repo](https://github.com/lo-cafe/winston).", systemImage: "person")
+        QuestionAnswer(question: "Where do I report bugs?", answer: "File an issue on GitHub at [sozercan/winston](https://github.com/sozercan/winston/issues).", systemImage: "ladybug")
+        QuestionAnswer(question: "Where does Helio come from?", answer: "Helio is maintained by [sozercan](https://github.com/sozercan). It builds on Winston, originally created by the [lo.cafe team](https://github.com/lo-cafe/winston), and on the forks by [phubbard](https://github.com/phubbard/winston), [eliburke](https://github.com/eliburke/winston) and [d0lb33](https://github.com/d0lb33/winston).", systemImage: "person")
       }
       .themedListSection()
     }
