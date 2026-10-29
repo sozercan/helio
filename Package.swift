@@ -1,19 +1,19 @@
 // swift-tools-version: 6.2
-// The app's code, dependencies and unit tests. winston.xcodeproj is a thin shell that builds
+// The app's code, dependencies and unit tests. Helio.xcodeproj is a thin shell that builds
 // the iOS app bundle (entry point, Info.plist, entitlements, resources) and the Safari
-// extension on top of the WinstonKit library.
+// extension on top of the HelioKit library.
 
 import PackageDescription
 
 let package = Package(
-  name: "Winston",
+  name: "Helio",
   defaultLocalization: "en",
   platforms: [
     .iOS("26.0"),
     .macCatalyst("26.0"),
   ],
   products: [
-    .library(name: "WinstonKit", targets: ["WinstonKit"]),
+    .library(name: "HelioKit", targets: ["HelioKit"]),
   ],
   dependencies: [
     .package(url: "https://github.com/Alamofire/Alamofire.git", from: "5.0.0"),
@@ -42,7 +42,7 @@ let package = Package(
     // Everything but the app entry point. Resources (asset catalog, strings, Core Data model,
     // shaders, Lottie animations, media) stay in the app bundle, so lookups use Bundle.main.
     .target(
-      name: "WinstonKit",
+      name: "HelioKit",
       dependencies: [
         .product(name: "Alamofire", package: "Alamofire"),
         .product(name: "AlertToast", package: "AlertToast"),
@@ -74,9 +74,9 @@ let package = Package(
       ]
     ),
     .testTarget(
-      name: "WinstonKitTests",
+      name: "HelioKitTests",
       dependencies: [
-        "WinstonKit",
+        "HelioKit",
         .product(name: "Defaults", package: "Defaults"),
         .product(name: "Zip", package: "Zip"),
       ]

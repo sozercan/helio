@@ -1,9 +1,0 @@
-/* Bundle display name */
-"CFBundleDisplayName" = "Helio Everywhere";
-
-/* Bundle name */
-"CFBundleName" = "winston-everywhere";
-
-/* Copyright (human-readable) */
-"NSHumanReadableCopyright" = "";
-

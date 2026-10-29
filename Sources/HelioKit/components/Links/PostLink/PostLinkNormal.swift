@@ -1,0 +1,130 @@
+//
+//  PostLinkNormal.swift
+//  Helio
+//
+//  Created by Igor Marcossi on 25/09/23.
+//
+
+import SwiftUI
+import Defaults
+import NukeUI
+
+struct PostLinkNormalSelftext: View, Equatable {
+  var selftext: String?
+  var theme: ThemeText
+  var body: some View {
+    if let selftext {
+      Text(selftext).lineLimit(3)
+        .fontSize(theme.size, theme.weight.t)
+        .foregroundColor(theme.color())
+        .fixedSize(horizontal: false, vertical: true)
+        .frame(maxWidth: .infinity, alignment: .topLeading)
+    }
+    //      .id("body")
+  }
+}
+
+struct PostLinkNormal: View, Equatable, Identifiable {
+  static func == (lhs: PostLinkNormal, rhs: PostLinkNormal) -> Bool {
+    return lhs.id == rhs.id && lhs.contentWidth == rhs.contentWidth && lhs.secondary == rhs.secondary && lhs.defSettings == rhs.defSettings && lhs.theme == rhs.theme
+  }
+  
+  @Environment(\.contextPost) var post
+  @Environment(\.contextSubreddit) var sub
+  @Environment(\.contextPostHelioData) var helioData
+  var id: String
+  weak var controller: UIViewController?
+  var theme: SubPostsListTheme
+  var showSub = false
+  var secondary = false
+  let contentWidth: CGFloat
+  let defSettings: PostLinkDefSettings
+    
+  func markAsRead() async {
+    Task(priority: .background) { await post.toggleSeen(true) }
+  }
+  
+  func openPost() {
+    Nav.to(.reddit(.post(post)))
+  }
+  
+  func openSubreddit() {
+    if let subName = post.data?.subreddit {
+      withAnimation {
+        Nav.to(.reddit(.subFeed(Subreddit(id: subName))))
+      }
+    }
+  }
+  
+  var over18: Bool { post.data?.over_18 ?? false }
+  
+  @ViewBuilder
+  func mediaComponentCall() -> some View {
+    if let data = post.data {
+      if let extractedMedia = helioData.extractedMedia {
+        MediaPresenter(helioData: helioData, controller: controller, postTitle: data.title, badgeKit: data.badgeKit, avatarImageRequest: helioData.avatarImageRequest, markAsSeen: !defSettings.lightboxReadsPost ? nil : markAsRead, cornerRadius: theme.theme.mediaCornerRadius, blurPostLinkNSFW: defSettings.blurNSFW, media: extractedMedia, over18: over18, compact: false, contentWidth: helioData.postDimensions.mediaSize?.width ?? 0, maxMediaHeightScreenPercentage: defSettings.maxMediaHeightScreenPercentage)
+          .allowsHitTesting(defSettings.isMediaTappable)
+        
+        if case .repost(let repost) = extractedMedia {
+          if let repostHelioData = repost.helioData, let repostSub = repostHelioData.subreddit {
+            PostLink(
+              id: repost.id,
+              controller: controller,
+              theme: theme,
+              showSub: true,
+              secondary: true,
+              compactPerSubreddit: false,
+              contentWidth: contentWidth,
+              defSettings: defSettings
+            )
+            .background(Color.primary.opacity(0.05))
+            .cornerRadius(theme.theme.mediaCornerRadius)
+            .environment(\.contextPost, repost)
+            .environment(\.contextSubreddit, repostSub)
+            .environment(\.contextPostHelioData, repostHelioData)
+          }
+        }
+      }
+    }
+  }
+  
+  var body: some View {
+    if let data = post.data {
+//      let over18 = data.over_18 ?? false
+      VStack(alignment: .leading, spacing: theme.theme.verticalElementsSpacing) {
+        
+        if theme.theme.showDivider && defSettings.dividerPosition == .top { SubsNStuffLine() }
+        
+        if defSettings.titlePosition == .bottom { mediaComponentCall() }
+        
+        VStack(alignment: .leading, spacing: theme.theme.verticalElementsSpacing / 2.5) {
+          PostLinkTitle(attrString: helioData.titleAttr, label: data.title, theme: theme.theme.titleText, size: helioData.postDimensions.titleSize)
+          
+          if !(data.selftext?.isEmpty ?? true) && defSettings.showSelfText, let selftext = data.selftext {
+            PostLinkNormalSelftext(selftext: selftext, theme: theme.theme.bodyText)
+              .lineSpacing(theme.theme.linespacing)
+          }
+        }
+        
+        if defSettings.titlePosition == .top { mediaComponentCall() }
+        
+        if theme.theme.showDivider && defSettings.dividerPosition == .bottom { SubsNStuffLine() }
+        
+        HStack {
+          let newCommentsCount = helioData.seenCommentsCount == nil ? nil : data.num_comments - helioData.seenCommentsCount!
+          BadgeView(avatarRequest: helioData.avatarImageRequest, showAuthorOnPostLinks: defSettings.showAuthor, saved: data.badgeKit.saved, usernameColor: nil, author: data.badgeKit.author, fullname: data.badgeKit.authorFullname, userFlair: data.badgeKit.userFlair, created: data.badgeKit.created, avatarURL: nil, theme: theme.theme.badge, commentsCount: formatBigNumber(data.num_comments), newCommentsCount: newCommentsCount, votesCount: defSettings.showVotesCluster ? nil : formatBigNumber(data.ups), likes: data.likes, openSub: showSub ? openSubreddit : nil, subName: data.subreddit)
+          
+          Spacer()
+          
+          if defSettings.showVotesCluster { VotesCluster(votesKit: data.votesKit, voteAction: post.vote, showUpVoteRatio: defSettings.showUpVoteRatio).fontSize(22, .medium) }
+          
+        }
+      }
+      .postLinkStyle(post: post, sub: sub, theme: theme.theme, size: helioData.postDimensions.size, secondary: secondary, openPost: openPost, readPostOnScroll: defSettings.readOnScroll)
+      .swipyUI(onTap: openPost, actionsSet: defSettings.swipeActions, entity: post, secondary: secondary)
+    }
+  }
+}
+
+//let atr = NSTextAttachment()
+//atr.

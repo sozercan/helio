@@ -1,0 +1,37 @@
+//
+//  injectGlobalDestinations.swift
+//  Helio
+//
+//  Created by Igor Marcossi on 09/12/23.
+//
+
+import SwiftUI
+import Defaults
+
+struct GlobalDestinationsProvider<C: View>: View {
+  @State var nav = Nav.shared
+  
+  @Environment(\.tabBarHeight) private var tabBarHeight
+
+  @ViewBuilder var content: () -> C
+  var body: some View {
+    content()
+      .replyModalPresenter()
+      .sheet(item: $nav.presentingSheet) { data in
+        GeometryReader { geo in
+          Group {
+            switch data {
+            case .editingTheme(let theme): ThemeEditPanel(theme: theme)
+            case .editingCredential(let cred): CredentialEditStack(credential: cred).id("editing-credential-view-\(cred.id)")
+            case .onboarding: Onboarding().interactiveDismissDisabled(true)
+            case .selectText(let text): SelectableTextSheet(markdown: text)
+            }
+          }
+          .environment(\.tabBarHeight, tabBarHeight)
+          .environment(\.sheetHeight, geo.size.height)
+        }
+        .coordinateSpace(name: "sheet")
+        .environment(\.brighterBG, true)
+      }
+  }
+}

@@ -1,0 +1,138 @@
+//
+//  AppContent.swift
+//  Helio
+//
+//  Created by Igor Marcossi on 31/12/23.
+//
+
+import SwiftUI
+import Defaults
+
+struct AppContent: View {
+    @Environment(\.scenePhase) var scenePhase
+    
+    //  @Default(.ThemesDefSettings) private var themesDefSettings
+    @Default(.GeneralDefSettings) private var generalDefSettings
+    @Default(.AppearanceDefSettings) private var appearanceDefSettings
+    @Default(.BehaviorDefSettings) private var behaviorDefSettings
+    
+    //  var selectedTheme: HelioTheme { themesDefSettings.themesPresets.first { $0.id == themesDefSettings.selectedThemeID } ?? defaultTheme }
+    
+    let biometrics = Biometrics()
+    @State private var isAuthenticating = false
+    @State private var tabBarHeight: Double = 0
+    @State private var lockBlur: Int = 0 // Set initial startup blur (why wasn't this 0 initially??)
+    @State private var restartAlert = false
+    
+    func setTabBarHeight(_ val: Double) {
+        tabBarHeight = val
+    }
+    
+    var body: some View {
+        AccountSwitcherProvider {
+            GlobalDestinationsProvider {
+                Tabber(theme: InMemoryTheme.shared.currentTheme)
+            }
+        }
+        .whatsNewSheet()
+        .environment(\.tabBarHeight, tabBarHeight)
+        .environment(\.setTabBarHeight, setTabBarHeight)
+        // The current width for every tab's feeds; the posts column overrides it with its own.
+        .environment(\.contentWidth, WindowMetrics.shared.contentWidth)
+        .environment(\.useTheme, InMemoryTheme.shared.currentTheme)
+        .environment(\.enableSwipeAnywhere, behaviorDefSettings.enableSwipeAnywhere)
+        .readsWindowMetrics()
+        .onAppear {
+            Defaults[.ThemesDefSettings].themesPresets = Defaults[.ThemesDefSettings].themesPresets.filter { $0.id != "default" }
+        }
+        .onChange(of: InMemoryTheme.shared.currentTheme, initial: false) { old, new in
+            restartAlert = old.general != new.general
+        }
+        .alert("Restart required", isPresented: $restartAlert) {
+            Button("Gotcha!", role: .cancel) {
+                restartAlert = false
+            }
+        } message: {
+            Text("This theme changes a few settings (like the visuals of tab/nav bars) that requires an app restart to take effect.")
+        }
+        .onChange(of: scenePhase) { _, newPhase in
+            // No auth on MacOS
+            var runningOnMac = false
+#if os(macOS) || targetEnvironment(macCatalyst)
+            runningOnMac = true
+#endif
+            
+            let useAuth = generalDefSettings.useAuth // Get fresh value
+            
+            if (useAuth && !runningOnMac) {
+                if (!isAuthenticating && newPhase == .active && lockBlur != 0){
+                    // Not authing, active and blur visible = Need to auth
+                    isAuthenticating = true
+                    biometrics.authenticateUser { success in
+                        isAuthenticating = false
+                        if success {
+                            lockBlur = 0
+                        }
+                    }
+                }
+                else if (newPhase != .active) {
+                    // Auth enabled but not active = blur
+                    lockBlur = 50
+                }
+            } else {
+                // Auth not enabled = No blur
+                lockBlur = 0
+                isAuthenticating = false
+            }
+            
+            switch newPhase {
+            case .active :
+                guard let name = shortcutItemToProcess?.userInfo?["name"] as? String else {
+                    return
+                }
+                switch name {
+                case savedKeyword:
+                    print("\(savedKeyword) is selected")
+                case "search":
+                    print("search is selected")
+                    // MANDRAKE
+                    // activeTab = .search // Set the active tab to "Search"
+                default:
+                    print("default " + name)
+                }
+            case .inactive:
+                // inactive
+                break
+            case .background:
+                addQuickActions()
+            @unknown default:
+                print("default")
+            }
+        }
+        .blur(radius: CGFloat(lockBlur)) // Set lockscreen blur
+        .preferredColorScheme(appearanceDefSettings.colorScheme.colorScheme)
+    }
+    
+    func addQuickActions() {
+        @FetchRequest(sortDescriptors: [NSSortDescriptor(key: "name", ascending: true)], animation: .default) var subreddits: FetchedResults<CachedSub>
+        
+        var searchUserInfo: [String: NSSecureCoding] {
+            return ["name" : "search" as NSSecureCoding]
+        }
+        var savedInfo: [String: NSSecureCoding] {
+            return ["name" : savedKeyword as NSSecureCoding]
+        }
+        var statususerInfo: [String: NSSecureCoding] {
+            return ["name" : "status" as NSSecureCoding]
+        }
+        var contactuserInfo: [String: NSSecureCoding] {
+            return ["name" : "contact" as NSSecureCoding]
+        }
+        
+        UIApplication.shared.shortcutItems = [
+            UIApplicationShortcutItem(type: "Search", localizedTitle: "Search", localizedSubtitle: "Search a Subreddit", icon: UIApplicationShortcutIcon(type: .search), userInfo: searchUserInfo),
+            UIApplicationShortcutItem(type: "Saved", localizedTitle: "Saved", localizedSubtitle: "", icon: UIApplicationShortcutIcon(type: .bookmark), userInfo: savedInfo),
+        ]
+        
+    }
+}
