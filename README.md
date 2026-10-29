@@ -71,9 +71,11 @@ Pull requests welcome against `main`. Please open an issue first for larger chan
 
 ## Credits
 
-- [Winston](https://github.com/lo-cafe/winston) by the lo.cafe team: the original app
-- [phubbard/winston](https://github.com/phubbard/winston): the fork Helio is based on
-- [eliburke/winston](https://github.com/eliburke/winston) and [d0lb33/winston](https://github.com/d0lb33/winston): forks with fixes ported to Helio
+Helio builds on [Winston](https://github.com/lo-cafe/winston) by the lo.cafe team and these forks:
+
+- [phubbard/winston](https://github.com/phubbard/winston)
+- [eliburke/winston](https://github.com/eliburke/winston)
+- [d0lb33/winston](https://github.com/d0lb33/winston)
 
 ## License
 

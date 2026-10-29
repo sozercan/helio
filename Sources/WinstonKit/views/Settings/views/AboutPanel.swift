@@ -7,14 +7,6 @@
 
 import SwiftUI
 
-/// The projects Helio is built from, credited in About.
-private let credits: [(name: String, role: String, repo: String)] = [
-  ("Winston by lo.cafe", "The original app", "lo-cafe/winston"),
-  ("phubbard", "The fork Helio is based on", "phubbard/winston"),
-  ("eliburke", "Fork with fixes ported to Helio", "eliburke/winston"),
-  ("d0lb33", "Fork with fixes ported to Helio", "d0lb33/winston"),
-]
-
 struct AboutPanel: View {
   let appVersion = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String
   let build = Bundle.main.infoDictionary?["CFBundleVersion"] as? String
@@ -54,19 +46,7 @@ struct AboutPanel: View {
         }
 
         Section {
-          Text("Helio is free and open source software. It builds on Winston and the forks below.")
-          ForEach(credits, id: \.repo) { credit in
-            WListButton {
-              openURL(URL(string: "https://github.com/\(credit.repo)")!)
-            } label: {
-              VStack(alignment: .leading, spacing: 2) {
-                Text(credit.name).foregroundStyle(Color.accentColor)
-                Text(credit.role).font(.footnote).foregroundStyle(.secondary)
-              }
-            }
-          }
-        } header: {
-          Text("Credits")
+          Text("Helio is free and open source software, built on Winston by the lo.cafe team and its community forks.")
         }
       }
       .themedListSection()
