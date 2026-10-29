@@ -45,7 +45,7 @@ struct Settings: View {
             .disabled(getCurrentChangelog().isEmpty)
             
               WSListButton("Report a Bug", icon: "ladybug.fill") {
-                openURL(URL(string: "https://github.com/sozercan/winston/issues")!)
+                openURL(URL(string: "https://github.com/sozercan/helio/issues")!)
               }
 
           }

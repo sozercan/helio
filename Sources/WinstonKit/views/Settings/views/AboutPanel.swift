@@ -39,7 +39,7 @@ struct AboutPanel: View {
           Text("Helio is a privacy-focused, open-source Reddit client. No analytics, no tracking, no ads, no third-party data collection. Your data stays on your device.")
 
           WListButton {
-            openURL(URL(string: "https://github.com/sozercan/winston")!)
+            openURL(URL(string: "https://github.com/sozercan/helio")!)
           } label: {
             Label("View on GitHub", systemImage: "arrow.branch").foregroundStyle(Color.accentColor)
           }
