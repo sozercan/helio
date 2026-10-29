@@ -195,27 +195,14 @@ struct Subreddits: View, Equatable {
       .background {
         if usesWindowBackground { Color(uiColor: .systemBackground).ignoresSafeArea() }
       }
-      .overlay(alignment: .trailing) {
-        // Without the sidebar's own shade, a hairline marks where the posts start.
-        if usesWindowBackground { Color(uiColor: .separator).frame(width: 1).ignoresSafeArea() }
-      }
       .scrollIndicators(.hidden)
       .listStyle(.sidebar)
       .scrollDismissesKeyboard(.immediately)
       .loader(!loaded && subreddits.count == 0)
-      .searchable(text: $searchText, prompt: "Search my subreddits")
-      .toolbar {
-#if targetEnvironment(macCatalyst)
-        // A plain text button, as in Mac sidebars, rather than a glass capsule.
-        ToolbarItem(placement: .navigationBarTrailing) {
-          EditButton()
-        }
-        .sharedBackgroundVisibility(.hidden)
-#else
-        ToolbarItem(placement: .navigationBarTrailing) {
-          EditButton()
-        }
-#endif
+      .subsSearchAndEdit($searchText)
+      .overlay(alignment: .trailing) {
+        // Without the sidebar's own shade, a hairline marks where the posts start.
+        if usesWindowBackground { Color(uiColor: .separator).frame(width: 1).ignoresSafeArea() }
       }
       .overlay(
         AlphabetJumper(letters: sections.keys.sorted(), proxy: proxy)
@@ -260,3 +247,57 @@ struct Subreddits: View, Equatable {
 //    Posts()
 //  }
 //}
+
+private extension View {
+  /// The subs list's search field and Edit button. iOS keeps them in the navigation bar. On Mac
+  /// that bar floats over the rows, which show through behind it, so the list gets a plain
+  /// header above it instead.
+  @ViewBuilder
+  func subsSearchAndEdit(_ searchText: Binding<String>) -> some View {
+#if targetEnvironment(macCatalyst)
+    safeAreaInset(edge: .top, spacing: 0) { MacSubsHeader(searchText: searchText) }
+      .toolbar(.hidden, for: .navigationBar)
+#else
+    searchable(text: searchText, prompt: "Search my subreddits")
+      .toolbar {
+        ToolbarItem(placement: .navigationBarTrailing) {
+          EditButton()
+        }
+      }
+#endif
+  }
+}
+
+#if targetEnvironment(macCatalyst)
+private struct MacSubsHeader: View {
+  @Binding var searchText: String
+
+  var body: some View {
+    HStack(spacing: 10) {
+      HStack(spacing: 6) {
+        Image(systemName: "magnifyingglass")
+          .foregroundStyle(.secondary)
+        TextField("Search my subreddits", text: $searchText)
+          .textFieldStyle(.plain)
+          // The capsule is the field; a focus ring inside it would be a second outline.
+          .focusEffectDisabled()
+        if !searchText.isEmpty {
+          Button("Clear search", systemImage: "xmark.circle.fill") { searchText = "" }
+            .labelStyle(.iconOnly)
+            .buttonStyle(.borderless)
+            .foregroundStyle(.secondary)
+        }
+      }
+      .padding(.horizontal, 10)
+      .padding(.vertical, 6)
+      .background(Color(uiColor: .tertiarySystemFill), in: Capsule())
+
+      EditButton()
+        .buttonStyle(.borderless)
+    }
+    .padding(.horizontal, 12)
+    .padding(.vertical, 8)
+    .background(Color(uiColor: .systemBackground))
+  }
+}
+#endif
