@@ -8,7 +8,7 @@
 import Foundation
 import Alamofire
 
-private let queue = DispatchQueue(label: "com.sozercan.helio.hide.timer", attributes: .initiallyInactive)
+private let queue = DispatchQueue(label: "com.sertacozercan.helio.hide.timer", attributes: .initiallyInactive)
 
 private class HideDebouncer {
   static var shared = HideDebouncer()

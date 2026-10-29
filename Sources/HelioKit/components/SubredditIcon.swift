@@ -22,7 +22,7 @@ import NukeUI
 ////    }())
 ////    
 ////    $0.imageCache = ImageCache()
-////    $0.dataCache = try? DataCache(name: "com.sozercan.helio-cache")
+////    $0.dataCache = try? DataCache(name: "com.sertacozercan.helio-cache")
 ////  }
 //  
 //  var body: some View {

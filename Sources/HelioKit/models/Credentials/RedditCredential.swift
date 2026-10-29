@@ -14,7 +14,7 @@ import Combine
 
 struct RedditCredential: Identifiable, Equatable, Hashable, Codable {
     static func defaultUserAgent(userName: String? = nil) -> String {
-        return "ios:com.sozercan.helio:v1.6.0 (by /u/\(userName ?? "UnknownUser"))"
+        return "ios:com.sertacozercan.helio:v1.6.0 (by /u/\(userName ?? "UnknownUser"))"
     }
     
     enum CodingKeys: String, CodingKey { case id, apiAppID, apiAppSecret, accessToken, refreshToken, userName, profilePicture, _userAgent }

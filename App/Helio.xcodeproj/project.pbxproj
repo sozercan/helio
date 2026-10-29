@@ -764,7 +764,7 @@
 				CODE_SIGN_STYLE = Automatic;
 				GENERATE_INFOPLIST_FILE = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.sozercan.helio.HelioUITests;
+				PRODUCT_BUNDLE_IDENTIFIER = com.sertacozercan.helio.HelioUITests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = iphoneos;
 				SWIFT_EMIT_LOC_STRINGS = NO;
@@ -782,7 +782,7 @@
 				CODE_SIGN_STYLE = Automatic;
 				GENERATE_INFOPLIST_FILE = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.sozercan.helio.HelioUITests;
+				PRODUCT_BUNDLE_IDENTIFIER = com.sertacozercan.helio.HelioUITests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = iphoneos;
 				SWIFT_EMIT_LOC_STRINGS = NO;
@@ -953,7 +953,7 @@
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 1.6.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.sozercan.helio;
+				PRODUCT_BUNDLE_IDENTIFIER = com.sertacozercan.helio;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SCAN_ALL_SOURCE_FILES_FOR_INCLUDES = NO;
 				SUPPORTS_MACCATALYST = YES;
@@ -999,7 +999,7 @@
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 1.6.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.sozercan.helio;
+				PRODUCT_BUNDLE_IDENTIFIER = com.sertacozercan.helio;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SCAN_ALL_SOURCE_FILES_FOR_INCLUDES = NO;
 				SUPPORTS_MACCATALYST = YES;
@@ -1034,7 +1034,7 @@
 					"-framework",
 					SafariServices,
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = com.sozercan.helio.everywhere;
+				PRODUCT_BUNDLE_IDENTIFIER = com.sertacozercan.helio.everywhere;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				PROVISIONING_PROFILE_SPECIFIER = "";
 				SKIP_INSTALL = YES;
@@ -1068,7 +1068,7 @@
 					"-framework",
 					SafariServices,
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = com.sozercan.helio.everywhere;
+				PRODUCT_BUNDLE_IDENTIFIER = com.sertacozercan.helio.everywhere;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				PROVISIONING_PROFILE_SPECIFIER = "";
 				SKIP_INSTALL = YES;

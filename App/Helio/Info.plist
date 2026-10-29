@@ -21,7 +21,7 @@
 			<string>Owner</string>
 			<key>LSItemContentTypes</key>
 			<array>
-				<string>com.sozercan.helio.theme-file</string>
+				<string>com.sertacozercan.helio.theme-file</string>
 			</array>
 		</dict>
 		<dict>
@@ -41,7 +41,7 @@
 			<key>CFBundleTypeRole</key>
 			<string>Viewer</string>
 			<key>CFBundleURLName</key>
-			<string>com.sozercan.helio</string>
+			<string>com.sertacozercan.helio</string>
 			<key>CFBundleURLSchemes</key>
 			<array>
 				<string>helioapp</string>
@@ -85,7 +85,7 @@
 				<string>themeFileIcon</string>
 			</array>
 			<key>UTTypeIdentifier</key>
-			<string>com.sozercan.helio.theme-file</string>
+			<string>com.sertacozercan.helio.theme-file</string>
 			<key>UTTypeTagSpecification</key>
 			<dict>
 				<key>public.filename-extension</key>
