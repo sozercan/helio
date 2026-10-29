@@ -8,7 +8,7 @@ on:
 
 jobs:
   build:
-    runs-on: macos-15
+    runs-on: macos-26
 
     steps:
       - name: Checkout
@@ -21,10 +21,22 @@ jobs:
         with:
           xcode-version: latest-stable
 
+      - name: Unit tests
+        run: |
+          xcodebuild \
+            -scheme WinstonKit \
+            -destination 'platform=iOS Simulator,name=iPhone 17 Pro' \
+            -skipPackagePluginValidation \
+            test
+
+      # Xcode 26 ships the Metal toolchain as a separate component; the app has shaders.
+      - name: Install Metal toolchain
+        run: xcodebuild -downloadComponent MetalToolchain
+
       - name: Build
         run: |
           xcodebuild \
-            -project winston.xcodeproj \
+            -project App/winston.xcodeproj \
             -scheme winston \
             -destination 'generic/platform=iOS' \
             -skipPackagePluginValidation \

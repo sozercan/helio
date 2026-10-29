@@ -1,0 +1,7 @@
+const openInWinstonBanner = `<div id="winstonBanner"> <img src="https://winston.cafe/james-webb.jpg" class="winstonBannerBg"><div class="logoHeyWrapper"> <img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ccircle cx='50' cy='50' r='19' fill='%23FFC733'/%3E%3Cg stroke='%23FFC733' stroke-width='7' stroke-linecap='round'%3E%3Cpath d='M50 8v12M50 80v12M8 50h12M80 50h12M20.3 20.3l8.5 8.5M71.2 71.2l8.5 8.5M20.3 79.7l8.5-8.5M71.2 28.8l8.5-8.5'/%3E%3C/g%3E%3C/svg%3E"><div>Hey!</div></div><a href="winstonapp:/${url}" class="openInWinstonButton">Open in Helio!</a><button id="closeBannerButton" style="">X</button></div>`
+document.body.insertAdjacentHTML("beforeend", openInWinstonBanner)
+setTimeout(() => {
+  document.getElementById("closeBannerButton").addEventListener("click", function () {
+    removeElementByQuery("#winstonBanner")
+  })
+}, 100)

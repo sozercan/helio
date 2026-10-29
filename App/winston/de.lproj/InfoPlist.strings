@@ -1,0 +1,18 @@
+/* Bundle display name */
+"CFBundleDisplayName" = "Helio";
+
+/* Bundle name */
+"CFBundleName" = "Helio";
+
+/* Privacy - Documents Folder Usage Description */
+"NSDocumentsFolderUsageDescription" = "Helio benötigt Zugriff auf Ihre Dokumente, um Designs speichern/importieren zu können.";
+
+/* Privacy - Face ID Usage Description */
+"NSFaceIDUsageDescription" = "Verwende FaceID, um Helio zu sperren und zu entsperren";
+
+/* Privacy - Photo Library Usage Description */
+"NSPhotoLibraryUsageDescription" = "Helio benötigt Zugriff auf Ihre Bibliothek, um Bilder herunterladen zu können.";
+
+/* (No Comment) */
+"Helio theme file" = "Helio Theme-Datei";
+

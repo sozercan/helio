@@ -1,0 +1,10 @@
+{
+    "extension_name": {
+        "message": "Helio Everywhere",
+        "description": "Open Reddit links directly in Helio!"
+    },
+    "extension_description": {
+        "message": "This is Helio Everywhere, an extension that allows opening Reddit links directly in Helio.",
+        "description": "Open Reddit links directly in Helio!"
+    }
+}

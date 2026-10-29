@@ -1,0 +1,2 @@
+/* Bundle name: the app menu and other places macOS shows the short name */
+"CFBundleName" = "Helio";
