@@ -7,11 +7,12 @@
 import SwiftUI
 import UIKit
 
-/// The Mac window's toolbar, with the tab switcher centered on the window.
+/// The Mac window's toolbar, with the tab switcher at its trailing edge.
 ///
-/// UIKit's own tab bar follows the selected tab's layout: over the Posts tab's split view it
-/// centers on the posts column, elsewhere on the window, so it jumped sideways whenever the tab
-/// changed. A toolbar we own stays put, and `Tabber` hides UIKit's tab bar on Mac.
+/// While a split view shows its sidebar (the Posts tab), the window's toolbar starts after the
+/// sidebar, so anything centered or leading in it, the tab bar and window title included, moved
+/// sideways whenever the tab changed. The trailing edge is the same with or without a sidebar,
+/// so the tabs sit there and the title is hidden. `Tabber` hides UIKit's own tab bar on Mac.
 final class MacTabToolbar: NSObject, NSToolbarDelegate {
   private static let tabsID = NSToolbarItem.Identifier("winston.tabs")
   private static let tabs: [(Nav.TabIdentifier, String)] = [
@@ -27,9 +28,9 @@ final class MacTabToolbar: NSObject, NSToolbarDelegate {
     toolbar.delegate = self
     toolbar.displayMode = .iconOnly
     toolbar.allowsUserCustomization = false
-    toolbar.centeredItemIdentifiers = [Self.tabsID]
     titlebar.toolbar = toolbar
     titlebar.toolbarStyle = .unified
+    titlebar.titleVisibility = .hidden
   }
 
   /// Shows `tab` as selected, for tab changes made elsewhere (menu commands, links).
@@ -44,7 +45,7 @@ final class MacTabToolbar: NSObject, NSToolbarDelegate {
   }
 
   func toolbarDefaultItemIdentifiers(_ toolbar: NSToolbar) -> [NSToolbarItem.Identifier] {
-    [.flexibleSpace, Self.tabsID, .flexibleSpace]
+    [.flexibleSpace, Self.tabsID]
   }
 
   func toolbarAllowedItemIdentifiers(_ toolbar: NSToolbar) -> [NSToolbarItem.Identifier] {
@@ -91,4 +92,5 @@ struct MacTabToolbarInstaller: UIViewRepresentable {
     }
   }
 }
+
 #endif
