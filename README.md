@@ -6,7 +6,7 @@
 ![GitHub issues](https://img.shields.io/github/issues-raw/sozercan/helio)
 ![GitHub release](https://img.shields.io/github/v/release/sozercan/helio)
 
-Helio is a privacy-focused, open-source Reddit client for iOS and Mac. No analytics, no tracking, no ads, no third-party data collection — your data stays on your device and the app communicates only with Reddit's API. It builds on [Winston](https://github.com/lo-cafe/winston) by lo.cafe and several of its forks; see [Credits](#credits).
+Helio is a privacy-focused, open-source Reddit client for iOS and Mac. No analytics, no tracking, no ads, no third-party data collection — your data stays on your device and the app communicates only with Reddit's API. It builds on [Winston](https://github.com/lo-cafe/winston) by the lo.cafe team and its [community forks](#credits).
 
 ## Privacy
 
@@ -71,7 +71,7 @@ Pull requests welcome against `main`. Please open an issue first for larger chan
 
 ## Credits
 
-Helio builds on [Winston](https://github.com/lo-cafe/winston) by the lo.cafe team and these forks:
+Helio is free and open source software. It builds on [Winston](https://github.com/lo-cafe/winston) by the lo.cafe team and its community forks:
 
 - [phubbard/winston](https://github.com/phubbard/winston)
 - [eliburke/winston](https://github.com/eliburke/winston)
