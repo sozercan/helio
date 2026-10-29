@@ -20,6 +20,9 @@ struct Tabber: View {
     @Environment(\.colorScheme) private var colorScheme
     @Environment(\.setTabBarHeight) private var setTabBarHeight
     @Default(.AppearanceDefSettings) private var appearanceDefSettings
+#if targetEnvironment(macCatalyst)
+    @State private var macTabToolbar = MacTabToolbar()
+#endif
     
     func meTabTap() {
         if nav.activeTab == .me {
@@ -55,6 +58,7 @@ struct Tabber: View {
                 SubredditsStack(router: nav[.posts])
             }
             .measureTabBar(setTabBarHeight)
+            .hidesTabBarOnMac()
             .tag(Nav.TabIdentifier.posts)
             .tabItem { Label("Posts", systemImage: "doc.text.image") }
             
@@ -62,6 +66,7 @@ struct Tabber: View {
                 Inbox(router: nav[.inbox])
             }
             .measureTabBar(setTabBarHeight)
+            .hidesTabBarOnMac()
             .tag(Nav.TabIdentifier.inbox)
             .tabItem { Label("Inbox", systemImage: "bell.fill") }
             
@@ -69,6 +74,7 @@ struct Tabber: View {
                 Me(router: nav[.me])
             }
             .measureTabBar(setTabBarHeight)
+            .hidesTabBarOnMac()
             .tag(Nav.TabIdentifier.me)
             .tabItem {
                 Label(
@@ -80,11 +86,13 @@ struct Tabber: View {
                 Search(router: nav[.search])
             }
             .measureTabBar(setTabBarHeight)
+            .hidesTabBarOnMac()
             .tag(Nav.TabIdentifier.search)
             .tabItem { Label("Search", systemImage: "magnifyingglass") }
             
             Settings(router: nav[.settings])
                 .measureTabBar(setTabBarHeight)
+                .hidesTabBarOnMac()
                 .tag(Nav.TabIdentifier.settings)
                 .tabItem { Label("Settings", systemImage: "gearshape.fill") }
             
@@ -106,6 +114,22 @@ struct Tabber: View {
             }
         }
         .accentColor(currentTheme.general.accentColor())
+#if targetEnvironment(macCatalyst)
+        .background(MacTabToolbarInstaller(toolbar: macTabToolbar))
+        .onChange(of: nav.activeTab) { _, tab in macTabToolbar.select(tab) }
+#endif
+    }
+}
+
+private extension View {
+    /// Mac shows the tabs in `MacTabToolbar` instead.
+    @ViewBuilder
+    func hidesTabBarOnMac() -> some View {
+#if targetEnvironment(macCatalyst)
+        toolbar(.hidden, for: .tabBar)
+#else
+        self
+#endif
     }
 }
 
