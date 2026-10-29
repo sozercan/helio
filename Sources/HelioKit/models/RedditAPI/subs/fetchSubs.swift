@@ -62,7 +62,7 @@ extension RedditAPI {
     
     await context.perform(schedule: .enqueued) {
       let fetchRequest = NSFetchRequest<CachedSub>(entityName: "CachedSub")
-      fetchRequest.predicate = NSPredicate(format: "winstonCredentialID == %@", credentialID as CVarArg)
+      fetchRequest.predicate = NSPredicate(format: "helioCredentialID == %@", credentialID as CVarArg)
       do {
         let results = try context.fetch(fetchRequest)
 
@@ -139,7 +139,7 @@ extension RedditAPI {
   //      let context = PersistenceController.shared.container.viewContext
   //
   //      let fetchRequest = NSFetchRequest<CachedSub>(entityName: "CachedSub")
-  //      fetchRequest.predicate = NSPredicate(format: "winstonCredentialID == %@", currentCredentialID as CVarArg)
+  //      fetchRequest.predicate = NSPredicate(format: "helioCredentialID == %@", currentCredentialID as CVarArg)
   //      let results = (context.performAndWait { try? context.fetch(fetchRequest) }) ?? []
   //      results.forEach { cachedSub in
   //        context.performAndWait {

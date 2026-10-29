@@ -24,7 +24,7 @@ extension CachedMulti {
   @NSManaged public var path: String?
   @NSManaged public var uuid: String?
   @NSManaged public var subreddits: Set<CachedSub>?
-  @NSManaged public var winstonCredentialID: UUID?
+  @NSManaged public var helioCredentialID: UUID?
   
   convenience init(data: MultiData, context: NSManagedObjectContext, credentialID: UUID) {
     self.init(context: context)
@@ -42,7 +42,7 @@ extension CachedMulti {
     guard let currentCredentialID = RedditCredentialsManager.shared.selectedCredential?.id else { return [] }
     var cachedSubs: [String:CachedSub] = [:]
     let fetchRequest = NSFetchRequest<CachedSub>(entityName: "CachedSub")
-      fetchRequest.predicate = NSPredicate(format: "winstonCredentialID == %@", currentCredentialID as CVarArg)
+      fetchRequest.predicate = NSPredicate(format: "helioCredentialID == %@", currentCredentialID as CVarArg)
     if let results = (context.performAndWait { try? context.fetch(fetchRequest) }) {
       results.forEach { cachedSub in
         context.performAndWait {
@@ -74,7 +74,7 @@ extension CachedMulti {
     self.path = data.path
     self.uuid = data.id
     self.subreddits = Set(subs)
-    self.winstonCredentialID = credentialID
+    self.helioCredentialID = credentialID
   }
   
 }

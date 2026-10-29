@@ -4,14 +4,9 @@
 <dict>
 	<key>aps-environment</key>
 	<string>development</string>
-	<key>com.apple.developer.associated-domains</key>
-	<array>
-		<string>applinks:app.winston.cafe</string>
-		<string>applinks:app.winston.lo.cafe</string>
-	</array>
 	<key>com.apple.developer.icloud-container-identifiers</key>
 	<array>
-		<string>iCloud.net.phfactor.winston</string>
+		<string>iCloud.com.sozercan.helio</string>
 	</array>
 	<key>com.apple.developer.icloud-services</key>
 	<array>
@@ -20,7 +15,7 @@
 	</array>
 	<key>com.apple.developer.ubiquity-container-identifiers</key>
 	<array>
-		<string>iCloud.net.phfactor.winston</string>
+		<string>iCloud.com.sozercan.helio</string>
 	</array>
 	<key>com.apple.developer.ubiquity-kvstore-identifier</key>
 	<string>$(TeamIdentifierPrefix)$(CFBundleIdentifier)</string>

@@ -18,10 +18,10 @@ class RedditAPI {
     static let shared = RedditAPI()
     static let redditApiURLBase = "https://oauth.reddit.com"
     static let redditWWWApiURLBase = "https://www.reddit.com"
-    static let appURLScheme = "winstonapp"
+    static let appURLScheme = "helioapp"
     /// Reddit only accepts https redirects for web-app keys (the ones with a secret). This page
-    /// forwards the query to `winstonapp://auth-success`, where `authorize` picks it up.
-    static let appRedirectURI: String = "https://www.phfactor.net/winston/auth-success"
+    /// forwards the query to `helioapp://auth-success`, where `authorize` picks it up.
+    static let appRedirectURI: String = "https://sozercan.github.io/helio/auth-success"
     
     var me: User?
     
@@ -188,7 +188,7 @@ class RedditAPI {
     enum AuthorizationResult { case code(String), cancelled, failed }
     
     /// Runs Reddit's OAuth consent page in an in-app browser session and returns the
-    /// authorization code once the redirect page forwards to `winstonapp://auth-success`.
+    /// authorization code once the redirect page forwards to `helioapp://auth-success`.
     @MainActor
     func authorize(appID: String, using session: WebAuthenticationSession) async -> AuthorizationResult {
         let state = UUID().uuidString

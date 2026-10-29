@@ -11,7 +11,7 @@ import CoreData
 func cleanCredentialOrphanEntities() {
   func clean(_ e: String) {
     let context = PersistenceController.shared.container.viewContext
-    let predicates = RedditCredentialsManager.shared.credentials.map { NSPredicate(format: "winstonCredentialID != %@", $0.id as CVarArg)  }
+    let predicates = RedditCredentialsManager.shared.credentials.map { NSPredicate(format: "helioCredentialID != %@", $0.id as CVarArg)  }
     let fetchRequest: NSFetchRequest<NSFetchRequestResult> = NSFetchRequest(entityName: e)
     fetchRequest.predicate = NSCompoundPredicate(andPredicateWithSubpredicates: predicates)
     let deleteRequest = NSBatchDeleteRequest(fetchRequest: fetchRequest)

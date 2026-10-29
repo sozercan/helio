@@ -23,7 +23,7 @@ extension RedditAPI {
       
       _ = await context.perform(schedule: .enqueued) {
         let multisFetchRequest = NSFetchRequest<CachedMulti>(entityName: "CachedMulti")
-        multisFetchRequest.predicate = NSPredicate(format: "winstonCredentialID == %@", currentCredentialID as CVarArg)
+        multisFetchRequest.predicate = NSPredicate(format: "helioCredentialID == %@", currentCredentialID as CVarArg)
         
         do {
           let existingMultis = try context.fetch(multisFetchRequest)
@@ -74,7 +74,7 @@ extension RedditAPI {
   //      let context = PersistenceController.shared.container.newBackgroundContext()
   //
   //      let multisFetchRequest = NSFetchRequest<CachedMulti>(entityName: "CachedMulti")
-  //      multisFetchRequest.predicate = NSPredicate(format: "winstonCredentialID == %@", currentCredentialID as CVarArg)
+  //      multisFetchRequest.predicate = NSPredicate(format: "helioCredentialID == %@", currentCredentialID as CVarArg)
   //      let multisResults = (context.performAndWait { try? context.fetch(multisFetchRequest) }) ?? []
   //
   //      data.forEach { c in

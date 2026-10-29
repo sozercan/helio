@@ -82,7 +82,7 @@ extension Subreddit {
     if let data = data {
       @Sendable func doToggle() {
         let fetchRequest = NSFetchRequest<CachedSub>(entityName: "CachedSub")
-        fetchRequest.predicate = NSPredicate(format: "winstonCredentialID == %@", currentCredentialID as CVarArg)
+        fetchRequest.predicate = NSPredicate(format: "helioCredentialID == %@", currentCredentialID as CVarArg)
         guard let results = (context.performAndWait { return try? context.fetch(fetchRequest) }) else { return }
         let foundSub = context.performAndWait { results.first(where: { $0.name == self.data?.name }) }
         

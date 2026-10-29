@@ -20,7 +20,7 @@ func resetApp() {
 func resetCredentials() {
   RedditCredentialsManager.shared.credentials.forEach { $0.delete() }
   
-  let credentialsKeychain = Keychain(service: "net.phfactor.winston.reddit-credentials").synchronizable(Defaults[.BehaviorDefSettings].iCloudSyncCredentials)
+  let credentialsKeychain = Keychain(service: "com.sozercan.helio.reddit-credentials").synchronizable(Defaults[.BehaviorDefSettings].iCloudSyncCredentials)
   
   credentialsKeychain["apiAppID"] = nil
   credentialsKeychain["apiAppSecret"] = nil

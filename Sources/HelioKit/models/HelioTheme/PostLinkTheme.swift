@@ -89,7 +89,7 @@ struct PostLinkTheme: Codable, Hashable, Equatable {
     var type: ImgType
     var color: ColorSchemes<ThemeColor>
     enum ImgType: String, Codable, Hashable, Equatable {
-      case winston, icon
+      case helio, icon
     }
   }
 }

@@ -40,7 +40,7 @@ extension CachedSub {
     @NSManaged public var user_is_moderator: Bool
     @NSManaged public var user_is_subscriber: Bool
     @NSManaged public var uuid: String?
-    @NSManaged public var winstonCredentialID: UUID?
+    @NSManaged public var helioCredentialID: UUID?
   
   convenience init(data: SubredditData, context: NSManagedObjectContext, credentialID: UUID) {
     self.init(context: context)
@@ -72,7 +72,7 @@ extension CachedSub {
     self.url = x.url
     self.user_flair_background_color = x.user_flair_background_color
     self.subscribers = Double(x.subscribers ?? 0)
-    self.winstonCredentialID = credentialID
+    self.helioCredentialID = credentialID
   }
 
 }

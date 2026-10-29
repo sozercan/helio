@@ -12,7 +12,7 @@ import Nuke
 
 var shortcutItemToProcess: UIApplicationShortcutItem?
 /// The folder in the caches directory that holds downloaded images.
-let imageDataCacheName = "net.phfactor.winston.datacache"
+let imageDataCacheName = "com.sozercan.helio.datacache"
 
 /// The app's root scene. The `@main` App lives in the app target, which owns the bundle's
 /// resources, and installs `AppDelegate` itself.

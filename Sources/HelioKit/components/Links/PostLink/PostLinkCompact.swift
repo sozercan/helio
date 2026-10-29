@@ -16,7 +16,7 @@ struct PostLinkCompactThumbPlaceholder: View, Equatable {
   var body: some View {
     let scaledCompactModeThumbSize = scaledCompactModeThumbSize()
     Group {
-      if theme.type == .winston {
+      if theme.type == .helio {
         Image(systemName: "sun.max")
           .resizable()
       } else {

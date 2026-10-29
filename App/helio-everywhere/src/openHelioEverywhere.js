@@ -8,7 +8,7 @@ browser.webNavigation.onBeforeNavigate.addListener(function(details) {
 
       if (url.hostname.includes('reddit.com')) {
         // Modify the URL before navigation
-        var newUrl = details.url.replace(/(https?:\/\/)?(www\.)?reddit\.com/gi, 'https://app.winston.cafe');
+        var newUrl = details.url.replace(/(https?:\/\/)?(www\.)?reddit\.com/gi, 'helioapp://reddit.com');
         console.log('Modified URL:', newUrl);
 
         // Redirect to the modified URL

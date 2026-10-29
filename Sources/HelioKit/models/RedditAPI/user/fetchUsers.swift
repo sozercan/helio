@@ -88,7 +88,7 @@ extension RedditAPI {
   func updateAvatarURL(names: [String], avatarSize: Double) async -> [String:ImageRequest]? {
     let nonHelioAppNames = names.filter { $0 != SAMPLE_USER_AVATAR }
     var returnDict: [String:ImageRequest] = [:]
-    returnDict[SAMPLE_USER_AVATAR] = ImageRequest(stringLiteral: "https://winston.cafe/icons/iconExplode.png")
+    returnDict[SAMPLE_USER_AVATAR] = ImageRequest(stringLiteral: "https://raw.githubusercontent.com/sozercan/helio/main/App/Helio/Assets.xcassets/appIcons/iconStandard.appiconset/iconStandard.png")
     
     if !nonHelioAppNames.isEmpty, let data = await self.fetchUsers(nonHelioAppNames) {
       //      let avatarSize = Defaults[]

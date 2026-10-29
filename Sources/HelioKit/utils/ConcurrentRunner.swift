@@ -17,7 +17,7 @@ struct ConcurrentRunner {
   
   func run(id: String = "") {
     let group = DispatchGroup()
-    let queue = DispatchQueue(label: "net.phfactor.winston.concurrentRunner\(id.isEmpty ? "" : ".\(id)")", attributes: .concurrent)
+    let queue = DispatchQueue(label: "com.sozercan.helio.concurrentRunner\(id.isEmpty ? "" : ".\(id)")", attributes: .concurrent)
     
     for task in tasks {
       group.enter()

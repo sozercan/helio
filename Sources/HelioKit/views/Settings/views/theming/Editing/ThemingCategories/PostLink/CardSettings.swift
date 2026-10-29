@@ -40,11 +40,11 @@ struct CardSettings: View {
             Image(systemName: "sun.max")
               .fontSize(24)
               .frame(maxWidth: .infinity, maxHeight: .infinity)
-              .background(RR(8, .primary.opacity(theme.compactSelftextPostLinkPlaceholderImg.type == .winston ? 0.1 : 0)))
+              .background(RR(8, .primary.opacity(theme.compactSelftextPostLinkPlaceholderImg.type == .helio ? 0.1 : 0)))
               .contentShape(Rectangle())
               .onTapGesture {
                 withAnimation(.default.speed(2)) {
-                  theme.compactSelftextPostLinkPlaceholderImg.type = .winston
+                  theme.compactSelftextPostLinkPlaceholderImg.type = .helio
                 }
               }
             Image(systemName: "square.text.square")

@@ -16,9 +16,12 @@ enum RedditURLType: Equatable, Hashable {
   case other(link: String)
 }
 
+/// Placeholder host that `helioapp://` links are rewritten to so they parse like web links.
+private let appLinkHost = "app.helio.local"
+
 func parseRedditURL(_ rawUrlString: String) -> RedditURLType {
   let urlString = rawUrlString
-    .replacingOccurrences(of: "winstonapp://", with: "https://app.winston.cafe/")
+    .replacingOccurrences(of: "helioapp://", with: "https://\(appLinkHost)/")
     .replacingOccurrences(of: #"(www\.|old\.)?reddit\.com\/"#, with: "", options: .regularExpression)
   guard let urlComponents = URLComponents(string: urlString) else {
     return .other(link: urlString)
@@ -26,7 +29,7 @@ func parseRedditURL(_ rawUrlString: String) -> RedditURLType {
   
   let pathComponents = urlComponents.path.components(separatedBy: "/").filter({ !$0.isEmpty })
     
-  if urlComponents.host?.hasSuffix("reddit.com") == true || urlComponents.host?.hasSuffix("app.winston.cafe") == true, pathComponents.count > 1 {
+  if urlComponents.host?.hasSuffix("reddit.com") == true || urlComponents.host?.hasSuffix(appLinkHost) == true, pathComponents.count > 1 {
     switch pathComponents[0] {
     case "r":
       let subredditName = pathComponents[1]

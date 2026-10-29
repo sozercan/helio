@@ -13,7 +13,7 @@ struct AuthRedirectTests {
   }
 
   @Test func readsCodeFromForwardedCallback() {
-    let callback = URL(string: "winstonapp://auth-success?state=s&code=abc#_")!
+    let callback = URL(string: "helioapp://auth-success?state=s&code=abc#_")!
     #expect(RedditAPI.authCode(from: callback, state: "s") == "abc")
     #expect(RedditAPI.authCode(from: callback, state: "other") == nil)
   }

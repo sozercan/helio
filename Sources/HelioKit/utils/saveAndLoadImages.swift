@@ -104,7 +104,7 @@ func createZip(images: [String], theme: HelioTheme) throws -> URL {
   
   guard let documentDirectory: URL = urls.first else { throw NSError(domain: "Document directory not found", code: 1, userInfo: nil) }
   
-  let imgURLs = images.filter { $0 != "winstonNoBG" }.map { documentDirectory.appendingPathComponent($0) }
+  let imgURLs = images.filter { $0 != "helioNoBG" }.map { documentDirectory.appendingPathComponent($0) }
   
   let jsonURL = documentDirectory.appendingPathComponent("theme.json")
   let jsonData = try JSONEncoder().encode(theme)
@@ -120,7 +120,7 @@ func createZip(images: [String], theme: HelioTheme) throws -> URL {
   try Zip.zipFiles(paths: imgURLs + [jsonURL], zipFilePath: zipURL, password: nil, progress: nil)
   
   let helioFileName = "\(theme.metadata.name)-Theme"
-  let helioFileNameURL = documentDirectory.appendingPathComponent("\(helioFileName).winston")
+  let helioFileNameURL = documentDirectory.appendingPathComponent("\(helioFileName).helio")
   
   if fileManager.fileExists(atPath: helioFileNameURL.path()) {
     try fileManager.removeItem(at: helioFileNameURL)

@@ -28,7 +28,7 @@ struct OnlyURL: View {
     .lineLimit(1)
     .foregroundColor(.white)
     .highPriorityGesture(TapGesture().onEnded {
-      if let newURL = URL(string: url.absoluteString.replacingOccurrences(of: "https://reddit.com/", with: "winstonapp://")) {
+      if let newURL = URL(string: url.absoluteString.replacingOccurrences(of: "https://reddit.com/", with: "helioapp://")) {
         Nav.openURL(newURL)
       }
     })

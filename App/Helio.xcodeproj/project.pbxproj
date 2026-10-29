@@ -67,7 +67,7 @@
 		EC6CBE332A7D6BF80089EAA0 /* README.md in Resources */ = {isa = PBXBuildFile; fileRef = EC6CBE322A7D6BF80089EAA0 /* README.md */; };
 		EC6CBE352A7D6E760089EAA0 /* LICENSE.md in Resources */ = {isa = PBXBuildFile; fileRef = EC6CBE342A7D6E760089EAA0 /* LICENSE.md */; };
 		EC7567042BB47DCB00CB67A3 /* supernova-appear.ahap in Resources */ = {isa = PBXBuildFile; fileRef = EC7567032BB47DCB00CB67A3 /* supernova-appear.ahap */; };
-		EC8F347C2A6CEBD600EB8249 /* winston.xcdatamodeld in Sources */ = {isa = PBXBuildFile; fileRef = EC8F347A2A6CEBD600EB8249 /* winston.xcdatamodeld */; };
+		EC8F347C2A6CEBD600EB8249 /* Helio.xcdatamodeld in Sources */ = {isa = PBXBuildFile; fileRef = EC8F347A2A6CEBD600EB8249 /* Helio.xcdatamodeld */; };
 		EC982A2F2B4A267200FFE582 /* edit-appear.json in Resources */ = {isa = PBXBuildFile; fileRef = EC982A2E2B4A267200FFE582 /* edit-appear.json */; };
 		EC982A382B4A6BE200FFE582 /* confetti.json in Resources */ = {isa = PBXBuildFile; fileRef = EC982A372B4A6BE200FFE582 /* confetti.json */; };
 		EC982A3A2B4A6F8B00FFE582 /* confetti-magic.json in Resources */ = {isa = PBXBuildFile; fileRef = EC982A392B4A6F8B00FFE582 /* confetti-magic.json */; };
@@ -190,7 +190,7 @@
 		EC6CBE322A7D6BF80089EAA0 /* README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = ../README.md; sourceTree = "<group>"; };
 		EC6CBE342A7D6E760089EAA0 /* LICENSE.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = ../LICENSE.md; sourceTree = "<group>"; };
 		EC7567032BB47DCB00CB67A3 /* supernova-appear.ahap */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = "supernova-appear.ahap"; sourceTree = "<group>"; };
-		EC8F347B2A6CEBD600EB8249 /* winston.xcdatamodel */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcdatamodel; path = winston.xcdatamodel; sourceTree = "<group>"; };
+		EC8F347B2A6CEBD600EB8249 /* Helio.xcdatamodel */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcdatamodel; path = Helio.xcdatamodel; sourceTree = "<group>"; };
 		EC982A2E2B4A267200FFE582 /* edit-appear.json */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.json; path = "edit-appear.json"; sourceTree = "<group>"; };
 		EC982A372B4A6BE200FFE582 /* confetti.json */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.json; path = confetti.json; sourceTree = "<group>"; };
 		EC982A392B4A6F8B00FFE582 /* confetti-magic.json */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.json; path = "confetti-magic.json"; sourceTree = "<group>"; };
@@ -339,7 +339,7 @@
 				EC593AED2A4796C1002D6454 /* Helio.entitlements */,
 				ECEFC26C2A5E0E440003C6C4 /* Info.plist */,
 				65C3A1C52B136430004609CA /* InfoPlist.strings */,
-				EC8F347A2A6CEBD600EB8249 /* winston.xcdatamodeld */,
+				EC8F347A2A6CEBD600EB8249 /* Helio.xcdatamodeld */,
 				6D6A0F8510E59A6EE7607767 /* HelioApp.swift */,
 			);
 			path = Helio;
@@ -701,7 +701,7 @@
 			files = (
 				ECE5AE122B11F66D00DA2020 /* Wave.metal in Sources */,
 				EC31DB182B12F0EB00A777ED /* CircleWave.metal in Sources */,
-				EC8F347C2A6CEBD600EB8249 /* winston.xcdatamodeld in Sources */,
+				EC8F347C2A6CEBD600EB8249 /* Helio.xcdatamodeld in Sources */,
 				EC31DB1A2B12F11C00A777ED /* Water.metal in Sources */,
 				34B1B4917A1EF2A2F6C45FBD /* Pixelate.metal in Sources */,
 				93CC68DA4C8E17458DCB81E8 /* HelioApp.swift in Sources */,
@@ -764,7 +764,7 @@
 				CODE_SIGN_STYLE = Automatic;
 				GENERATE_INFOPLIST_FILE = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
-				PRODUCT_BUNDLE_IDENTIFIER = net.phfactor.winston.winstonUITests;
+				PRODUCT_BUNDLE_IDENTIFIER = com.sozercan.helio.HelioUITests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = iphoneos;
 				SWIFT_EMIT_LOC_STRINGS = NO;
@@ -782,7 +782,7 @@
 				CODE_SIGN_STYLE = Automatic;
 				GENERATE_INFOPLIST_FILE = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
-				PRODUCT_BUNDLE_IDENTIFIER = net.phfactor.winston.winstonUITests;
+				PRODUCT_BUNDLE_IDENTIFIER = com.sozercan.helio.HelioUITests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = iphoneos;
 				SWIFT_EMIT_LOC_STRINGS = NO;
@@ -953,7 +953,7 @@
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 1.6.0;
-				PRODUCT_BUNDLE_IDENTIFIER = net.phfactor.winston;
+				PRODUCT_BUNDLE_IDENTIFIER = com.sozercan.helio;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SCAN_ALL_SOURCE_FILES_FOR_INCLUDES = NO;
 				SUPPORTS_MACCATALYST = YES;
@@ -999,7 +999,7 @@
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 1.6.0;
-				PRODUCT_BUNDLE_IDENTIFIER = net.phfactor.winston;
+				PRODUCT_BUNDLE_IDENTIFIER = com.sozercan.helio;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SCAN_ALL_SOURCE_FILES_FOR_INCLUDES = NO;
 				SUPPORTS_MACCATALYST = YES;
@@ -1034,7 +1034,7 @@
 					"-framework",
 					SafariServices,
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = net.phfactor.winston.everywhere;
+				PRODUCT_BUNDLE_IDENTIFIER = com.sozercan.helio.everywhere;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				PROVISIONING_PROFILE_SPECIFIER = "";
 				SKIP_INSTALL = YES;
@@ -1068,7 +1068,7 @@
 					"-framework",
 					SafariServices,
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = net.phfactor.winston.everywhere;
+				PRODUCT_BUNDLE_IDENTIFIER = com.sozercan.helio.everywhere;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				PROVISIONING_PROFILE_SPECIFIER = "";
 				SKIP_INSTALL = YES;
@@ -1135,13 +1135,13 @@
 /* End XCSwiftPackageProductDependency section */
 
 /* Begin XCVersionGroup section */
-		EC8F347A2A6CEBD600EB8249 /* winston.xcdatamodeld */ = {
+		EC8F347A2A6CEBD600EB8249 /* Helio.xcdatamodeld */ = {
 			isa = XCVersionGroup;
 			children = (
-				EC8F347B2A6CEBD600EB8249 /* winston.xcdatamodel */,
+				EC8F347B2A6CEBD600EB8249 /* Helio.xcdatamodel */,
 			);
-			currentVersion = EC8F347B2A6CEBD600EB8249 /* winston.xcdatamodel */;
-			path = winston.xcdatamodeld;
+			currentVersion = EC8F347B2A6CEBD600EB8249 /* Helio.xcdatamodel */;
+			path = Helio.xcdatamodeld;
 			sourceTree = "<group>";
 			versionGroupType = wrapper.xcdatamodel;
 		};
