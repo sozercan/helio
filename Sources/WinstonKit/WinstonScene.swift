@@ -31,6 +31,7 @@ public struct WinstonScene: Scene {
           ImagePipeline.shared = ImagePipeline(configuration: .withDataCache(name: "net.phfactor.winston.datacache", sizeLimit: 1024 * 1024 * 300))
         }
     }
+    .commands { NavCommands() }
   }
   
   func addQuickActions() {
