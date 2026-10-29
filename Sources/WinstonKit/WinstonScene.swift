@@ -11,6 +11,9 @@ import WhatsNewKit
 import Nuke
 
 var shortcutItemToProcess: UIApplicationShortcutItem?
+/// The folder in the caches directory that holds downloaded images.
+let imageDataCacheName = "net.phfactor.winston.datacache"
+
 /// The app's root scene. The `@main` App lives in the app target, which owns the bundle's
 /// resources, and installs `AppDelegate` itself.
 public struct WinstonScene: Scene {
@@ -28,7 +31,7 @@ public struct WinstonScene: Scene {
            WhatsNewEnvironment(currentVersion: .current(), whatsNewCollection: getCurrentChangelog())
         )
         .task {
-          ImagePipeline.shared = ImagePipeline(configuration: .withDataCache(name: "net.phfactor.winston.datacache", sizeLimit: 1024 * 1024 * 300))
+          ImagePipeline.shared = ImagePipeline(configuration: .withDataCache(name: imageDataCacheName, sizeLimit: 1024 * 1024 * 300))
         }
     }
     .commands { NavCommands() }

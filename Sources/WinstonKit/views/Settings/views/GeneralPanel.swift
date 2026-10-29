@@ -120,8 +120,8 @@ struct GeneralPanel: View {
                         Label("Clear Cache (" + totalCacheSize + ")", systemImage: "trash")
                             .foregroundColor(.red)
                     }
-                    .onAppear{
-                        calculateTotalCacheSize()
+                    .task {
+                        await calculateTotalCacheSize()
                     }
                     
                     WListButton {
@@ -174,20 +174,15 @@ struct GeneralPanel: View {
         }
     }
     
-    func calculateTotalCacheSize() {
-        let temporaryDirectory = FileManager.default.temporaryDirectory
-        let cacheDirectory = FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask).first
-        
-        let temporarySize = calculateDirectorySize(directory: temporaryDirectory)
-        let cacheSize = calculateDirectorySize(directory: cacheDirectory)
-        
-        let totalSize = temporarySize + cacheSize
-        let formattedSize = ByteCountFormatter.string(fromByteCount: Int64(totalSize), countStyle: .file)
-        
-        totalCacheSize = formattedSize
+    /// Sizes the cache off the main thread: walking a large cache would otherwise hang the app.
+    func calculateTotalCacheSize() async {
+        let totalSize = await Task.detached(priority: .utility) {
+            appCacheDirectories().reduce(0) { $0 + Self.calculateDirectorySize(directory: $1) }
+        }.value
+        totalCacheSize = ByteCountFormatter.string(fromByteCount: Int64(totalSize), countStyle: .file)
     }
     
-    func calculateDirectorySize(directory: URL?) -> Int {
+    static func calculateDirectorySize(directory: URL?) -> Int {
         guard let directory = directory else {
             return 0
         }
@@ -214,7 +209,7 @@ struct GeneralPanel: View {
     func clearCache() {
         do {
             // Attempt to flush the custom data cache
-            let dataCache = try DataCache(name: "net.phfactor.winston.datacache")
+            let dataCache = try DataCache(name: imageDataCacheName)
             try dataCache.flush()
             print("Custom DataCache flushed successfully.")
         } catch {
@@ -232,12 +227,7 @@ struct GeneralPanel: View {
         URLCache.shared.removeAllCachedResponses()
         
         
-        let temporaryDirectory = FileManager.default.temporaryDirectory
-        let cacheDirectory = FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask).first
-        
-        
-        flushFilesInDirectoryButNotFolders(temporaryDirectory)
-        flushFilesInDirectoryButNotFolders(cacheDirectory)
+        appCacheDirectories().forEach(flushFilesInDirectoryButNotFolders)
         
         // Resetting Core Data, except read history
         resetCoreData(keeping: ["SeenPost"])
@@ -266,6 +256,24 @@ struct GeneralPanel: View {
 }
 
 
+
+/// The directories holding only this app's cache files. On iOS, and in a sandboxed Mac app, the
+/// caches and temporary directories belong to the app. An unsandboxed Mac app shares them with
+/// every other app, so only the folders named after it are its own: sizing all of them hung the
+/// app, and clearing them deleted other apps' caches.
+func appCacheDirectories() -> [URL] {
+    let fileManager = FileManager.default
+    guard let caches = fileManager.urls(for: .cachesDirectory, in: .userDomainMask).first else { return [] }
+#if targetEnvironment(macCatalyst)
+    if ProcessInfo.processInfo.environment["APP_SANDBOX_CONTAINER_ID"] == nil {
+        return [Bundle.main.bundleIdentifier, imageDataCacheName]
+            .compactMap { $0 }
+            .map { caches.appendingPathComponent($0, isDirectory: true) }
+            .filter { fileManager.fileExists(atPath: $0.path) }
+    }
+#endif
+    return [fileManager.temporaryDirectory, caches]
+}
 
 func flushFilesInDirectoryButNotFolders(_ at: URL?) {
     guard let directoryURL = at else { return }
