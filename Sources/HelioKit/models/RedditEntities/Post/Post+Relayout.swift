@@ -3,6 +3,7 @@
 //  Helio
 //
 
+import Defaults
 import SwiftUI
 
 extension MediaExtractedType {
@@ -11,6 +12,14 @@ extension MediaExtractedType {
   /// YouTube thumbnails requested again (see `relayoutingParts`).
   var dependsOnWidth: Bool {
     if case .imgs = self {
+      true
+    } else {
+      false
+    }
+  }
+
+  var isRepost: Bool {
+    if case .repost = self {
       true
     } else {
       false
@@ -27,15 +36,19 @@ extension MediaExtractedType {
 
 extension Post {
   /// Recomputes media requests and row sizes for a new column width, window height (window
-  /// resized, iPhone Duo folded or unfolded) or presentation. Does nothing if the post was
-  /// already laid out for all three.
+  /// resized, iPhone Duo folded or unfolded), presentation or compact mode. Does nothing if the
+  /// post was already laid out for all four.
   func relayout(contentWidth: Double, theme: HelioTheme, secondary: Bool = false) {
     guard let helioData, let data, contentWidth > 0 else { return }
     let windowHeight = Double.screenH
-    guard helioData.layoutWidth != contentWidth || helioData.layoutWindowHeight != windowHeight || helioData.layoutSecondary != secondary else { return }
     let sub = helioData.subreddit
-    if helioData.extractedMedia?.dependsOnWidth == true {
-      helioData.extractedMedia = mediaExtractor(compact: Post.isCompact(data, sub: sub), contentWidth: contentWidth, data, theme: theme)
+    let compact = Post.isCompact(data, sub: sub)
+    let compactChanged = helioData.layoutCompact != compact
+    guard helioData.layoutWidth != contentWidth || helioData.layoutWindowHeight != windowHeight || helioData.layoutSecondary != secondary || compactChanged else { return }
+    // Compact and large rows extract media differently (thumbnail vs. full size), so a
+    // compact change extracts it again, except a repost (laid out in place below).
+    if (compactChanged && !(helioData.extractedMedia?.isRepost ?? false)) || helioData.extractedMedia?.dependsOnWidth == true {
+      helioData.extractedMedia = mediaExtractor(compact: compact, contentWidth: contentWidth, data, theme: theme)
     } else {
       helioData.extractedMedia = helioData.extractedMedia?.relayoutingParts(contentWidth: contentWidth, theme: theme)
     }
@@ -56,14 +69,29 @@ extension Post {
     helioData.layoutWidth = contentWidth
     helioData.layoutWindowHeight = windowHeight
     helioData.layoutSecondary = secondary
+    helioData.layoutCompact = compact
   }
 }
 
 extension View {
   /// Re-lays out `posts` when the column width or window height changes (media height is
   /// capped by the window's), after it has settled: resizing a Mac window changes it every frame.
+  /// Also when compact mode is switched, which changes every row's size.
   func relayoutPosts(_ posts: @escaping () -> [Post], contentWidth: Double, theme: HelioTheme) -> some View {
-    self
+    modifier(RelayoutPostsModifier(posts: posts, contentWidth: contentWidth, theme: theme))
+  }
+}
+
+private struct RelayoutPostsModifier: ViewModifier {
+  let posts: () -> [Post]
+  let contentWidth: Double
+  let theme: HelioTheme
+
+  @Default(.SubredditFeedDefSettings) private var feedDefSettings
+  @Default(.PostLinkDefSettings) private var postLinkDefSettings
+
+  func body(content: Content) -> some View {
+    content
       .task(id: [contentWidth, Double.screenH]) {
         try? await Task.sleep(for: .milliseconds(250))
         guard !Task.isCancelled else { return }
@@ -73,6 +101,12 @@ extension View {
       // were created with.
       .onChange(of: posts().map { $0.helioData?.layoutWidth ?? 0 }) {
         posts().forEach { $0.relayout(contentWidth: contentWidth, theme: theme) }
+      }
+      .onChange(of: feedDefSettings.compactPerSubreddit) {
+        withAnimation { posts().forEach { $0.relayout(contentWidth: contentWidth, theme: theme) } }
+      }
+      .onChange(of: postLinkDefSettings.compactMode.enabled) {
+        withAnimation { posts().forEach { $0.relayout(contentWidth: contentWidth, theme: theme) } }
       }
   }
 }

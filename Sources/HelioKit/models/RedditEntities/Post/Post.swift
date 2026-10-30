@@ -100,6 +100,7 @@ extension Post {
       self.helioData?.layoutWidth = contentWidth
       self.helioData?.layoutWindowHeight = .screenH
       self.helioData?.layoutSecondary = secondary
+      self.helioData?.layoutCompact = compact
 
       self.helioData?.titleAttr = createTitleTagsAttrString(titleTheme: theme.postLinks.theme.titleText, postData: data, textColor: theme.postLinks.theme.titleText.color.uiColor())
 
