@@ -50,6 +50,7 @@ extension Defaults.Keys {
   static let BehaviorDefSettings = Key<BehaviorDefSettings>("BehaviorDefSettings", default: .init())
   static let GeneralDefSettings = Key<GeneralDefSettings>("GeneralDefSettings", default: .init())
   static let SubredditFeedDefSettings = Key<SubredditFeedDefSettings>("SubredditFeedDefSettings", default: .init())
+  static let showFloatingFeedMenu = Key<Bool>("showFloatingFeedMenu", default: true)
   static let CommentLinkDefSettings = Key<CommentLinkDefSettings>("CommentLinkDefSettings", default: .init())
   static let CommentsSectionDefSettings = Key<CommentsSectionDefSettings>("CommentsSectionDefSettings", default: .init())
   static let PostPageDefSettings = Key<PostPageDefSettings>("PostPageDefSettings", default: .init())

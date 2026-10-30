@@ -159,14 +159,26 @@ struct FloatingFeedMenu: View, Equatable {
 
 
 
-extension View {
-  func floatingMenu(subId: String?, filters: [ShallowCachedFilter], selectedFilter: Binding<ShallowCachedFilter?>) -> some View {
-    self
+private struct FloatingMenuModifier: ViewModifier {
+  let subId: String?
+  let filters: [ShallowCachedFilter]
+  @Binding var selectedFilter: ShallowCachedFilter?
+
+  @Default(.showFloatingFeedMenu) private var showFloatingFeedMenu
+
+  func body(content: Content) -> some View {
+    content
       .overlay(alignment: .bottomTrailing) {
-        if let subId {
-          FloatingFeedMenu(subId: subId, filters: filters, selectedFilter: selectedFilter)
+        if showFloatingFeedMenu, let subId {
+          FloatingFeedMenu(subId: subId, filters: filters, selectedFilter: $selectedFilter)
         }
       }
+  }
+}
+
+extension View {
+  func floatingMenu(subId: String?, filters: [ShallowCachedFilter], selectedFilter: Binding<ShallowCachedFilter?>) -> some View {
+    self.modifier(FloatingMenuModifier(subId: subId, filters: filters, selectedFilter: selectedFilter))
   }
 }
 
