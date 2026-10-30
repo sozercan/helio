@@ -120,11 +120,13 @@ extension Post {
 
   static func extractFlairData(data: PostData, checkDefaultsForColor: Bool = false) -> PrependTag? {
     if let flair = data.link_flair_text, let cleansed = flairWithoutEmojis(str: flair), !cleansed.joined().isEmpty {
-      let hasBackground = data.link_flair_background_color != nil && !data.link_flair_background_color!.isEmpty
-      let textColor = hasBackground && data.link_flair_text_color != nil ? (data.link_flair_text_color! == "light" ? "FFFFFF" : "000000") : "000000"
-      let bgColor = hasBackground ? data.link_flair_background_color! : "D5D7D9"
-
-      return PrependTag(label: flair, bgColor: UIColor(hex: bgColor), textColor: UIColor(hex: textColor))
+      if let bgColor = data.link_flair_background_color, !bgColor.isEmpty {
+        let textColor = data.link_flair_text_color == "light" ? "FFFFFF" : "000000"
+        return PrependTag(label: flair, bgColor: UIColor(hex: bgColor), textColor: UIColor(hex: textColor))
+      }
+      // Uncolored flair is drawn into an image once, so it can't follow the appearance:
+      // a translucent grey reads as Apollo's grey pill on both white and black.
+      return PrependTag(label: flair, bgColor: UIColor(white: 0.5, alpha: 0.16), textColor: UIColor(white: 0.5, alpha: 1))
     }
     return nil
     //
