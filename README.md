@@ -20,10 +20,18 @@ Helio is a privacy-focused, open-source Reddit client for iOS and Mac. No analyt
 
 Helio requires iOS 26+ (or macOS 26+) and your own Reddit API credentials.
 
+**Sideload a release.** Each [release](https://github.com/sozercan/helio/releases) has an unsigned `.ipa` and a Mac `.zip`.
+
+- iPhone and iPad: add the source `https://sozercan.github.io/helio/source.json` in [SideStore](https://sidestore.io) or [AltStore](https://altstore.io) to install and get updates, or sideload the `.ipa` with [Sideloadly](https://sideloadly.io). These tools re-sign the app with your Apple ID. With a free account the app has to be refreshed every 7 days, and the Safari extension uses a second app ID. iCloud isn't available to sideloaded apps, so data stays on the device.
+- Mac: unzip, move Helio to Applications, then allow it under System Settings > Privacy & Security on first launch. The build isn't notarized and has no keychain access, so it asks you to sign in to Reddit again on each launch. Build it yourself (below) to keep the login.
+
+**Build it yourself.**
+
 1. Clone the repo and open `App/Helio.xcodeproj` in Xcode
 2. Set your development team and bundle identifier in the project settings
 3. Build and run on your device
-4. Follow the in-app credential setup to connect your Reddit account. Your Reddit app's redirect URI must be `https://sozercan.github.io/helio/auth-success`: Reddit only accepts https redirects for web apps, and that page (served from this repo's `gh-pages` branch) forwards to the app. If your app was created with another redirect URI, change it under "edit" at https://www.reddit.com/prefs/apps.
+
+Then follow the in-app credential setup to connect your Reddit account. Your Reddit app's redirect URI must be `https://sozercan.github.io/helio/auth-success`: Reddit only accepts https redirects for web apps, and that page (served from this repo's `gh-pages` branch) forwards to the app. If your app was created with another redirect URI, change it under "edit" at https://www.reddit.com/prefs/apps.
 
 ## Development
 
@@ -46,7 +54,9 @@ Format and lint before committing. CI runs both on every pull request and on `ma
 swiftformat . && swiftlint --strict
 ```
 
-Existing SwiftLint violations are recorded in `.swiftlint.baseline.json`, so only new ones fail. When you fix old ones, regenerate it with `swiftlint lint --write-baseline .swiftlint.baseline.json`. To keep `git blame` from showing the bulk formatting commit, run `git config blame.ignoreRevsFile .git-blame-ignore-revs`.
+Existing SwiftLint violations are recorded in `.swiftlint.baseline.json`, so only new ones fail. When you fix old ones, regenerate it with `swiftlint lint --write-baseline .swiftlint.baseline.json`. To release, push a version tag (`git tag v1.7.0 && git push origin v1.7.0`). The release workflow builds the unsigned IPA and the Mac app, publishes the GitHub release and adds the version to the source feed on `gh-pages`. Run it manually from the Actions tab for a dry run that only builds.
+
+To keep `git blame` from showing the bulk formatting commit, run `git config blame.ignoreRevsFile .git-blame-ignore-revs`.
 
 Add dependencies in `Package.swift`, not in the Xcode project. Asset catalog symbols used from `HelioKit` (e.g. `Image(.loader)`) are declared in `Sources/HelioKit/globals/AppAssets.swift`.
 
