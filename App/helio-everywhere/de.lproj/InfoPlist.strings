@@ -1,0 +1,9 @@
+/* Bundle display name */
+"CFBundleDisplayName" = "Helio Everywhere";
+
+/* Bundle name */
+"CFBundleName" = "helio-everywhere";
+
+/* Copyright (human-readable) */
+"NSHumanReadableCopyright" = "";
+
