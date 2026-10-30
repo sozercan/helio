@@ -15,10 +15,13 @@ func getPostContentWidth(contentWidth: Double = .screenW, secondary: Bool = fals
   return contentWidth - (((theme.innerPadding.horizontal * (secondary ? 2 : 1)) + theme.outerHPadding) * 2)
 }
 
-/// Flat, edge-to-edge cells run images to the cell edges, like Apollo. Cards keep them inset.
+/// Flat, edge-to-edge cells run images and videos to the cell edges, like Apollo. Cards keep them inset.
 func isFullBleedMedia(_ media: MediaExtractedType?, theme: PostLinkTheme, secondary: Bool, compact: Bool) -> Bool {
-  guard !compact, !secondary, theme.outerHPadding == 0, case .imgs = media else { return false }
-  return true
+  guard !compact, !secondary, theme.outerHPadding == 0 else { return false }
+  switch media {
+  case .imgs, .video: return true
+  default: return false
+  }
 }
 
 struct PostDimensions: Hashable, Equatable {
@@ -115,7 +118,7 @@ func getPostDimensions(post: Post, helioData: PostHelioData? = nil, columnWidth:
             ACC_mediaSize = mediaExtracted.count == 2 ? CGSize(width: mediaWidth, height: size) : CGSize(width: mediaWidth, height: (size * 2) + ImageMediaPost.gallerySpacing)
           }
         case let .video(video):
-          ACC_mediaSize = defaultMediaSize(video.size, width: contentWidth)
+          ACC_mediaSize = defaultMediaSize(video.size, width: mediaWidth)
         case .streamable:
           ACC_mediaSize = CGSize(width: contentWidth, height: 100)
         case let .yt(ytMediaExtracted):
@@ -149,7 +152,8 @@ func getPostDimensions(post: Post, helioData: PostHelioData? = nil, columnWidth:
       }
     }
 
-    let compactTitleWidth = postGeneralSpacing + VotesCluster.verticalWidth + postGeneralSpacing + compactMediaSize.width
+    // Text posts without a placeholder thumbnail get no thumbnail column.
+    let compactTitleWidth = postGeneralSpacing + VotesCluster.verticalWidth + (ACC_mediaSize.width > 0 ? postGeneralSpacing + ACC_mediaSize.width : 0)
 
     let titleContentWidth = contentWidth - (compact ? compactTitleWidth : 0)
 
