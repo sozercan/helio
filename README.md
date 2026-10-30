@@ -33,12 +33,20 @@ The app's code, dependencies and unit tests are a Swift package (`Package.swift`
 # Build the package for the simulator
 swift build --triple arm64-apple-ios26.0-simulator --sdk "$(xcrun --sdk iphonesimulator --show-sdk-path)"
 
-# Unit tests (run from the repository root)
-xcodebuild -scheme HelioKit -destination 'platform=iOS Simulator,name=iPhone 17 Pro' test
+# Unit tests (run from the repository root; prints a destination for an available iPhone simulator)
+xcodebuild -scheme HelioKit -destination "$(.github/scripts/simulator-destination.sh)" test
 
 # App
 xcodebuild -project App/Helio.xcodeproj -scheme Helio -destination 'generic/platform=iOS Simulator' build
 ```
+
+Format and lint before committing. CI runs both on every pull request and on `main`, with the tool versions pinned in `.github/workflows/lint.yml` (SwiftLint 0.65.1, SwiftFormat 0.64.0):
+
+```bash
+swiftformat . && swiftlint --strict
+```
+
+Existing SwiftLint violations are recorded in `.swiftlint.baseline.json`, so only new ones fail. When you fix old ones, regenerate it with `swiftlint lint --write-baseline .swiftlint.baseline.json`. To keep `git blame` from showing the bulk formatting commit, run `git config blame.ignoreRevsFile .git-blame-ignore-revs`.
 
 Add dependencies in `Package.swift`, not in the Xcode project. Asset catalog symbols used from `HelioKit` (e.g. `Image(.loader)`) are declared in `Sources/HelioKit/globals/AppAssets.swift`.
 
