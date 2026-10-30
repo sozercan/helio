@@ -82,7 +82,7 @@ jobs:
           mkdir -p dist "$RUNNER_TEMP/ipa/Payload"
           cp -R "$RUNNER_TEMP/Helio.xcarchive/Products/Applications/Helio.app" "$RUNNER_TEMP/ipa/Payload/"
           (cd "$RUNNER_TEMP/ipa" && zip -qry "$GITHUB_WORKSPACE/dist/Helio-$VERSION.ipa" Payload)
-          .github/scripts/app-metadata.py "$RUNNER_TEMP/ipa/Payload/Helio.app" > dist/metadata.json
+          .github/scripts/app-metadata.sh "$RUNNER_TEMP/ipa/Payload/Helio.app" > dist/metadata.json
           cat dist/metadata.json
 
       # Ad-hoc signed so it runs on Apple Silicon. Without a Developer ID it isn't notarized
@@ -146,10 +146,9 @@ jobs:
           ipa="dist/Helio-$version.ipa"
           git fetch --depth 1 origin gh-pages
           git worktree add pages FETCH_HEAD
-          .github/scripts/update-source.py \
+          .github/scripts/update-source.sh \
             --source pages/source.json \
             --metadata dist/metadata.json \
-            --date "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
             --url "https://github.com/$GITHUB_REPOSITORY/releases/download/$GITHUB_REF_NAME/Helio-$version.ipa" \
             --size "$(stat -c %s "$ipa")" \
             --notes notes.md
