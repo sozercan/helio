@@ -76,9 +76,12 @@
         target: self,
         action: #selector(tabPicked(_:)),
       )
-      if #available(macCatalyst 27.0, *) {
-        group.role = .tabs
-      }
+      // `role` is in the 27 SDK (Swift 6.4); older Xcodes, like CI's, can't see it at all.
+      #if compiler(>=6.4)
+        if #available(macCatalyst 27.0, *) {
+          group.role = .tabs
+        }
+      #endif
       group.selectedIndex = Self.tabs.firstIndex { $0.0 == Nav.shared.activeTab } ?? 0
       self.group = group
       return group
