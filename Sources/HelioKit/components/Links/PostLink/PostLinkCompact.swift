@@ -117,7 +117,7 @@ struct PostLinkCompact: View, Equatable, Identifiable {
             }
 
             let newCommentsCount = helioData.seenCommentsCount == nil ? nil : data.num_comments - helioData.seenCommentsCount!
-            BadgeView(avatarRequest: helioData.avatarImageRequest, showAuthorOnPostLinks: defSettings.showAuthor, saved: data.badgeKit.saved, usernameColor: nil, author: data.badgeKit.author, fullname: data.badgeKit.authorFullname, userFlair: data.badgeKit.userFlair, created: data.badgeKit.created, avatarURL: nil, theme: theme.theme.badge, commentsCount: formatBigNumber(data.badgeKit.numComments), newCommentsCount: newCommentsCount, votesCount: formatBigNumber(data.badgeKit.ups), likes: data.likes, openSub: !theme.theme.badge.avatar.visible && showSub ? openSubreddit : nil, subName: data.subreddit)
+            BadgeView(avatarRequest: helioData.avatarImageRequest, showAuthorOnPostLinks: defSettings.showAuthor, saved: data.badgeKit.saved, usernameColor: nil, author: data.badgeKit.author, fullname: data.badgeKit.authorFullname, userFlair: data.badgeKit.userFlair, created: data.badgeKit.created, avatarURL: nil, theme: theme.theme.badge, commentsCount: formatBigNumber(data.badgeKit.numComments), newCommentsCount: newCommentsCount, votesCount: formatBigNumber(data.badgeKit.ups), likes: data.likes, openSub: !theme.theme.badge.avatar.visible && showSub ? openSubreddit : nil, subName: data.subreddit, onTapStats: openPost)
 
             if showSub, theme.theme.badge.avatar.visible {
               let subName = data.subreddit

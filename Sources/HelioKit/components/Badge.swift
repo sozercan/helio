@@ -73,6 +73,9 @@ struct BadgeView: View, Equatable {
   var likes: Bool?
   var openSub: (() -> Void)?
   var subName: String?
+  /// Makes the numbers line its own tap target. Without one, a tap on it goes to the nearest
+  /// tappable view, the author's name, instead of the row.
+  var onTapStats: (() -> Void)?
 
   nonisolated func openUser() {
     Nav.to(.reddit(.user(User(id: author))))
@@ -157,6 +160,9 @@ struct BadgeView: View, Equatable {
         }
         .foregroundStyle(defaultIconColor)
         .font(.system(size: theme.statsText.size, weight: theme.statsText.weight.t))
+        .contentShape(Rectangle())
+        .onTapGesture { onTapStats?() }
+        .allowsHitTesting(onTapStats != nil)
       }
     }
     .geometryGroup()
