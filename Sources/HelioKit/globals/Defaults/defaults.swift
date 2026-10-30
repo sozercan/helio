@@ -5,10 +5,10 @@
 //  Created by Igor Marcossi on 26/06/23.
 //
 
-import Foundation
 import Defaults
-import UIKit
+import Foundation
 import SwiftUI
+import UIKit
 
 struct PostInBox: Codable, Identifiable, Hashable, Defaults.Serializable {
   var id: String
@@ -32,7 +32,7 @@ let DEFAULT_POST_SWIPE_ACTIONS = SwipeActionsSet(
   leftFirst: AnySwipeAction(UpvotePostAction()),
   leftSecond: AnySwipeAction(SavePostAction()),
   rightFirst: AnySwipeAction(DownvotePostAction()),
-  rightSecond: AnySwipeAction(SeenPostAction())
+  rightSecond: AnySwipeAction(SeenPostAction()),
 )
 
 let DEFAULT_COMMENT_SWIPE_ACTIONS = SwipeActionsSet(
@@ -40,7 +40,7 @@ let DEFAULT_COMMENT_SWIPE_ACTIONS = SwipeActionsSet(
   leftFirst: AnySwipeAction(UpvoteCommentAction()),
   leftSecond: AnySwipeAction(SaveCommentAction()),
   rightFirst: AnySwipeAction(DownvoteCommentAction()),
-  rightSecond: AnySwipeAction(ReplyCommentAction())
+  rightSecond: AnySwipeAction(ReplyCommentAction()),
 )
 
 extension Defaults.Keys {
@@ -55,12 +55,12 @@ extension Defaults.Keys {
   static let CommentsSectionDefSettings = Key<CommentsSectionDefSettings>("CommentsSectionDefSettings", default: .init())
   static let PostPageDefSettings = Key<PostPageDefSettings>("PostPageDefSettings", default: .init())
   static let ThemesDefSettings = Key<ThemesDefSettings>("ThemesDefSettings", default: .init())
-  
+
   /* <Heavy Defaults are kept separated, these should be in CoreData or something> */
   static let filteredSubreddits = Key<[String]>("filteredSubreddits", default: [])
   static let postsInBox = Key<[PostInBox]>("postsInBox-v2", default: [])
   static let likedButNotSubbed = Key<[Subreddit]>("likedButNotSubbed", default: [])
   /* </Heavy Defaults are kept separated, these should be in CoreData or something> */
-  
+
   static let wereOldDefaultsMigrated = Key<Bool>("wereOldDefaultsMigrated", default: false)
 }

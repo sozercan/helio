@@ -18,16 +18,16 @@ struct AboutPanel: View {
         Section {
           HStack {
             AppMark(size: 44)
-            
+
             VStack(alignment: .leading) {
               Text("Helio")
                 .fontSize(20, .bold)
-              HStack{
+              HStack {
                 Text("v" + (appVersion ?? "-1") + " Build \(build ?? "-1")")
               }
             }
           }
-          
+
           Text("Helio is a privacy-focused, open-source Reddit client. No analytics, no tracking, no ads, no third-party data collection. Your data stays on your device.")
 
           WListButton {
@@ -35,7 +35,6 @@ struct AboutPanel: View {
           } label: {
             Label("View on GitHub", systemImage: "arrow.branch").foregroundStyle(Color.accentColor)
           }
-
         }
 
         Section("Privacy") {
@@ -57,8 +56,8 @@ struct AboutPanel: View {
   }
 }
 
-//struct AboutPanel_Previews: PreviewProvider {
+// struct AboutPanel_Previews: PreviewProvider {
 //    static var previews: some View {
 //        AboutPanel()
 //    }
-//}
+// }

@@ -5,14 +5,14 @@
 //  Created by Igor Marcossi on 01/01/24.
 //
 
-import SwiftUI
 import AuthenticationServices
+import SwiftUI
 
 let questions: [PeakQuestion] = [
   .init(question: "Why do I need an extension?", answer: "To make the process of generating a new API credentials in your Reddit account."),
   .init(question: "What does the extension do?", answer: "It fills the form for you and clicks save basically. The problem is that Reddit's web panel is not optimized for phone devices, so it's hard to use it."),
   .init(question: "What permissions are required?", answer: "The extension have 2 jobs, to allow reddit links to open in Helio, which requires access to all sites, and to show an assistant in your API credentials settings page, which requires access to that page alone.."),
-  .init(question: "Will it steal my data?", answer: "No. But the code is open source, so you can check yourself if you want, or ask about it in our Discord server. Links for both the code and the server are in **About** section in **Settings** tab.")
+  .init(question: "Will it steal my data?", answer: "No. But the code is open source, so you can check yourself if you want, or ask about it in our Discord server. Links for both the code and the server are in **About** section in **Settings** tab."),
 ]
 
 struct CredentialEditAssistantMode: View {
@@ -21,7 +21,7 @@ struct CredentialEditAssistantMode: View {
   @Binding var nav: [CredentialEditStack.Mode]
   enum AssistantScene { case tutorial, credsCaptured, urlError, authSuccess, authError, loadingRefreshToken }
   enum AssistantCommonScene { case waiting, empty }
-  
+
   static let fabHeight: Double = 48
   static let fabMargin: Double = 12
   @State private var scene: AssistantScene = .tutorial
@@ -29,9 +29,11 @@ struct CredentialEditAssistantMode: View {
   @State private var loading = false
   @State private var timer = TimerHolder()
   @Environment(\.webAuthenticationSession) private var webAuthenticationSession
-  
-  func enableEmptyView() { withAnimation(.spring) { commonScene = .empty } }
-  
+
+  func enableEmptyView() {
+    withAnimation(.spring) { commonScene = .empty }
+  }
+
   func authorize() {
     Task {
       switch await RedditAPI.shared.authorize(appID: draftCredential.apiAppID, using: webAuthenticationSession) {
@@ -39,7 +41,7 @@ struct CredentialEditAssistantMode: View {
         break
       case .failed:
         withAnimation(.spring) { scene = .urlError }
-      case .code(let authCode):
+      case let .code(authCode):
         withAnimation(.spring) { scene = .loadingRefreshToken }
         var tempCred = draftCredential
         let success = await RedditAPI.shared.injectFirstAccessTokenInto(&tempCred, authCode: authCode)
@@ -50,7 +52,7 @@ struct CredentialEditAssistantMode: View {
       }
     }
   }
-  
+
   var body: some View {
     ZStack {
       Group {
@@ -97,7 +99,7 @@ struct CredentialEditAssistantMode: View {
     }
     .onOpenURL { url in
       timer.invalidate()
-      
+
       if let queryParams = url.queryParameters, let appID = queryParams["appID"], let appSecret = queryParams["appSecret"] {
         var newDraft = draftCredential
         newDraft.apiAppID = appID
@@ -113,11 +115,10 @@ struct CredentialEditAssistantMode: View {
           return
         }
       }
-      
+
       withAnimation(.spring) {
         scene = .urlError
       }
-      
     }
   }
 }

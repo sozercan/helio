@@ -11,14 +11,14 @@ struct FontSelector: View {
   @Binding var theme: ThemeText
   var defaultVal: ThemeText
   var showColor: Bool = true
-  
+
   var body: some View {
     VStack {
-      LabeledSlider(label: "Size", value: $theme.size, range: 6...32)
+      LabeledSlider(label: "Size", value: $theme.size, range: 6 ... 32)
         .resetter($theme.size, defaultVal.size)
-      
+
       Divider()
-      
+
       HStack(spacing: 2) {
         ForEach(CodableFontWeight.allCases, id: \.self) { weight in
           Text("aA")
@@ -36,10 +36,10 @@ struct FontSelector: View {
       .frame(height: 48)
       .padding(.horizontal, 16)
       .resetter($theme.weight, defaultVal.weight)
-      
-      if (showColor) {
+
+      if showColor {
         Divider()
-        
+
         SchemesColorPicker(theme: $theme.color, defaultVal: defaultVal.color)
       }
     }

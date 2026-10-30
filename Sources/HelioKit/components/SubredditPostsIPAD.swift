@@ -5,15 +5,15 @@
 //  Created by Igor Marcossi on 28/09/23.
 //
 
-import SwiftUI
 import Defaults
 import NukeUI
+import SwiftUI
 
-//struct SubredditPostsIPAD: View, Equatable {
+// struct SubredditPostsIPAD: View, Equatable {
 //  static func == (lhs: SubredditPostsIPAD, rhs: SubredditPostsIPAD) -> Bool {
 //    lhs.posts.count == rhs.posts.count && lhs.subreddit == rhs.subreddit && lhs.searchText == rhs.searchText && lhs.selectedTheme == rhs.selectedTheme && lhs.lastPostAfter == rhs.lastPostAfter && lhs.filter == rhs.filter && lhs.loading == rhs.loading
 //  }
-//  
+//
 //  var showSub = false
 //  var lastPostAfter: String?
 //  var subreddit: Subreddit?
@@ -27,15 +27,15 @@ import NukeUI
 //  var fetch: (Bool, String?, Bool) -> ()
 //  var selectedTheme: HelioTheme
 //  var loading: Bool
-//  
+//
 //  @State var lastPostOnRefreshRequest = ""
 //  @Binding var reachedEndOfFeed: Bool
-//  
+//
 //  @Environment(\.contentWidth) var contentWidth
-//  
+//
 //  @Default(.PostLinkDefSettings) private var postLinkDefSettings
 //  @Default(.SubredditFeedDefSettings) private var feedDefSettings
-//  
+//
 //  func loadMorePosts() {
 //    if !searchText.isEmpty {
 //      fetch(true, searchText, true)
@@ -43,7 +43,7 @@ import NukeUI
 //      fetch(true, nil, true)
 //    }
 //  }
-//  
+//
 //  var body: some View {
 //    let isFiltered = filter != "flair:All"
 //    Waterfall(
@@ -78,7 +78,7 @@ import NukeUI
 //              //.padding(.bottom, 48)
 //            }
 //          }
-//          
+//
 //          if reachedEndOfFeed && i == posts.count - 1 {
 //            EndOfFeedView()
 //              .frame(maxWidth: .infinity, maxHeight: 50)
@@ -123,4 +123,4 @@ import NukeUI
 //    .ignoresSafeArea(.all)
 //		.floatingMenu(subId: subreddit?.id ?? "", filters: filters, selected: filter, filterCallback: filterCallback, searchText: searchText, searchCallback: searchCallback, customFilterCallback: editCustomFilter)
 //  }
-//}
+// }

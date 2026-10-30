@@ -9,7 +9,7 @@ import SwiftUI
 
 struct NSFWMod: ViewModifier {
   var isIt: Bool
-  var size: CGSize? = nil
+  var size: CGSize?
   var smallIcon: Bool = false
   @State private var unblur = false
   func body(content: Content) -> some View {
@@ -25,8 +25,8 @@ struct NSFWMod: ViewModifier {
         .scaleEffect(blur ? 0.95 : 1)
         .overlay(
           !blur
-          ? nil
-          : NSFWOverlay(smallIcon: smallIcon).transition(.scaleAndBlur).highPriorityGesture(blur ? TapGesture().onEnded { withAnimation(.spring) { unblur = true } } : nil )
+            ? nil
+            : NSFWOverlay(smallIcon: smallIcon).transition(.scaleAndBlur).highPriorityGesture(blur ? TapGesture().onEnded { withAnimation(.spring) { unblur = true } } : nil),
         )
     } else {
       content
@@ -35,8 +35,6 @@ struct NSFWMod: ViewModifier {
 }
 
 struct NSFWOverlay: View, Equatable {
-  static func == (lhs: NSFWOverlay, rhs: NSFWOverlay) -> Bool { lhs.smallIcon == rhs.smallIcon }
-  
   var smallIcon: Bool = false
   var body: some View {
     VStack {
@@ -52,7 +50,9 @@ struct NSFWOverlay: View, Equatable {
       .padding(.vertical, 3)
       .background(.red, in: Capsule(style: .continuous))
       .foregroundColor(.white)
-      if !smallIcon { Text("Tap to unblur") }
+      if !smallIcon {
+        Text("Tap to unblur")
+      }
     }
     .frame(maxWidth: .infinity, maxHeight: .infinity)
     .contentShape(Rectangle())
@@ -60,7 +60,7 @@ struct NSFWOverlay: View, Equatable {
 }
 
 extension View {
-  func nsfw(_ isIt: Bool,smallIcon: Bool = false, size: CGSize? = nil) -> some View {
+  func nsfw(_ isIt: Bool, smallIcon: Bool = false, size: CGSize? = nil) -> some View {
     self
       .modifier(NSFWMod(isIt: isIt, size: size, smallIcon: smallIcon))
   }

@@ -5,8 +5,8 @@
 //  Created by Igor Marcossi on 19/09/23.
 //
 
-import SwiftUI
 import Defaults
+import SwiftUI
 
 struct SubredditsStack: View {
   @State var router: Router
@@ -15,13 +15,15 @@ struct SubredditsStack: View {
   @State private var columnVisibility: NavigationSplitViewVisibility = .automatic
   /// The posts column's measured width. Follows window resizes, unlike a screen-size calculation.
   @State private var detailWidth: CGFloat = 0
-  
+
   init(router: Router) {
     self._router = .init(initialValue: router)
   }
-  
-  var postContentWidth: CGFloat { detailWidth > 0 ? detailWidth : .screenW }
-  
+
+  var postContentWidth: CGFloat {
+    detailWidth > 0 ? detailWidth : .screenW
+  }
+
   @State private var loaded = false
   var body: some View {
     NavigationSplitView(columnVisibility: $columnVisibility) {
@@ -29,30 +31,30 @@ struct SubredditsStack: View {
         Subreddits(firstDestination: $router.firstSelected, loaded: loaded, currentCredentialID: redditCredentialSelectedID)
           .id("subreddits-list-\(redditCredentialSelectedID)")
           .attachViewControllerToRouter(tabID: .posts)
-#if targetEnvironment(macCatalyst)
+        #if targetEnvironment(macCatalyst)
           // The window toolbar has the Mac's sidebar button (`MacTabToolbar`).
           .toolbar(removing: .sidebarToggle)
-#endif
+        #endif
       }
     } detail: {
       NavigationStack(path: $router.path) {
         Group {
           if let firstSelected = router.firstSelected {
             switch firstSelected {
-            case .reddit(.multiFeed(let multi)):
+            case let .reddit(.multiFeed(multi)):
               MultiPostsView(multi: multi)
                 .id("\(multi.id)-multi-first-tab")
                 .attachViewControllerToRouter(tabID: .posts)
-            case .reddit(.subFeed(let sub)):
+            case let .reddit(.subFeed(sub)):
               SubredditPosts(subreddit: sub)
                 .id("\(sub.id)-sub-first-tab")
-            case .reddit(.post(let post)):
+            case let .reddit(.post(post)):
               if let sub = post.helioData?.subreddit {
                 PostView(post: post, subreddit: sub)
                   .id("\(post.id)-post-first-tab")
                   .attachViewControllerToRouter(tabID: .posts)
               }
-            case .reddit(.user(let user)):
+            case let .reddit(.user(user)):
               UserView(user: user)
                 .id("\(user.id)-user-first-tab")
                 .attachViewControllerToRouter(tabID: .posts)
@@ -68,7 +70,8 @@ struct SubredditsStack: View {
         .task(priority: .background) {
           if !loaded {
             // MARK: Route to default feed
-            if behaviorDefSettings.preferenceDefaultFeed != "subList" && router.path.count == 0 { // we are in subList, can ignore
+
+            if behaviorDefSettings.preferenceDefaultFeed != "subList", router.path.isEmpty { // we are in subList, can ignore
               let tempSubreddit = Subreddit(id: behaviorDefSettings.preferenceDefaultFeed)
               router.navigateTo(.reddit(.subFeed(tempSubreddit)))
             }

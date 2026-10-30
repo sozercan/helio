@@ -9,6 +9,6 @@ import Foundation
 
 extension String {
   func fallback(_ str: String) -> String {
-    return self.isEmpty ? str : self
-    }
+    self.isEmpty ? str : self
+  }
 }

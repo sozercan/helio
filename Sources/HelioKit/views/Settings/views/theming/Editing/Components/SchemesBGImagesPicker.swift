@@ -13,15 +13,15 @@ struct SchemesBGImagesPicker: View {
   @Environment(\.useTheme) private var currentTheme
 
   var body: some View {
-      HStack {
-        ImageThemePicker(label: "Light", image: $theme.light)
-          .resetter($theme.light, defaultVal.light)
-        
-        VDivider()
-        
-        ImageThemePicker(label: "Dark", image: $theme.dark)
-          .resetter($theme.dark, defaultVal.dark)
-      }
-      .padding(.horizontal, 16)
+    HStack {
+      ImageThemePicker(label: "Light", image: $theme.light)
+        .resetter($theme.light, defaultVal.light)
+
+      VDivider()
+
+      ImageThemePicker(label: "Dark", image: $theme.dark)
+        .resetter($theme.dark, defaultVal.dark)
     }
+    .padding(.horizontal, 16)
+  }
 }

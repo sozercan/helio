@@ -5,48 +5,48 @@
 //  Created by Igor Marcossi on 20/08/23.
 //
 
-import Foundation
-import Defaults
 import Alamofire
-import SwiftUI
 @preconcurrency import CoreData
+import Defaults
+import Foundation
+import SwiftUI
 
 extension RedditAPI {
   func fetchMyMultis() async -> Bool {
     guard let currentCredentialID = RedditCredentialsManager.shared.selectedCredential?.id else { return false }
-    
+
     let params = FetchMyMultisPayload()
-    
+
     switch await self.doRequest("\(RedditAPI.redditApiURLBase)/api/multi/mine", method: .get, params: params, paramsLocation: .queryString, decodable: [MultiContainerResponse].self) {
-    case .success(let data):
+    case let .success(data):
       let context = PersistenceController.shared.container.newBackgroundContext()
-      
+
       _ = await context.perform(schedule: .enqueued) {
         let multisFetchRequest = NSFetchRequest<CachedMulti>(entityName: "CachedMulti")
         multisFetchRequest.predicate = NSPredicate(format: "helioCredentialID == %@", currentCredentialID as CVarArg)
-        
+
         do {
           let existingMultis = try context.fetch(multisFetchRequest)
           let fetchedMultiIds = Set(data.compactMap { $0.data?.id })
-          
+
           // Update or insert new multis
           for multiDataContainer in data {
             guard let multiData = multiDataContainer.data else { continue }
-            
+
             if let existingMulti = existingMultis.first(where: { $0.uuid == multiData.id }) {
               existingMulti.update(multiData, credentialID: currentCredentialID) // Ensure the update function is implemented to update existing entities
             } else {
-              let _ = CachedMulti(data: multiData, context: context, credentialID: currentCredentialID) // Adjust initializer as necessary
+              _ = CachedMulti(data: multiData, context: context, credentialID: currentCredentialID) // Adjust initializer as necessary
             }
           }
-          
+
           // Remove multis not found in fetched data
-          existingMultis.forEach { cachedMulti in
+          for cachedMulti in existingMultis {
             if !fetchedMultiIds.contains(cachedMulti.uuid ?? "") {
               context.delete(cachedMulti)
             }
           }
-          
+
           try withAnimation {
             try context.save()
           }
@@ -57,13 +57,13 @@ extension RedditAPI {
         }
       }
       return true
-      
-    case .failure(let error):
+
+    case let .failure(error):
       print(error)
       return false
     }
   }
-  
+
   //  func fetchMyMultis() async -> Bool? {
   //    guard let currentCredentialID = RedditCredentialsManager.shared.selectedCredential?.id else { return nil }
   //
@@ -98,15 +98,14 @@ extension RedditAPI {
   //      return nil
   //    }
   //  }
-  
+
   struct FetchMyMultisPayload: Codable {
     var expand_srs = true
     var raw_json = 1
   }
-  
+
   struct MultiContainerResponse: Codable {
     let kind: String?
     var data: MultiData?
   }
 }
-

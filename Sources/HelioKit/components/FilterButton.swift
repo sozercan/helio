@@ -1,5 +1,5 @@
 //
-//  FlairButton.swift
+//  FilterButton.swift
 //  Helio
 //
 //  Created by Igor Marcossi on 18/12/23.
@@ -11,20 +11,20 @@ struct FilterButton: View, Equatable {
   static func == (lhs: FilterButton, rhs: FilterButton) -> Bool {
     lhs.filter == rhs.filter && lhs.isSelected == rhs.isSelected
   }
-  
+
   var filter: ShallowCachedFilter
   var isSelected: Bool
-  var selectFilter: (ShallowCachedFilter) -> ()
-  
+  var selectFilter: (ShallowCachedFilter) -> Void
+
   private let colorDotSize: Double = 8
   private let hPadding: Double = 14
   private let height: Double = 32
   private let longPressDuration: Double = 0.275
-  
+
   //  @GestureState private var pressingDown = false
   @State private var pressingDown = false
   @State private var editTimer: Timer? = nil
-  
+
   var body: some View {
 //    let isSelected = filter.type == "search" ? searchText.lowercased() == filter.text.lowercased() : isSelected
     let bgColor = Color.hex(filter.bgColor ?? "FFFFFF")
@@ -38,7 +38,7 @@ struct FilterButton: View, Equatable {
         .transaction { trans in
           trans.animation = .bouncy
         }
-      
+
       Text(filter.text)
         .fontSize(15, .medium)
         .foregroundColor(isSelected ? contrastColor : .primary)
@@ -69,7 +69,7 @@ struct FilterButton: View, Equatable {
     }
 //    .onLongPressGesture(minimumDuration: .infinity, maximumDistance: 10, perform: {}, onPressingChanged: { val in
 //      pressingDown = val
-//      
+//
 //      if val && filter.type != "flair" {
 //        editTimer = Timer.scheduledTimer(withTimeInterval: longPressDuration, repeats: false) { _ in
 //          Hap.shared.play(intensity: 0.75, sharpness: 0.9)

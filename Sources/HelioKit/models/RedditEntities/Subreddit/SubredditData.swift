@@ -5,8 +5,8 @@
 //  Created by Igor Marcossi on 24/01/24.
 //
 
-import Foundation
 import Defaults
+import Foundation
 
 struct SubredditData: Codable, GenericRedditEntityDataType, Defaults.Serializable, Identifiable {
   var user_flair_background_color: String? = nil
@@ -78,32 +78,32 @@ struct SubredditData: Codable, GenericRedditEntityDataType, Defaults.Serializabl
   var created_utc: Double? = nil
   var user_is_contributor: Bool? = nil
   var helioFlairs: [Flair]? = nil
-  //  let comment_contribution_settings: CommentContributionSettings
-  //  let header_size: [Int]?
-  //  let user_flair_position: String?
-  //  let all_original_content: Bool?
-  //  let has_menu_widget: Bool?
-  //  let wls: Int?
-  //  let submission_type: String?
-  //  let allowed_media_in_comments: [String]
-  //  let collapse_deleted_comments: Bool?
-  //  let emojis_custom_size: [Int]?
-  //  let is_crosspostable_subreddit: Bool?
-  //  let notification_level: String?
-  //  let should_show_media_in_comments_setting: Bool?
-  //  let can_assign_link_flair: Bool?
-  //  let accounts_active_is_fuzzed: Bool?
-  //  let allow_prediction_contributors: Bool?
-  //  let submit_text_label: String?
-  //  let link_flair_position: String?
-  //  let user_sr_flair_enabled: Bool?
-  //  let user_flair_enabled_in_sr: Bool?
-  //  let allow_chat_post_creation: Bool?
-  //  let allow_discovery: Bool?
-  //  let accept_followers: Bool?
-  //  let user_sr_theme_enabled: Bool?
-  //  let link_flair_enabled: Bool?
-  //  let disable_contributor_requests: Bool?
+  ///  let comment_contribution_settings: CommentContributionSettings
+  ///  let header_size: [Int]?
+  ///  let user_flair_position: String?
+  ///  let all_original_content: Bool?
+  ///  let has_menu_widget: Bool?
+  ///  let wls: Int?
+  ///  let submission_type: String?
+  ///  let allowed_media_in_comments: [String]
+  ///  let collapse_deleted_comments: Bool?
+  ///  let emojis_custom_size: [Int]?
+  ///  let is_crosspostable_subreddit: Bool?
+  ///  let notification_level: String?
+  ///  let should_show_media_in_comments_setting: Bool?
+  ///  let can_assign_link_flair: Bool?
+  ///  let accounts_active_is_fuzzed: Bool?
+  ///  let allow_prediction_contributors: Bool?
+  ///  let submit_text_label: String?
+  ///  let link_flair_position: String?
+  ///  let user_sr_flair_enabled: Bool?
+  ///  let user_flair_enabled_in_sr: Bool?
+  ///  let allow_chat_post_creation: Bool?
+  ///  let allow_discovery: Bool?
+  ///  let accept_followers: Bool?
+  ///  let user_sr_theme_enabled: Bool?
+  ///  let link_flair_enabled: Bool?
+  ///  let disable_contributor_requests: Bool?
   let subreddit_type: String?
   //  let suggested_comment_sort: String?
   //  let over18: Bool?
@@ -113,22 +113,21 @@ struct SubredditData: Codable, GenericRedditEntityDataType, Defaults.Serializabl
   //  let banner_size: [Int]?
   //  let mobile_banner_image: String?
   //  let allow_predictions_tournament: Bool?
-  
+
   var subredditIconKit: SubredditIconKit {
     let communityIconArr = community_icon?.split(separator: "?") ?? []
-    let iconRaw = icon_img == "" || icon_img == nil ? communityIconArr.count > 0 ? String(communityIconArr[0]) : "" : icon_img
+    let iconRaw = icon_img == "" || icon_img == nil ? !communityIconArr.isEmpty ? String(communityIconArr[0]) : "" : icon_img
     let name = display_name ?? ""
     let iconURLStr = iconRaw == "" ? nil : iconRaw
     let color = firstNonEmptyString(key_color, primary_color, "#828282") ?? ""
-    
-    return SubredditIconKit(url: iconURLStr, initialLetter: String((name).prefix(1)).uppercased(), color: String((firstNonEmptyString(color, "#828282") ?? "").dropFirst(1)))
+
+    return SubredditIconKit(url: iconURLStr, initialLetter: String(name.prefix(1)).uppercased(), color: String((firstNonEmptyString(color, "#828282") ?? "").dropFirst(1)))
   }
-  
-  
+
   enum CodingKeys: String, CodingKey {
     case user_flair_background_color, submit_text_html, restrict_posting, user_is_banned, free_form_reports, wiki_enabled, user_is_muted, user_can_flair_in_sr, display_name, header_img, title, allow_galleries, icon_size, primary_color, active_user_count, icon_img, display_name_prefixed, accounts_active, public_traffic, subscribers, name, quarantine, hide_ads, prediction_leaderboard_entry_type, emojis_enabled, advertiser_category, public_description, comment_score_hide_mins, allow_predictions, user_has_favorited, user_flair_template_id, community_icon, banner_background_image, original_content_tag_enabled, community_reviewed, submit_text, description_html, spoilers_enabled, allow_talks, is_enrolled_in_new_modmail, key_color, can_assign_user_flair, created, show_media_preview, user_is_subscriber, allow_videogifs, should_archive_posts, user_flair_type, allow_polls, public_description_html, allow_videos, banner_img, user_flair_text, banner_background_color, show_media, id, user_is_moderator, description, is_chat_post_feature_enabled, submit_link_label, user_flair_text_color, restrict_commenting, user_flair_css_class, allow_images, url, created_utc, user_is_contributor, helioFlairs, subreddit_type, over18
   }
-  
+
   init(id: String) {
     self.user_flair_background_color = nil
     self.submit_text_html = nil
@@ -198,7 +197,7 @@ struct SubredditData: Codable, GenericRedditEntityDataType, Defaults.Serializabl
     self.user_is_contributor = nil
     self.helioFlairs = nil
     self.title = nil
-    
+
     self.allow_galleries = nil
     self.allow_images = nil
     self.allow_videos = nil
@@ -215,7 +214,7 @@ struct SubredditData: Codable, GenericRedditEntityDataType, Defaults.Serializabl
     self.display_name = nil
     self.header_img = nil
     self.icon_img = nil
-    self.key_color =  nil
+    self.key_color = nil
     self.name = id
     self.primary_color = nil
     self.title = id
@@ -224,7 +223,7 @@ struct SubredditData: Codable, GenericRedditEntityDataType, Defaults.Serializabl
     self.id = id
     self.subscribers = 0
   }
-  
+
   init(entity: CachedSub) {
     self.user_flair_background_color = nil
     self.submit_text_html = nil
@@ -294,8 +293,7 @@ struct SubredditData: Codable, GenericRedditEntityDataType, Defaults.Serializabl
     self.user_is_contributor = nil
     self.helioFlairs = nil
     self.title = nil
-    
-    
+
     let x = entity
     self.allow_galleries = x.allow_galleries
     self.allow_images = x.allow_images
@@ -322,11 +320,10 @@ struct SubredditData: Codable, GenericRedditEntityDataType, Defaults.Serializabl
     self.id = x.uuid ?? UUID().uuidString
     self.subscribers = Int(x.subscribers)
   }
-  
-  
+
   init(from decoder: Decoder) throws {
     let container = try decoder.container(keyedBy: CodingKeys.self)
-    
+
     let id: String
     if let idValue = try? container.decode(String.self, forKey: .id) {
       id = idValue
@@ -335,13 +332,12 @@ struct SubredditData: Codable, GenericRedditEntityDataType, Defaults.Serializabl
     } else {
       throw DecodingError.dataCorrupted(
         .init(codingPath: decoder.codingPath,
-              debugDescription: "Unable to decode identification.")
+              debugDescription: "Unable to decode identification."),
       )
-      
     }
-    
+
     self.id = id
-    
+
     self.user_flair_background_color = try container.decodeIfPresent(String.self, forKey: .user_flair_background_color)
     self.submit_text_html = try container.decodeIfPresent(String.self, forKey: .submit_text_html)
     self.restrict_posting = try container.decodeIfPresent(Bool.self, forKey: .restrict_posting)

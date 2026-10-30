@@ -71,7 +71,7 @@ let package = Package(
       ],
       swiftSettings: [
         .enableUpcomingFeature("BareSlashRegexLiterals"),
-      ]
+      ],
     ),
     .testTarget(
       name: "HelioKitTests",
@@ -79,8 +79,8 @@ let package = Package(
         "HelioKit",
         .product(name: "Defaults", package: "Defaults"),
         .product(name: "Zip", package: "Zip"),
-      ]
+      ],
     ),
   ],
-  swiftLanguageModes: [.v5]
+  swiftLanguageModes: [.v5],
 )

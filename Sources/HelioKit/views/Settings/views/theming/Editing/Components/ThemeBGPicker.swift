@@ -14,20 +14,20 @@ struct ThemeBGPicker: View {
     VStack {
       HStack {
         Text("BG type")
-        
+
         Spacer()
-        
+
         TagsOptions($bg, options: [CarouselTagElement<ThemeBG>(label: "Color", value: ThemeBG.color(defaultBG), active: bg.isEqual(.color(defaultBG))), CarouselTagElement<ThemeBG>(label: "Image", value: ThemeBG.img(listDefaultBGImage), active: bg.isEqual(.img(listDefaultBGImage)))])
       }
       .padding(.horizontal, 16)
       .frame(maxWidth: .infinity)
       .resetter($bg, .color(defaultBG))
       switch bg {
-      case .color(let themeColor):
+      case let .color(themeColor):
         SchemesColorPicker(theme: Binding(get: { themeColor }, set: { val, _ in
           bg = .color(val)
         }), defaultVal: defaultBG)
-      case .img(let imgSchemes):
+      case let .img(imgSchemes):
         SchemesBGImagesPicker(theme: Binding(get: { imgSchemes }, set: { val, _ in
           bg = .img(val)
         }), defaultVal: listDefaultBGImage)
@@ -36,4 +36,3 @@ struct ThemeBGPicker: View {
     .mask(Rectangle().fill(.black))
   }
 }
-

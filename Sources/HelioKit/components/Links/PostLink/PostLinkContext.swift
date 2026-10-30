@@ -11,7 +11,7 @@ struct PostLinkContextPreview: View {
   weak var post: Post?
   weak var sub: Subreddit?
   var body: some View {
-    if let post = post, let sub = sub {
+    if let post, let sub {
       NavigationStack { PostView(post: post, subreddit: sub, forceCollapse: true, isPreview: true) }
     }
   }
@@ -36,7 +36,7 @@ struct PostLinkContext: View {
         }
       }
     }
-    
+
     if let selftext = post.data?.selftext, !selftext.isEmpty {
       Button {
         Nav.present(.selectText(selftext))

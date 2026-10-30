@@ -5,8 +5,8 @@
 //  Created by Igor Marcossi on 01/08/23.
 //
 
-import Foundation
 import Combine
+import Foundation
 import SwiftUI
 
 struct AdaptsToSoftwareKeyboard: ViewModifier {
@@ -23,17 +23,17 @@ struct AdaptsToSoftwareKeyboard: ViewModifier {
   private func subscribeToKeyboardEvents() {
     NotificationCenter.Publisher(
       center: NotificationCenter.default,
-      name: UIResponder.keyboardWillShowNotification
+      name: UIResponder.keyboardWillShowNotification,
     ).compactMap { notification in
-        notification.userInfo?["UIKeyboardFrameEndUserInfoKey"] as? CGRect
+      notification.userInfo?["UIKeyboardFrameEndUserInfoKey"] as? CGRect
     }.map { rect in
       rect.height
     }.subscribe(Subscribers.Assign(object: self, keyPath: \.currentHeight))
 
     NotificationCenter.Publisher(
       center: NotificationCenter.default,
-      name: UIResponder.keyboardWillHideNotification
-    ).compactMap { notification in
+      name: UIResponder.keyboardWillHideNotification,
+    ).compactMap { _ in
       CGFloat.zero
     }.subscribe(Subscribers.Assign(object: self, keyPath: \.currentHeight))
   }

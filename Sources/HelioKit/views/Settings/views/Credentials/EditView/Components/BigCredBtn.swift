@@ -14,7 +14,7 @@ struct BigCredBtn<C: View>: View {
   var description: String
   var page: CredentialEditStack.Mode
   var recommended: Bool = false
-  
+
   var body: some View {
     PressableButton(animation: .easeIn(duration: 0.15)) {
       nav.append(page)

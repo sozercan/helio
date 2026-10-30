@@ -14,7 +14,9 @@ struct RelayoutTests {
     return post
   }
 
-  private var theme: HelioTheme { InMemoryTheme.shared.currentTheme }
+  private var theme: HelioTheme {
+    InMemoryTheme.shared.currentTheme
+  }
 
   @Test func contentWidthIsTheColumnMinusPaddingOnEveryDevice() {
     let padding = (theme.postLinks.theme.innerPadding.horizontal + theme.postLinks.theme.outerHPadding) * 2
@@ -34,47 +36,59 @@ struct RelayoutTests {
   }
 
   @Test func relayoutKeepsLinkPreviews() throws {
-    var json = try JSONSerialization.jsonObject(with: JSONEncoder().encode(postSampleData)) as! [String: Any]
+    var json = try #require(try JSONSerialization.jsonObject(with: JSONEncoder().encode(postSampleData)) as? [String: Any])
     json["url"] = "https://example.com/article"
     json["domain"] = "example.com"
     let data = try JSONDecoder().decode(PostData.self, from: JSONSerialization.data(withJSONObject: json))
     let post = Post(id: data.id)
     post.data = data
     post.setupHelioData(contentWidth: 400, theme: theme, fetchAvatar: false)
-    guard case .link(let before) = post.helioData?.extractedMedia else { Issue.record("expected a link"); return }
+    guard case let .link(before) = post.helioData?.extractedMedia else { Issue.record("expected a link")
+      return
+    }
 
     post.relayout(contentWidth: 900, theme: theme)
-    guard case .link(let after) = post.helioData?.extractedMedia else { Issue.record("expected a link"); return }
+    guard case let .link(after) = post.helioData?.extractedMedia else { Issue.record("expected a link")
+      return
+    }
     #expect(after === before)
     #expect(post.helioData?.layoutWidth == 900)
   }
 
   @Test func relayoutKeepsEmbeddedReposts() throws {
-    var json = try JSONSerialization.jsonObject(with: JSONEncoder().encode(postSampleData)) as! [String: Any]
-    json["crosspost_parent_list"] = [try JSONSerialization.jsonObject(with: JSONEncoder().encode(postSampleData))]
+    var json = try #require(try JSONSerialization.jsonObject(with: JSONEncoder().encode(postSampleData)) as? [String: Any])
+    json["crosspost_parent_list"] = try [JSONSerialization.jsonObject(with: JSONEncoder().encode(postSampleData))]
     let data = try JSONDecoder().decode(PostData.self, from: JSONSerialization.data(withJSONObject: json))
     let post = Post(id: data.id)
     post.data = data
     post.setupHelioData(contentWidth: 400, theme: theme, fetchAvatar: false)
-    guard case .repost(let before) = post.helioData?.extractedMedia else { Issue.record("expected a repost"); return }
+    guard case let .repost(before) = post.helioData?.extractedMedia else { Issue.record("expected a repost")
+      return
+    }
 
     post.relayout(contentWidth: 900, theme: theme)
-    guard case .repost(let after) = post.helioData?.extractedMedia else { Issue.record("expected a repost"); return }
+    guard case let .repost(after) = post.helioData?.extractedMedia else { Issue.record("expected a repost")
+      return
+    }
     #expect(after === before)
     #expect(after.helioData?.layoutWidth == 900)
   }
 
   @Test func relayoutKeepsTheYouTubePlayerAndResizesItsThumbnail() throws {
-    var json = try JSONSerialization.jsonObject(with: JSONEncoder().encode(postSampleData)) as! [String: Any]
+    var json = try #require(try JSONSerialization.jsonObject(with: JSONEncoder().encode(postSampleData)) as? [String: Any])
     json["media"] = ["type": "youtube.com", "oembed": ["html": "<iframe src=\"https://www.youtube.com/embed/dQw4w9WgXcQ?feature=oembed\"></iframe>"]]
     let data = try JSONDecoder().decode(PostData.self, from: JSONSerialization.data(withJSONObject: json))
     let post = Post(id: data.id)
     post.data = data
     post.setupHelioData(contentWidth: 400, theme: theme, fetchAvatar: false)
-    guard case .yt(let before) = post.helioData?.extractedMedia else { Issue.record("expected youtube"); return }
+    guard case let .yt(before) = post.helioData?.extractedMedia else { Issue.record("expected youtube")
+      return
+    }
 
     post.relayout(contentWidth: 900, theme: theme)
-    guard case .yt(let after) = post.helioData?.extractedMedia else { Issue.record("expected youtube"); return }
+    guard case let .yt(after) = post.helioData?.extractedMedia else { Issue.record("expected youtube")
+      return
+    }
     #expect(after.player === before.player)
     #expect(after.thumbnailRequest.processors.map(\.identifier) != before.thumbnailRequest.processors.map(\.identifier))
   }
@@ -88,7 +102,7 @@ struct RelayoutTests {
   }
 
   @Test func imagesWithoutDimensionsIgnoreTheCachedLayout() throws {
-    var json = try JSONSerialization.jsonObject(with: JSONEncoder().encode(postSampleData)) as! [String: Any]
+    var json = try #require(try JSONSerialization.jsonObject(with: JSONEncoder().encode(postSampleData)) as? [String: Any])
     json["url"] = "https://i.redd.it/abc.jpg"
     json["preview"] = nil
     let data = try JSONDecoder().decode(PostData.self, from: JSONSerialization.data(withJSONObject: json))

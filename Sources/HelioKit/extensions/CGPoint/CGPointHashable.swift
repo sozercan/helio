@@ -1,12 +1,12 @@
 //
-//  cgPointHashable.swift
+//  CGPointHashable.swift
 //  Helio
 //
 //  Created by Igor Marcossi on 27/11/23.
 //
 
-import Foundation
 import CoreGraphics
+import Foundation
 
 extension CGPoint: Hashable {
   public func hash(into hasher: inout Hasher) {

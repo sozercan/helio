@@ -6,16 +6,16 @@
 //  bundle while the code lives in the HelioKit package.
 //
 
-import Foundation
 import CoreData
+import Foundation
 
 @objc(CollapsedComment)
 public class CollapsedComment: NSManagedObject {}
 
-extension CollapsedComment {
-  @nonobjc public class func fetchRequest() -> NSFetchRequest<CollapsedComment> {
+public extension CollapsedComment {
+  @nonobjc class func fetchRequest() -> NSFetchRequest<CollapsedComment> {
     NSFetchRequest<CollapsedComment>(entityName: "CollapsedComment")
   }
 
-  @NSManaged public var commentID: String?
+  @NSManaged var commentID: String?
 }

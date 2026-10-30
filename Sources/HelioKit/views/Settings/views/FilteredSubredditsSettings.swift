@@ -4,8 +4,8 @@
 //
 //  Created by Ethan Bills on 9/12/23.
 //
-import SwiftUI
 import Defaults
+import SwiftUI
 
 struct FilteredSubredditsSettings: View {
   @Default(.filteredSubreddits) private var filteredSubreddits
@@ -20,43 +20,40 @@ struct FilteredSubredditsSettings: View {
   }
 
   var body: some View {
-    Group {
-      List {
-        Section {
-          ForEach(Array(filteredSubreddits.enumerated()), id: \.element) { index, subreddit in
-            Text(subreddit)
-              .swipeActions {
-                Button(action: {
-                  withAnimation {
-                    removeSubreddit(at: index)
-                  }
-                  
-                }) {
-                  Image(systemName: "hand.raised.slash.fill")
+    List {
+      Section {
+        ForEach(Array(filteredSubreddits.enumerated()), id: \.element) { index, subreddit in
+          Text(subreddit)
+            .swipeActions {
+              Button(action: {
+                withAnimation {
+                  removeSubreddit(at: index)
                 }
-                .tint(Color.green)
+
+              }) {
+                Image(systemName: "hand.raised.slash.fill")
               }
-          }
+              .tint(Color.green)
+            }
         }
-        .themedListSection()
       }
-      .themedListBG(theme.lists.bg)
-      .navigationTitle("Filtered Subreddits")
-      .navigationBarItems(trailing:
-        HStack {
-          Button(action: {
-            addSubredditAlert = true
-          }) {
-            Image(systemName: "plus")
-          }
-        }
-      )
-      .navigationViewStyle(StackNavigationViewStyle())
+      .themedListSection()
     }
+    .themedListBG(theme.lists.bg)
+    .navigationTitle("Filtered Subreddits")
+    .navigationBarItems(trailing:
+      HStack {
+        Button(action: {
+          addSubredditAlert = true
+        }) {
+          Image(systemName: "plus")
+        }
+      })
+    .navigationViewStyle(StackNavigationViewStyle())
     .alert("Enter a subreddit", isPresented: $addSubredditAlert) {
       TextField("Meow", text: $newSubreddit)
       Button("OK", action: {
-        if !newSubreddit.isEmpty && !filteredSubreddits.contains(newSubreddit) {
+        if !newSubreddit.isEmpty, !filteredSubreddits.contains(newSubreddit) {
           withAnimation {
             filteredSubreddits.append(newSubreddit)
           }

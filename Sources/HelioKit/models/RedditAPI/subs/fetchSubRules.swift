@@ -5,20 +5,20 @@
 //  Created by Igor Marcossi on 19/07/23.
 //
 
-import Foundation
 import Alamofire
+import Foundation
 
 extension RedditAPI {
   func fetchSubRules(_ id: String) async -> FetchSubRulesResponse? {
-    switch await self.doRequest("\(RedditAPI.redditApiURLBase)\(id.hasPrefix("/r/") ? id : "/r/\(id)/")about/rules.json?raw_json=1", method: .get, decodable: FetchSubRulesResponse.self)  {
-    case .success(let data):
+    switch await self.doRequest("\(RedditAPI.redditApiURLBase)\(id.hasPrefix("/r/") ? id : "/r/\(id)/")about/rules.json?raw_json=1", method: .get, decodable: FetchSubRulesResponse.self) {
+    case let .success(data):
       return data
-    case .failure(let error):
+    case let .failure(error):
       print(error)
       return nil
     }
   }
-  
+
   struct FetchSubRulesRule: Codable {
     let kind: String?
     let description: String?
@@ -28,7 +28,7 @@ extension RedditAPI {
     let created_utc: Int?
     let priority: Int?
   }
-  
+
   struct FetchRedditRulesFlow: Codable {
     let complaintPrompt: String?
     let complaintButtonText: String?
@@ -40,7 +40,7 @@ extension RedditAPI {
     let fileComplaint: Bool?
     let nextStepReasons: [FetchRedditRulesFlow]?
   }
-  
+
   struct FetchSubRulesResponse: Codable {
     let rules: [FetchSubRulesRule]?
     let site_rules: [String]?

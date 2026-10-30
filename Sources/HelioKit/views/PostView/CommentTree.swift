@@ -94,18 +94,18 @@ struct CommentTreeRowView: View {
           .background(CommentBG(cornerRadius: theme.theme.cornerRadius, pos: .top).fill(theme.theme.bg()))
           .frame(maxWidth: .infinity, minHeight: theme.theme.cornerRadius, maxHeight: theme.theme.cornerRadius, alignment: .top)
           .clipped()
-      case .comment(let hiddenReplyCount):
+      case let .comment(hiddenReplyCount):
         if let helioData = row.comment.helioData {
           CommentLinkContent(highlightID: highlightID, seenComments: seenComments, arrowKinds: row.arrowKinds, post: post, comment: row.comment, helioData: helioData, hiddenReplyCount: hiddenReplyCount)
             .if(row.isRoot) { view in
               view.anchorPreference(key: CommentUtils.AnchorsKey.self, value: .center) { [row.comment.id: $0] }
             }
         }
-      case .more(let parent):
+      case let .more(parent):
         CommentLinkMore(arrowKinds: row.arrowKinds, comment: row.comment, post: post, postFullname: postFullname, parentElement: parent.map { .comment($0) } ?? .post($comments))
       case .continueThread:
         CommentLinkFull(post: post, arrowKinds: row.arrowKinds, comment: row.comment)
-      case .rootBottom(let isLastRoot):
+      case let .rootBottom(isLastRoot):
         Spacer()
           .frame(maxWidth: .infinity, minHeight: theme.theme.cornerRadius * 2, maxHeight: theme.theme.cornerRadius * 2, alignment: .top)
           .background(CommentBG(cornerRadius: theme.theme.cornerRadius, pos: .bottom).fill(theme.theme.bg()))

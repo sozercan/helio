@@ -1,19 +1,19 @@
 //
-//  CommentModal.swift
+//  ReplyModal.swift
 //  Helio
 //
 //  Created by Igor Marcossi on 02/07/23.
 //
 
-import SwiftUI
-import HighlightedTextEditor
 import Defaults
+import HighlightedTextEditor
 import NukeUI
+import SwiftUI
 
-class TextFieldObserver : ObservableObject {
+class TextFieldObserver: ObservableObject {
   @Published var debouncedTeplyText: String
   @Published var replyText: String
-  
+
   init(delay: DispatchQueue.SchedulerTimeType.Stride, text: String? = nil) {
     let initial = ""
     debouncedTeplyText = text ?? initial
@@ -26,11 +26,11 @@ class TextFieldObserver : ObservableObject {
 
 struct EditReplyModalComment: View {
   var comment: Comment
-  
-  func action(_ endLoading: (@escaping (Bool) -> ()), text: String) {
+
+  func action(_ endLoading: @escaping (Bool) -> Void, text: String) {
     if let _ = comment.typePrefix {
       Task(priority: .background) {
-        let result = (await comment.edit(text)) ?? false
+        let result = await (comment.edit(text)) ?? false
         await MainActor.run {
           withAnimation(spring) {
             endLoading(result)
@@ -39,7 +39,7 @@ struct EditReplyModalComment: View {
       }
     }
   }
-  
+
   var body: some View {
     ReplyModal(title: "Editing", loadingLabel: "Updating...", submitBtnLabel: "Update comment", thingFullname: comment.data?.name ?? "", action: action, text: comment.data?.body) {
       EmptyView()
@@ -49,8 +49,8 @@ struct EditReplyModalComment: View {
 
 struct ReplyModalComment: View {
   var comment: Comment
-  
-  func action(_ endLoading: (@escaping (Bool) -> ()), text: String) {
+
+  func action(_ endLoading: @escaping (Bool) -> Void, text: String) {
     if let _ = comment.typePrefix {
       Task(priority: .background) {
         let result = await comment.reply(text)
@@ -62,7 +62,7 @@ struct ReplyModalComment: View {
       }
     }
   }
-  
+
   var body: some View {
     ReplyModal(thingFullname: comment.data?.name ?? "", action: action) {
       VStack {
@@ -76,9 +76,9 @@ struct ReplyModalComment: View {
 
 struct ReplyModalPost: View {
   var post: Post
-  var updateComments: (()->())?
-  
-  func action(_ endLoading: (@escaping (Bool) -> ()), text: String) {
+  var updateComments: (() -> Void)?
+
+  func action(_ endLoading: @escaping (Bool) -> Void, text: String) {
     Task(priority: .background) {
       let result = await post.reply(text, updateComments: updateComments)
       await MainActor.run {
@@ -88,7 +88,7 @@ struct ReplyModalPost: View {
       }
     }
   }
-  
+
   var body: some View {
     ReplyModal(thingFullname: post.data?.name ?? "", action: action) {
       EmptyView()
@@ -101,10 +101,9 @@ struct ReplyModal<Content: View>: View {
   var submitBtnLabel: String
   var thingFullname: String
   var title: String
-  var action: ((@escaping (Bool) -> ()), String) -> ()
+  var action: (@escaping (Bool) -> Void, String) -> Void
   let content: (() -> Content)?
-  
-  
+
   @State private var alertExit = false
   @StateObject private var textWrapper: TextFieldObserver
   @Environment(\.dismiss) private var dismiss
@@ -117,7 +116,7 @@ struct ReplyModal<Content: View>: View {
   @FetchRequest(sortDescriptors: []) var drafts: FetchedResults<ReplyDraft>
   @Environment(\.globalLoaderStart) private var globalLoaderStart
   @Environment(\.globalLoaderDismiss) private var globalLoaderDismiss
-  
+
   init(title: String = "Replying", loadingLabel: String = "Commenting...", submitBtnLabel: String = "Send", thingFullname: String, action: @escaping (@escaping (Bool) -> Void, String) -> Void, text: String? = nil, content: (() -> Content)?) {
     self.title = title
     self.loadingLabel = loadingLabel
@@ -127,12 +126,11 @@ struct ReplyModal<Content: View>: View {
     self.action = action
     self._textWrapper = StateObject(wrappedValue: TextFieldObserver(delay: 0.5, text: text))
   }
-  
+
   var body: some View {
     NavigationView {
       ScrollView {
         VStack(spacing: 12) {
-          
           VStack(alignment: .leading) {
             if let me = RedditAPI.shared.me?.data, let avatarLink = me.icon_img ?? me.snoovatar_img, let rootURL = rootURLString(avatarLink), let avatarURL = URL(string: rootURL) {
               BadgeView(avatarRequest: ImageRequest(url: avatarURL), saved: false, author: me.name, fullname: "t2_\(me.id)", userFlair: "", created: Date().timeIntervalSince1970, avatarURL: me.icon_img ?? me.snoovatar_img, theme: selectedTheme.comments.theme.badge, commentsCount: "0", votesCount: "0")
@@ -148,16 +146,14 @@ struct ReplyModal<Content: View>: View {
           .blur(radius: loading ? 24 : 0)
           .overlay(
             !loading
-            ? nil
-            : ProgressView()
-              .progressViewStyle(.circular)
+              ? nil
+              : ProgressView()
+              .progressViewStyle(.circular),
           )
-          
-          if let content = content {
+
+          if let content {
             content()
           }
-          
-          
         }
         .padding(.horizontal, 16)
         .padding(.bottom, 68)
@@ -170,24 +166,22 @@ struct ReplyModal<Content: View>: View {
           globalLoaderStart(loadingLabel)
           action({ result in
             globalLoaderDismiss()
-            if result {
-              if let currentDraft = currentDraft {
-                Task {
-                  await viewContext.perform(schedule: .enqueued) {
-                    viewContext.delete(currentDraft)
-                    try? viewContext.save()
-                  }
+            if result, let currentDraft {
+              Task {
+                await viewContext.perform(schedule: .enqueued) {
+                  viewContext.delete(currentDraft)
+                  try? viewContext.save()
                 }
               }
             }
           }, textWrapper.replyText)
         }
-          .shrinkOnTap()
-          .offset(y: loading || selection == collapsedPresentation ? 90 : 0)
-          .animation(spring, value: selection)
-          .padding(.horizontal, 16)
-          .padding(.bottom, 8)
-        , alignment: .bottom
+        .shrinkOnTap()
+        .offset(y: loading || selection == collapsedPresentation ? 90 : 0)
+        .animation(spring, value: selection)
+        .padding(.horizontal, 16)
+        .padding(.bottom, 8),
+        alignment: .bottom,
       )
       .onChange(of: textWrapper.debouncedTeplyText, perform: { val in
         currentDraft?.replyText = val
@@ -198,7 +192,7 @@ struct ReplyModal<Content: View>: View {
         }
       })
       .onDisappear {
-        if textWrapper.replyText == "", let currentDraft = currentDraft {
+        if textWrapper.replyText == "", let currentDraft {
           Task {
             await viewContext.perform(schedule: .enqueued) {
               viewContext.delete(currentDraft)
@@ -237,7 +231,7 @@ struct ReplyModal<Content: View>: View {
                   withAnimation(spring) {
                     dismiss()
                   }
-                  if let currentDraft = currentDraft {
+                  if let currentDraft {
                     Task {
                       await viewContext.perform(schedule: .enqueued) {
                         viewContext.delete(currentDraft)
@@ -246,16 +240,15 @@ struct ReplyModal<Content: View>: View {
                     }
                   }
                 },
-                .cancel()
+                .cancel(),
               ])
             }
-            
+
             MasterButton(icon: "chevron.down", mode: .subtle, color: .primary, textColor: .primary, shrinkHoverEffect: true, height: 52, proportional: .circle) {
               withAnimation(spring) {
                 dismiss()
               }
             }
-            
           }
         }
       }
@@ -264,12 +257,12 @@ struct ReplyModal<Content: View>: View {
     }
     .background(
       !selectedTheme.general.modalsBG.blurry
-      ? nil
-      : GeometryReader { geo in
-        selectedTheme.general.modalsBG.color()
-          .frame(width: geo.size.width, height: geo.size.height)
-      }
-        .edgesIgnoringSafeArea(.all)
+        ? nil
+        : GeometryReader { geo in
+          selectedTheme.general.modalsBG.color()
+            .frame(width: geo.size.width, height: geo.size.height)
+        }
+        .edgesIgnoringSafeArea(.all),
     )
     .presentationBackground(selectedTheme.general.modalsBG.blurry ? AnyShapeStyle(.bar) : AnyShapeStyle(selectedTheme.general.modalsBG.color()))
     .presentationDetents([.large, .fraction(0.75), .medium, collapsedPresentation], selection: $selection)

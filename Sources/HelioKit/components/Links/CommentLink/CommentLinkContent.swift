@@ -5,22 +5,21 @@
 //  Created by Igor Marcossi on 08/07/23.
 //
 
-import SwiftUI
 import Defaults
 import MarkdownUI
+import SwiftUI
 
 struct CommentLinkContentPreview: View {
   var forcedBodySize: CGSize?
   var showReplies = true
   var arrowKinds: [ArrowKind]
-  var indentLines: Int? = nil
+  var indentLines: Int?
   var lineLimit: Int?
   var post: Post?
   var comment: Comment
-  var avatarsURL: [String:String]?
+  var avatarsURL: [String: String]?
   var body: some View {
     if let helioData = comment.helioData, let forcedBodySize {
-      
       VStack(alignment: .leading, spacing: 0) {
         CommentLinkContent(forcedBodySize: nil, showReplies: showReplies, arrowKinds: arrowKinds, indentLines: indentLines, lineLimit: lineLimit, post: post, comment: comment, helioData: helioData, avatarsURL: avatarsURL)
       }
@@ -35,19 +34,19 @@ struct CommentLinkContentPreview: View {
 struct CommentLinkContent: View {
   static let indentLineContentSpacing: Double = 4
   static let indentLinesSpacing: Double = 6
-  
+
   var disableBG = false
   var highlightID: String?
   var seenComments: String?
   var forcedBodySize: CGSize?
   var showReplies = true
   var arrowKinds: [ArrowKind]
-  var indentLines: Int? = nil
+  var indentLines: Int?
   var lineLimit: Int?
   var post: Post?
   var comment: Comment
   var helioData: CommentHelioData
-  var avatarsURL: [String:String]?
+  var avatarsURL: [String: String]?
   /// Replies hidden under this comment while it's collapsed.
   var hiddenReplyCount = 0
 
@@ -56,14 +55,14 @@ struct CommentLinkContent: View {
   @State private var highlight = false
   @State private var showSpoiler = false
   @State private var commentSwipeActions: SwipeActionsSet = Defaults[.CommentLinkDefSettings].swipeActions
-  
+
   @Default(.CommentLinkDefSettings) private var defSettings
   @Default(.CommentsSectionDefSettings) private var sectionDefSettings
-  
+
   @Environment(\.useTheme) private var selectedTheme
-  
+
   @State var commentViewLoaded = false
-  
+
   nonisolated func haptic() {
     Task(priority: .background) {
       let medium = await UIImpactFeedbackGenerator(style: .medium)
@@ -71,20 +70,19 @@ struct CommentLinkContent: View {
       await medium.impactOccurred()
     }
   }
-  
-  var body: some View {    
+
+  var body: some View {
     let theme = selectedTheme.comments
     let selectable = (comment.data?.helioSelecting ?? false)
     let horPad = theme.theme.innerPadding.horizontal
-    
-    
+
     if let data = comment.data {
       let collapsed = data.collapsed ?? false
       Group {
         HStack(spacing: CommentLinkContent.indentLineContentSpacing) {
-          if data.depth != 0 && indentLines != 0 {
-            HStack(alignment:. bottom, spacing: CommentLinkContent.indentLinesSpacing) {
-              let shapes = Array(1...Int(indentLines ?? data.depth ?? 1))
+          if data.depth != 0, indentLines != 0 {
+            HStack(alignment: .bottom, spacing: CommentLinkContent.indentLinesSpacing) {
+              let shapes = Array(1 ... Int(indentLines ?? data.depth ?? 1))
               ForEach(shapes, id: \.self) { i in
                 if arrowKinds.indices.contains(i - 1) {
                   let actualArrowKind = arrowKinds[i - 1]
@@ -95,18 +93,18 @@ struct CommentLinkContent: View {
           }
           HStack(spacing: 8) {
             if let author = data.author {
-              BadgeView(avatarRequest: helioData.avatarImageRequest, saved: data.badgeKit.saved, unseen: seenComments == nil ? false : !seenComments!.contains(data.id), usernameColor: (post?.data?.author ?? "") == author ? Color.green : nil, author: data.badgeKit.author,fullname: data.badgeKit.authorFullname, userFlair: data.badgeKit.userFlair, created: data.badgeKit.created, theme: theme.theme.badge, commentTheme: theme.theme)
+              BadgeView(avatarRequest: helioData.avatarImageRequest, saved: data.badgeKit.saved, unseen: seenComments == nil ? false : !seenComments!.contains(data.id), usernameColor: (post?.data?.author ?? "") == author ? Color.green : nil, author: data.badgeKit.author, fullname: data.badgeKit.authorFullname, userFlair: data.badgeKit.userFlair, created: data.badgeKit.created, theme: theme.theme.badge, commentTheme: theme.theme)
             }
-            
+
             Spacer()
-            
-            if (data.saved ?? false) {
+
+            if data.saved ?? false {
               Image(systemName: "bookmark.fill")
                 .fontSize(14)
                 .foregroundColor(.green)
                 .transition(.scale.combined(with: .opacity))
             }
-            
+
             if selectable {
               HStack(spacing: 2) {
                 Circle()
@@ -121,34 +119,31 @@ struct CommentLinkContent: View {
               .background(.orange, in: Capsule(style: .continuous))
               .onTapGesture { withAnimation { comment.data?.helioSelecting = false } }
             }
-            
+
             if let ups = data.ups {
               HStack(alignment: .center, spacing: 4) {
                 Image(systemName: "arrow.up")
                   .foregroundColor(data.likes != nil && data.likes! ? .orange : .gray)
                   .contentShape(Rectangle())
                   .onTapGesture {
-                    
                     Task {
                       haptic()
                       _ = await comment.vote(action: .up)
                     }
                   }
-                
+
                 let downup = Int(ups)
                 Text(data.score_hidden == true ? "–" : formatBigNumber(downup))
                   .accessibilityLabel(data.score_hidden == true ? "Score hidden" : "\(downup) points")
                   .foregroundColor(data.likes != nil ? (data.likes! ? .orange : .blue) : .gray)
                   .contentTransition(.numericText())
-                
-                //                  .foregroundColor(downup == 0 ? .gray : downup > 0 ? .orange : .blue)
+                  //                  .foregroundColor(downup == 0 ? .gray : downup > 0 ? .orange : .blue)
                   .fontSize(14, .semibold)
-                
+
                 Image(systemName: "arrow.down")
                   .foregroundColor(data.likes != nil && !data.likes! ? .blue : .gray)
                   .contentShape(Rectangle())
                   .onTapGesture {
-                    
                     Task {
                       haptic()
                       _ = await comment.vote(action: .down)
@@ -162,7 +157,7 @@ struct CommentLinkContent: View {
               //              .viewVotes(ups, downs)
               .allowsHitTesting(!collapsed)
               .scaleEffect(1)
-              
+
               if collapsed {
                 HStack(spacing: 2) {
                   Image(systemName: "eye.slash.fill")
@@ -174,7 +169,6 @@ struct CommentLinkContent: View {
                 .opacity(0.5)
                 .allowsHitTesting(false)
               }
-              
             }
           }
           .padding(.top, max(0, theme.theme.innerPadding.vertical + (data.depth == 0 ? -theme.theme.cornerRadius : theme.theme.repliesSpacing)))
@@ -189,15 +183,15 @@ struct CommentLinkContent: View {
             onTap: { withAnimation(spring) { comment.toggleCollapsed(optimistic: true) } },
             actionsSet: commentSwipeActions,
             entity: comment,
-            skipAnimation: true
+            skipAnimation: true,
           )
         }
         .padding(.horizontal, horPad)
-        .frame(height: max(((theme.theme.badge.authorText.size * 1.2) + (theme.theme.badge.statsText.size * 1.2) + 2), theme.theme.badge.avatar.size) + max(0, theme.theme.innerPadding.vertical + (data.depth == 0 ? -theme.theme.cornerRadius : theme.theme.repliesSpacing)), alignment: .leading)
+        .frame(height: max((theme.theme.badge.authorText.size * 1.2) + (theme.theme.badge.statsText.size * 1.2) + 2, theme.theme.badge.avatar.size) + max(0, theme.theme.innerPadding.vertical + (data.depth == 0 ? -theme.theme.cornerRadius : theme.theme.repliesSpacing)), alignment: .leading)
         .mask(Color.black)
         .onAppear {
-          if !commentViewLoaded && sectionDefSettings.collapseAutoModerator {
-            if data.depth == 0 && data.author == "AutoModerator" && !(data.collapsed ?? false) {
+          if !commentViewLoaded, sectionDefSettings.collapseAutoModerator {
+            if data.depth == 0, data.author == "AutoModerator", !(data.collapsed ?? false) {
               comment.toggleCollapsed(optimistic: true)
             }
           } else {
@@ -205,12 +199,12 @@ struct CommentLinkContent: View {
           }
         }
         .id("\(data.id)-header\(forcedBodySize == nil ? "" : "-preview")")
-        
+
         if !collapsed {
           HStack(spacing: CommentLinkContent.indentLineContentSpacing) {
-            if data.depth != 0 && indentLines != 0 {
-              HStack(alignment:. bottom, spacing: CommentLinkContent.indentLinesSpacing) {
-                let shapes = Array(1...Int(indentLines ?? data.depth ?? 1))
+            if data.depth != 0, indentLines != 0 {
+              HStack(alignment: .bottom, spacing: CommentLinkContent.indentLinesSpacing) {
+                let shapes = Array(1 ... Int(indentLines ?? data.depth ?? 1))
                 ForEach(shapes, id: \.self) { i in
                   if arrowKinds.indices.contains(i - 1) {
                     let actualArrowKind = arrowKinds[i - 1]
@@ -231,13 +225,13 @@ struct CommentLinkContent: View {
                       Markdown(MarkdownUtil.formatForMarkdown(body, showSpoiler: showSpoiler))
                         .markdownTheme(.helioMarkdown(fontSize: theme.theme.bodyText.size, lineSpacing: theme.theme.linespacing, textSelection: selectable))
                         .fixedSize(horizontal: false, vertical: true)
-                      
+
                       if MarkdownUtil.containsSpoiler(body) {
                         Spacer()
                         Image(systemName: showSpoiler ? "eye.slash.fill" : "eye.fill")
                           .onTapGesture {
                             withAnimation {
-                              showSpoiler = !showSpoiler
+                              showSpoiler.toggle()
                             }
                           }
                       }
@@ -252,14 +246,18 @@ struct CommentLinkContent: View {
               .swipyUI(
                 offsetYAction: -15,
                 controlledDragAmount: $offsetX,
-                onTap: { if !selectable { withAnimation(spring) { comment.toggleCollapsed(optimistic: true) } } },
+                onTap: {
+                  if !selectable {
+                    withAnimation(spring) { comment.toggleCollapsed(optimistic: true) }
+                  }
+                },
                 actionsSet: commentSwipeActions,
                 entity: comment,
-                skipAnimation: true
+                skipAnimation: true,
               )
               .frame(maxWidth: .infinity, alignment: .topLeading)
               .padding(.top, theme.theme.bodyAuthorSpacing)
-              .padding(.bottom, max(0, theme.theme.innerPadding.vertical + (data.depth == 0 && comment.childrenHelio.count == 0 ? -theme.theme.cornerRadius : theme.theme.innerPadding.vertical)))
+              .padding(.bottom, max(0, theme.theme.innerPadding.vertical + (data.depth == 0 && comment.childrenHelio.isEmpty ? -theme.theme.cornerRadius : theme.theme.innerPadding.vertical)))
               .scaleEffect(1)
               .contentShape(Rectangle())
               .measure($size)
@@ -281,14 +279,16 @@ struct CommentLinkContent: View {
         }
         if var specificID = highlightID {
           specificID = specificID.hasPrefix("t1_") ? String(specificID.dropFirst(3)) : specificID
-          if specificID == data.id { withAnimation { highlight = true } }
+          if specificID == data.id {
+            withAnimation { highlight = true }
+          }
           doThisAfter(0.1) {
             withAnimation(.easeOut(duration: 4)) { highlight = false }
           }
         }
       }
       .contextMenu {
-        if !selectable && forcedBodySize == nil {
+        if !selectable, forcedBodySize == nil {
           ForEach(allCommentSwipeActions) { action in
             let active = action.active(comment)
             if action.enabled(comment) {
@@ -302,20 +302,19 @@ struct CommentLinkContent: View {
               }
             }
           }
-          
+
           if let body = data.body, !body.isEmpty {
             Button {
               Nav.present(.selectText(body))
             } label: { Label("Select Text", systemImage: "selection.pin.in.out") }
           }
-          
+
           if let permalink = data.permalink {
             // ShareLink inside a .contextMenu is a known SwiftUI bug; present imperatively instead.
             Button {
               ShareUtils.shareItem(item: "https://reddit.com\(permalink.escape.urlEncoded)")
             } label: { Label("Share", systemImage: "square.and.arrow.up") }
           }
-          
         }
       } preview: {
         CommentLinkContentPreview(forcedBodySize: size, showReplies: showReplies, arrowKinds: arrowKinds, indentLines: indentLines, lineLimit: lineLimit, post: post, comment: comment, avatarsURL: avatarsURL)
@@ -327,21 +326,21 @@ struct CommentLinkContent: View {
   }
 }
 
-//struct CommentLinkContent_Previews: PreviewProvider {
+// struct CommentLinkContent_Previews: PreviewProvider {
 //    static var previews: some View {
 //        CommentLinkContent()
 //    }
-//}
+// }
 
 struct AnimatingCellHeight: AnimatableModifier {
   var height: CGFloat = 0
   var disable: Bool = false
-  
+
   var animatableData: CGFloat {
     get { height }
     set { height = newValue }
   }
-  
+
   func body(content: Content) -> some View {
     content.frame(height: disable ? nil : height, alignment: .topLeading)
   }

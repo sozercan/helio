@@ -6,23 +6,23 @@
 //  bundle while the code lives in the HelioKit package.
 //
 
-import Foundation
 import CoreData
+import Foundation
 
 @objc(PostDraft)
 public class PostDraft: NSManagedObject {}
 
-extension PostDraft {
-  @nonobjc public class func fetchRequest() -> NSFetchRequest<PostDraft> {
+public extension PostDraft {
+  @nonobjc class func fetchRequest() -> NSFetchRequest<PostDraft> {
     NSFetchRequest<PostDraft>(entityName: "PostDraft")
   }
 
-  @NSManaged public var flairID: String?
-  @NSManaged public var flairText: String?
-  @NSManaged public var subredditName: String?
-  @NSManaged public var text: String?
-  @NSManaged public var timestamp: Date?
-  @NSManaged public var title: String?
-  @NSManaged public var url: String?
-  @NSManaged public var uuid: UUID?
+  @NSManaged var flairID: String?
+  @NSManaged var flairText: String?
+  @NSManaged var subredditName: String?
+  @NSManaged var text: String?
+  @NSManaged var timestamp: Date?
+  @NSManaged var title: String?
+  @NSManaged var url: String?
+  @NSManaged var uuid: UUID?
 }

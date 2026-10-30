@@ -1,51 +1,54 @@
 //
-//  UserData.swift
+//  User.swift
 //  Helio
 //
 //  Created by Igor Marcossi on 28/06/23.
 //
 
-import SwiftUI
 import Foundation
+import SwiftUI
 
 typealias User = GenericRedditEntity<UserData, AnyHashable>
 
 extension User {
   static var prefix = "t2"
-  var selfPrefix: String { Self.prefix }
-  
+  var selfPrefix: String {
+    Self.prefix
+  }
+
   convenience init(data: T) {
     self.init(data: data, typePrefix: "\(User.prefix)_")
   }
+
   convenience init(id: String) {
     self.init(id: id, typePrefix: "\(User.prefix)_")
   }
-  
+
   func refetchOverview(_ dataTypeFilter: String? = nil, _ after: String? = nil) async -> ([Either<Post, Comment>]?, String?)? {
     let name = data?.name ?? data?.id ?? id
     if let overviewDataResult = await RedditAPI.shared.fetchUserOverview(name, dataTypeFilter, after), let overviewData = overviewDataResult.0 {
       await MainActor.run {
         self.loading = false
       }
-      
+
       return (overviewData.map {
         switch $0 {
-        case .first(let postData):
-          return .first(Post(data: postData))
-        case .second(let commentData):
-          return .second(Comment(data: commentData))
+        case let .first(postData):
+          .first(Post(data: postData))
+        case let .second(commentData):
+          .second(Comment(data: commentData))
         }
       }, overviewDataResult.1)
     }
     return nil
   }
-  
+
   func refetchUser() async {
     await MainActor.run {
       self.loading = true
     }
     let userName = data?.name ?? id
-    if let data = (await RedditAPI.shared.fetchUser(userName)) {
+    if let data = await (RedditAPI.shared.fetchUser(userName)) {
       await MainActor.run {
         self.data = data
       }
@@ -54,7 +57,7 @@ extension User {
       self.loading = false
     }
   }
-  
+
   func fetchItself() {
     Task(priority: .background) {
       if let data = await RedditAPI.shared.fetchUser(id) {
@@ -194,5 +197,3 @@ struct UserDataSubreddit: Codable, Hashable {
   let subreddit_type: String?
   let user_is_subscriber: Bool?
 }
-
-

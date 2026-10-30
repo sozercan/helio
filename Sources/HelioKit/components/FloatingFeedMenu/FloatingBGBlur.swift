@@ -1,5 +1,5 @@
 //
-//  BGBlur.swift
+//  FloatingBGBlur.swift
 //  Helio
 //
 //  Created by Igor Marcossi on 28/12/23.
@@ -11,30 +11,30 @@ struct FloatingBGBlur: View, Equatable {
   static func == (lhs: FloatingBGBlur, rhs: FloatingBGBlur) -> Bool {
     lhs.active == rhs.active
   }
-  
+
   @Environment(\.contentWidth) var contentWidth
-  
+
   let active: Bool
-  let dismiss: ()->()
+  let dismiss: () -> Void
   var body: some View {
     Rectangle()
       .fill(.bar)
-      .frame(width: .screenW * 5, height: (!isWideLayout ? .screenW * 1.65 : .screenH * 0.75), alignment: .bottomTrailing)
+      .frame(width: .screenW * 5, height: !isWideLayout ? .screenW * 1.65 : .screenH * 0.75, alignment: .bottomTrailing)
       .mask(
         EllipticalGradient(
           gradient: .smooth(from: .black, to: .black.opacity(0), curve: .easeIn),
           center: .bottomTrailing,
           startRadiusFraction: active ? 0.5 : 0,
-          endRadiusFraction: active ? 1 : 0
+          endRadiusFraction: active ? 1 : 0,
         )
-        .animation(.smooth, value: active)
+        .animation(.smooth, value: active),
       )
       // The zero-radius mask alone doesn't hide the material (iOS 27 shows it as a frosted block).
       .opacity(active ? 1 : 0)
       .animation(.smooth, value: active)
       .contentShape(Rectangle())
       .frame(width: contentWidth)
-      .simultaneousGesture(DragGesture(minimumDistance: 0).onChanged { _ in dismiss() } )
+      .simultaneousGesture(DragGesture(minimumDistance: 0).onChanged { _ in dismiss() })
       .clipped()
       .allowsHitTesting(active)
   }

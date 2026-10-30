@@ -5,69 +5,71 @@
 //  Created by Igor Marcossi on 20/08/23.
 //
 
-import Foundation
 import Defaults
+import Foundation
 import UIKit
 
 typealias Multi = GenericRedditEntity<MultiData, AnyHashable>
 
 extension Multi {
   static var prefix = "LabeledMulti"
-  var selfPrefix: String { Self.prefix }
+  var selfPrefix: String {
+    Self.prefix
+  }
+
   convenience init(data: T) {
     self.init(data: data, typePrefix: "\(Post.prefix)_")
   }
-  
+
   convenience init(id: String) {
     self.init(id: id, typePrefix: "\(Post.prefix)_")
   }
-  
+
   func fetchData() async -> Bool? {
 //    if let data = await RedditAPI.shared.fetchMultiInfo(id) {
-//      
+//
 //    }
-    return nil
+    nil
   }
-  
+
   func fetchPosts(sort: SubListingSortOption = .best, after: String? = nil, contentWidth: CGFloat = .screenW) async -> ([RedditEntityType]?, String?)? {
-    if let data = data {
-      if let response = await RedditAPI.shared.fetchMultiPosts(path: data.path, sort: sort, after: after), let data = response.0 {
-        return (Post.initMultiple(datas: data.compactMap { $0.data }, contentWidth: contentWidth).map { .post($0) }, response.1)
-      }
+    if let data, let response = await RedditAPI.shared.fetchMultiPosts(path: data.path, sort: sort, after: after), let data = response.0 {
+      return (Post.initMultiple(datas: data.compactMap(\.data), contentWidth: contentWidth).map { .post($0) }, response.1)
     }
     return nil
   }
-  
+
   func delete() async -> Bool? {
-    if let data = data {
+    if let data {
       return await RedditAPI.shared.deleteMulti(data.path)
     }
     return nil
   }
 }
 
-
 struct MultiData: GenericRedditEntityDataType, Defaults.Serializable {
-  var can_edit: Bool? = nil
+  var can_edit: Bool?
   let display_name, name: String
-  var description_html: String? = nil
-  var num_subscribers: Int? = nil
-  var copied_from: String? = nil
-  var icon_url: String? = nil
-  var subreddits: [MultiSub]? = nil
-  var created_utc: Double? = nil
-  var created: Double? = nil
+  var description_html: String?
+  var num_subscribers: Int?
+  var copied_from: String?
+  var icon_url: String?
+  var subreddits: [MultiSub]?
+  var created_utc: Double?
+  var created: Double?
   let visibility: MultiVisibility?
-  var over_18: Bool? = nil
+  var over_18: Bool?
   let path: String
-  var key_color: String? = nil
-  var owner: String? = nil
-  var is_subscriber: Bool? = nil
-  var is_favorited: Bool? = nil
-  var description_md: String? = nil
-  var owner_id: String? = nil
-  var id: String { path }
-  
+  var key_color: String?
+  var owner: String?
+  var is_subscriber: Bool?
+  var is_favorited: Bool?
+  var description_md: String?
+  var owner_id: String?
+  var id: String {
+    path
+  }
+
   init(entity: CachedMulti) {
 //    self.can_edit = entity.can_edit
     self.display_name = entity.display_name ?? ""
@@ -94,10 +96,12 @@ struct MultiData: GenericRedditEntityDataType, Defaults.Serializable {
   }
 }
 
-
 struct MultiSub: Codable, Hashable, Identifiable {
   let name: String
-  var id: String { name }
+  var id: String {
+    name
+  }
+
   var data: SubredditData?
 }
 

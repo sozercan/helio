@@ -5,8 +5,8 @@
 //  Recent and favorite searches, kept on device.
 //
 
-import Foundation
 import Defaults
+import Foundation
 
 struct SearchHistoryItem: Codable, Hashable, Identifiable, Defaults.Serializable {
   var id = UUID()
@@ -36,7 +36,9 @@ enum SearchHistory {
     }
     items.insert(item, at: 0)
     var recents = 0
-    return items.filter { $0.isFavorite || { recents += 1; return recents <= maxRecents }() }
+    return items.filter { $0.isFavorite || { recents += 1
+      return recents <= maxRecents
+    }() }
   }
 
   /// Past searches containing `text`, favorites first.

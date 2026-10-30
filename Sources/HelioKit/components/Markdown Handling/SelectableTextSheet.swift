@@ -6,8 +6,8 @@
 //  non-selectable so taps (like tap-to-collapse) aren't delayed by text interaction.
 //
 
-import SwiftUI
 import MarkdownUI
+import SwiftUI
 
 struct SelectableTextSheet: View {
   let markdown: String

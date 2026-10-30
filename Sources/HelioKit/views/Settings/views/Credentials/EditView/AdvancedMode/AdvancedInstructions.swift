@@ -5,8 +5,8 @@
 //  Created by Igor Marcossi on 07/01/24.
 //
 
-import SwiftUI
 import Lottie
+import SwiftUI
 
 struct AdvancedInstructions: View {
   @State private var open = false
@@ -17,24 +17,22 @@ struct AdvancedInstructions: View {
     let rgb = UIColor(cs == .dark ? .white : .black).rgb
     let colorProvider = ColorValueProvider(.init(r: rgb.0, g: rgb.1, b: rgb.2, a: 1))
     VStack(alignment: .leading, spacing: 0) {
-      
       PressableButton(animation: .easeIn(duration: 0.15)) {
         withAnimation(.spring) { open.toggle() }
       } label: { pressed in
         HStack(spacing: 0) {
           HStack(spacing: 8) {
-            
             LottieSwitch(animation: .named("article"))
               .isOn($open)
               .valueProvider(colorProvider, for: colorLottieKeypath)
               .configuration(.init(renderingEngine: .coreAnimation))
               .frame(22)
-            
+
             Text("Instructions").fontSize(18, .medium)
           }
-          
+
           Spacer()
-          
+
           Image(systemName: "chevron.right")
             .fontSize(16, .semibold)
             .rotationEffect(.degrees(open ? 90 : 0))
@@ -45,10 +43,10 @@ struct AdvancedInstructions: View {
         .simpleHighlight(pressed)
         .contentShape(Rectangle())
       }
-      
+
       if open {
         Divider()
-        
+
         VStack(alignment: .leading, spacing: 6) {
           Text("**1.** Open Reddit API settings")
           Text("**2.** Check the **\"web app\"** option")
@@ -70,14 +68,12 @@ struct AdvancedInstructions: View {
             }
           }
           .padding(.vertical, 2)
-          
+
           Text("**4.** Fill up the form below and follow next instructions.")
-          
         }
         .padding(EdgeInsets(top: 12, leading: 16, bottom: 12, trailing: 16))
         .frame(maxWidth: .infinity)
       }
-      
     }
     .themedListRowLikeBG()
     .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
@@ -91,7 +87,8 @@ extension LottieSwitch {
     for (keypath, keyframes) in colorValueProviders {
       copy = copy.valueProvider(
         ColorValueProvider(keyframes),
-        for: AnimationKeypath(keypath: keypath))
+        for: AnimationKeypath(keypath: keypath),
+      )
     }
 
     return copy

@@ -9,21 +9,21 @@ import Foundation
 
 enum UnseenType: Codable, Hashable, Equatable {
   case dot(ColorSchemes<ThemeColor>), fade
-  
+
   func isEqual(_ to: UnseenType) -> Bool {
-    if case .dot(_) = self {
+    if case .dot = self {
       switch to {
-      case .dot(_):
-        return true
+      case .dot:
+        true
       case .fade:
-        return false
+        false
       }
     } else {
       switch to {
-      case .dot(_):
-        return false
+      case .dot:
+        false
       case .fade:
-        return true
+        true
       }
     }
   }

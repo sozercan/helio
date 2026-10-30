@@ -10,55 +10,56 @@ import SwiftUI
 struct CredentialEditAdvancedMode: View {
   var credential: RedditCredential
   @Binding var draftCredential: RedditCredential
-  
+
   @Environment(\.useTheme) private var theme
   @Environment(\.dismiss) private var dismiss
   @Environment(\.openURL) var openURL
-  
+
   func renewAccessToken() async {
     let newToken = await draftCredential.getUpToDateToken(forceRenew: true)
     draftCredential.accessToken = newToken
   }
-  
-  var isDraftValid: Bool { draftCredential.validationStatus != .invalid }
-  
+
+  var isDraftValid: Bool {
+    draftCredential.validationStatus != .invalid
+  }
+
   var body: some View {
     let credMeta = draftCredential.validationStatus.getMeta()
     let anyChanges = credential != draftCredential
-    
+
     ScrollView {
       VStack(spacing: 24) {
-        
         AdvancedInstructions()
-        
-          NiceCredentialSectionExtra("Credentials", footer: "The Safari extension also works in this screen. It'll just fill it up for you.") {
+
+        NiceCredentialSectionExtra("Credentials", footer: "The Safari extension also works in this screen. It'll just fill it up for you.") {
+          VStack(alignment: .leading, spacing: 16) {
             VStack(alignment: .leading, spacing: 16) {
-              VStack(alignment: .leading, spacing: 16) {
-                BigInput(l: "App ID", bg: .acceptablePrimary, t: Binding(get: {
-                  draftCredential.apiAppID
-                }, set: { draftCredential.apiAppID = $0.replacingOccurrences(of: " ", with: "")
-                }), placeholder: "Ex: aijsd78_UN4iuq8dm7m@mr")
-                
-                BigInput(l: "App Secret", bg: .acceptablePrimary, t: Binding(get: {
-                  draftCredential.apiAppSecret
-                }, set: { draftCredential.apiAppSecret = $0.replacingOccurrences(of: " ", with: "")
-                }), placeholder: "Ex: JS9amd9imaims98ajmsi-_000_md2")
-              }
-              .padding(.horizontal, 12)
-              
-              if draftCredential.validationStatus != .empty {
-                EditCredWhatToDoBanner(draftCredential: $draftCredential, padding: EdgeInsets(top: 0, leading: 16, bottom: 2, trailing: 16), advanced: true)
-              }
+              BigInput(l: "App ID", bg: .acceptablePrimary, t: Binding(get: {
+                draftCredential.apiAppID
+              }, set: { draftCredential.apiAppID = $0.replacingOccurrences(of: " ", with: "")
+              }), placeholder: "Ex: aijsd78_UN4iuq8dm7m@mr")
+
+              BigInput(l: "App Secret", bg: .acceptablePrimary, t: Binding(get: {
+                draftCredential.apiAppSecret
+              }, set: { draftCredential.apiAppSecret = $0.replacingOccurrences(of: " ", with: "")
+              }), placeholder: "Ex: JS9amd9imaims98ajmsi-_000_md2")
             }
-            .padding(.vertical, 10)
-            .padding(EdgeInsets(top: 10, leading: 0, bottom: 12, trailing: 0))
-            .themedListRowLikeBG()
-            .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
-          } trailing: {
-            VStack {
-              CredentialStatusMetaView(credMeta)
-            }.animation(.spring, value: credMeta)
+            .padding(.horizontal, 12)
+
+            if draftCredential.validationStatus != .empty {
+              EditCredWhatToDoBanner(draftCredential: $draftCredential, padding: EdgeInsets(top: 0, leading: 16, bottom: 2, trailing: 16), advanced: true)
+            }
           }
+          .padding(.vertical, 10)
+          .padding(EdgeInsets(top: 10, leading: 0, bottom: 12, trailing: 0))
+          .themedListRowLikeBG()
+          .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+        } trailing: {
+          VStack {
+            CredentialStatusMetaView(credMeta)
+          }.animation(.spring, value: credMeta)
+        }
 //
         NiceCredentialSection("Tokens") {
           HStack {
@@ -66,7 +67,7 @@ struct CredentialEditAdvancedMode: View {
             BigInfoCredential(label: "Access", value: draftCredential.accessToken?.token, refresh: renewAccessToken)
           }.frame(height: 108)
         }
-//        
+//
         Button {
           openURL(redditApiSettingsUrl)
         } label: {
@@ -80,7 +81,6 @@ struct CredentialEditAdvancedMode: View {
         }
         .padding(.horizontal, 12)
         .frame(maxWidth: .infinity, alignment: .trailing)
-        
       }
       .padding(.top, 16)
       .padding(.horizontal, 16)

@@ -5,8 +5,8 @@
 //  Created by Igor Marcossi on 17/07/23.
 //
 
-import SwiftUI
 import Defaults
+import SwiftUI
 
 struct CommentLinkFull: View {
   var post: Post
@@ -16,15 +16,15 @@ struct CommentLinkFull: View {
   @State private var loadMoreLoading = false
   @State private var id = UUID().uuidString
   @Environment(\.useTheme) private var selectedTheme
-  
+
   var body: some View {
     let curveColor = selectedTheme.comments.theme.indentColor()
     let horPad = selectedTheme.comments.theme.innerPadding.horizontal
     if let data = comment.data {
       HStack {
-        if data.depth != 0 && indentLines != 0 {
-          HStack(alignment:. bottom, spacing: 6) {
-            let shapes = Array(1...Int(indentLines ?? data.depth ?? 1))
+        if data.depth != 0, indentLines != 0 {
+          HStack(alignment: .bottom, spacing: 6) {
+            let shapes = Array(1 ... Int(indentLines ?? data.depth ?? 1))
             ForEach(shapes, id: \.self) { i in
               if arrowKinds.indices.contains(i - 1) {
                 let actualArrowKind = arrowKinds[i - 1]
@@ -42,7 +42,6 @@ struct CommentLinkFull: View {
           .padding(.vertical, 12)
         }
         .contentShape(Rectangle())
-        
       }
       .padding(.horizontal, horPad)
       .frame(maxWidth: .infinity, alignment: .leading)

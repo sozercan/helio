@@ -5,10 +5,10 @@
 //  Created by Igor Marcossi on 23/06/23.
 //
 
-import SwiftUI
 import CoreData
-import WhatsNewKit
 import Nuke
+import SwiftUI
+import WhatsNewKit
 
 var shortcutItemToProcess: UIApplicationShortcutItem?
 /// The folder in the caches directory that holds downloaded images.
@@ -28,7 +28,7 @@ public struct HelioScene: Scene {
         .environment(\.primaryBGContext, persistenceController.primaryBGContext)
         .environment(
           \.whatsNew,
-           WhatsNewEnvironment(currentVersion: .current(), whatsNewCollection: getCurrentChangelog())
+          WhatsNewEnvironment(currentVersion: .current(), whatsNewCollection: getCurrentChangelog()),
         )
         .task {
           ImagePipeline.shared = ImagePipeline(configuration: .withDataCache(name: imageDataCacheName, sizeLimit: 1024 * 1024 * 300))
@@ -36,28 +36,26 @@ public struct HelioScene: Scene {
     }
     .commands { NavCommands() }
   }
-  
+
   func addQuickActions() {
     @FetchRequest(sortDescriptors: [NSSortDescriptor(key: "name", ascending: true)], animation: .default) var subreddits: FetchedResults<CachedSub>
-    
+
     var searchUserInfo: [String: NSSecureCoding] {
-      return ["name" : "search" as NSSecureCoding]
+      ["name": "search" as NSSecureCoding]
     }
     var savedInfo: [String: NSSecureCoding] {
-      return ["name" : savedKeyword as NSSecureCoding]
+      ["name": savedKeyword as NSSecureCoding]
     }
     var statususerInfo: [String: NSSecureCoding] {
-      return ["name" : "status" as NSSecureCoding]
+      ["name": "status" as NSSecureCoding]
     }
     var contactuserInfo: [String: NSSecureCoding] {
-      return ["name" : "contact" as NSSecureCoding]
+      ["name": "contact" as NSSecureCoding]
     }
-    
+
     UIApplication.shared.shortcutItems = [
       UIApplicationShortcutItem(type: "Search", localizedTitle: "Search", localizedSubtitle: "Search a Subreddit", icon: UIApplicationShortcutIcon(type: .search), userInfo: searchUserInfo),
       UIApplicationShortcutItem(type: "Saved", localizedTitle: "Saved", localizedSubtitle: "", icon: UIApplicationShortcutIcon(type: .bookmark), userInfo: savedInfo),
     ]
-    
   }
 }
-

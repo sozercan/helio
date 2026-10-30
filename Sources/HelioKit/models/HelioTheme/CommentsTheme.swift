@@ -11,24 +11,24 @@ struct CommentsSectionTheme: Codable, Hashable, Equatable {
   enum CodingKeys: String, CodingKey {
     case theme, spacing, divider
   }
-  
+
   var theme: CommentTheme
   var spacing: CGFloat
   var divider: LineTheme
-  
+
   init(theme: CommentTheme, spacing: CGFloat, divider: LineTheme) {
     self.theme = theme
     self.spacing = spacing
     self.divider = divider
   }
-  
+
   func encode(to encoder: Encoder) throws {
     var container = encoder.container(keyedBy: CodingKeys.self)
     try container.encodeIfPresent(theme, forKey: .theme)
     try container.encodeIfPresent(spacing, forKey: .spacing)
     try container.encodeIfPresent(divider, forKey: .divider)
   }
-  
+
   init(from decoder: Decoder) throws {
     let t = defaultTheme.comments
     let container = try decoder.container(keyedBy: CodingKeys.self)
@@ -42,7 +42,7 @@ struct CommentTheme: Codable, Hashable, Equatable {
   enum CodingKeys: String, CodingKey {
     case innerPadding, outerHPadding, repliesSpacing, indentCurve, indentColor, cornerRadius, badge, bodyText, bodyAuthorSpacing, linespacing, bg, loadMoreInnerPadding, loadMoreText, loadMoreBackground, unseenDot
   }
-  
+
   var innerPadding: ThemePadding
   var outerHPadding: CGFloat
   var repliesSpacing: CGFloat
@@ -54,14 +54,14 @@ struct CommentTheme: Codable, Hashable, Equatable {
   var bodyAuthorSpacing: CGFloat
   var linespacing: CGFloat
   var bg: ColorSchemes<ThemeColor>
-    
+
   var loadMoreInnerPadding: ThemePadding
-  var loadMoreText : ThemeText
-  var loadMoreBackground : ColorSchemes<ThemeColor>
-  
-  var unseenDot : ColorSchemes<ThemeColor>
-  
-  init(innerPadding: ThemePadding, outerHPadding: CGFloat, repliesSpacing: CGFloat, indentCurve: CGFloat, indentColor: ColorSchemes<ThemeColor>, cornerRadius: CGFloat, badge: BadgeTheme, bodyText: ThemeText, bodyAuthorSpacing: CGFloat, linespacing: CGFloat, bg: ColorSchemes<ThemeColor>, loadMoreInnerPadding: ThemePadding, loadMoreText : ThemeText, loadMoreBackground : ColorSchemes<ThemeColor>, unseenDot : ColorSchemes<ThemeColor>) {
+  var loadMoreText: ThemeText
+  var loadMoreBackground: ColorSchemes<ThemeColor>
+
+  var unseenDot: ColorSchemes<ThemeColor>
+
+  init(innerPadding: ThemePadding, outerHPadding: CGFloat, repliesSpacing: CGFloat, indentCurve: CGFloat, indentColor: ColorSchemes<ThemeColor>, cornerRadius: CGFloat, badge: BadgeTheme, bodyText: ThemeText, bodyAuthorSpacing: CGFloat, linespacing: CGFloat, bg: ColorSchemes<ThemeColor>, loadMoreInnerPadding: ThemePadding, loadMoreText: ThemeText, loadMoreBackground: ColorSchemes<ThemeColor>, unseenDot: ColorSchemes<ThemeColor>) {
     self.innerPadding = innerPadding
     self.outerHPadding = outerHPadding
     self.repliesSpacing = repliesSpacing
@@ -77,9 +77,8 @@ struct CommentTheme: Codable, Hashable, Equatable {
     self.loadMoreText = loadMoreText
     self.loadMoreBackground = loadMoreBackground
     self.unseenDot = unseenDot
-    
   }
-  
+
   func encode(to encoder: Encoder) throws {
     var container = encoder.container(keyedBy: CodingKeys.self)
     try container.encodeIfPresent(innerPadding, forKey: .innerPadding)
@@ -98,7 +97,7 @@ struct CommentTheme: Codable, Hashable, Equatable {
     try container.encodeIfPresent(loadMoreBackground, forKey: .loadMoreBackground)
     try container.encodeIfPresent(unseenDot, forKey: .unseenDot)
   }
-  
+
   init(from decoder: Decoder) throws {
     let t = defaultTheme.comments.theme
     let container = try decoder.container(keyedBy: CodingKeys.self)

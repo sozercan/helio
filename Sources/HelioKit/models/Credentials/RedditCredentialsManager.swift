@@ -1,36 +1,42 @@
 //
-//  AccountsManager.swift
+//  RedditCredentialsManager.swift
 //  Helio
 //
 //  Created by Igor Marcossi on 19/11/23.
 //
 
+import Alamofire
+import Combine
+import Defaults
 import Foundation
 import KeychainAccess
-import Alamofire
 import SwiftUI
-import Defaults
-import Combine
 
 @Observable
 class RedditCredentialsManager {
   static let shared = RedditCredentialsManager()
-  static func getById(_ credID: UUID) -> RedditCredential? { RedditCredentialsManager.shared.credentials.first(where: { $0.id == credID } ) }
+  static func getById(_ credID: UUID) -> RedditCredential? {
+    RedditCredentialsManager.shared.credentials.first(where: { $0.id == credID })
+  }
+
   static let keychainEntryDivider = "\\--(*.*)--/"
   static let oldKeychainServiceString = "com.sertacozercan.helio.reddit-credentials"
   static let keychainServiceString = "com.sertacozercan.helio.reddit-multi-credentials"
   static let keychain = Keychain(service: RedditCredentialsManager.keychainServiceString).synchronizable(Defaults[.BehaviorDefSettings].iCloudSyncCredentials)
   private(set) var credentials: [RedditCredential] = []
-  var validCredentials: [RedditCredential] { credentials.filter { $0.validationStatus == .authorized } }
+  var validCredentials: [RedditCredential] {
+    credentials.filter { $0.validationStatus == .authorized }
+  }
+
   var cancelables: [Defaults.Observation] = []
-    
+
   var selectedCredential: RedditCredential? {
-    if credentials.count > 0 {
+    if !credentials.isEmpty {
       return credentials.first { $0.id == Defaults[.GeneralDefSettings].redditCredentialSelectedID } ?? credentials[0]
     }
     return nil
   }
-  
+
   func syncCredentialsWithKeychain() {
     do {
       let allKeys = try Self.keychain.allKeys()
@@ -48,21 +54,21 @@ class RedditCredentialsManager {
       print("Keychain sync error: \(error.localizedDescription)")
     }
   }
-  
+
   init() {
     let okc = Keychain(service: Self.oldKeychainServiceString)
     let kc = Self.keychain
-    
+
     let oldApiAppID = okc["apiAppID"]
     let oldApiAppSecret = okc["apiAppSecret"]
     let oldRefreshToken = okc["refreshToken"]
-    
+
     var importedCredential: RedditCredential? = nil
     if oldApiAppID != nil || oldApiAppSecret != nil || oldRefreshToken != nil {
       importedCredential = .init(apiAppID: oldApiAppID ?? "", apiAppSecret: oldApiAppSecret ?? "", refreshToken: oldRefreshToken)
     }
-    
-    if let importedCredential = importedCredential {
+
+    if let importedCredential {
       credentials.append(importedCredential)
       Defaults[.GeneralDefSettings].redditCredentialSelectedID = importedCredential.id
     }
@@ -71,15 +77,15 @@ class RedditCredentialsManager {
     try? okc.remove("apiAppSecret")
     try? okc.remove("refreshToken")
     try? okc.remove("accessToken")
-    
+
     let keychainKeys = kc.allKeys()
-    
-    keychainKeys.forEach { key in
+
+    for key in keychainKeys {
       if let credStr = kc[key], let decodedCred = credStr.toObj(RedditCredential.self) {
         credentials.append(decodedCred)
       }
     }
-      
+
 //    self.cancelables.append(Defaults.observe(.redditCredentialSelectedID) { change in
 //      if change.oldValue == change.newValue { return }
 //      if let cred = self.credentials.first(where: { $0.id == change.newValue }) {
@@ -87,20 +93,20 @@ class RedditCredentialsManager {
 //      }
 //      doThisAfter(0) { self.objectWillChange.send() }
 //    })
-    
+
 //    if let currCredID = Defaults[.redditCredentialSelectedID], let currCred = self.credentials.first(where: { $0.id == currCredID })  {
 //      doThisAfter(0.5) { self.updateMe(altCred: currCred) }
 //    }
   }
-  
+
   deinit { self.cancelables.forEach { obs in obs.invalidate() } }
-  
+
   func updateMe(altCred: RedditCredential? = nil) {
     Task(priority: .background) { await RedditAPI.shared.fetchMe(force: true, altCredential: altCred) }
     Task(priority: .background) { await RedditAPI.shared.fetchSubsAndSyncCoreData() }
     Task(priority: .background) { await RedditAPI.shared.fetchMyMultis() }
   }
-  
+
   func saveCred(_ cred: RedditCredential, forceCreate: Bool = true) {
     DispatchQueue.main.async {
       if Defaults[.GeneralDefSettings].onboardingState != .dismissed {
@@ -120,7 +126,7 @@ class RedditCredentialsManager {
       self.syncCredentialsWithKeychain()
     }
   }
-  
+
   func deleteCred(_ cred: RedditCredential) {
     DispatchQueue.main.async {
       withAnimation {
@@ -131,7 +137,6 @@ class RedditCredentialsManager {
     }
   }
 
-  
   func wipeAllCredentials() {
     DispatchQueue.main.async {
       withAnimation { self.credentials.removeAll() }

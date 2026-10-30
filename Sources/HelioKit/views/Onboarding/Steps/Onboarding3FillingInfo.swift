@@ -8,32 +8,31 @@
 import SwiftUI
 
 struct Onboarding3FillingInfo: View {
-  var prevStep: ()->()
-  var nextStep: ()->()
+  var prevStep: () -> Void
+  var nextStep: () -> Void
   var body: some View {
     ScrollView {
       VStack(spacing: 16) {
         OnboardingBigStep(step: 3)
-        
+
         Text("Go back to Safari and fill the form like below and click the \"create app\" button.")
           .fixedSize(horizontal: false, vertical: true)
           .frame(maxWidth: 300)
-        
+
         Image("filledForm")
           .resizable()
           .scaledToFit()
           .frame(maxWidth: .screenW * 0.85)
           .mask(RR(12, Color.black))
-        
+
         Text("Here are the values if you wanna quick copy them:")
           .fixedSize(horizontal: false, vertical: true)
           .frame(maxWidth: 300)
-        
+
         VStack {
           CopiableValue(value: "https://lo.cafe")
           CopiableValue(value: RedditAPI.appRedirectURI)
         }
-        
       }
       .padding(.vertical, 64)
       .padding(.bottom, 48)
@@ -50,8 +49,8 @@ struct Onboarding3FillingInfo: View {
         })
       }
       .padding(.bottom, 36)
-      .padding(.horizontal, 16)
-      , alignment: .bottom
+      .padding(.horizontal, 16),
+      alignment: .bottom,
     )
     .ignoresSafeArea(.all)
   }

@@ -5,9 +5,9 @@
 //  Created by Igor Marcossi on 10/12/23.
 //
 
+import Defaults
 import Foundation
 import SwiftUI
-import Defaults
 
 struct ThemeImportingListenerModifier: ViewModifier {
   @State private var alert = false

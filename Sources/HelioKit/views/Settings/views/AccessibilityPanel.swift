@@ -5,13 +5,14 @@
 //  Created by Daniel Inama on 13/08/23.
 //
 
-import SwiftUI
 import Defaults
+import SwiftUI
+
 struct AccessibilityPanel: View {
-//  @Default(.forceFeedbackModifiers) var forceFeedbackModifiers
-//  @Default(.hapticFeedbackOnLPM) var hapticFeedbackOnLPM
-    var body: some View {
-      List {
+  ///  @Default(.forceFeedbackModifiers) var forceFeedbackModifiers
+  ///  @Default(.hapticFeedbackOnLPM) var hapticFeedbackOnLPM
+  var body: some View {
+    List {
 //        Section("Haptics"){
 //          Picker("Haptic Feedback Strength -- DOESNT WORK", selection: Binding(get: {
 //            forceFeedbackModifiers
@@ -29,22 +30,22 @@ struct AccessibilityPanel: View {
 //          .labelStyle(.titleOnly)
 //          Toggle("Haptics on Low Power Mode -- DOESNT WORK", isOn: $hapticFeedbackOnLPM)
 //        }
-      }
-      Spacer()
     }
+    Spacer()
+  }
 }
 
-/// Enum of force feedback modifiers for accessibility
-//enum ForceFeedbackModifiers:  Codable, CaseIterable, Identifiable, Defaults.Serializable{
+// Enum of force feedback modifiers for accessibility
+// enum ForceFeedbackModifiers:  Codable, CaseIterable, Identifiable, Defaults.Serializable{
 //  var id: Float {
 //    self.rawVal
 //  }
-//  
+//
 //  case none
 //  case light
 //  case medium
 //  case strong
-//  
+//
 //  var rawVal: Float {
 //    switch self{
 //    case .none:
@@ -57,4 +58,4 @@ struct AccessibilityPanel: View {
 //      return 2.0
 //    }
 //  }
-//}
+// }

@@ -5,9 +5,9 @@
 //  Created by Igor Marcossi on 30/06/23.
 //
 
-import Foundation
 import Combine
 import Defaults
+import Foundation
 import SwiftUI
 
 protocol GenericRedditEntityDataType: Codable, Hashable, Identifiable {
@@ -15,7 +15,7 @@ protocol GenericRedditEntityDataType: Codable, Hashable, Identifiable {
 }
 
 @Observable
-class GenericRedditEntity<T: GenericRedditEntityDataType, B: Hashable>: Identifiable, Hashable, ObservableObject, Observable, Codable,  Defaults.Serializable {
+class GenericRedditEntity<T: GenericRedditEntityDataType, B: Hashable>: Identifiable, Hashable, ObservableObject, Observable, Codable, Defaults.Serializable {
   func hash(into hasher: inout Hasher) {
 //    hasher.combine(data)
 //    hasher.combine(childrenHelio)
@@ -23,51 +23,57 @@ class GenericRedditEntity<T: GenericRedditEntityDataType, B: Hashable>: Identifi
     hasher.combine(typePrefix)
 //    hasher.combine(data)
   }
-  
+
   static func placeholder() -> GenericRedditEntity<T, B> {
     GenericRedditEntity<T, B>(id: "none", typePrefix: nil)
   }
-  
+
   static func == (lhs: GenericRedditEntity<T, B>, rhs: GenericRedditEntity<T, B>) -> Bool {
-    return lhs.id == rhs.id && lhs.kind == rhs.kind && lhs.data?.id == rhs.data?.id
+    lhs.id == rhs.id && lhs.kind == rhs.kind && lhs.data?.id == rhs.data?.id
   }
-  
+
   var data: T? {
     didSet {
       if let newID = data?.id, id != newID {
-        self.id =  newID
+        self.id = newID
       }
     }
   }
-  
-  var selfPrefix: String { "" }
-  
+
+  var selfPrefix: String {
+    ""
+  }
+
   var helioData: B? = nil
   var _id: String
-  
+
   var id: String {
     get {
-      return self._id + self.kind
+      self._id + self.kind
     }
     set {
       self._id = newValue
     }
   }
+
   var fullname: String {
     var actualTypePrefix = self.typePrefix ?? ""
-    if actualTypePrefix.hasSuffix("_") { actualTypePrefix = String(actualTypePrefix.dropLast()) }
+    if actualTypePrefix.hasSuffix("_") {
+      actualTypePrefix = String(actualTypePrefix.dropLast())
+    }
     if id.hasPrefix("\(actualTypePrefix)_") {
-        return id
+      return id
     } else if id.hasPrefix("_") {
-        return actualTypePrefix + id
+      return actualTypePrefix + id
     } else {
-        return "\(actualTypePrefix)_\(id)"
+      return "\(actualTypePrefix)_\(id)"
     }
   }
+
   var loading = false
   var typePrefix: String?
   var kind: String?
-  
+
   enum CodingKeys: CodingKey {
     case _id, loading, typePrefix, kind, data, childrenHelioData
   }
@@ -80,7 +86,7 @@ class GenericRedditEntity<T: GenericRedditEntityDataType, B: Hashable>: Identifi
     kind = try container.decodeIfPresent(String.self, forKey: .kind)
     data = try container.decodeIfPresent(T.self, forKey: .data)
   }
-  
+
   func encode(to encoder: Encoder) throws {
     var container = encoder.container(keyedBy: CodingKeys.self)
     try container.encode(_id, forKey: ._id)
@@ -89,12 +95,12 @@ class GenericRedditEntity<T: GenericRedditEntityDataType, B: Hashable>: Identifi
     try container.encode(kind, forKey: .kind)
     try container.encode(data, forKey: .data)
   }
-  
+
   let redditAPI: RedditAPI = .shared
   var anyCancellables: [AnyCancellable]? = nil
   var childrenHelio: [GenericRedditEntity<T, B>] = []
   var parentHelio: [GenericRedditEntity<T, B>]?
-  
+
   required init(id: String, typePrefix: String?) {
     self._id = id
     self.typePrefix = typePrefix
@@ -105,14 +111,14 @@ class GenericRedditEntity<T: GenericRedditEntityDataType, B: Hashable>: Identifi
     self._id = data.id
     self.typePrefix = typePrefix
   }
-  
+
   init(data: T, typePrefix: String?, kind: String? = nil) {
     self.data = data
     self.kind = kind
     self._id = data.id
     self.typePrefix = typePrefix
   }
-  
+
   func duplicate() -> GenericRedditEntity<T, B> {
     let copy = GenericRedditEntity<T, B>(id: id, typePrefix: typePrefix)
     copy.data = data
@@ -120,12 +126,14 @@ class GenericRedditEntity<T: GenericRedditEntityDataType, B: Hashable>: Identifi
     copy.childrenHelio = childrenHelio
     return copy
   }
-  
+
   func fetchItself() {
     Task(priority: .background) {
       if let data = await RedditAPI.shared.fetchInfo(fullnames: ["\(self.selfPrefix)_\(id)"]) {
         await MainActor.run { withAnimation {
-          if let data = data as? T { self.data = data }
+          if let data = data as? T {
+            self.data = data
+          }
         } }
       }
     }
@@ -139,37 +147,37 @@ enum RedditEntityType: Hashable, Equatable, Identifiable {
   case comment(Comment)
   case user(User)
   case message(Message)
-  
+
   var fullname: String {
     switch self {
-    case .post(let x): x.fullname
-    case .subreddit(let x): x.fullname
-    case .multi(let x): x.fullname
-    case .comment(let x): x.fullname
-    case .user(let x): x.fullname
-    case .message(let x): x.fullname
-    }
-  }  
-  
-  var id: String {
-    switch self {
-    case .post(let x): x.id
-    case .subreddit(let x): x.id
-    case .multi(let x): x.id
-    case .comment(let x): x.id
-    case .user(let x): x.id
-    case .message(let x): x.id
+    case let .post(x): x.fullname
+    case let .subreddit(x): x.fullname
+    case let .multi(x): x.fullname
+    case let .comment(x): x.fullname
+    case let .user(x): x.fullname
+    case let .message(x): x.fullname
     }
   }
-  
+
+  var id: String {
+    switch self {
+    case let .post(x): x.id
+    case let .subreddit(x): x.id
+    case let .multi(x): x.id
+    case let .comment(x): x.id
+    case let .user(x): x.id
+    case let .message(x): x.id
+    }
+  }
+
   var selfPrefix: String {
     switch self {
-    case .post(let x): x.selfPrefix
-    case .subreddit(let x): x.selfPrefix
-    case .multi(let x): x.selfPrefix
-    case .comment(let x): x.selfPrefix
-    case .user(let x): x.selfPrefix
-    case .message(let x): x.selfPrefix
+    case let .post(x): x.selfPrefix
+    case let .subreddit(x): x.selfPrefix
+    case let .multi(x): x.selfPrefix
+    case let .comment(x): x.selfPrefix
+    case let .user(x): x.selfPrefix
+    case let .message(x): x.selfPrefix
     }
   }
 }

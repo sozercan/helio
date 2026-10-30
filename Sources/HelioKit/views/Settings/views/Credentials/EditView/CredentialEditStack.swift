@@ -13,18 +13,20 @@ struct CredentialEditStack: View {
   @State private var draftCredential = RedditCredential()
   @State private var waitingForCallback: Bool? = nil
   @State private var navPath: [Mode] = []
-  
+
   @Environment(\.useTheme) private var theme
-  
+
   func renewAccessToken() async {
     let newToken = await draftCredential.getUpToDateToken(forceRenew: true)
     draftCredential.accessToken = newToken
   }
-  
-  var isDraftValid: Bool { draftCredential.validationStatus != .invalid }
-  
+
+  var isDraftValid: Bool {
+    draftCredential.validationStatus != .invalid
+  }
+
   enum Mode: Int, Hashable { case assistant, advanced }
-  
+
   var body: some View {
     NavigationStack(path: $navPath) {
       CredentialEditView(credential: credential, draftCredential: $draftCredential, navPath: $navPath)
@@ -40,4 +42,3 @@ struct CredentialEditStack: View {
     }
   }
 }
-

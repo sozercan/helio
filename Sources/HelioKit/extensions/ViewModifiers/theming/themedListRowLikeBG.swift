@@ -14,12 +14,12 @@ struct ThemedListRowLikeBGModifier: ViewModifier {
   var disableBG = false
   var active = false
   var pressed = false
-  var shiny: Gradient? = nil
+  var shiny: Gradient?
   var opacity: Double = 1
-  
+
   /// The theme environment.
   @Environment(\.useTheme) private var theme
-  
+
   /// Applies the modifier to the content.
   /// - Parameter content: The content to which the modifier is applied.
   /// - Returns: A modified version of the content.

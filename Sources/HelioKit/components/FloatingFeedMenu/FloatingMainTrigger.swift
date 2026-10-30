@@ -5,17 +5,17 @@
 //  Created by Igor Marcossi on 28/12/23.
 //
 
-import SwiftUI
 import Defaults
+import SwiftUI
 
 struct FloatingMainTrigger: View, Equatable {
   static func == (lhs: FloatingMainTrigger, rhs: FloatingMainTrigger) -> Bool {
     lhs.menuOpen == rhs.menuOpen && lhs.toggled == rhs.toggled && lhs.disable == rhs.disable
   }
-  
+
   @Binding var menuOpen: Bool
   @Binding var showingFilters: Bool
-  let dismiss: ()->()
+  let dismiss: () -> Void
   let size: Double
   let actionsSize: Double
 
@@ -24,9 +24,9 @@ struct FloatingMainTrigger: View, Equatable {
   @State private var vibrationTimer: Timer? = nil
   @State private var toggleTimer: Timer? = nil
   @GestureState private var pressingDown = false
-  
+
   private let longPressDuration: Double = 0.275
-  
+
   var body: some View {
     Image(systemName: toggled || menuOpen ? "xmark" : "slider.horizontal.3")
       .contentTransition(.symbolEffect)
@@ -47,8 +47,8 @@ struct FloatingMainTrigger: View, Equatable {
           .updating($pressingDown) { isPressing, state, trans in
             trans.isContinuous = true
             state = isPressing
-          }
-        , including: disable ? .none : .all
+          },
+        including: disable ? .none : .all,
       )
       .simultaneousGesture(
         DragGesture(minimumDistance: 0)
@@ -60,9 +60,9 @@ struct FloatingMainTrigger: View, Equatable {
               doThisAfter(0) { disable = false }
               toggleTimer?.invalidate()
             }
-          }
+          },
       )
-      .simultaneousGesture(TapGesture().onEnded({
+      .simultaneousGesture(TapGesture().onEnded {
         if menuOpen {
           dismiss()
         } else {
@@ -77,11 +77,13 @@ struct FloatingMainTrigger: View, Equatable {
             }
           }
         }
-      }))
+      })
       .allowsHitTesting(!disable)
       .onChange(of: pressingDown) {
         if $0 {
-          if menuOpen { return }
+          if menuOpen {
+            return
+          }
           Hap.shared.updateContinuous(intensity: 0, sharpness: 0)
           Hap.shared.startContinuous()
           vibrationTimer = createTimer(seconds: longPressDuration) { currLoop, totalLoops in

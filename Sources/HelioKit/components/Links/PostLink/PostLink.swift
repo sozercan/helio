@@ -1,26 +1,24 @@
 //
-//  Post.swift
+//  PostLink.swift
 //  Helio
 //
 //  Created by Igor Marcossi on 28/06/23.
 //
 
-import SwiftUI
 import Defaults
 import NukeUI
-
-
+import SwiftUI
 
 let POSTLINK_INNER_H_PAD: CGFloat = 16
 
 struct PostLink: View, Equatable, Identifiable {
   static func == (lhs: PostLink, rhs: PostLink) -> Bool {
-    return lhs.id == rhs.id && lhs.repostAvatarRequest?.url == rhs.repostAvatarRequest?.url && lhs.defSettings == rhs.defSettings && lhs.compactPerSubreddit == rhs.compactPerSubreddit && lhs.theme == rhs.theme && lhs.contentWidth == rhs.contentWidth
+    lhs.id == rhs.id && lhs.repostAvatarRequest?.url == rhs.repostAvatarRequest?.url && lhs.defSettings == rhs.defSettings && lhs.compactPerSubreddit == rhs.compactPerSubreddit && lhs.theme == rhs.theme && lhs.contentWidth == rhs.contentWidth
   }
-  
+
   //  var disableOuterVSpacing = false
   var id: String
-  weak var controller: UIViewController? = nil
+  weak var controller: UIViewController?
   var repostAvatarRequest: ImageRequest?
   var theme: SubPostsListTheme
   var showSub = false
@@ -28,39 +26,36 @@ struct PostLink: View, Equatable, Identifiable {
   let compactPerSubreddit: Bool?
   let contentWidth: CGFloat
   var defSettings: PostLinkDefSettings = Defaults[.PostLinkDefSettings]
-    
+
   var body: some View {
-    
-    Group {
-      if compactPerSubreddit ?? defSettings.compactMode.enabled {
-        PostLinkCompact(
-          id: id,
-          controller: controller,
-          theme: theme,
-          showSub: showSub,
-          secondary: secondary,
-          contentWidth: contentWidth,
-          defSettings: defSettings
-        )
-        .equatable()
-      } else {
-        PostLinkNormal(
-          id: id,
-          controller: controller,
-          theme: theme,
-          showSub: showSub,
-          secondary: secondary,
-          contentWidth: contentWidth,
-          defSettings: defSettings
-        )
-        .equatable()
-      }
+    if compactPerSubreddit ?? defSettings.compactMode.enabled {
+      PostLinkCompact(
+        id: id,
+        controller: controller,
+        theme: theme,
+        showSub: showSub,
+        secondary: secondary,
+        contentWidth: contentWidth,
+        defSettings: defSettings,
+      )
+      .equatable()
+    } else {
+      PostLinkNormal(
+        id: id,
+        controller: controller,
+        theme: theme,
+        showSub: showSub,
+        secondary: secondary,
+        contentWidth: contentWidth,
+        defSettings: defSettings,
+      )
+      .equatable()
     }
   }
 }
 
 extension View {
-  func postLinkStyle(showSubBottom: Bool = false, post: Post, sub: Subreddit, theme: PostLinkTheme, size: CGSize, secondary: Bool, openPost: @escaping () -> (), readPostOnScroll: Bool) -> some View {
+  func postLinkStyle(showSubBottom: Bool = false, post: Post, sub: Subreddit, theme: PostLinkTheme, size: CGSize, secondary: Bool, openPost: @escaping () -> Void, readPostOnScroll: Bool) -> some View {
     let seen = (post.data?.helioSeen ?? false)
     let fadeReadPosts = theme.unseenType == .fade
     return self
@@ -74,7 +69,7 @@ extension View {
       .opacity(fadeReadPosts && seen ? theme.unseenFadeOpacity : 1)
       .contextMenu(menuItems: {
         PostLinkContext(post: post)
-        
+
         if let permalink = post.data?.permalink {
           // ShareLink inside a .contextMenu is a known SwiftUI bug (menu dismisses, share sheet
           // never presents), so present the activity sheet imperatively instead.
@@ -82,7 +77,7 @@ extension View {
             ShareUtils.shareItem(item: "https://reddit.com\(permalink.escape.urlEncoded)")
           } label: { Label("Share", systemImage: "square.and.arrow.up") }
         }
-        
+
       }, preview: { PostLinkContextPreview(post: post, sub: sub) })
       .foregroundStyle(.primary)
       .multilineTextAlignment(.leading)
@@ -108,19 +103,19 @@ struct ReadOnScrollModifier: ViewModifier {
   }
 }
 
-
 struct PostLinkGlowDot: View, Equatable {
   static func == (lhs: PostLinkGlowDot, rhs: PostLinkGlowDot) -> Bool {
-    return lhs.unseenType == rhs.unseenType && lhs.seen == rhs.seen
+    lhs.unseenType == rhs.unseenType && lhs.seen == rhs.seen
   }
+
   let unseenType: UnseenType
   let seen: Bool
   let badge: Bool
-  
+
   var body: some View {
     ZStack {
       switch unseenType {
-      case .dot(let color):
+      case let .dot(color):
         ZStack {
           Circle()
             .fill(badge ? color() : Color.hex("CFFFDE"))
@@ -142,39 +137,30 @@ struct PostLinkGlowDot: View, Equatable {
 }
 
 struct PostLinkBG: View, Equatable {
-  static func == (lhs: PostLinkBG, rhs: PostLinkBG) -> Bool {
-    return lhs.theme == rhs.theme && lhs.stickied == rhs.stickied && lhs.secondary == rhs.secondary
-  }
-  
   let theme: PostLinkTheme
   let stickied: Bool?
   let secondary: Bool
   var body: some View {
     ZStack {
-      if !secondary && theme.outerHPadding == 0 {
+      if !secondary, theme.outerHPadding == 0 {
         theme.bg.color()
         if stickied ?? false {
           theme.stickyPostBorderColor.color()
         }
       } else {
-        
         if theme.bg.blurry {
           RR(theme.cornerRadius, .ultraThinMaterial)
         }
-        
+
         RoundedRectangle(cornerRadius: theme.cornerRadius, style: .continuous).fill(secondary ? .primary.opacity(0.06) : theme.bg.color())
-        
-        if (stickied ?? false) {
+
+        if stickied ?? false {
           RoundedRectangle(cornerRadius: theme.cornerRadius, style: .continuous)
             .stroke(theme.stickyPostBorderColor.color(), lineWidth: theme.stickyPostBorderColor.thickness)
         }
-        
       }
     }
     .allowsHitTesting(false)
     .clipShape(RoundedRectangle(cornerRadius: theme.cornerRadius, style: .continuous))
   }
 }
-
-
-

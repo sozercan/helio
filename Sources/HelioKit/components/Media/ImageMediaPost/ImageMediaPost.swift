@@ -5,15 +5,12 @@
 //  Created by Igor Marcossi on 04/07/23.
 //
 
-import SwiftUI
 import Defaults
-import NukeUI
 import Nuke
+import NukeUI
+import SwiftUI
 
 struct ImageMediaPostCompactMoreImagesOverlay: View, Equatable {
-  static func == (lhs: ImageMediaPostCompactMoreImagesOverlay, rhs: ImageMediaPostCompactMoreImagesOverlay) -> Bool {
-    return lhs.count == rhs.count
-  }
   var count: Int
   var body: some View {
     Text("\(count)+")
@@ -28,66 +25,64 @@ struct ImageMediaPostCompactMoreImagesOverlay: View, Equatable {
 struct ImageMediaPost: View, Equatable {
   static let gallerySpacing: CGFloat = 8
   static func == (lhs: ImageMediaPost, rhs: ImageMediaPost) -> Bool {
-    return lhs.postTitle == rhs.postTitle && lhs.compact == rhs.compact && lhs.contentWidth == rhs.contentWidth && lhs.badgeKit == rhs.badgeKit && lhs.cornerRadius == rhs.cornerRadius
+    lhs.postTitle == rhs.postTitle && lhs.compact == rhs.compact && lhs.contentWidth == rhs.contentWidth && lhs.badgeKit == rhs.badgeKit && lhs.cornerRadius == rhs.cornerRadius
   }
-    
+
   var helioData: PostHelioData
   var fullPage = false
   weak var controller: UIViewController?
   let postTitle: String
   let badgeKit: BadgeKit
   let avatarImageRequest: ImageRequest?
-  let markAsSeen: (() async -> ())?
+  let markAsSeen: (() async -> Void)?
   var cornerRadius: Double
   var compact = false
   var images: [ImgExtracted]
   var contentWidth: CGFloat
   var maxMediaHeightScreenPercentage: CGFloat
-//  @State var fullscreen = false
+  ///  @State var fullscreen = false
   @State var fullscreenIndex: Int?
-  
+
   var body: some View {
 //    let maxMediaHeightScreenPercentage = 100.0
-    let maxHeight: CGFloat = (maxMediaHeightScreenPercentage / 100) * (.screenH)
+    let maxHeight: CGFloat = (maxMediaHeightScreenPercentage / 100) * .screenH
     VStack {
-      if images.count == 1 || compact && images.count > 0 {
+      if images.count == 1 || compact && !images.isEmpty {
         let img = images[0]
         // Square until Reddit gives us real dimensions, matching getPostDimensions, so the
         // row doesn't change height once the image loads.
         let knownSize = img.size.width > 0 && img.size.height > 0
         let sourceHeight = knownSize ? img.size.height : contentWidth
         let sourceWidth = knownSize ? img.size.width : contentWidth
-        
+
         let propHeight = (contentWidth * sourceHeight) / sourceWidth
         let finalHeight = maxMediaHeightScreenPercentage != 110 ? Double(min(maxHeight, propHeight)) : Double(propHeight)
-        
-        GalleryThumb(cornerRadius: cornerRadius, width: compact ? scaledCompactModeThumbSize() : contentWidth, height: compact ? scaledCompactModeThumbSize() : finalHeight, url: img.url, imgRequest: images.count > 0 ? images[0].request : nil, posterURL: img.posterURL)
-              .equatable()
+
+        GalleryThumb(cornerRadius: cornerRadius, width: compact ? scaledCompactModeThumbSize() : contentWidth, height: compact ? scaledCompactModeThumbSize() : finalHeight, url: img.url, imgRequest: !images.isEmpty ? images[0].request : nil, posterURL: img.posterURL)
+          .equatable()
 //          .background(sourceHeight > 0 || compact ? nil : GeometryReader { geo in Color.clear.onAppear { helioData.postDimensions.mediaSize = geo.size }.onChange(of: geo.size) { helioData.postDimensions.mediaSize = $0 } })
           .onTapGesture { withAnimation(spring) { fullscreenIndex = 0 } }
           .overlay(
             !compact || images.count <= 1
-            ? nil
-            : ImageMediaPostCompactMoreImagesOverlay(count: images.count - 1).equatable()
-            , alignment: .bottomTrailing
+              ? nil
+              : ImageMediaPostCompactMoreImagesOverlay(count: images.count - 1).equatable(),
+            alignment: .bottomTrailing,
           )
-        
+
       } else if images.count > 1 {
-        
         let width = ((contentWidth - 8) / 2)
         let height = width
         VStack(spacing: ImageMediaPost.gallerySpacing) {
           HStack(spacing: ImageMediaPost.gallerySpacing) {
-            GalleryThumb(cornerRadius: cornerRadius, width: compact ? scaledCompactModeThumbSize() : width, height: compact ? scaledCompactModeThumbSize() : height, url: images[0].url, imgRequest: images.count > 0 ? images[0].request : nil)
+            GalleryThumb(cornerRadius: cornerRadius, width: compact ? scaledCompactModeThumbSize() : width, height: compact ? scaledCompactModeThumbSize() : height, url: images[0].url, imgRequest: !images.isEmpty ? images[0].request : nil)
               .equatable()
               .onTapGesture { withAnimation(spring) { fullscreenIndex = 0 } }
 
             GalleryThumb(cornerRadius: cornerRadius, width: width, height: height, url: images[1].url, imgRequest: images.count > 1 ? images[1].request : nil)
               .equatable()
-                .onTapGesture { withAnimation(spring) { fullscreenIndex = 1 } }
+              .onTapGesture { withAnimation(spring) { fullscreenIndex = 1 } }
           }
-          
-          
+
           if images.count > 2 {
             HStack(spacing: ImageMediaPost.gallerySpacing) {
               GalleryThumb(cornerRadius: cornerRadius, width: images.count == 3 ? contentWidth : width, height: height, url: images[2].url, imgRequest: images.count > 2 ? images[2].request : nil)
@@ -108,7 +103,6 @@ struct ImageMediaPost: View, Equatable {
             }
             //              .frame(width: contentWidth, height: height)
           }
-          
         }
       }
     }
@@ -128,14 +122,15 @@ struct ImageMediaPost: View, Equatable {
 
 /// Either returns the content width or, if compact mode is enabled, the modified content width depending on what setting the user chose
 func scaledCompactModeThumbSize(compact: Bool = Defaults[.PostLinkDefSettings].compactMode.enabled, thumbnailSize: ThumbnailSizeModifier = Defaults[.PostLinkDefSettings].compactMode.thumbnailSize) -> CGFloat {
-  
   if compact {
-    return compactModeThumbSize * thumbnailSize.rawVal
+    compactModeThumbSize * thumbnailSize.rawVal
   } else {
-    return compactModeThumbSize
+    compactModeThumbSize
   }
 }
 
 extension Int: Identifiable {
-    public var id: Int { self }
+  public var id: Int {
+    self
+  }
 }

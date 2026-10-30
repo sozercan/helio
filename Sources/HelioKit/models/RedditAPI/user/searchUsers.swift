@@ -5,38 +5,38 @@
 //  Created by Igor Marcossi on 11/07/23.
 //
 
-import Foundation
 import Alamofire
+import Foundation
 
 extension RedditAPI {
   func searchUsers(_ query: String) async -> [UserData]? {
     let params = SearchUserPayload(q: query)
-    switch await self.doRequest("\(RedditAPI.redditApiURLBase)/users/search", method: .get, params: params, paramsLocation: .queryString, decodable: Listing<Either<UserData, BannedUser>>.self)  {
-    case .success(let data):
+    switch await self.doRequest("\(RedditAPI.redditApiURLBase)/users/search", method: .get, params: params, paramsLocation: .queryString, decodable: Listing<Either<UserData, BannedUser>>.self) {
+    case let .success(data):
       var result: [UserData] = []
-      data.data?.children?.forEach({ x in
+      data.data?.children?.forEach { x in
         switch x.data {
-        case .first(let el):
+        case let .first(el):
           result.append(el)
-        case .second(_):
+        case .second:
           break
         case .none:
           break
         }
-      })
+      }
       return result
-    case .failure(let error):
+    case let .failure(error):
       print(error)
       return nil
     }
   }
-  
+
   struct BannedUser: Codable, Hashable {
     let is_suspended: Bool?
     let is_blocked: Bool?
     let name: String?
   }
-  
+
   struct SearchUserPayload: Codable {
     var count = 10
     var limit = 25

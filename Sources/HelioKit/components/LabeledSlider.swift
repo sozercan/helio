@@ -18,7 +18,7 @@ struct LabeledSlider: View {
       HStack {
         Text(label)
         Spacer()
-        Text((step == 1 ? Int(value).description : String(format: "%.2f", value)))
+        Text(step == 1 ? Int(value).description : String(format: "%.2f", value))
           .opacity(0.5)
       }
 //      .padding(.vertical, 8)

@@ -8,11 +8,11 @@
 import Foundation
 
 func maxRelative(_ value: Double, maxValue: Double) -> Double {
-    if value > maxValue {
-        return maxValue
-    } else if value < -maxValue {
-        return -maxValue
-    } else {
-        return value
-    }
+  if value > maxValue {
+    maxValue
+  } else if value < -maxValue {
+    -maxValue
+  } else {
+    value
+  }
 }

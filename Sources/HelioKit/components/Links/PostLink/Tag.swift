@@ -5,8 +5,8 @@
 //  Created by Igor Marcossi on 24/09/23.
 //
 
-import SwiftUI
 import Defaults
+import SwiftUI
 
 struct Tag: View {
   static let height: Double = 15.6
@@ -14,13 +14,15 @@ struct Tag: View {
   var subredditIconKit: SubredditIconKit?
   var text: String
   var color: Color = .secondary
-  var fontSize: Double? = nil
+  var fontSize: Double?
   var backgroundColor: Color = .accentColor
   @Environment(\.useTheme) private var theme
-  
+
   var body: some View {
     HStack(spacing: 4) {
-      if let subredditIconKit = subredditIconKit { SubredditIcon(subredditIconKit: subredditIconKit, size: 16) }
+      if let subredditIconKit {
+        SubredditIcon(subredditIconKit: subredditIconKit, size: 16)
+      }
       Text(text)
         .padding(.vertical, 1)
     }
@@ -32,6 +34,5 @@ struct Tag: View {
     .frame(height: fontSize == nil ? Tag.height : nil, alignment: .leading)
     .fixedSize(horizontal: true, vertical: false)
     .lineLimit(1)
-    
   }
 }

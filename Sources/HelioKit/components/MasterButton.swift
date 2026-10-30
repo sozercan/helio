@@ -29,9 +29,9 @@ enum ProportionalTypes {
 
 struct MasterButton: View {
   var softDisabled = false
-  var icon: String? = nil
-  var img: String? = nil
-  var label: String? = nil
+  var icon: String?
+  var img: String?
+  var label: String?
   var mode: MasterButtonMode = .normal
   var color: Color = .blue
   var colorHoverEffect: ColorHoverEffect = .none
@@ -47,29 +47,29 @@ struct MasterButton: View {
   var fullHeight: Bool = false
   var cornerRadius: CGFloat = 10
   var shrinkRatio: CGFloat = 0.1
-  var confirmLabel: String? = nil
+  var confirmLabel: String?
   var proportional: ProportionalTypes = .no
   var growAnchor: Alignment = .center
   var disabled = false
   var hoverWorkaround = false
   let action: () -> Void
-    
+
   var body: some View {
     let btnCornerRadius = proportional == .circle ? height / 2 : cornerRadius
-    let finalColor = color.opacity(mode == .normal ? 1 : mode == .subtle ? 0 : 0.2 )
+    let finalColor = color.opacity(mode == .normal ? 1 : mode == .subtle ? 0 : 0.2)
     let proportionalSize = proportional != .no ? height : nil
     HStack {
-      if let img = img {
+      if let img {
         Image(img)
           .resizable()
           .scaledToFit()
           .frame(height: textSize)
       }
-      if let icon = icon {
+      if let icon {
         Image(systemName: icon).contentTransition(.symbolEffect)
       }
       Group {
-        if let label = label {
+        if let label {
           Text(label).fixedSize(horizontal: true, vertical: false)
         }
       }
@@ -91,4 +91,3 @@ struct MasterButton: View {
     .frame(maxWidth: fullWidth ? .infinity : nil, alignment: growAnchor)
   }
 }
-

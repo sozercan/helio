@@ -1,0 +1,55 @@
+# SwiftFormat configuration. Run `swiftformat .` before committing; CI runs `swiftformat --lint .`.
+
+# File options
+--swiftversion 6.2
+--exclude .build,DerivedData,App/helio-everywhere/Resources
+
+# Format options
+--indent 2
+--tabwidth 2
+--smarttabs enabled
+--linebreaks lf
+--maxwidth none
+--header ignore
+--allman false
+--elseposition same-line
+--closingparen balanced
+--commas always
+--semicolons never
+--trimwhitespace always
+--ifdef indent
+--indentcase false
+--xcodeindentation disabled
+--importgrouping testable-bottom
+--patternlet hoist
+--ranges spaced
+--operatorfunc spaced
+--nospaceoperators
+--nowrapoperators
+--empty void
+--voidtype void
+--shortoptionals always
+--stripunusedargs closure-only
+--typeattributes prev-line
+--varattributes preserve
+--funcattributes preserve
+--wraparguments preserve
+--wrapparameters preserve
+--wrapcollections preserve
+--wrapreturntype preserve
+--wrapconditions preserve
+--yodaswap always
+--decimalgrouping ignore
+--binarygrouping ignore
+--hexgrouping ignore
+--octalgrouping ignore
+--hexliteralcase uppercase
+--exponentcase lowercase
+
+# Rules
+# Implicit self is fine; don't churn every closure adding or stripping it.
+--disable redundantSelf
+# Rewrites EnvironmentKey types to @Entry; an API change, not formatting.
+--disable environmentEntry
+# Rewrites @Test display names; titles are prose and should stay as written.
+--disable swiftTestingTestCaseNames

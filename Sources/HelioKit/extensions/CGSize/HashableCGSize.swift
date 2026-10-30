@@ -1,5 +1,5 @@
 //
-//  hashableCGSize.swift
+//  HashableCGSize.swift
 //  Helio
 //
 //  Created by Igor Marcossi on 21/09/23.
@@ -13,7 +13,7 @@ extension CGSize: Hashable {
     hasher.combine(width)
     hasher.combine(height)
   }
-  
+
 //    public var hashValue: Int {
 //        return NSCoder.string(for: self).hashValue
 //    }

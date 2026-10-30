@@ -5,8 +5,8 @@
 //  Created by Igor Marcossi on 29/07/23.
 //
 
-import SwiftUI
 import Defaults
+import SwiftUI
 
 struct ShortPostLink: View {
   var noHPad = false
@@ -22,7 +22,7 @@ struct ShortPostLink: View {
           .fontSize(15).opacity(0.75)
         HStack {
 //          if let fullname = data.author_fullname {
-            Badge(showVotes: true, post: post, theme: selectedTheme.postLinks.theme.badge)
+          Badge(showVotes: true, post: post, theme: selectedTheme.postLinks.theme.badge)
 //              .equatable()
 //          }
           Spacer()

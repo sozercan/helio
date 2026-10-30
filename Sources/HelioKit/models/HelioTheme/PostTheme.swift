@@ -21,9 +21,10 @@ struct PostTheme: Codable, Hashable, Equatable {
   var bodyText: ThemeText
   var linespacing: CGFloat
   var inlineFloatingPill: Bool
-  
-  init(padding: ThemePadding, spacing: CGFloat, badge: BadgeTheme, bg: ThemeBG, commentsDistance: CGFloat, titleText: ThemeText, bodyText: ThemeText, 
-       linespacing: CGFloat, inlineFloatingPill: Bool) {
+
+  init(padding: ThemePadding, spacing: CGFloat, badge: BadgeTheme, bg: ThemeBG, commentsDistance: CGFloat, titleText: ThemeText, bodyText: ThemeText,
+       linespacing: CGFloat, inlineFloatingPill: Bool)
+  {
     self.padding = padding
     self.spacing = spacing
     self.badge = badge
@@ -34,7 +35,7 @@ struct PostTheme: Codable, Hashable, Equatable {
     self.linespacing = linespacing
     self.inlineFloatingPill = inlineFloatingPill
   }
-  
+
   func encode(to encoder: Encoder) throws {
     var container = encoder.container(keyedBy: CodingKeys.self)
     try container.encodeIfPresent(padding, forKey: .padding)
@@ -47,7 +48,7 @@ struct PostTheme: Codable, Hashable, Equatable {
     try container.encodeIfPresent(linespacing, forKey: .linespacing)
     try container.encodeIfPresent(inlineFloatingPill, forKey: .inlineFloatingPill)
   }
-  
+
   init(from decoder: Decoder) throws {
     let t = defaultTheme.posts
     let container = try decoder.container(keyedBy: CodingKeys.self)

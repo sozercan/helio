@@ -21,17 +21,19 @@ struct LineThemeEditor: View {
           TagsOptions($theme.style, options: [
             CarouselTagElement(label: "Fancy", value: LineTypeTheme.fancy),
             CarouselTagElement(label: "Line", value: LineTypeTheme.line),
-            CarouselTagElement(label: "None", value: LineTypeTheme.no)
+            CarouselTagElement(label: "None", value: LineTypeTheme.no),
           ])
         }
         .onChange(of: theme.style) { val in
-          if val == .fancy { theme.color = defaultFancyDivider.color }
+          if val == .fancy {
+            theme.color = defaultFancyDivider.color
+          }
         }
         .padding(.horizontal, 16)
         .resetter($theme.style, defaultStyle)
         if theme.style == .fancy {
           Divider()
-          LabeledSlider(label: "Thickness", value: $theme.thickness, range: 1...24)
+          LabeledSlider(label: "Thickness", value: $theme.thickness, range: 1 ... 24)
             .resetter($theme.thickness, defaultVal.thickness)
         }
       }

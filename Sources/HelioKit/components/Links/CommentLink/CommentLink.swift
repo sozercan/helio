@@ -1,12 +1,12 @@
 //
-//  Comment.swift
+//  CommentLink.swift
 //  Helio
 //
 //  Created by Igor Marcossi on 28/06/23.
 //
 
-import SwiftUI
 import Defaults
+import SwiftUI
 
 let ZINDEX_SLOTS_COMMENT = 100000
 
@@ -22,13 +22,21 @@ enum CommentBGSide {
   case middle
   case bottom
   case single
-  
+
   static func getFromArray(count: Int, i: Int) -> Self {
-    if !isWideLayout { return .middle }
+    if !isWideLayout {
+      return .middle
+    }
     let finalIndex = count - 1
-    if count == 1 { return .single }
-    if i == 0 { return .top }
-    if i == finalIndex { return .bottom }
+    if count == 1 {
+      return .single
+    }
+    if i == 0 {
+      return .top
+    }
+    if i == finalIndex {
+      return .bottom
+    }
     return .middle
   }
 }
@@ -38,7 +46,7 @@ struct CommentBG: Shape {
   var pos: CommentBGSide
   func path(in rect: CGRect) -> Path {
     var roundingCorners: UIRectCorner = []
-    
+
     switch pos {
     case .top:
       roundingCorners = [.topLeft, .topRight]
@@ -54,7 +62,6 @@ struct CommentBG: Shape {
   }
 }
 
-
 class SubCommentsReferencesContainer: ObservableObject {
   @Published var data: [Comment] = []
 }
@@ -62,26 +69,26 @@ class SubCommentsReferencesContainer: ObservableObject {
 struct CommentLink: View, Equatable {
   static func == (lhs: CommentLink, rhs: CommentLink) -> Bool {
     lhs.post == rhs.post &&
-    lhs.subreddit == rhs.subreddit &&
-    lhs.indentLines == rhs.indentLines &&
-    lhs.highlightID == rhs.highlightID &&
-    lhs.comment == rhs.comment &&
-    lhs.children.count == rhs.children.count &&
-    (lhs.children.count > 0 ? lhs.children[0] == rhs.children[0] : true)
+      lhs.subreddit == rhs.subreddit &&
+      lhs.indentLines == rhs.indentLines &&
+      lhs.highlightID == rhs.highlightID &&
+      lhs.comment == rhs.comment &&
+      lhs.children.count == rhs.children.count &&
+      (!lhs.children.isEmpty ? lhs.children[0] == rhs.children[0] : true)
   }
-  
+
   var lineLimit: Int?
   var highlightID: String?
   var post: Post?
   var subreddit: Subreddit?
   var arrowKinds: [ArrowKind] = []
-  var indentLines: Int? = nil
-  var avatarsURL: [String:String]? = nil
+  var indentLines: Int?
+  var avatarsURL: [String: String]?
   var postFullname: String?
   var showReplies = true
   var seenComments: String?
-  var parentElement: CommentParentElement? = nil
-  
+  var parentElement: CommentParentElement?
+
   var comment: Comment
   var commentHelioData: CommentHelioData
   var children: [Comment]
@@ -93,7 +100,7 @@ struct CommentLink: View, Equatable {
         Group {
           if let kind = comment.kind, kind == "more" {
             if data.id == "_" {
-              if let post = post {
+              if let post {
                 CommentLinkFull(post: post, arrowKinds: arrowKinds, comment: comment, indentLines: indentLines)
               }
             } else {
@@ -103,19 +110,18 @@ struct CommentLink: View, Equatable {
             CommentLinkContent(highlightID: highlightID, seenComments: seenComments, showReplies: showReplies, arrowKinds: arrowKinds, indentLines: indentLines, lineLimit: lineLimit, post: post, comment: comment, helioData: commentHelioData, avatarsURL: avatarsURL)
           }
         }
-        
-        if !collapsed && showReplies {
+
+        if !collapsed, showReplies {
           ForEach(Array(children.enumerated()), id: \.element.id) { index, commentChild in
             let childrenCount = children.count
             if let childCommentHelioData = commentChild.helioData {
-              CommentLink(post: post, arrowKinds: arrowKinds.map { $0.child } + [(childrenCount - 1 == index ? ArrowKind.curve : ArrowKind.straightCurve)], postFullname: postFullname, seenComments: seenComments, parentElement: .comment(comment), comment: commentChild, commentHelioData: childCommentHelioData, children: commentChild.childrenHelio)
+              CommentLink(post: post, arrowKinds: arrowKinds.map(\.child) + [childrenCount - 1 == index ? ArrowKind.curve : ArrowKind.straightCurve], postFullname: postFullname, seenComments: seenComments, parentElement: .comment(comment), comment: commentChild, commentHelioData: childCommentHelioData, children: commentChild.childrenHelio)
               //                .equatable()
             }
           }
         }
-        
       }
-      
+
     } else {
       Text("Oops")
     }

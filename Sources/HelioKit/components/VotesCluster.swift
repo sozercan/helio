@@ -1,13 +1,13 @@
 //
-//  VotingCluster.swift
+//  VotesCluster.swift
 //  Helio
 //
 //  Created by Daniel Inama on 10/08/23.
 //
 
-import SwiftUI
 import Defaults
 import Pow
+import SwiftUI
 
 struct VotesKit: Equatable, Identifiable {
   let ups: Int
@@ -22,14 +22,14 @@ struct VotesCluster: View, Equatable {
   static func == (lhs: VotesCluster, rhs: VotesCluster) -> Bool {
     lhs.votesKit == rhs.votesKit
   }
-  
-  //  var likeRatio: CGFloat? //if the upvote ratio is nil it will be hidden
+
+  ///  var likeRatio: CGFloat? //if the upvote ratio is nil it will be hidden
   var votesKit: VotesKit
   //  @ObservedObject var post: Post
   var voteAction: (RedditAPI.VoteAction) async -> Bool?
   var vertical = false
   var showUpVoteRatio: Bool
-  
+
   nonisolated func haptic() {
     Task(priority: .background) {
       let medium = await UIImpactFeedbackGenerator(style: .medium)
@@ -37,21 +37,21 @@ struct VotesCluster: View, Equatable {
       await medium.impactOccurred()
     }
   }
-  
+
   nonisolated func upvote() {
     Task(priority: .background) {
       haptic()
       _ = await voteAction(.up)
     }
   }
-  
+
   nonisolated func downvote() {
     Task(priority: .background) {
       haptic()
       _ = await voteAction(.down)
     }
   }
-  
+
   var body: some View {
     //    let votes = calculateUpAndDownVotes(upvoteRatio: votesKit.ratio, score: votesKit.ups)
     if vertical {
@@ -66,21 +66,21 @@ struct VotesClusterHorizontal: View, Equatable {
   static func == (lhs: VotesClusterHorizontal, rhs: VotesClusterHorizontal) -> Bool {
     lhs.id == rhs.id && lhs.likes == rhs.likes && lhs.ups == rhs.ups && lhs.upvote_ratio == rhs.upvote_ratio && lhs.showUpVoteRatio == rhs.showUpVoteRatio
   }
-  
+
   let id: String
   let likes: Bool?
   let ups: Int
   let upvote_ratio: Double
-  let upvote: () -> ()
-  let downvote: () -> ()
+  let upvote: () -> Void
+  let downvote: () -> Void
   var showUpVoteRatio: Bool
   var body: some View {
     HStack(spacing: showUpVoteRatio ? 4 : 8) {
-      VoteButton(active: (likes ?? false), color: .orange, image: "arrow.up").onTapGesture(perform: upvote)
-      
+      VoteButton(active: likes ?? false, color: .orange, image: "arrow.up").onTapGesture(perform: upvote)
+
       VotesClusterInfo(ups: ups, likes: likes, likeRatio: upvote_ratio, showUpVoteRatio: showUpVoteRatio).allowsHitTesting(false)
-      
-      VoteButton(active: !(likes ?? true), color: .blue ,image: "arrow.down").onTapGesture(perform: downvote)
+
+      VoteButton(active: !(likes ?? true), color: .blue, image: "arrow.down").onTapGesture(perform: downvote)
     }
     .scaleEffect(1)
     //    .drawingGroup()
@@ -91,15 +91,15 @@ struct VotesClusterVertical: View, Equatable {
   static func == (lhs: VotesClusterVertical, rhs: VotesClusterVertical) -> Bool {
     lhs.likes == rhs.likes && lhs.id == rhs.id
   }
-  
+
   var id: String
   let likes: Bool?
-  let upvote: () -> ()
-  let downvote: () -> ()
+  let upvote: () -> Void
+  let downvote: () -> Void
   var body: some View {
     VStack(spacing: 12) {
-      VoteButton(active: (likes ?? false), color: .orange, image: "arrow.up").highPriorityGesture(TapGesture().onEnded(upvote))
-      
+      VoteButton(active: likes ?? false, color: .orange, image: "arrow.up").highPriorityGesture(TapGesture().onEnded(upvote))
+
       VoteButton(active: !(likes ?? true), color: .blue, image: "arrow.down").highPriorityGesture(TapGesture().onEnded(downvote))
     }
     .frame(width: VotesCluster.verticalWidth, alignment: .top)
@@ -117,9 +117,9 @@ struct VotesClusterInfo: View {
   var likes: Bool?
   var likeRatio: CGFloat?
   var showUpVoteRatio: Bool
-  
+
   @State var flyingNumber: FlyingNumberInfo
-  
+
   init(ups: Int, likes: Bool? = nil, likeRatio: CGFloat? = nil, showUpVoteRatio: Bool) {
     self.ups = ups
     self.likes = likes
@@ -127,7 +127,7 @@ struct VotesClusterInfo: View {
     self.showUpVoteRatio = showUpVoteRatio
     self._flyingNumber = .init(initialValue: FlyingNumberInfo(counter: 0, color: likes))
   }
-  
+
   var body: some View {
     VStack(spacing: 0) {
       Text(formatBigNumber(ups))
@@ -136,11 +136,11 @@ struct VotesClusterInfo: View {
         .fontSize(16, .semibold)
         .changeEffect(
           .rise(origin: UnitPoint(x: 0.75, y: 0.25)) {
-            Text(flyingNumber.value > 0 ? "+\(flyingNumber.value)" : "\(flyingNumber.value)" )
+            Text(flyingNumber.value > 0 ? "+\(flyingNumber.value)" : "\(flyingNumber.value)")
               .foregroundStyle(flyingNumber.color == true ? .orange : flyingNumber.color == nil ? .gray : .blue)
               .font(.system(size: 12, weight: .semibold))
           },
-          value: flyingNumber
+          value: flyingNumber,
         )
       if showUpVoteRatio {
         if likeRatio != nil, let ratio = likeRatio {

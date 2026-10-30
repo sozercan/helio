@@ -12,29 +12,40 @@ enum ArrowKind: Equatable {
   case straightCurve
   case curve
   case empty
-  
+
   var child: ArrowKind {
     switch self {
     case .straightCurve:
-      return .straight
+      .straight
     case .curve:
-      return .empty
+      .empty
     case .straight, .empty:
-      return self
+      self
     }
   }
-  
-  var isStraight: Bool { self == .straight }
-  var isStraightCurve: Bool { self == .straightCurve }
-  var isCurve: Bool { self == .curve }
-  var isEmpty: Bool { self == .empty }
+
+  var isStraight: Bool {
+    self == .straight
+  }
+
+  var isStraightCurve: Bool {
+    self == .straightCurve
+  }
+
+  var isCurve: Bool {
+    self == .curve
+  }
+
+  var isEmpty: Bool {
+    self == .empty
+  }
 }
 
 struct Arrows: View, Equatable {
   static func == (lhs: Arrows, rhs: Arrows) -> Bool {
     lhs.kind == rhs.kind
   }
-  
+
   var kind: ArrowKind
   var offset: CGFloat = 0
   @Environment(\.useTheme) private var selectedTheme

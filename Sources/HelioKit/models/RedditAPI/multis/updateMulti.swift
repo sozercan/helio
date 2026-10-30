@@ -5,11 +5,10 @@
 //  Created by Igor Marcossi on 20/08/23.
 //
 
-import Foundation
 import Alamofire
+import Foundation
 
 extension RedditAPI {
-  
   struct UpdateMultiPayload: Codable {
     var description_md: String
     let display_name: String
@@ -18,7 +17,7 @@ extension RedditAPI {
     let visibility: MultiVisibility
     var raw_json = 1
   }
-  
+
   func upadteMulti(name: String, displayName: String, subs: [String], description: String = "", color: String? = nil, visibility: MultiVisibility = .pub) async -> Bool? {
     if let myName = me?.data?.name {
       let params = UpdateMultiPayload(
@@ -26,7 +25,7 @@ extension RedditAPI {
         display_name: name,
         key_color: color,
         subreddits: subs.map { MultiSub(name: $0) },
-        visibility: visibility
+        visibility: visibility,
       )
       switch await self.doRequest("\(RedditAPI.redditApiURLBase)/api/multi/user/\(myName)/m/\(name)", method: .put, params: params) {
       case .success:
@@ -38,5 +37,4 @@ extension RedditAPI {
     }
     return nil
   }
-  
 }

@@ -5,8 +5,8 @@
 //  Created by Igor Marcossi on 17/07/23.
 //
 
-import SwiftUI
 import Defaults
+import SwiftUI
 
 struct CommentLinkMore: View {
   var arrowKinds: [ArrowKind]
@@ -16,18 +16,18 @@ struct CommentLinkMore: View {
   var parentElement: CommentParentElement?
   var indentLines: Int?
   @State var loadMoreLoading = false
-  
+
   @Environment(\.useTheme) private var selectedTheme
-  
+
   var body: some View {
     let theme = selectedTheme.comments
 //    let curveColor = selectedTheme.comments.theme.indentColor()
     let horPad = selectedTheme.comments.theme.innerPadding.horizontal
-    if let data = comment.data, let count = data.count, let parentElement = parentElement, count > 0 {
+    if let data = comment.data, let count = data.count, let parentElement, count > 0 {
       HStack(spacing: 0) {
-        if data.depth != 0 && indentLines != 0 {
-          HStack(alignment:. bottom, spacing: 6) {
-            let shapes = Array(1...Int(indentLines ?? data.depth ?? 1))
+        if data.depth != 0, indentLines != 0 {
+          HStack(alignment: .bottom, spacing: 6) {
+            let shapes = Array(1 ... Int(indentLines ?? data.depth ?? 1))
             ForEach(shapes, id: \.self) { i in
               if arrowKinds.indices.contains(i - 1) {
                 let actualArrowKind = arrowKinds[i - 1]
@@ -72,7 +72,7 @@ struct CommentLinkMore: View {
       .background(selectedTheme.comments.theme.bg())
       .contentShape(Rectangle())
       .onTapGesture {
-        if let postFullname = postFullname {
+        if let postFullname {
           withAnimation(spring) {
             loadMoreLoading = true
           }

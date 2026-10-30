@@ -12,7 +12,7 @@ struct ThemedListRowModifier: ViewModifier {
   var isButton = false
   @State private var pressed = false
   @Environment(\.useTheme) private var theme
-  
+
   func body(content: Content) -> some View {
     content
       .buttonStyle(ButtonPressingProviderStyle(pressed: $pressed, isButton: isButton))

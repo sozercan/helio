@@ -5,10 +5,10 @@
 //  Created by Igor Marcossi on 04/09/23.
 //
 
-import Foundation
-import Defaults
-import KeychainAccess
 import CoreData
+import Defaults
+import Foundation
+import KeychainAccess
 
 func resetApp() {
   resetCaches()
@@ -19,9 +19,9 @@ func resetApp() {
 
 func resetCredentials() {
   RedditCredentialsManager.shared.credentials.forEach { $0.delete() }
-  
+
   let credentialsKeychain = Keychain(service: "com.sertacozercan.helio.reddit-credentials").synchronizable(Defaults[.BehaviorDefSettings].iCloudSyncCredentials)
-  
+
   credentialsKeychain["apiAppID"] = nil
   credentialsKeychain["apiAppSecret"] = nil
   credentialsKeychain["accessToken"] = nil
@@ -42,9 +42,9 @@ func resetCoreData(keeping: Set<String> = []) {
   let container = PersistenceController.shared.container
   let entities = container.managedObjectModel.entities
   for entity in entities where !keeping.contains(entity.name ?? "") {
-        delete(entityName: entity.name!)
+    delete(entityName: entity.name!)
   }
-  
+
   func delete(entityName: String) {
     let fetchRequest = NSFetchRequest<NSFetchRequestResult>(entityName: entityName)
     let deleteRequest = NSBatchDeleteRequest(fetchRequest: fetchRequest)

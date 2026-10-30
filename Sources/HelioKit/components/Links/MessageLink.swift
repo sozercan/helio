@@ -1,16 +1,16 @@
 //
-//  InboxNotification.swift
+//  MessageLink.swift
 //  Helio
 //
 //  Created by Igor Marcossi on 10/07/23.
 //
 
-import SwiftUI
 import Defaults
+import SwiftUI
 
 struct MessageLink: View {
   var message: Message
-  
+
   var body: some View {
     if let data = message.data, let author = data.author, let subreddit = data.subreddit, let parentID = data.parent_id, let name = data.name {
       let actualParentID = parentID.hasPrefix("t3_") ? name : parentID
@@ -43,16 +43,16 @@ struct MessageLink: View {
           leftFirst: AnySwipeAction(NoneAction()),
           leftSecond: AnySwipeAction(NoneAction()),
           rightFirst: AnySwipeAction(ToggleReadMessageAction()),
-          rightSecond: AnySwipeAction(NoneAction())
+          rightSecond: AnySwipeAction(NoneAction()),
         ),
-        entity: message
+        entity: message,
       )
     }
   }
 }
 
-//struct InboxNotification_Previews: PreviewProvider {
+// struct InboxNotification_Previews: PreviewProvider {
 //    static var previews: some View {
 //        InboxNotification()
 //    }
-//}
+// }

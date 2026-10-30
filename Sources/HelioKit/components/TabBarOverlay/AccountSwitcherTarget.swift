@@ -5,20 +5,20 @@
 //  Created by Igor Marcossi on 26/11/23.
 //
 
-import SwiftUI
 import Defaults
 import Pow
+import SwiftUI
 
 func movePoint(point1: CGPoint, toward point2: CGPoint, when distanceLessThan: CGFloat) -> CGSize {
-    let distance = hypot(point2.x - point1.x, point2.y - point1.y)
-    
-    guard distance < distanceLessThan else { return CGSize.zero }
-    
-    let t = 1 - (distance / distanceLessThan)
-    let interpolationFactor = t * t
-    let deltaX = interpolationFactor * (point2.x - point1.x)
-    let deltaY = interpolationFactor * (point2.y - point1.y)
-    return CGSize(width: deltaX, height: deltaY)
+  let distance = hypot(point2.x - point1.x, point2.y - point1.y)
+
+  guard distance < distanceLessThan else { return CGSize.zero }
+
+  let t = 1 - (distance / distanceLessThan)
+  let interpolationFactor = t * t
+  let deltaX = interpolationFactor * (point2.x - point1.x)
+  let deltaY = interpolationFactor * (point2.y - point1.y)
+  return CGSize(width: deltaX, height: deltaY)
 }
 
 struct AccountSwitcherTarget: View, Equatable {
@@ -27,55 +27,98 @@ struct AccountSwitcherTarget: View, Equatable {
   static let fontSize: Double = 12
   static let vStackSpacing: Double = 4
   static let hitboxTolerance: Double = 5
-  
+
   static func == (lhs: AccountSwitcherTarget, rhs: AccountSwitcherTarget) -> Bool {
     lhs.cred == rhs.cred && lhs.index == rhs.index && lhs.hovered == rhs.hovered && lhs.distance == rhs.distance && lhs.attraction == rhs.attraction
   }
-  
-//  @State private var appear = false
+
+  ///  @State private var appear = false
   @State private var jump = 0
-//  @State private var globalCirclePos: CGPoint = .zero
+  ///  @State private var globalCirclePos: CGPoint = .zero
   @State private var impactRigid = UIImpactFeedbackGenerator(style: .rigid)
-  
+
   let containerSize: CGSize
   let index: Int
   let targetsCount: Int
   var cred: RedditCredential
-  
+
   var transmitter: AccountSwitcherTransmitter
-  
-  private var appear: Bool { transmitter.showing }
-  private var fingerPos: CGPoint { transmitter.positionInfo?.location ?? .zero }
-  private var globalCirclePos: CGPoint { transmitter.positionInfo?.initialLocation ?? .zero }
+
+  private var appear: Bool {
+    transmitter.showing
+  }
+
+  private var fingerPos: CGPoint {
+    transmitter.positionInfo?.location ?? .zero
+  }
+
+  private var globalCirclePos: CGPoint {
+    transmitter.positionInfo?.initialLocation ?? .zero
+  }
 
   private let distanceMaxSelectedVibrating: Double = 100
   private let verticalOffset = -50.0
   private let textSpace = (AccountSwitcherTarget.fontSize * 1.2) + AccountSwitcherTarget.vStackSpacing
-  private var isAddBtn: Bool { cred.validationStatus != .authorized }
-  private var isSelected: Bool { !isAddBtn && Defaults[.GeneralDefSettings].redditCredentialSelectedID == cred.id }
-  private var radiusX: Double { (containerSize.width / 2) }
-  private var radiusY: Double { (containerSize.height / 2) }
-  private var initialOffset: CGSize { getOffsetAroundCircleForIndex(count: targetsCount, index: index, circleSize: containerSize) }
-  private var x: Double { initialOffset.width }
-  private var y: Double { -initialOffset.height }
-  private var xMin: Double { globalCirclePos.x - (AccountSwitcherTarget.size / 2) + x + radiusX }
-  private var xMax: Double { xMin + AccountSwitcherTarget.size }
-  private var yMin: Double { globalCirclePos.y - (AccountSwitcherTarget.size / 2) + verticalOffset + y }
-  private var yMax: Double { yMin + AccountSwitcherTarget.size }
+  private var isAddBtn: Bool {
+    cred.validationStatus != .authorized
+  }
+
+  private var isSelected: Bool {
+    !isAddBtn && Defaults[.GeneralDefSettings].redditCredentialSelectedID == cred.id
+  }
+
+  private var radiusX: Double {
+    containerSize.width / 2
+  }
+
+  private var radiusY: Double {
+    containerSize.height / 2
+  }
+
+  private var initialOffset: CGSize {
+    getOffsetAroundCircleForIndex(count: targetsCount, index: index, circleSize: containerSize)
+  }
+
+  private var x: Double {
+    initialOffset.width
+  }
+
+  private var y: Double {
+    -initialOffset.height
+  }
+
+  private var xMin: Double {
+    globalCirclePos.x - (AccountSwitcherTarget.size / 2) + x + radiusX
+  }
+
+  private var xMax: Double {
+    xMin + AccountSwitcherTarget.size
+  }
+
+  private var yMin: Double {
+    globalCirclePos.y - (AccountSwitcherTarget.size / 2) + verticalOffset + y
+  }
+
+  private var yMax: Double {
+    yMin + AccountSwitcherTarget.size
+  }
+
   private var attraction: CGSize {
     let targetPos = CGPoint(x: (xMin + xMax) / 2, y: (yMin + yMax) / 2)
     return movePoint(point1: targetPos, toward: fingerPos, when: 100)
   }
+
   private var distance: Double {
-    return max( AccountSwitcherTarget.size / 2, min(distanceMaxSelectedVibrating, abs(CGPoint(x: (xMin + xMax) / 2, y: (yMin + yMax) / 2).distanceTo(point: fingerPos))))
+    max(AccountSwitcherTarget.size / 2, min(distanceMaxSelectedVibrating, abs(CGPoint(x: (xMin + xMax) / 2, y: (yMin + yMax) / 2).distanceTo(point: fingerPos))))
   }
+
   private var hovered: Bool {
     let actualAttraction: CGSize = isSelected ? .zero : attraction
-    let xRange = (xMin + actualAttraction.width - Self.hitboxTolerance)...(xMax + actualAttraction.width + Self.hitboxTolerance)
-    let yRange = (yMin + actualAttraction.height - Self.hitboxTolerance)...(yMax + actualAttraction.height + Self.hitboxTolerance)
+    let xRange = (xMin + actualAttraction.width - Self.hitboxTolerance) ... (xMax + actualAttraction.width + Self.hitboxTolerance)
+    let yRange = (yMin + actualAttraction.height - Self.hitboxTolerance) ... (yMax + actualAttraction.height + Self.hitboxTolerance)
     return xRange.contains(fingerPos.x) && yRange.contains(fingerPos.y)
   }
-  
+
   var body: some View {
     let interpolateVibration = interpolatorBuilder([0, distanceMaxSelectedVibrating], value: distance)
     let attractionOffset: CGSize = (isSelected ? .zero : attraction)
@@ -104,33 +147,32 @@ struct AccountSwitcherTarget: View, Equatable {
     .clipShape(Circle())
     .overlay(
       !isAddBtn
-      ? nil
-      : Image(systemName: "plus")
+        ? nil
+        : Image(systemName: "plus")
         .fontSize(Self.size * 0.75, .semibold)
         .foregroundStyle(Color.accentColor)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(Circle().fill(.white))
-        .mask(Circle().fill(.black).scaleEffect(hovered ? 1 : 0.001))
+        .mask(Circle().fill(.black).scaleEffect(hovered ? 1 : 0.001)),
     )
     .overlay(isAddBtn ? nil : Circle().stroke(.white, lineWidth: Self.strokeWidth))
     .overlay(
       !isSelected
-      ? nil
-      : Image(systemName: "checkmark.circle.fill")
+        ? nil
+        : Image(systemName: "checkmark.circle.fill")
         .foregroundStyle(Color.accentColor)
         .fontSize(16, .semibold)
         .frame(22)
         .background(Circle().fill(.white))
-        .offset(x: 11 / 2, y: -11 / 2)
-      , alignment: .topTrailing
+        .offset(x: 11 / 2, y: -11 / 2),
+      alignment: .topTrailing,
     )
     .background(
       isSelected || (isAddBtn && !hovered)
-      ? nil
-      : Image(.spotlight)
-        .resizable()
-        .aspectRatio(contentMode: .fit)
-        .frame(150)
+        ? nil
+        : Image(.spotlight)
+        .resizable().scaledToFit()
+        .frame(150),
     )
     .frame(Self.size)
     .changeEffect(.shake(rate: .fast), value: jump)
@@ -161,9 +203,14 @@ struct AccountSwitcherTarget: View, Equatable {
     .vibrate(.transient(sharpness: !isSelected && !hovered ? 1.0 : 0, intensity: isSelected && hovered ? 0 : 1.0), trigger: hovered, disabled: !appear)
     .onChange(of: hovered) {
       if !isSelected {
-        if transmitter.selectedCred == nil && $0 { transmitter.selectedCred = cred }
-        else if transmitter.selectedCred == cred && !$0 { transmitter.selectedCred = nil }
-      } else if $0 { jump += 1 }
+        if transmitter.selectedCred == nil, $0 {
+          transmitter.selectedCred = cred
+        } else if transmitter.selectedCred == cred, !$0 {
+          transmitter.selectedCred = nil
+        }
+      } else if $0 {
+        jump += 1
+      }
     }
     .transition(.identity)
   }

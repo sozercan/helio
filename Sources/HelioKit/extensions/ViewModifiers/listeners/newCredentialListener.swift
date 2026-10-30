@@ -12,7 +12,7 @@ struct NewCredentialListenerModifier: ViewModifier {
   func body(content: Content) -> some View {
     content
       .onOpenURL { url in
-        if case .editingCredential(_) = Nav.shared.presentingSheet {} else if let queryParams = url.queryParameters, let appID = queryParams["appID"], let appSecret = queryParams["appSecret"] {
+        if case .editingCredential = Nav.shared.presentingSheet {} else if let queryParams = url.queryParameters, let appID = queryParams["appID"], let appSecret = queryParams["appSecret"] {
           if var foundCred = RedditCredentialsManager.shared.credentials.first(where: { $0.apiAppID == appID }) {
             foundCred.apiAppSecret = appSecret
             Nav.present(.editingCredential(foundCred))

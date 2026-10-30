@@ -6,28 +6,28 @@
 //
 
 import Foundation
-import SwiftUI
 import Nuke
 import NukeUI
+import SwiftUI
 
-//struct SubredditBaseIcon: View {
+// struct SubredditBaseIcon: View {
 //  let name: String
 //  let iconURLStr: String?
 //  var size: CGFloat = 30
 //  let color: String?
-//  
+//
 ////  private static let pipeline = ImagePipeline {
 ////    $0.dataLoader = DataLoader(configuration: {
 ////      DataLoader.defaultConfiguration
 ////    }())
-////    
+////
 ////    $0.imageCache = ImageCache()
 ////    $0.dataCache = try? DataCache(name: "com.sertacozercan.helio-cache")
 ////  }
-//  
+//
 //  var body: some View {
 //  }
-//}
+// }
 
 struct SubredditIconKit {
   var url: String?
@@ -39,7 +39,6 @@ struct SubredditIcon: View {
   var subredditIconKit: SubredditIconKit
   var size: CGFloat = 30
   var body: some View {
-    
     if let icon = subredditIconKit.url, !icon.isEmpty, let iconURL = URL(string: icon) {
 //      LazyImage(url: iconURL, transaction: Transaction(animation: .default)) { state in
       LazyImage(url: iconURL) { state in
@@ -73,10 +72,10 @@ struct SubredditIcon: View {
 }
 
 func firstNonEmptyString(_ strings: String?...) -> String? {
-    for string in strings {
-        if let string = string, !string.isEmpty {
-            return string
-        }
+  for string in strings {
+    if let string, !string.isEmpty {
+      return string
     }
-    return nil
+  }
+  return nil
 }

@@ -10,7 +10,7 @@ import SwiftUI
 struct LightBoxButton: View {
   @State private var pressed = false
   var icon: String
-  var action: (()->())?
+  var action: (() -> Void)?
   var disabled = false
   var body: some View {
     Image(systemName: icon)

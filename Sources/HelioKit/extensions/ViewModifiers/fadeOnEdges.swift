@@ -5,10 +5,10 @@
 //  Created by Igor Marcossi on 19/12/23.
 //
 
-import SwiftUI
 import SmoothGradient
+import SwiftUI
 
-fileprivate struct NiceGradient: View {
+private struct NiceGradient: View {
   let axis: Axis
   let length: Double
   let last: Bool
@@ -30,7 +30,7 @@ extension View {
           if disableSide != .trailing {
             NiceGradient(axis: axis, length: fadeLength, last: true)
           }
-        }
+        },
       )
   }
 }

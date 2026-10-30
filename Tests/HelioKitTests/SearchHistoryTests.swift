@@ -2,7 +2,9 @@ import Testing
 @testable import HelioKit
 
 struct SearchHistoryTests {
-  private func queries(_ items: [SearchHistoryItem]) -> [String] { items.map(\.query) }
+  private func queries(_ items: [SearchHistoryItem]) -> [String] {
+    items.map(\.query)
+  }
 
   @Test func recordsNewestFirstAndMovesRepeatsToTop() {
     var items: [SearchHistoryItem] = []
@@ -25,7 +27,7 @@ struct SearchHistoryTests {
   @Test func prunesOldRecentsButKeepsFavorites() {
     var items = SearchHistory.record("pinned", type: .subreddit, in: [])
     items[0].isFavorite = true
-    for i in 0..<(SearchHistory.maxRecents + 5) {
+    for i in 0 ..< (SearchHistory.maxRecents + 5) {
       items = SearchHistory.record("q\(i)", type: .post, in: items)
     }
     #expect(items.filter { !$0.isFavorite }.count == SearchHistory.maxRecents)
@@ -41,12 +43,12 @@ struct SearchHistoryTests {
     #expect(items[0].isFavorite)
   }
 
-  @Test func suggestsMatchesWithFavoritesFirst() {
+  @Test func suggestsMatchesWithFavoritesFirst() throws {
     var items: [SearchHistoryItem] = []
     for query in ["swiftui", "taylor swift", "swift", "rust"] {
       items = SearchHistory.record(query, type: .subreddit, in: items)
     }
-    items[items.firstIndex { $0.query == "swiftui" }!].isFavorite = true
+    try items[#require(items.firstIndex { $0.query == "swiftui" })].isFavorite = true
     #expect(queries(SearchHistory.suggestions(for: "SWIFT", in: items)) == ["swiftui", "taylor swift"])
     #expect(SearchHistory.suggestions(for: " ", in: items).isEmpty)
   }

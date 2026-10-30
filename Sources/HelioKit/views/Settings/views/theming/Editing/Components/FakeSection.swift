@@ -12,16 +12,16 @@ struct FakeSection<Content: View>: View {
   var footer: String?
   @ViewBuilder var content: () -> Content
   @State private var collapse = false
-  
+
   init(_ title: String? = nil, footer: String? = nil, @ViewBuilder _ content: @escaping () -> Content) {
     self.title = title
     self.footer = footer
     self.content = content
   }
-  
+
   var body: some View {
     VStack(alignment: .leading, spacing: 4) {
-      if let title = title {
+      if let title {
         HStack {
           Text(title.uppercased())
             .fontSize(13)
@@ -31,20 +31,20 @@ struct FakeSection<Content: View>: View {
             .fontSize(13, .semibold)
             .foregroundStyle(Color.accentColor)
             .rotationEffect(Angle(degrees: collapse ? -90 : 0))
-            .onTapGesture { withAnimation(.default) { collapse.toggle() }}
+            .onTapGesture { withAnimation(.default) { collapse.toggle() } }
         }
         .padding(.horizontal, 16)
       }
-      
+
       if !collapse {
         VStack(alignment: .leading, spacing: 8) {
-            content()
+          content()
         }
         .padding(.vertical, 8)
         .themedListRowLikeBG()
         .mask(RR(10, .black))
-        
-        if let footer = footer {
+
+        if let footer {
           Text(footer)
             .fontSize(13)
             .padding(.horizontal, 16)
@@ -57,4 +57,3 @@ struct FakeSection<Content: View>: View {
     .fixedSize(horizontal: false, vertical: true)
   }
 }
-

@@ -5,9 +5,9 @@
 //  Created by Igor Marcossi on 11/07/23.
 //
 
+import Defaults
 import Foundation
 import SwiftUI
-import Defaults
 
 struct FloatingModifier: ViewModifier {
   @Environment(\.useTheme) private var selectedTheme
@@ -28,4 +28,3 @@ extension View {
     self.modifier(FloatingModifier())
   }
 }
-

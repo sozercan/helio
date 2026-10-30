@@ -5,43 +5,45 @@
 //  Created by Igor Marcossi on 16/12/23.
 //
 
-import SwiftUI
 import Combine
 import Defaults
+import SwiftUI
 
 struct FloatingFeedMenu: View, Equatable {
   static func == (lhs: FloatingFeedMenu, rhs: FloatingFeedMenu) -> Bool {
     lhs.subId == rhs.subId && lhs.filters == rhs.filters && lhs.selectedFilter == rhs.selectedFilter
   }
-  
+
   var subId: String
   var filters: [ShallowCachedFilter]
   @Binding var selectedFilter: ShallowCachedFilter?
-  
+
   @State private var menuOpen = false
   @State private var showingFilters = false
   @State private var compact: Bool
-  
+
   @Namespace private var ns
-  
+
   private let mainTriggerSize: Double = 64
   private let actionsSize: Double = 48
   private let itemsSpacing: Double = 20
   private let screenEdgeMargin: Double = 12
-  
-  var itemsSpacingDownscaled: Double { itemsSpacing - ((mainTriggerSize - actionsSize) / 2) }
-  
+
+  var itemsSpacingDownscaled: Double {
+    itemsSpacing - ((mainTriggerSize - actionsSize) / 2)
+  }
+
   @Default(.SubredditFeedDefSettings) var subredditFeedDefSettings
   @Default(.PostLinkDefSettings) var postLinkDefSettings
-  
+
   init(subId: String, filters: [ShallowCachedFilter], selectedFilter: Binding<ShallowCachedFilter?>) {
     self.subId = subId
     self.filters = filters
     self._selectedFilter = selectedFilter
-    
+
     _compact = State(initialValue: Defaults[.SubredditFeedDefSettings].compactPerSubreddit[subId] ?? Defaults[.PostLinkDefSettings].compactMode.enabled)
   }
-  
+
   func dismiss() {
     if menuOpen {
       Hap.shared.play(intensity: 0.75, sharpness: 0.4)
@@ -52,21 +54,20 @@ struct FloatingFeedMenu: View, Equatable {
       withAnimation(.snappy(extraBounce: 0.3)) {
         menuOpen = false
       }
-      
     }
   }
-  
+
   func selectFilter(_ filter: ShallowCachedFilter) {
     let newVal = selectedFilter == filter ? nil : filter
     withAnimation(.spring) {
       selectedFilter = newVal
     }
   }
-  
+
   var body: some View {
     ZStack(alignment: .bottomTrailing) {
       FloatingBGBlur(active: menuOpen, dismiss: dismiss).equatable()
-      
+
       HStack(alignment: .bottom, spacing: 0) {
         ZStack(alignment: .bottomTrailing) {
           if !showingFilters, let selectedFilter {
@@ -78,13 +79,12 @@ struct FloatingFeedMenu: View, Equatable {
               .padding(.bottom, screenEdgeMargin)
               .transition(.offset(x: 0.01))
           }
-          
-          let sortedFlairs = filters.filter({ $0.type == .flair })
-          let customFilters = filters.filter({ $0.type == .custom })
+
+          let sortedFlairs = filters.filter { $0.type == .flair }
+          let customFilters = filters.filter { $0.type == .custom }
           if menuOpen {
             ScrollView(.horizontal, showsIndicators: false) {
               HStack(spacing: 8) {
-                
                 ForEach(Array(sortedFlairs.enumerated()).reversed(), id: \.element) { i, el in
                   let isSelected = selectedFilter?.id == el.id
                   let placeholder = isSelected && !showingFilters
@@ -98,12 +98,12 @@ struct FloatingFeedMenu: View, Equatable {
                     .transition(.offset(x: 0.01))
                     .id(elId)
                 }
-                
+
                 ForEach(Array(customFilters.enumerated()).reversed(), id: \.element) { i, el in
                   let isSelected = selectedFilter?.id == el.id
                   let placeholder = isSelected && !showingFilters
                   let elId = "floating-\(el.id)\(placeholder ? "-placeholder" : "")"
-                  
+
                   FilterButton(filter: el, isSelected: isSelected, selectFilter: selectFilter)
 //                    .equatable()
                     .matchedGeometryEffect(id: "floating-\(el.id)", in: ns)
@@ -128,9 +128,9 @@ struct FloatingFeedMenu: View, Equatable {
             .transition(.offset(x: 0.01))
           }
         }
-        
+
         // -
-        
+
         VStack(spacing: itemsSpacingDownscaled) {
           VStack(spacing: itemsSpacing) {
             if menuOpen {
@@ -141,14 +141,14 @@ struct FloatingFeedMenu: View, Equatable {
                 .floating()
                 .transition(.comeFrom(.bottom, index: 0, total: 2))
                 .increaseHitboxOf(actionsSize, by: 1.125, shape: Circle(), disable: menuOpen)
-                .highPriorityGesture(TapGesture().onEnded({
+                .highPriorityGesture(TapGesture().onEnded {
                   Hap.shared.play(intensity: 0.75, sharpness: 0.9)
-                  compact = !compact
+                  compact.toggle()
                   subredditFeedDefSettings.compactPerSubreddit[self.subId] = compact
-                }))
+                })
             }
           }
-          
+
           FloatingMainTrigger(menuOpen: $menuOpen, showingFilters: $showingFilters, dismiss: dismiss, size: mainTriggerSize, actionsSize: actionsSize)
         }
         .padding([.trailing, .bottom], screenEdgeMargin)
@@ -156,8 +156,6 @@ struct FloatingFeedMenu: View, Equatable {
     }
   }
 }
-
-
 
 private struct FloatingMenuModifier: ViewModifier {
   let subId: String?
@@ -185,8 +183,8 @@ extension View {
 func createTimer(seconds: Double, callback: @escaping (Int, Int) -> Void) -> Timer {
   let totalLoops = Int(120.0 * seconds)
   var currentLoop = 0
-  
-  let timer = Timer.scheduledTimer(withTimeInterval: 1.0/120.0, repeats: true) { (timer) in
+
+  let timer = Timer.scheduledTimer(withTimeInterval: 1.0 / 120.0, repeats: true) { timer in
     callback(currentLoop, totalLoops)
     currentLoop += 1
     if currentLoop >= totalLoops {
@@ -194,6 +192,6 @@ func createTimer(seconds: Double, callback: @escaping (Int, Int) -> Void) -> Tim
     }
   }
   RunLoop.current.add(timer, forMode: .common)
-  
+
   return timer
 }

@@ -1,5 +1,5 @@
 //
-//  AccountSwitcherView.swift
+//  AccountSwitcherOverlayView.swift
 //  Helio
 //
 //  Created by Igor Marcossi on 25/11/23.
@@ -11,15 +11,14 @@ struct AccountSwitcherOverlayView: View, Equatable {
   static func == (lhs: AccountSwitcherOverlayView, rhs: AccountSwitcherOverlayView) -> Bool {
     lhs.fingerPosition == rhs.fingerPosition && lhs.appear == rhs.appear
   }
-  
+
   let fingerPosition: AccountSwitcherTransmitter.PositionInfo
   let appear: Bool
   var transmitter: AccountSwitcherTransmitter
-  
+
   @State private var showOverlay = false
   @State private var newCredentialSample = RedditCredential()
-  
-  
+
   private let targetsContainerSize: CGSize = .init(width: 250, height: 150)
 
   var body: some View {
@@ -39,9 +38,9 @@ struct AccountSwitcherOverlayView: View, Equatable {
       //            .transition(.identity)
       //            .allowsHitTesting(false)
       //        }
-      
+
       AccountSwitcherGradientBackground().equatable().opacity(lastsUntilEndOfAllTransitions ? 1 : 0).animation(.easeIn, value: appear)
-      
+
       ZStack {
         if showAddBtn {
           AccountSwitcherTarget(containerSize: targetsContainerSize, index: 0, targetsCount: targetsCount, cred: newCredentialSample, transmitter: transmitter)
@@ -49,16 +48,14 @@ struct AccountSwitcherOverlayView: View, Equatable {
         ForEach(Array(validCredentials.enumerated()), id: \.element) { index, cred in
           AccountSwitcherTarget(containerSize: targetsContainerSize, index: index + (showAddBtn ? 1 : 0), targetsCount: targetsCount, cred: cred, transmitter: transmitter)
         }
-        
       }
       .frame(targetsContainerSize)
       .position(fingerPosition.initialLocation)
       .drawingGroup()
-      
+
       AccountSwitcherFingerLight().equatable().position(fingerPosition.location).opacity(!appear ? 0 : 1).animation(.easeOut, value: appear).drawingGroup()
-      
+
       AccountSwitcherParticles().equatable().opacity(lastsUntilEndOfAllTransitions ? 1 : 0).animation(.easeIn, value: appear)
-      
     }
     .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)
     .multilineTextAlignment(.center)

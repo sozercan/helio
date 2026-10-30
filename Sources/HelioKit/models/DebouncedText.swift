@@ -1,5 +1,5 @@
 //
-//  debouncedText.swift
+//  DebouncedText.swift
 //  Helio
 //
 //  Created by Igor Marcossi on 27/07/23.
@@ -20,8 +20,9 @@ class Debouncer<V> {
       }
     }
   }
+
   private(set) var debounced: V
-  
+
   /// Sets `value` and `debounced` at once, without waiting.
   func setNow(_ newValue: V) {
     settingNow = true
@@ -29,7 +30,7 @@ class Debouncer<V> {
     settingNow = false
     debounced = newValue
   }
-  
+
   init(_ val: V, delay: Double = 0.4) {
     value = val
     debounced = val

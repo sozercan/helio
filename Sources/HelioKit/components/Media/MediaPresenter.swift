@@ -5,10 +5,10 @@
 //  Created by Igor Marcossi on 22/08/23.
 //
 
-import SwiftUI
-import YouTubePlayerKit
 import Defaults
 import NukeUI
+import SwiftUI
+import YouTubePlayerKit
 
 struct OnlyURL: View {
   static let height: Double = 22
@@ -39,14 +39,14 @@ struct MediaPresenter: View, Equatable {
   static func == (lhs: MediaPresenter, rhs: MediaPresenter) -> Bool {
     lhs.compact == rhs.compact && lhs.contentWidth == rhs.contentWidth && lhs.badgeKit == rhs.badgeKit && lhs.cornerRadius == rhs.cornerRadius && lhs.media == rhs.media
   }
-  
+
   var helioData: PostHelioData
   var fullPage = false
   weak var controller: UIViewController?
   let postTitle: String
   let badgeKit: BadgeKit
   let avatarImageRequest: ImageRequest?
-  let markAsSeen: (() async -> ())?
+  let markAsSeen: (() async -> Void)?
   var cornerRadius: Double
   var blurPostLinkNSFW: Bool
   var showURLInstead = false
@@ -55,42 +55,40 @@ struct MediaPresenter: View, Equatable {
   let compact: Bool
   let contentWidth: CGFloat
   let maxMediaHeightScreenPercentage: CGFloat
-  
+
   var body: some View {
     let mediaSize = (fullPage ? helioData.postDimensionsForcedNormal : helioData.postDimensions).mediaSize
     switch media {
-    case .imgs(let imgsExtracted):
+    case let .imgs(imgsExtracted):
       if !showURLInstead {
-        if imgsExtracted.count > 0 && imgsExtracted[0].url.absoluteString.hasSuffix(".gif") {
+        if !imgsExtracted.isEmpty, imgsExtracted[0].url.absoluteString.hasSuffix(".gif") {
           ImageMediaPost(helioData: helioData, controller: controller, postTitle: postTitle, badgeKit: badgeKit, avatarImageRequest: avatarImageRequest, markAsSeen: markAsSeen, cornerRadius: cornerRadius, compact: compact, images: imgsExtracted, contentWidth: contentWidth, maxMediaHeightScreenPercentage: maxMediaHeightScreenPercentage)
             .nsfw(over18 && blurPostLinkNSFW, smallIcon: compact, size: mediaSize)
         } else {
           ImageMediaPost(helioData: helioData, controller: controller, postTitle: postTitle, badgeKit: badgeKit, avatarImageRequest: avatarImageRequest, markAsSeen: markAsSeen, cornerRadius: cornerRadius, compact: compact, images: imgsExtracted, contentWidth: contentWidth, maxMediaHeightScreenPercentage: maxMediaHeightScreenPercentage)
             .nsfw(over18 && blurPostLinkNSFW, smallIcon: compact, size: mediaSize)
-          
         }
       }
-    case .video(let sharedVideo):
+    case let .video(sharedVideo):
       if !showURLInstead {
         VideoPlayerPost(controller: controller, cachedVideo: sharedVideo, markAsSeen: markAsSeen, compact: compact, contentWidth: contentWidth, url: sharedVideo.url, maxMediaHeightScreenPercentage: maxMediaHeightScreenPercentage)
           .nsfw(over18 && blurPostLinkNSFW, smallIcon: compact, size: mediaSize)
       }
-      
-    case .streamable(_):
+    case .streamable:
       if !showURLInstead {
         ProgressView()
-        .progressViewStyle(.circular)
-        .frame(maxWidth: .infinity, minHeight: 100)
-        .id("streamable-loading")
-        .listRowInsets(EdgeInsets(top: 0, leading: 0, bottom: 0, trailing: 0))
-        .listRowSeparator(.hidden)
-        .listRowBackground(Color.clear)
+          .progressViewStyle(.circular)
+          .frame(maxWidth: .infinity, minHeight: 100)
+          .id("streamable-loading")
+          .listRowInsets(EdgeInsets(top: 0, leading: 0, bottom: 0, trailing: 0))
+          .listRowSeparator(.hidden)
+          .listRowBackground(Color.clear)
       }
-    case .yt(let ytMediaExtracted):
+    case let .yt(ytMediaExtracted):
       if !showURLInstead {
         YTMediaPostPlayer(compact: compact, player: ytMediaExtracted.player, ytMediaExtracted: ytMediaExtracted, contentWidth: contentWidth)
       }
-    case .link(let previewModel):
+    case let .link(previewModel):
       if let previewURL = previewModel.previewURL {
         if !showURLInstead {
           PreviewLinkContent(compact: compact, viewModel: previewModel, url: previewURL)
@@ -98,8 +96,8 @@ struct MediaPresenter: View, Equatable {
           OnlyURL(url: previewURL)
         }
       }
-    case .post(let postExtractedEntity):
-      if let postExtractedEntity = postExtractedEntity {
+    case let .post(postExtractedEntity):
+      if let postExtractedEntity {
         if !showURLInstead {
           if compact, let sub = postExtractedEntity.subredditID, let postID = postExtractedEntity.postID {
             if let url = URL(string: "https://reddit.com/r/\(sub)/comments/\(postID)") {
@@ -112,8 +110,8 @@ struct MediaPresenter: View, Equatable {
           OnlyURL(url: url)
         }
       }
-    case .comment(let commentExtractedEntity):
-      if let commentExtractedEntity = commentExtractedEntity {
+    case let .comment(commentExtractedEntity):
+      if let commentExtractedEntity {
         if !showURLInstead {
           if compact, let sub = commentExtractedEntity.subredditID, let postID = commentExtractedEntity.postID, let commentID = commentExtractedEntity.commentID {
             if let url = URL(string: "https://reddit.com/r/\(sub)/comments/\(postID)/comment/\(commentID)") {
@@ -126,8 +124,8 @@ struct MediaPresenter: View, Equatable {
           OnlyURL(url: url)
         }
       }
-    case .subreddit(let subExtractedEntity):
-      if let subExtractedEntity = subExtractedEntity {
+    case let .subreddit(subExtractedEntity):
+      if let subExtractedEntity {
         if !showURLInstead {
           if compact {
             if let url = URL(string: "https://reddit.com/r/\(subExtractedEntity.subredditID ?? "")") {
@@ -140,8 +138,8 @@ struct MediaPresenter: View, Equatable {
           OnlyURL(url: url)
         }
       }
-    case .user(let userExtractedEntity):
-      if let userExtractedEntity = userExtractedEntity {
+    case let .user(userExtractedEntity):
+      if let userExtractedEntity {
         if !showURLInstead {
           if compact {
             if let url = URL(string: "https://reddit.com/u/\(userExtractedEntity.userID ?? "")") {

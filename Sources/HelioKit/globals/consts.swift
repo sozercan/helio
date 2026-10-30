@@ -6,10 +6,10 @@
 //
 
 import Foundation
-import UIKit
-import SwiftUI
 import HighlightedTextEditor
 import Lottie
+import SwiftUI
+import UIKit
 
 let spring = Animation.interpolatingSpring(stiffness: 300, damping: 30, initialVelocity: 0)
 let draggingAnimation = Animation.interpolatingSpring(stiffness: 1000, damping: 75, initialVelocity: 0)
@@ -23,7 +23,7 @@ let feedsAndSuch = ["home", savedKeyword, "all", "popular"]
 let IMAGES_FORMATS = [".gif", ".png", ".jpg", ".jpeg", ".webp", ".bmp", ".tiff", ".svg", ".ico", ".heic", ".heif"]
 let VIDEOS_FORMATS = [".mov", ".mp4", ".avi", ".mkv", ".flv", ".wmv", ".mpg", ".mpeg", ".webm"]
 
-func getSafeArea()->UIEdgeInsets{
+func getSafeArea() -> UIEdgeInsets {
   let keyWindow = UIApplication
     .shared
     .connectedScenes
@@ -31,4 +31,3 @@ func getSafeArea()->UIEdgeInsets{
     .first
   return (keyWindow?.safeAreaInsets) ?? UIEdgeInsets(top: 0, left: 0, bottom: 0, right: 0)
 }
-

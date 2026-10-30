@@ -15,22 +15,22 @@ struct PerformantShadow: UIViewRepresentable {
   var radius: CGFloat
   var offsetY: CGFloat
   var size: CGSize
-  
+
   func makeUIView(context: Context) -> UIView {
     let view = UIView()
 
-      context.coordinator.addRoundedRectangleShadow(to: view, cornerRadius: cornerRadius, color: UIColor(color), opacity: Float(opacity), radius: radius, offsetY: offsetY, size: size)
+    context.coordinator.addRoundedRectangleShadow(to: view, cornerRadius: cornerRadius, color: UIColor(color), opacity: Float(opacity), radius: radius, offsetY: offsetY, size: size)
     return view
   }
-  
+
   func updateUIView(_ uiView: UIView, context: Context) {
-      context.coordinator.updateRoundedRectangleShadow(for: uiView, cornerRadius: cornerRadius, color: UIColor(color), opacity: Float(opacity), radius: radius, offsetY: offsetY, size: size)
+    context.coordinator.updateRoundedRectangleShadow(for: uiView, cornerRadius: cornerRadius, color: UIColor(color), opacity: Float(opacity), radius: radius, offsetY: offsetY, size: size)
   }
-  
+
   func makeCoordinator() -> Coordinator {
     Coordinator()
   }
-  
+
   class Coordinator {
     func addRoundedRectangleShadow(to view: UIView, cornerRadius: CGFloat, color: UIColor, opacity: Float, radius: CGFloat, offsetY: CGFloat, size: CGSize) {
       let shapeLayer = CAShapeLayer()
@@ -38,7 +38,7 @@ struct PerformantShadow: UIViewRepresentable {
       shapeLayer.path = UIBezierPath(roundedRect: CGRect(origin: .zero, size: size), cornerRadius: cornerRadius).cgPath
       shapeLayer.fillColor = UIColor.clear.cgColor
       view.layer.addSublayer(shapeLayer)
-      
+
       let shadowLayer = CAShapeLayer()
       shadowLayer.name = "shadowLayer"
       shadowLayer.path = shapeLayer.path
@@ -50,7 +50,7 @@ struct PerformantShadow: UIViewRepresentable {
       shadowLayer.shadowOffset = CGSize(width: 0, height: offsetY)
       view.layer.addSublayer(shadowLayer)
     }
-    
+
     func updateRoundedRectangleShadow(for view: UIView, cornerRadius: CGFloat, color: UIColor, opacity: Float, radius: CGFloat, offsetY: CGFloat, size: CGSize) {
       guard let shapeLayer = view.layer.sublayers?.first(where: { $0.name == "shapeLayer" }) as? CAShapeLayer,
             let shadowLayer = view.layer.sublayers?.first(where: { $0.name == "shadowLayer" }) as? CAShapeLayer else { return }
@@ -72,7 +72,7 @@ extension View {
       PerformantShadow(cornerRadius: cornerRadius, color: color, opacity: opacity, radius: radius, offsetY: offsetY, size: size)
         .padding(.all, 1)
         .padding(.horizontal, horizontalPadding)
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .frame(maxWidth: .infinity, maxHeight: .infinity),
     )
   }
 }

@@ -7,14 +7,12 @@
 
 import SwiftUI
 
-
-
 struct TabBarOverlay: View {
-  var meTabTap: () -> ()
-  
+  var meTabTap: () -> Void
+
   @State private var bottomSafeArea = getSafeArea().bottom
   @State private var update = 0
-  
+
   @Environment(\.tabBarHeight) private var tabBarHeight
   var body: some View {
     // Only for a tab bar along the bottom (`measureTabBar` reports 0 otherwise). Wide windows
@@ -22,19 +20,19 @@ struct TabBarOverlay: View {
     // where hit areas pinned to the bottom would only swallow taps meant for the content.
     if let tabBarHeight, tabBarHeight > 0, !isWideLayout {
       GeometryReader { geo in
-        let overlaySize = CGSize(width: geo.size.width, height: max(0, (tabBarHeight)))
+        let overlaySize = CGSize(width: geo.size.width, height: max(0, tabBarHeight))
         HStack(spacing: 0) {
           ForEach(Nav.TabIdentifier.allCases, id: \.rawValue) { tab in
             if tab == .me {
               AccountSwitcherTrigger(onTap: { Nav.shared.activeTab = .me }) {
                 Color.clear
-                  .frame(width: geo.size.width / 5, height: max(0, (tabBarHeight)))
+                  .frame(width: geo.size.width / 5, height: max(0, tabBarHeight))
                   .background(Color.hitbox)
                   .contentShape(Rectangle())
               }
             } else {
               Color.clear
-                .frame(width: geo.size.width / 5, height: max(0, (tabBarHeight)))
+                .frame(width: geo.size.width / 5, height: max(0, tabBarHeight))
                 .background(Color.hitbox)
                 .contentShape(Rectangle())
                 .overlay { SimpleTappableView { Nav.shared.activeTab = tab } }
@@ -51,23 +49,22 @@ struct TabBarOverlay: View {
   }
 }
 
-
 struct SimpleTappableView: UIViewRepresentable {
   var onTap: () -> Void
-  
+
   private let view = TappableUIView()
-  
+
   func makeUIView(context: Context) -> UIButton {
     addTapRecognizer(to: view, with: context)
     return view
   }
-  
-  func updateUIView(_ uiView: UIButton, context: Context) { }
-  
+
+  func updateUIView(_ uiView: UIButton, context: Context) {}
+
   func makeCoordinator() -> Coordinator {
     Coordinator(parent: self)
   }
-  
+
   private func addTapRecognizer(to view: UIButton, with context: Context) {
     let recognizer = UITapGestureRecognizer()
     recognizer.delaysTouchesBegan = false
@@ -75,35 +72,34 @@ struct SimpleTappableView: UIViewRepresentable {
     recognizer.addTarget(context.coordinator, action: #selector(Coordinator.handleTap))
     view.addGestureRecognizer(recognizer)
   }
-  
+
   class Coordinator: NSObject, UIGestureRecognizerDelegate {
-    
     private var parent: SimpleTappableView
-    
+
     init(parent: SimpleTappableView) {
       self.parent = parent
     }
-    
+
     @objc fileprivate func handleTap(_ sender: UITapGestureRecognizer) {
       if case .ended = sender.state {
         parent.onTap()
       }
     }
-    
+
     func gestureRecognizer(_ gestureRecognizer: UIGestureRecognizer, shouldRequireFailureOf otherGestureRecognizer: UIGestureRecognizer) -> Bool {
-      if gestureRecognizer is UITapGestureRecognizer && otherGestureRecognizer is UIPanGestureRecognizer {
+      if gestureRecognizer is UITapGestureRecognizer, otherGestureRecognizer is UIPanGestureRecognizer {
         return true
       }
       return false
     }
-    
+
     func gestureRecognizer(_ gestureRecognizer: UIGestureRecognizer, shouldRecognizeSimultaneouslyWith otherGestureRecognizer: UIGestureRecognizer) -> Bool {
       if gestureRecognizer is UIPanGestureRecognizer {
         return false
       }
       return true
     }
-    
+
     func gestureRecognizerShouldBegin(_ gestureRecognizer: UIGestureRecognizer) -> Bool {
       if let recognizer = gestureRecognizer as? UIPanGestureRecognizer {
         let velocity = recognizer.velocity(in: recognizer.view)
@@ -120,6 +116,7 @@ class TappableUIView: UIButton {
     backgroundColor = .clear
   }
 
+  @available(*, unavailable)
   required init?(coder aDecoder: NSCoder) {
     fatalError()
   }

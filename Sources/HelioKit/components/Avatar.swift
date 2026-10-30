@@ -5,21 +5,22 @@
 //  Created by Igor Marcossi on 28/06/23.
 //
 
-import SwiftUI
-import NukeUI
 import Nuke
+import NukeUI
+import SwiftUI
 
 struct AvatarView: View, Equatable {
   static func == (lhs: AvatarView, rhs: AvatarView) -> Bool {
     lhs.saved == rhs.saved && lhs.avatarImgRequest?.url == rhs.avatarImgRequest?.url && lhs.theme == rhs.theme && rhs.avatarSize == lhs.avatarSize
   }
+
   var saved: Bool
   var avatarImgRequest: ImageRequest?
   var userID: String
-  var fullname: String? = nil
+  var fullname: String?
   var theme: AvatarTheme?
   var avatarSize: CGFloat?
-  
+
   init(saved: Bool, avatarImgRequest: ImageRequest? = nil, userID: String, fullname: String? = nil, theme: AvatarTheme? = nil, avatarSize: CGFloat? = nil) {
     self.saved = saved
     self.avatarImgRequest = avatarImgRequest
@@ -28,7 +29,7 @@ struct AvatarView: View, Equatable {
     self.theme = theme
     self.avatarSize = avatarSize
   }
-  
+
   init(saved: Bool, url: URL?, userID: String, fullname: String? = nil, theme: AvatarTheme? = nil, avatarSize: CGFloat? = nil) {
     self.saved = saved
     self.avatarImgRequest = .init(url: url)
@@ -37,7 +38,7 @@ struct AvatarView: View, Equatable {
     self.theme = theme
     self.avatarSize = avatarSize
   }
-  
+
   init(saved: Bool, url: String, userID: String, fullname: String? = nil, theme: AvatarTheme? = nil, avatarSize: CGFloat? = nil) {
     self.saved = saved
     self.avatarImgRequest = .init(stringLiteral: url)
@@ -46,7 +47,7 @@ struct AvatarView: View, Equatable {
     self.theme = theme
     self.avatarSize = avatarSize
   }
-  
+
   var body: some View {
     let avatarSize = avatarSize ?? theme?.size ?? 0
     let cornerRadius = (theme?.cornerRadius ?? (avatarSize / 2))
@@ -55,7 +56,7 @@ struct AvatarView: View, Equatable {
         Image(systemName: "trash")
           .foregroundColor(.red)
       } else {
-        if let avatarImgRequest = avatarImgRequest {
+        if let avatarImgRequest {
           ThumbReqImage(imgRequest: avatarImgRequest, size: CGSize(width: avatarSize, height: avatarSize))
         } else {
           Text(userID.prefix(1).uppercased())
@@ -70,12 +71,12 @@ struct AvatarView: View, Equatable {
   }
 }
 
-
 struct SavedFlag: View, Equatable {
   private let flagY: CGFloat = 16
   static func == (lhs: SavedFlag, rhs: SavedFlag) -> Bool {
     lhs.saved == rhs.saved && lhs.cornerRadius == rhs.cornerRadius
   }
+
   var cornerRadius: Double
   var saved: Bool
   var body: some View {

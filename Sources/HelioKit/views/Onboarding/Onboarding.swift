@@ -5,8 +5,8 @@
 //  Created by Igor Marcossi on 31/07/23.
 //
 
-import SwiftUI
 import Defaults
+import SwiftUI
 
 private let starsCount = 7
 private let HANG_ANIM = Animation.spring(response: 0.3, dampingFraction: 0.5)
@@ -20,22 +20,22 @@ struct Onboarding: View {
   @State var twisted = false
   @State var appID = ""
   @State var appSecret = ""
-  @Environment (\.colorScheme) var colorScheme: ColorScheme
-  
+  @Environment(\.colorScheme) var colorScheme: ColorScheme
+
   @State var tryingToDismiss = false
-  
+
   func nextStep() {
     withAnimation(.spring()) {
       currentTab += 1
     }
   }
-  
+
   func prevStep() {
     withAnimation(.spring()) {
       currentTab -= 1
     }
   }
-  
+
   var body: some View {
     TabView(selection: $currentTab) {
       OnboardingWelcomeWrapper(nextStep: nextStep)
@@ -86,7 +86,7 @@ struct Onboarding: View {
     }
     .alert(
       "Are you sure?",
-      isPresented: $tryingToDismiss
+      isPresented: $tryingToDismiss,
     ) {
       Button(role: .destructive) {
         Defaults[.GeneralDefSettings].onboardingState = .dismissed
@@ -107,7 +107,7 @@ struct Onboarding: View {
       ZStack {
         if showStars {
           ZStack {
-            ForEach(Array(0...starsCount - 1), id: \.self) { number in
+            ForEach(Array(0 ... starsCount - 1), id: \.self) { number in
               Star(number: number)
             }
           }
@@ -116,15 +116,15 @@ struct Onboarding: View {
           //                    .drawingGroup()
         }
       }
-        .frame(maxWidth: .infinity, maxHeight: 200)
-        .background(
-          LinearGradient(gradient: Gradient(stops: generateGradientStops(Color.starsBGGradient)), startPoint: .top, endPoint: .bottom)
-            .frame(maxWidth: .infinity, maxHeight: colorScheme == .dark ? 175 : .infinity)
-            .opacity(colorScheme == .dark ? 0.5 : 1)
-          , alignment: .bottom
-        )
-        .allowsHitTesting(false)
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)
+      .frame(maxWidth: .infinity, maxHeight: 200)
+      .background(
+        LinearGradient(gradient: Gradient(stops: generateGradientStops(Color.starsBGGradient)), startPoint: .top, endPoint: .bottom)
+          .frame(maxWidth: .infinity, maxHeight: colorScheme == .dark ? 175 : .infinity)
+          .opacity(colorScheme == .dark ? 0.5 : 1),
+        alignment: .bottom,
+      )
+      .allowsHitTesting(false)
+      .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom),
     )
     .ignoresSafeArea(edges: .bottom)
     .onAppear {
@@ -140,48 +140,45 @@ struct Onboarding: View {
   }
 }
 
-
-
 func generateGradientStops(_ color: Color) -> [Gradient.Stop] {
   let opacities = [
-    0.0, 0.004, 0.014, 0.03, 0.051, 0.075, 0.102, 0.131, 0.159, 0.188, 0.215, 0.239, 0.26, 0.276, 0.286, 0.29
+    0.0, 0.004, 0.014, 0.03, 0.051, 0.075, 0.102, 0.131, 0.159, 0.188, 0.215, 0.239, 0.26, 0.276, 0.286, 0.29,
   ]
   let locations = [
-    0.0, 0.081, 0.155, 0.225, 0.29, 0.353, 0.412, 0.471, 0.529, 0.588, 0.647, 0.71, 0.775, 0.845, 0.919, 1.0
+    0.0, 0.081, 0.155, 0.225, 0.29, 0.353, 0.412, 0.471, 0.529, 0.588, 0.647, 0.71, 0.775, 0.845, 0.919, 1.0,
   ]
-  
+
   return zip(opacities, locations).map { Gradient.Stop(color: color.opacity($0.0), location: $0.1) }
 }
 
 struct Star: View {
   var number: Int
   var totalWidth: Double = .screenW
-  @State var duration = CGFloat.random(in: 1.25...2)
+  @State var duration = CGFloat.random(in: 1.25 ... 2)
   @State var id = UUID()
   @State var up = false
   @State var rotation: CGFloat = 180
   @State var position = CGPoint(x: 0, y: 200 + 42)
-  @State var size = CGFloat.rand(10...25)
+  @State var size = CGFloat.rand(10 ... 25)
   @State private var timer = Timer.publish(every: 1, on: .current, in: .common).autoconnect()
-  @State private var offset = CGFloat.rand(8...16) * ([-1, 1].randomElement())!
-  @Environment (\.colorScheme) var colorScheme: ColorScheme
-  
+  @State private var offset = CGFloat.rand(8 ... 16) * ([-1, 1].randomElement())!
+  @Environment(\.colorScheme) var colorScheme: ColorScheme
+
   func move() {
-    
-      offset = CGFloat.rand(8...16)
-      up.toggle()
-      rotation = CGFloat.random(in: -20...20)
+    offset = CGFloat.rand(8 ... 16)
+    up.toggle()
+    rotation = CGFloat.random(in: -20 ... 20)
   }
-  
+
   var body: some View {
     Image(systemName: "star.fill")
       .resizable()
       .scaledToFit()
       .frame(width: size, height: size)
-    //            .foregroundColor(Color(NSColor(hex: colorScheme == .dark ? "F9EFBA" : "fafafa")))
+      //            .foregroundColor(Color(NSColor(hex: colorScheme == .dark ? "F9EFBA" : "fafafa")))
       .foregroundColor(Color.hex(colorScheme == .dark ? "F9EFBA" : "7B733C"))
       .rotationEffect(Angle(degrees: rotation))
-    //            .shadow(color: Color(NSColor(hex: colorScheme == .dark ? "FFA262" : "656565")), radius: size * 0.75, y: colorScheme == .dark ? 0 : size * 0.5)
+      //            .shadow(color: Color(NSColor(hex: colorScheme == .dark ? "FFA262" : "656565")), radius: size * 0.75, y: colorScheme == .dark ? 0 : size * 0.5)
       .shadow(color: Color.hex(colorScheme == .dark ? "FFA262" : "A9A400"), radius: size * 0.75, y: colorScheme == .dark ? 0 : size * 0.5)
       .shadow(color: Color.hex(colorScheme == .dark ? "FFA262" : "A9A400").opacity(0.75), radius: size * 1.25, y: colorScheme == .dark ? 0 : size * 0.5)
       .offset(y: up ? offset : 0)
@@ -193,11 +190,11 @@ struct Star: View {
       }
       .onAppear {
         timer.upstream.connect().cancel()
-        position.x = (((totalWidth - 48) / CGFloat(starsCount - 1)) * CGFloat(number)) + 24 + (CGFloat.rand(0...24) * ([-1, 1].randomElement())!)
-        DispatchQueue.main.asyncAfter(deadline: .now() + CGFloat.random(in: 0...0.75)) {
-          withAnimation(.spring(response: CGFloat.random(in: 0.5...0.7), dampingFraction: 2)) {
+        position.x = (((totalWidth - 48) / CGFloat(starsCount - 1)) * CGFloat(number)) + 24 + (CGFloat.rand(0 ... 24) * ([-1, 1].randomElement())!)
+        DispatchQueue.main.asyncAfter(deadline: .now() + CGFloat.random(in: 0 ... 0.75)) {
+          withAnimation(.spring(response: CGFloat.random(in: 0.5 ... 0.7), dampingFraction: 2)) {
             timer = Timer.publish(every: duration, on: .current, in: .common).autoconnect()
-            position.y = CGFloat.rand(50...CGFloat(200 - Int(size) - 30))
+            position.y = CGFloat.rand(50 ... CGFloat(200 - Int(size) - 30))
             move()
 //            offset = CGFloat.rand(8...16)
 //            up.toggle()
@@ -216,7 +213,8 @@ extension CGFloat {
     let selectedRange = ranges.randomElement()!
     return CGFloat.random(in: selectedRange)
   }
+
   static func rand(_ range: ClosedRange<CGFloat>) -> CGFloat {
-    return CGFloat(arc4random_uniform(UInt32(range.upperBound - range.lowerBound) + 1) + UInt32(range.lowerBound))
+    CGFloat(arc4random_uniform(UInt32(range.upperBound - range.lowerBound) + 1) + UInt32(range.lowerBound))
   }
 }

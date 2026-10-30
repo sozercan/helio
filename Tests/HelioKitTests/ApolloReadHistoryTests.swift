@@ -26,7 +26,7 @@ struct ApolloReadHistoryTests {
 
   @Test func rejectsPreferencesWithoutReadHistory() throws {
     #expect(throws: ApolloReadHistoryImportError.missingReadPostIDs) {
-      try ApolloReadHistory.postIDs(inPreferences: try preferences(["Other": 1]))
+      try ApolloReadHistory.postIDs(inPreferences: preferences(["Other": 1]))
     }
     #expect(throws: ApolloReadHistoryImportError.unreadablePreferences) {
       try ApolloReadHistory.postIDs(inPreferences: Data("not a plist".utf8))

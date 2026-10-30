@@ -1,69 +1,67 @@
 //
-//  UserSavedLinks.swift
+//  MixedContentFeedView.swift
 //  Helio
 //
 //  Created by Ethan Bills on 11/16/23.
 //
 
+import Defaults
 import Foundation
 import SwiftUI
-import Defaults
 
 struct MixedContentFeedView: View {
   var mixedMediaLinks: [Either<Post, Comment>]
   @Binding var loadNextData: Bool
-  
+
   var user: User
   weak var subreddit: Subreddit?
   @State private var loadingOverview = true
   @State private var lastItemId: String? = nil
   @Environment(\.useTheme) private var selectedTheme
 
-  
   @State private var dataTypeFilter: String = "" // Handles filtering for only posts or only comments.
-  
+
   @Binding var reachedEndOfFeed: Bool
-  
+
 //  @Environment(\.colorScheme) private var cs
-  
+
   func updateContentsCalcs(_ newTheme: HelioTheme) {
     Task(priority: .background) {
-      mixedMediaLinks.forEach {
-        switch $0 {
-        case .first(let post):
+      for mixedMediaLink in mixedMediaLinks {
+        switch mixedMediaLink {
+        case let .first(post):
           post.setupHelioData(data: post.data, helioData: post.helioData, theme: newTheme, sub: subreddit, fetchAvatar: false)
-        case .second(let comment):
+        case let .second(comment):
           comment.setupHelioData()
-          break
         }
       }
     }
   }
-  
+
   var body: some View {
     let postLinksTheme = selectedTheme.postLinks
     let isThereDivider = selectedTheme.postLinks.divider.style != .no
     let paddingH = postLinksTheme.theme.outerHPadding
     let paddingV = postLinksTheme.spacing / (isThereDivider ? 4 : 2)
-    
+
     List {
       Section {
         ForEach(Array(mixedMediaLinks.enumerated()), id: \.self.element) { i, item in
           MixedContentLink(content: item, theme: postLinksTheme)
-          .listRowInsets(EdgeInsets(top: paddingV, leading: paddingH, bottom: paddingV, trailing: paddingH))
-          .onAppear {
-            if mixedMediaLinks.count > 0 && (Int(Double(mixedMediaLinks.count) * 0.75) == i) {
-              loadNextData = true
+            .listRowInsets(EdgeInsets(top: paddingV, leading: paddingH, bottom: paddingV, trailing: paddingH))
+            .onAppear {
+              if !mixedMediaLinks.isEmpty, Int(Double(mixedMediaLinks.count) * 0.75) == i {
+                loadNextData = true
+              }
             }
-          }
-          
-          if selectedTheme.postLinks.divider.style != .no && i != (mixedMediaLinks.count - 1) {
+
+          if selectedTheme.postLinks.divider.style != .no, i != (mixedMediaLinks.count - 1) {
             NiceDivider(divider: selectedTheme.postLinks.divider)
               .id("mixed-media-\(i)-divider")
               .listRowInsets(EdgeInsets(top: 0, leading: 0, bottom: 0, trailing: 0))
           }
         }
-        
+
         if reachedEndOfFeed {
           EndOfFeedView()
         }

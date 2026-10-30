@@ -5,11 +5,11 @@
 //  Created by Igor Marcossi on 08/09/23.
 //
 
-import SwiftUI
-import Defaults
-import SymbolPicker
 import Combine
 import DebouncedOnChange
+import Defaults
+import SwiftUI
+import SymbolPicker
 
 enum ThemeEditPanels {
   case general, posts, comments, postLinks, feed, commonLists
@@ -21,11 +21,13 @@ struct ThemeEditPanel: View {
   @State private var iconPickerOpen = false
   @State private var themeColor: Color = .blue
   @State private var navPath: [ThemeEditPanels] = []
-  
+
   @Environment(\.dismiss) private var dismiss
-  
-  var anyChanges: Bool { theme != draftTheme }
-  
+
+  var anyChanges: Bool {
+    theme != draftTheme
+  }
+
   var body: some View {
     NavigationStack(path: $navPath) {
       List {
@@ -37,7 +39,7 @@ struct ThemeEditPanel: View {
           .frame(maxWidth: .infinity)
           .listRowBackground(Color.clear)
           .listRowInsets(EdgeInsets(top: 0, leading: 0, bottom: 0, trailing: 0))
-        
+
         Group {
           Section("Theming") {
             WSListButton(showArrow: true, "General", icon: "paintbrush.pointed.fill") { navPath.append(ThemeEditPanels.general) }
@@ -47,27 +49,26 @@ struct ThemeEditPanel: View {
             WSListButton(showArrow: true, "Post page", icon: "doc.richtext.fill") { navPath.append(ThemeEditPanels.posts) }
             WSListButton(showArrow: true, "Comments", icon: "message.fill") { navPath.append(ThemeEditPanels.comments) }
           }
-          
+
           Section("Metadatas") {
-            
             WListButton {
               iconPickerOpen = true
             } label: {
               HStack {
                 Text("Icon")
                   .foregroundColor(.primary)
-                
+
                 Spacer()
-                
+
                 Image(systemName: theme.metadata.icon)
                   .foregroundColor(theme.metadata.color.color())
               }
             }
-            
+
             ThemeColorPicker("Icon background color", $draftTheme.metadata.color)
             LabeledTextField("Name", $draftTheme.metadata.name)
             LabeledTextField("Author", $draftTheme.metadata.author)
-            
+
             VStack(alignment: .leading, spacing: 4) {
               Text("Description:")
                 .padding(.top, 8)
@@ -80,16 +81,17 @@ struct ThemeEditPanel: View {
                 .fontSize(15)
             }
             .themedListRowLikeBG(enablePadding: false, disableBG: true)
-            
           }
-          
         }
         .themedListSection()
-        
       }
       .themedListBG(draftTheme.lists.bg)
       .scrollDismissesKeyboard(.interactively)
-      .onAppear { if draftTheme.id != theme.id { draftTheme = theme } }
+      .onAppear {
+        if draftTheme.id != theme.id {
+          draftTheme = theme
+        }
+      }
       .navigationTitle(theme.metadata.name)
       .navigationBarTitleDisplayMode(.inline)
       .toolbar {

@@ -15,6 +15,7 @@ struct LineTheme: Codable, Hashable, Equatable {
   enum CodingKeys: String, CodingKey {
     case style, thickness, color
   }
+
   var style: LineTypeTheme?
   var thickness: CGFloat
   var color: ColorSchemes<ThemeColor>
@@ -23,15 +24,15 @@ struct LineTheme: Codable, Hashable, Equatable {
     self.style = style
     self.thickness = thickness
     self.color = color
-    }
-  
+  }
+
   func encode(to encoder: Encoder) throws {
     var container = encoder.container(keyedBy: CodingKeys.self)
     try container.encodeIfPresent(style, forKey: .style)
     try container.encodeIfPresent(thickness, forKey: .thickness)
     try container.encodeIfPresent(color, forKey: .color)
   }
-  
+
   init(from decoder: Decoder) throws {
     let container = try decoder.container(keyedBy: CodingKeys.self)
     self.style = try container.decodeIfPresent(LineTypeTheme?.self, forKey: .style) ?? .no

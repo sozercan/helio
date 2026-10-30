@@ -9,21 +9,20 @@ import SwiftUI
 
 struct SpoilerModifer: ViewModifier {
   @State var pixelate = 20.0
-  
+
   func body(content: Content) -> some View {
-    
     content
       .distortionEffect(
         .init(
           function: .init(library: .default, name: "pixelate"),
-          arguments: [.float(pixelate)]),
-        maxSampleOffset: .zero
+          arguments: [.float(pixelate)],
+        ),
+        maxSampleOffset: .zero,
       )
-      .highPriorityGesture(TapGesture().onEnded{
+      .highPriorityGesture(TapGesture().onEnded {
         pixelate = 0.0
       })
   }
-  
 }
 
 extension View {

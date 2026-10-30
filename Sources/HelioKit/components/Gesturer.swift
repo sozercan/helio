@@ -5,28 +5,28 @@
 ////  Created by Igor Marcossi on 03/10/23.
 ////
 //
-//import Foundation
-//import SwiftUI
-////import SwiftUIX
+// import Foundation
+// import SwiftUI
+//// import SwiftUIX
 //
-//struct GesturerHolder<Content: View>: UIViewRepresentable, Identifiable {
+// struct GesturerHolder<Content: View>: UIViewRepresentable, Identifiable {
 ////  static func == (lhs: GesturerHolder<Content>, rhs: GesturerHolder<Content>) -> Bool {
 ////    lhs.id == rhs.id
 ////  }
-//  
+//
 //  enum Directions: String, Equatable {
 //    case vertical
 //    case horizontal
 //    case both
 //  }
-//  
+//
 ////  private let view = UIView()
 //  private var startLocation: CGPoint? = nil
 //  private var scrolling = false
 //  private var dragOffset: CGFloat = 0
 //  private var dragOffsetX: CGFloat = 0
 //  private var dragOffsetY: CGFloat = 0
-//  
+//
 //  var id: String
 //  var size: CGSize
 //  var directions: Directions = .both
@@ -38,7 +38,7 @@
 //  var onDragEnded: ((CGPoint, CGPoint) -> Void)? = nil
 //  var disabled: Bool?
 //  @ViewBuilder var content: () -> Content
-//  
+//
 //    init(id: String, size: CGSize, directions: Directions, minimumDragDistance: CGFloat? = 0, onTap: (() -> Void)? = nil, onPress: ( (Bool) -> Void)? = nil, onPressCancel: ( () -> Void)? = nil, onDragChanged: ( (@escaping () -> Void, CGPoint, CGPoint, CGPoint) -> Void)? = nil, onDragEnded: ( (CGPoint, CGPoint) -> Void)? = nil, disabled: Bool? = nil, @ViewBuilder content: @escaping () -> Content) {
 //    self.id = id
 //    self.size = size
@@ -52,9 +52,9 @@
 //    self.disabled = disabled
 //    self.content = content
 //  }
-//  
+//
 //  func makeUIView(context: Context) -> UICollectionViewCell {
-//    
+//
 ////    let hostingView = UIHostingView(rootView: self.content)
 //      let viewCell = UICollectionViewCell()
 //      let hostingController = UIHostingConfiguration {
@@ -70,8 +70,8 @@
 //      context.coordinator.view = viewCell.contentView
 ////    context.coordinator.controller = hostingController
 ////    context.coordinator.view = hostingView
-//    
-//      
+//
+//
 ////    if let view = viewCell.contentView {
 //      if (onTap != nil) {
 //        addTapRecognizer(to: viewCell.contentView, with: context)
@@ -86,7 +86,7 @@
 //      return viewCell
 ////    return hostingView
 //  }
-//  
+//
 //  func updateUIView(_ viewCell: UICollectionViewCell, context: Context) {
 ////    hostingController.view.bounds = CGRect(origin: .zero, size: size)
 ////    hostingController.view.frame = hostingController.view.bounds
@@ -100,11 +100,11 @@
 //      }
 //      viewCell.contentConfiguration = hostingController
 //  }
-//  
+//
 //  func makeCoordinator() -> Coordinator {
 //    Coordinator(parent: self)
 //  }
-//  
+//
 //  private func addTapRecognizer(to view: UIView, with context: Context) {
 //    let recognizer = UITapGestureRecognizer()
 //    recognizer.delaysTouchesBegan = false
@@ -112,7 +112,7 @@
 //    recognizer.addTarget(context.coordinator, action: #selector(Coordinator.handleTap))
 //    view.addGestureRecognizer(recognizer)
 //  }
-//  
+//
 //  private func addPressRecognizer(to view: UIView, with context: Context) {
 //    let recognizer = UILongPressGestureRecognizer()
 //    recognizer.delaysTouchesBegan = false
@@ -121,8 +121,8 @@
 //    recognizer.addTarget(context.coordinator, action: #selector(Coordinator.handlePress))
 //    view.addGestureRecognizer(recognizer)
 //  }
-//  
-//  
+//
+//
 //  private func addDragRecognizer(to view: UIView, with context: Context) {
 //    let recognizer = UIPanGestureRecognizer()
 //    recognizer.delaysTouchesBegan = false
@@ -130,20 +130,20 @@
 //    recognizer.addTarget(context.coordinator, action: #selector(Coordinator.handleDrag))
 //    view.addGestureRecognizer(recognizer)
 //  }
-//  
+//
 //  class Coordinator: NSObject, UIGestureRecognizerDelegate {
-//    
+//
 ////    var hostingConfig: UIHostingConfiguration<Content, EmptyView>
 //    private var parent: GesturerHolder
 ////    var controller: UIHostingController<Content>? = nil
 //    private var panning = false
 //    var view: UIView? = nil
-//    
+//
 //    init(parent: GesturerHolder) {
 //      self.parent = parent
 ////      self.hostingConfig = hostingConfig
 //    }
-//    
+//
 //    @objc fileprivate func handlePress(_ sender: UILongPressGestureRecognizer) {
 //      switch sender.state {
 //      case .began: parent.onPress?(true)
@@ -157,7 +157,7 @@
 //        parent.onPress?(false)
 //      }
 //    }
-//    
+//
 //    @objc fileprivate func handleTap(_ sender: UITapGestureRecognizer) {
 //      if case .ended = sender.state {
 //        if !panning {
@@ -165,7 +165,7 @@
 //        }
 //      }
 //    }
-//    
+//
 //    @objc fileprivate func handleDrag(_ sender: UIPanGestureRecognizer) {
 //      let now = sender.translation(in: self.view)
 //      let velocity = sender.velocity(in: self.view)
@@ -197,21 +197,21 @@
 //        sender.cancel()
 //      }
 //    }
-//    
+//
 //    func gestureRecognizer(_ gestureRecognizer: UIGestureRecognizer, shouldRequireFailureOf otherGestureRecognizer: UIGestureRecognizer) -> Bool {
 //      if gestureRecognizer is UITapGestureRecognizer && otherGestureRecognizer is UIPanGestureRecognizer {
 //        return true
 //      }
 //      return false
 //    }
-//    
+//
 //    func gestureRecognizer(_ gestureRecognizer: UIGestureRecognizer, shouldRecognizeSimultaneouslyWith otherGestureRecognizer: UIGestureRecognizer) -> Bool {
 //      if gestureRecognizer is UIPanGestureRecognizer {
 //        return false
 //      }
 //      return true
 //    }
-//    
+//
 //    func gestureRecognizerShouldBegin(_ gestureRecognizer: UIGestureRecognizer) -> Bool {
 //      if let recognizer = gestureRecognizer as? UIPanGestureRecognizer {
 //        let velocity = recognizer.velocity(in: recognizer.view)
@@ -220,10 +220,10 @@
 //      return true
 //    }
 //  }
-//}
+// }
 //
 ////
-////class TappableUIView: UIView {
+//// class TappableUIView: UIView {
 ////
 ////  init() {
 ////    super.init(frame: .zero)
@@ -234,11 +234,11 @@
 ////    fatalError()
 ////  }
 ////
-////}
+//// }
 //
-//class SelfSizingHostingController<Content>: UIHostingController<Content> where Content: View {
+// class SelfSizingHostingController<Content>: UIHostingController<Content> where Content: View {
 //    override func viewDidLayoutSubviews() {
 //        super.viewDidLayoutSubviews()
 //        self.view.invalidateIntrinsicContentSize()
 //    }
-//}
+// }

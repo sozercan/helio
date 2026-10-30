@@ -9,10 +9,10 @@ import Foundation
 
 extension String {
   func emojied() -> String {
-          var transformedString = self
-          EMOJI_HASH.forEach { key, value in
-              transformedString = transformedString.replacingOccurrences(of: key, with: value)
-          }
-          return transformedString
-      }
+    var transformedString = self
+    for (key, value) in EMOJI_HASH {
+      transformedString = transformedString.replacingOccurrences(of: key, with: value)
+    }
+    return transformedString
+  }
 }

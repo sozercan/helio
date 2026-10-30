@@ -5,75 +5,75 @@
 //  Created by Igor Marcossi on 03/01/24.
 //
 
-import SwiftUI
 import AuthenticationServices
+import SwiftUI
 
 struct EditCredWhatToDoBannerBody: View, Equatable {
   static func == (lhs: EditCredWhatToDoBannerBody, rhs: EditCredWhatToDoBannerBody) -> Bool {
     lhs.status == rhs.status && lhs.completionStatus == rhs.completionStatus
   }
-  
+
   var status: RedditCredential.CredentialValidationState
   var advanced: Bool
-  var authorize: () -> ()
+  var authorize: () -> Void
   @Binding var completionStatus: EditCredWhatToDoBanner.BannerStatus
   @Environment(\.colorScheme) private var cs
-  
+
   var body: some View {
     VStack(alignment: .leading, spacing: 12) {
-        switch status {
-        case .invalid:
-          VStack(alignment: .leading, spacing: 4) {
-            Text("Something's wrong with the credentials for this account.")
-            if advanced {
-              Text("We recommend you to use another key.")
-            } else {
-              Text("We recommend you to use another key using the \"**Guided replace**\" button below, but you can do it manually by tapping the \"**Advanced settings**\" if you want.")
-            }
-          }.opacity(0.8)
-        case .maybeValid, .valid:
-          VStack(alignment: .leading, spacing: 12) {
-            Text("The credentials seem to be valid, but we need you to authorize the credentials to access your account *(yeah, it sounds redundand, sorry)*.").opacity(0.8)
-            PressableButton(animation: .easeOut(duration: 0.2)) {
-              switch completionStatus {
-              case .fetchError, .wrongUrl, .waitingForCallback: withAnimation(.spring) { completionStatus = .onHold }
-              case .success: break
-              case .onHold:
-                withAnimation(.spring) { completionStatus = .waitingForCallback }
-                authorize()
-              }
-            } label: { pressed in
-              HStack(spacing: 4) {
-                Group {
-                  switch completionStatus {
-                  case .onHold:
-                    Image(systemName: "arrowshape.right.fill")
-                    Text("Authorize")
-                  case .success:
-                    BetterLottieView("party-appear", size: 19, initialDelay: 0, color: .white)
-                    Text("Success!")
-                  case .waitingForCallback:
-                    ProgressView()
-                    Text("Cancel")
-                  case .wrongUrl, .fetchError:
-                    BetterLottieView("error", size: 19, initialDelay: 0.2, color: .white)
-                    Text("Something went wrong")
-                  }
-                }
-                .transition(.scaleAndBlur)
-              }
-              .fontSize(16, .semibold)
-              .padding(.horizontal, 16)
-              .padding(.vertical, 12)
-              .frame(maxWidth: .infinity)
-              .background(RR(12, completionStatus == .onHold ? .blue : completionStatus == .success ? .green : completionStatus == .waitingForCallback ? .gray : .pink ))
-              .foregroundStyle(completionStatus == .waitingForCallback ? Color.primary : (completionStatus == .success || completionStatus == .onHold) ? Color.white : Color.pink)
-              .brightness(!pressed ? 0 : cs == .dark ? 0.05 : -0.05)
-            }
+      switch status {
+      case .invalid:
+        VStack(alignment: .leading, spacing: 4) {
+          Text("Something's wrong with the credentials for this account.")
+          if advanced {
+            Text("We recommend you to use another key.")
+          } else {
+            Text("We recommend you to use another key using the \"**Guided replace**\" button below, but you can do it manually by tapping the \"**Advanced settings**\" if you want.")
           }
-        case .empty, .authorized: EmptyView()
+        }.opacity(0.8)
+      case .maybeValid, .valid:
+        VStack(alignment: .leading, spacing: 12) {
+          Text("The credentials seem to be valid, but we need you to authorize the credentials to access your account *(yeah, it sounds redundand, sorry)*.").opacity(0.8)
+          PressableButton(animation: .easeOut(duration: 0.2)) {
+            switch completionStatus {
+            case .fetchError, .wrongUrl, .waitingForCallback: withAnimation(.spring) { completionStatus = .onHold }
+            case .success: break
+            case .onHold:
+              withAnimation(.spring) { completionStatus = .waitingForCallback }
+              authorize()
+            }
+          } label: { pressed in
+            HStack(spacing: 4) {
+              Group {
+                switch completionStatus {
+                case .onHold:
+                  Image(systemName: "arrowshape.right.fill")
+                  Text("Authorize")
+                case .success:
+                  BetterLottieView("party-appear", size: 19, initialDelay: 0, color: .white)
+                  Text("Success!")
+                case .waitingForCallback:
+                  ProgressView()
+                  Text("Cancel")
+                case .wrongUrl, .fetchError:
+                  BetterLottieView("error", size: 19, initialDelay: 0.2, color: .white)
+                  Text("Something went wrong")
+                }
+              }
+              .transition(.scaleAndBlur)
+            }
+            .fontSize(16, .semibold)
+            .padding(.horizontal, 16)
+            .padding(.vertical, 12)
+            .frame(maxWidth: .infinity)
+            .background(RR(12, completionStatus == .onHold ? .blue : completionStatus == .success ? .green : completionStatus == .waitingForCallback ? .gray : .pink))
+            .foregroundStyle(completionStatus == .waitingForCallback ? Color.primary : (completionStatus == .success || completionStatus == .onHold) ? Color.white : Color.pink)
+            .brightness(!pressed ? 0 : cs == .dark ? 0.05 : -0.05)
+          }
         }
-        
+      case .empty, .authorized: EmptyView()
+      }
+
       Group {
         switch completionStatus {
         case .onHold, .success: EmptyView()
@@ -86,7 +86,6 @@ struct EditCredWhatToDoBannerBody: View, Equatable {
       .fontSize(14)
       .transition(.scaleAndBlur)
       .id("details-what-to-do-\(completionStatus.rawValue)")
-      
     }
     .fontSize(15)
     .animation(.spring, value: completionStatus)
@@ -97,16 +96,16 @@ struct EditCredWhatToDoBanner: View, Equatable {
   static func == (lhs: EditCredWhatToDoBanner, rhs: EditCredWhatToDoBanner) -> Bool {
     lhs.draftCredential.validationStatus != rhs.draftCredential.validationStatus
   }
-  
+
   @Binding var draftCredential: RedditCredential
   var padding: EdgeInsets = .init(top: 12, leading: 16, bottom: 14, trailing: 16)
   var advanced = false
-  
+
   @Environment(\.webAuthenticationSession) private var webAuthenticationSession
   @State private var completionStatus: BannerStatus = .onHold
-  
+
   enum BannerStatus: String { case fetchError, wrongUrl, success, waitingForCallback, onHold }
-  
+
   func authorize() {
     Task {
       let result = await RedditAPI.shared.authorize(appID: draftCredential.apiAppID, using: webAuthenticationSession)
@@ -116,7 +115,7 @@ struct EditCredWhatToDoBanner: View, Equatable {
         withAnimation(.spring) { completionStatus = .onHold }
       case .failed:
         withAnimation(.spring) { completionStatus = .wrongUrl }
-      case .code(let authCode):
+      case let .code(authCode):
         var tempCred = draftCredential
         let success = await RedditAPI.shared.injectFirstAccessTokenInto(&tempCred, authCode: authCode)
         withAnimation(.spring) {
@@ -130,7 +129,7 @@ struct EditCredWhatToDoBanner: View, Equatable {
       }
     }
   }
-  
+
   var body: some View {
     let status = draftCredential.validationStatus
     let statusMeta = status.getMeta()
@@ -142,13 +141,13 @@ struct EditCredWhatToDoBanner: View, Equatable {
         }
         .fontSize(20, .semibold)
         .padding(EdgeInsets(top: padding.top, leading: padding.leading, bottom: 0, trailing: padding.trailing))
-        
+
         Divider()
-        
+
         EditCredWhatToDoBannerBody(status: status, advanced: advanced, authorize: authorize, completionStatus: $completionStatus).equatable()
-        .transition(.identity)
-        .id(statusMeta.label)
-        .padding(EdgeInsets(top: 0, leading: padding.leading, bottom: padding.bottom, trailing: padding.trailing))
+          .transition(.identity)
+          .id(statusMeta.label)
+          .padding(EdgeInsets(top: 0, leading: padding.leading, bottom: padding.bottom, trailing: padding.trailing))
       }
       .frame(maxWidth: .infinity)
       .themedListRowLikeBG()

@@ -5,19 +5,19 @@
 //  Created by Igor Marcossi on 01/08/23.
 //
 
-import SwiftUI
 import AuthenticationServices
+import SwiftUI
 
 struct Onboarding6Auth: View {
-  var prevStep: ()->()
-  var nextStep: ()->()
+  var prevStep: () -> Void
+  var nextStep: () -> Void
   var appSecret: String
   var appID: String
   @State private var loading = false
   @State private var error = false
-  
+
   @Environment(\.webAuthenticationSession) private var webAuthenticationSession
-  
+
   func authorize() {
     withAnimation {
       loading = true
@@ -31,10 +31,12 @@ struct Onboarding6Auth: View {
         cancelled = true
       case .failed:
         break
-      case .code(let authCode):
+      case let .code(authCode):
         var credential = RedditCredential(apiAppID: appID, apiAppSecret: appSecret)
         success = await RedditAPI.shared.injectFirstAccessTokenInto(&credential, authCode: authCode)
-        if success { credential.save() }
+        if success {
+          credential.save()
+        }
       }
       if success {
         nextStep()
@@ -46,18 +48,19 @@ struct Onboarding6Auth: View {
       }
     }
   }
+
   var body: some View {
     VStack(spacing: 16) {
       OnboardingBigStep(step: 6)
-      
+
       Text("Last step, now you need to allow the new API key to access your account (yes, it's confusing).")
         .fixedSize(horizontal: false, vertical: true)
         .frame(maxWidth: 300)
-      
+
       Text("For that, just click the button below, scroll down the page and click \"Accept\".")
         .fixedSize(horizontal: false, vertical: true)
         .frame(maxWidth: 300)
-      
+
       HStack {
         MasterButton(icon: "arrowshape.backward.fill", label: "Go back", mode: .soft, color: .primary, colorHoverEffect: .animated, textSize: 18, height: 48, cornerRadius: 16, action: {
           prevStep()
@@ -65,7 +68,7 @@ struct Onboarding6Auth: View {
         MasterButton(icon: "flag.checkered", label: "Authorize API key", colorHoverEffect: .animated, textSize: 18, height: 48, fullWidth: true, cornerRadius: 16, action: authorize)
       }
       .padding(.top, 32)
-      
+
       if error {
         VStack {
           Image(systemName: "xmark.seal.fill")
@@ -83,9 +86,9 @@ struct Onboarding6Auth: View {
     .allowsHitTesting(!loading)
     .overlay(
       !loading
-      ? nil
-      : ProgressView()
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        ? nil
+        : ProgressView()
+        .frame(maxWidth: .infinity, maxHeight: .infinity),
     )
   }
 }

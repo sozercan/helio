@@ -26,7 +26,7 @@ let badgeTheme: BadgeTheme = .init(
   flairText: .init(size: 12, color: .init(light: .init(hex: "999999"), dark: .init(hex: "767676")), weight: .bold),
   flairBackground: .init(light: .init(hex: "EEEEEE"), dark: .init(hex: "2C2C2C")),
   statsText: .init(size: 12, color: .init(light: .init(hex: "000000", alpha: 0.5), dark: .init(hex: "ffffff", alpha: 0.5)), weight: .medium), spacing: 5,
-  forceSubsAsTags: false
+  forceSubsAsTags: false,
 )
 
 let defaultTheme = HelioTheme(
@@ -35,7 +35,7 @@ let defaultTheme = HelioTheme(
     description: "The default Helio theme. Follows iOS style.",
     color: .init(hex: "0B84FE"),
     icon: "paintbrush.fill",
-    author: "lo.cafe"
+    author: "lo.cafe",
   ),
   id: "default",
   postLinks: .init(
@@ -52,9 +52,9 @@ let defaultTheme = HelioTheme(
       verticalElementsSpacing: 8,
       bg: .init(blurry: false, color: listSectionBGTheme),
       unseenType: .dot(.init(light: .init(hex: "4FFF85"), dark: .init(hex: "4FFF85"))),
-      unseenFadeOpacity : 0.6,
+      unseenFadeOpacity: 0.6,
       compactSelftextPostLinkPlaceholderImg: .init(type: .helio, color: .init(light: .init(hex: "000000", alpha: 0.2), dark: .init(hex: "ffffff", alpha: 0.2))),
-      showDivider: true
+      showDivider: true,
     ),
     spacing: 16,
     divider: .init(style: .no, thickness: 6, color: listSectionBGTheme),
@@ -62,7 +62,7 @@ let defaultTheme = HelioTheme(
     stickyFilters: false,
     filterText: .init(size: 17, color: .init(light: .init(hex: "000000"), dark: .init(hex: "000000")), weight: .semibold),
     filterPadding: .init(horizontal: 6, vertical: 8),
-    filterOpacity: 0.3
+    filterOpacity: 0.3,
   ),
   posts: .init(
     padding: .init(horizontal: 8, vertical: 6),
@@ -73,7 +73,7 @@ let defaultTheme = HelioTheme(
     titleText: .init(size: 20, color: themeFontPrimary),
     bodyText: .init(size: 15, color: themeFontPrimary),
     linespacing: 0,
-    inlineFloatingPill: false
+    inlineFloatingPill: false,
   ),
   comments: .init(
     theme: .init(
@@ -91,22 +91,22 @@ let defaultTheme = HelioTheme(
       loadMoreInnerPadding: .init(horizontal: 10, vertical: 6),
       loadMoreText: .init(size: 15, color: .init(light: .init(hex: "0B84FE"), dark: .init(hex: "0B84FE")), weight: .semibold),
       loadMoreBackground: defaultThemeDividerColor,
-      unseenDot : .init(light: .init(hex: "0B84FE"), dark: .init(hex: "0B84FE"))
+      unseenDot: .init(light: .init(hex: "0B84FE"), dark: .init(hex: "0B84FE")),
     ),
     spacing: 12,
-    divider: .init(style: .no, thickness: 1, color: defaultThemeDividerColor)
+    divider: .init(style: .no, thickness: 1, color: defaultThemeDividerColor),
     //    bg: defaultThemeBG
   ),
   lists: .init(
     bg: defaultThemeBG,
     foreground: .init(blurry: false, color: listSectionBGTheme),
-    dividersColors: defaultThemeDividerColor
+    dividersColors: defaultThemeDividerColor,
   ),
   general: .init(
     navPanelBG: .init(blurry: true, color: clearColor),
     tabBarBG: .init(blurry: true, color: clearColor),
     floatingPanelsBG: .init(blurry: true, color: clearColor),
     modalsBG: .init(blurry: true, color: clearColor),
-    accentColor: .init(light: .init(hex: "0B84FE"), dark: .init(hex: "0B84FE"))
-  )
+    accentColor: .init(light: .init(hex: "0B84FE"), dark: .init(hex: "0B84FE")),
+  ),
 )

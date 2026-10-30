@@ -10,18 +10,18 @@ import SwiftUI
 struct WListButton<Content: View>: View {
   var showArrow: Bool = false
   var active: Bool = false
-  var action: () -> ()
-  @ViewBuilder var label: (() -> Content)
+  var action: () -> Void
+  @ViewBuilder var label: () -> Content
   @State private var forcedActive = false
   @State private var uuid = UUID()
-  
-  init(showArrow: Bool = false, active: Bool = false, _ action: @escaping () -> (), @ViewBuilder label: @escaping () -> Content) {
+
+  init(showArrow: Bool = false, active: Bool = false, _ action: @escaping () -> Void, @ViewBuilder label: @escaping () -> Content) {
     self.active = active
     self.action = action
     self.label = label
     self.showArrow = showArrow
   }
-  
+
   var body: some View {
     Button {
       forcedActive = true
@@ -34,9 +34,9 @@ struct WListButton<Content: View>: View {
     } label: {
       HStack {
         label()
-        
+
         Spacer()
-        
+
         if showArrow {
           Image(systemName: "chevron.right")
             .fontSize(14, .semibold)
@@ -56,49 +56,48 @@ struct WListButton<Content: View>: View {
 struct WSListButton: View {
   var showArrow: Bool = false
   var active: Bool = false
-  var action: () -> ()
+  var action: () -> Void
   var label: String
-  var icon: String? = nil
-  
-  init(showArrow: Bool = false, _ label: String, active: Bool = false, icon: String? = nil, _ action: @escaping () -> ()) {
+  var icon: String?
+
+  init(showArrow: Bool = false, _ label: String, active: Bool = false, icon: String? = nil, _ action: @escaping () -> Void) {
     self.active = active
     self.action = action
     self.label = label
     self.icon = icon
     self.showArrow = showArrow
   }
-  
+
   var body: some View {
     WListButton(showArrow: showArrow, active: active) {
       action()
     } label: {
-      if let icon = icon {
+      if let icon {
         Label(label, systemImage: icon)
       } else {
         Text(label)
       }
     }
-    
   }
 }
 
 struct WNavigationLink<Content: View>: View {
   var value: Router.NavDest
   var active: Bool = false
-  var label: (() -> Content)
-  
+  var label: () -> Content
+
   init(_ value: Router.NavDest, active: Bool = false, _ label: @escaping () -> Content) {
     self.value = value
     self.active = active
     self.label = label
   }
-  
+
   init(value: Router.NavDest, active: Bool = false, _ label: @escaping () -> Content) {
     self.value = value
     self.active = active
     self.label = label
   }
-  
+
   var body: some View {
     WListButton(showArrow: true, active: active) {
       Nav.to(value)
@@ -111,20 +110,21 @@ struct WNavigationLink<Content: View>: View {
 struct WSNavigationLink: View {
   var value: Router.NavDest
   var active: Bool = false
-  var icon: String? = nil
+  var icon: String?
   let label: String
-  
+
   init(_ value: Router.NavDest, active: Bool = false, _ label: String, icon: String? = nil) {
     self.value = value
     self.active = active
     self.label = label
     self.icon = icon
   }
+
   var body: some View {
     WListButton(showArrow: true, active: active) {
       Nav.to(value)
     } label: {
-      if let icon = icon {
+      if let icon {
         Label(label, systemImage: icon)
           .labelStyle(NormalLabelStyle())
       } else {
@@ -133,7 +133,6 @@ struct WSNavigationLink: View {
     }
   }
 }
-
 
 struct NormalLabelStyle: LabelStyle {
   func makeBody(configuration: Configuration) -> some View {

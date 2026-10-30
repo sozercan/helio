@@ -8,28 +8,28 @@
 import SwiftUI
 
 struct Onboarding4GettingAppID: View {
-  var prevStep: ()->()
-  var nextStep: ()->()
+  var prevStep: () -> Void
+  var nextStep: () -> Void
   @Binding var appID: String
   var body: some View {
     ScrollView {
       VStack(spacing: 16) {
         OnboardingBigStep(step: 4)
-        
+
         Text("Go back to Safari and copy your new \"app\"'s ID that's probably somewhere like this:")
           .fixedSize(horizontal: false, vertical: true)
           .frame(maxWidth: 300)
-        
+
         Image("appIDLocation")
           .resizable()
           .scaledToFit()
           .frame(maxWidth: .screenW * 0.85)
           .mask(RR(12, Color.black))
-        
+
         Text("Now paste it here:")
           .fixedSize(horizontal: false, vertical: true)
           .frame(maxWidth: 300)
-        
+
         TextField("", text: $appID, prompt: Text("Paste here the app ID"))
           .autocorrectionDisabled(true)
           .textInputAutocapitalization(.none)
@@ -37,7 +37,7 @@ struct Onboarding4GettingAppID: View {
           .frame(maxWidth: .infinity)
           .padding(.vertical, 12)
           .background(RR(16, Color.black.opacity(0.1)))
-        
+
         HStack {
           MasterButton(icon: "arrowshape.backward.fill", label: "Go back", mode: .soft, color: .primary, colorHoverEffect: .animated, textSize: 18, height: 48, cornerRadius: 16, action: {
             prevStep()
