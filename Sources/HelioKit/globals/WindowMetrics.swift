@@ -20,6 +20,7 @@ final class WindowMetrics: @unchecked Sendable {
   @ObservationIgnored private let lock = NSLock()
   @ObservationIgnored private var _size: CGSize
   @ObservationIgnored private var _contentWidth: CGFloat
+  @ObservationIgnored private var _contentFrame: CGRect
   @ObservationIgnored private var _isWide: Bool
   @ObservationIgnored private var _displayScale: CGFloat
 
@@ -34,6 +35,13 @@ final class WindowMetrics: @unchecked Sendable {
   var contentWidth: CGFloat {
     access(keyPath: \.contentWidth)
     return lock.withLock { _contentWidth }
+  }
+
+  /// Where that safe-area content sits, in global coordinates. Columns that run under the
+  /// Duo's side tab bar intersect with it to get the width their content actually gets.
+  var contentFrame: CGRect {
+    access(keyPath: \.contentFrame)
+    return lock.withLock { _contentFrame }
   }
 
   /// Regular width: unfolded iPhone Duo, full-screen iPad, Mac. Compact: iPhone, folded Duo,
@@ -52,16 +60,20 @@ final class WindowMetrics: @unchecked Sendable {
     let screen = (UIApplication.shared.connectedScenes.first as? UIWindowScene)?.screen
     _size = screen?.bounds.size ?? CGSize(width: 390, height: 844)
     _contentWidth = _size.width
+    _contentFrame = CGRect(origin: .zero, size: _size)
     _isWide = UIDevice.current.userInterfaceIdiom != .phone
     _displayScale = screen?.scale ?? 3
   }
 
-  func update(size: CGSize? = nil, contentWidth: CGFloat? = nil, horizontalSizeClass: UserInterfaceSizeClass? = nil, displayScale: CGFloat? = nil) {
+  func update(size: CGSize? = nil, contentWidth: CGFloat? = nil, contentFrame: CGRect? = nil, horizontalSizeClass: UserInterfaceSizeClass? = nil, displayScale: CGFloat? = nil) {
     if let size, size.width > 0, size.height > 0, size != self.size {
       withMutation(keyPath: \.size) { lock.withLock { _size = size } }
     }
     if let contentWidth, contentWidth > 0, contentWidth != self.contentWidth {
       withMutation(keyPath: \.contentWidth) { lock.withLock { _contentWidth = contentWidth } }
+    }
+    if let contentFrame, contentFrame.width > 0, contentFrame != self.contentFrame {
+      withMutation(keyPath: \.contentFrame) { lock.withLock { _contentFrame = contentFrame } }
     }
     if let horizontalSizeClass {
       let wide = horizontalSizeClass == .regular
@@ -88,6 +100,7 @@ private struct WindowMetricsReader: ViewModifier {
   private struct Geometry: Equatable {
     var size: CGSize
     var contentWidth: CGFloat
+    var contentFrame: CGRect
   }
 
   func body(content: Content) -> some View {
@@ -99,8 +112,8 @@ private struct WindowMetricsReader: ViewModifier {
           .onGeometryChange(for: Geometry.self) { proxy in
             let insets = proxy.safeAreaInsets
             let size = CGSize(width: proxy.size.width + insets.leading + insets.trailing, height: proxy.size.height + insets.top + insets.bottom)
-            return Geometry(size: size, contentWidth: proxy.size.width)
-          } action: { WindowMetrics.shared.update(size: $0.size, contentWidth: $0.contentWidth) }
+            return Geometry(size: size, contentWidth: proxy.size.width, contentFrame: proxy.frame(in: .global))
+          } action: { WindowMetrics.shared.update(size: $0.size, contentWidth: $0.contentWidth, contentFrame: $0.contentFrame) }
       }
       .onChange(of: horizontalSizeClass, initial: true) { _, sizeClass in
         WindowMetrics.shared.update(horizontalSizeClass: sizeClass)

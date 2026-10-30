@@ -13,15 +13,19 @@ struct SubredditsStack: View {
   @Default(.BehaviorDefSettings) private var behaviorDefSettings // handle default feed selection routing
   @Default(.GeneralDefSettings) private var generalDefSettings // handle default feed selection routing
   @State private var columnVisibility: NavigationSplitViewVisibility = .automatic
-  /// The posts column's measured width. Follows window resizes, unlike a screen-size calculation.
-  @State private var detailWidth: CGFloat = 0
+  /// The posts column's measured frame. Follows window resizes, unlike a screen-size calculation.
+  @State private var detailFrame: CGRect = .zero
 
   init(router: Router) {
     self._router = .init(initialValue: router)
   }
 
+  /// The column runs under the unfolded iPhone Duo's side tab bar while its posts stop at the
+  /// window's safe area, so only the part inside that counts.
   var postContentWidth: CGFloat {
-    detailWidth > 0 ? detailWidth : .screenW
+    guard detailFrame.width > 0 else { return .screenW }
+    let visible = detailFrame.intersection(WindowMetrics.shared.contentFrame)
+    return visible.width > 0 ? visible.width : detailFrame.width
   }
 
   @State private var loaded = false
@@ -85,7 +89,7 @@ struct SubredditsStack: View {
       .environment(\.contentWidth, postContentWidth)
       // Fill the column so this measures it rather than the content (the placeholder is 200pt).
       .frame(maxWidth: .infinity, maxHeight: .infinity)
-      .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { detailWidth = $0 }
+      .onGeometryChange(for: CGRect.self) { $0.frame(in: .global) } action: { detailFrame = $0 }
     }
 //    .swipeAnywhere()
     // Side by side unless the sidebar is toggled off. In narrower wide windows (unfolded iPhone
