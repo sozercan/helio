@@ -115,7 +115,8 @@ final class VideoObserverBag {
 
 struct VideoPlayerPost: View, Equatable {
   static func == (lhs: VideoPlayerPost, rhs: VideoPlayerPost) -> Bool {
-    lhs.url == rhs.url && lhs.sharedVideo == rhs.sharedVideo
+    // The size inputs too: a rotation or column resize only changes `contentWidth`.
+    lhs.url == rhs.url && lhs.sharedVideo == rhs.sharedVideo && lhs.contentWidth == rhs.contentWidth && lhs.compact == rhs.compact && lhs.cornerRadius == rhs.cornerRadius && lhs.maxMediaHeightScreenPercentage == rhs.maxMediaHeightScreenPercentage
   }
 
   weak var controller: UIViewController?

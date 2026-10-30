@@ -13,7 +13,7 @@ import YouTubePlayerKit
 
 struct YTMediaPostPlayer: View, Equatable {
   static func == (lhs: YTMediaPostPlayer, rhs: YTMediaPostPlayer) -> Bool {
-    lhs.ytMediaExtracted.id == rhs.ytMediaExtracted.id
+    lhs.ytMediaExtracted.id == rhs.ytMediaExtracted.id && lhs.contentWidth == rhs.contentWidth && lhs.compact == rhs.compact
   }
 
   var compact: Bool
