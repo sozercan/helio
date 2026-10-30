@@ -127,7 +127,8 @@ struct PostLinkNormal: View, Equatable, Identifiable {
 
           Spacer(minLength: 8)
 
-          if defSettings.showVotesCluster {
+          // A crosspost's embedded card leaves actions to the post around it.
+          if defSettings.showVotesCluster, !secondary {
             HStack(spacing: 2) {
               PostLinkMoreMenu(post: post)
               VotesCluster(votesKit: data.votesKit, voteAction: post.vote, showScore: false, showUpVoteRatio: false)
