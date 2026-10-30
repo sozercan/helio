@@ -38,7 +38,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          fetch-depth: 0 # a build phase sets CFBundleVersion to the commit count
+          fetch-depth: 0 # the build number is the commit count
 
       - name: Read version
         env:
@@ -50,6 +50,7 @@ jobs:
             exit 1
           fi
           echo "VERSION=$version" >> "$GITHUB_ENV"
+          echo "BUILD=$(git rev-list --count HEAD)" >> "$GITHUB_ENV"
 
       - name: Select Xcode
         run: |
@@ -70,7 +71,8 @@ jobs:
             -archivePath "$RUNNER_TEMP/Helio.xcarchive" \
             -skipPackagePluginValidation \
             CODE_SIGNING_ALLOWED=NO \
-            MARKETING_VERSION="$VERSION"
+            MARKETING_VERSION="$VERSION" \
+            CURRENT_PROJECT_VERSION="$BUILD"
 
       # Unsigned: sideloading tools (SideStore, AltStore, Sideloadly) re-sign it with the
       # user's Apple ID. Feed metadata is read from the built app.
