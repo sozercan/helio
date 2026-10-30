@@ -108,6 +108,9 @@ struct PostReplies: View {
               Task(priority: .background) {
                 await asyncFetch(post.data == nil)
               }
+            } else {
+              // Only a fetch clears `loading`, so without one the spinner would stay forever.
+              withAnimation { loading = false }
             }
             withAnimation { seenComments = post.helioData?.seenComments }
           }
