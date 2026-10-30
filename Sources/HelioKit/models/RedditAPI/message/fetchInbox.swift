@@ -5,23 +5,21 @@
 //  Created by Igor Marcossi on 10/07/23.
 //
 
-import Foundation
 import Alamofire
+import Foundation
 
 extension RedditAPI {
   func fetchInbox(after: String = "", limit: Int) async -> ([MessageData]?, String?)? {
     let params = FetchInboxPayload(after: after, limit: limit)
     switch await self.doRequest("\(RedditAPI.redditApiURLBase)/message/inbox.json", method: .get, params: params, paramsLocation: .queryString, decodable: Listing<MessageData>.self) {
-    case .success(let data):
-      return (data.data?.children?.map { $0.data }.compactMap { $0 }, data.data?.after)
-    case .failure(let error):
+    case let .success(data):
+      return (data.data?.children?.map(\.data).compactMap(\.self), data.data?.after)
+    case let .failure(error):
       print(error)
       return nil
     }
   }
-  
-  
-  
+
   struct FetchInboxPayload: Codable {
     var mark = "true"
     var count = 0

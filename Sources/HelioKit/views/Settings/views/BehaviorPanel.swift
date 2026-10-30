@@ -1,12 +1,12 @@
 //
-//  Behavior.swift
+//  BehaviorPanel.swift
 //  Helio
 //
 //  Created by Igor Marcossi on 05/07/23.
 //
 
-import SwiftUI
 import Defaults
+import SwiftUI
 import VisionKit
 
 struct BehaviorPanel: View {
@@ -19,33 +19,31 @@ struct BehaviorPanel: View {
   @Default(.GeneralDefSettings) var generalDefSettings
   @Default(.VideoDefSettings) var videoDefSettings
   @Default(.showFloatingFeedMenu) var showFloatingFeedMenu
-  
+
   @Environment(\.useTheme) private var theme
   @State private var imageAnalyzerSupport: Bool = true
   var body: some View {
     List {
-      
       Group {
         Section("General") {
           Toggle("Open Youtube Videos Externally", isOn: $behaviorDefSettings.openYoutubeApp)
-#if !os(macOS)
-          let auth_type = Biometrics().biometricType()
-          Toggle("Lock Helio With \(auth_type)", isOn: $generalDefSettings.useAuth)
-#endif
-          
-          VStack{
+          #if !os(macOS)
+            let auth_type = Biometrics().biometricType()
+            Toggle("Lock Helio With \(auth_type)", isOn: $generalDefSettings.useAuth)
+          #endif
+
+          VStack {
             Toggle("Live Text Analyzer", isOn: $behaviorDefSettings.doLiveText)
               .disabled(!imageAnalyzerSupport)
-              .onAppear{
+              .onAppear {
                 imageAnalyzerSupport = ImageAnalyzer.isSupported
                 if !ImageAnalyzer.isSupported {
                   behaviorDefSettings.doLiveText = false
                 }
               }
-            
-            
-            if !imageAnalyzerSupport{
-              HStack{
+
+            if !imageAnalyzerSupport {
+              HStack {
                 Text("Your iPhone does not support Live Text :(")
                   .fontSize(12)
                   .opacity(0.5)
@@ -53,7 +51,7 @@ struct BehaviorPanel: View {
               }
             }
           }
-          
+
           Picker("Default Launch Feed", selection: $behaviorDefSettings.preferenceDefaultFeed) {
             Text("Home").tag("home")
             Text("Popular").tag("popular")
@@ -61,25 +59,24 @@ struct BehaviorPanel: View {
             Text("Subscription List").tag("subList")
           }
           .pickerStyle(DefaultPickerStyle())
-          
+
           WSNavigationLink(.setting(.filteredSubreddits), "Filtered Subreddits")
         }
-        
-        
+
         Section {
-          LabeledSlider(label: "Loading limit", value: Binding(get: { CGFloat(subredditFeedDefSettings.chunkLoadSize) }, set: { val in subredditFeedDefSettings.chunkLoadSize = Int(val) }), range: 15...100, disablePadding: true)
+          LabeledSlider(label: "Loading limit", value: Binding(get: { CGFloat(subredditFeedDefSettings.chunkLoadSize) }, set: { val in subredditFeedDefSettings.chunkLoadSize = Int(val) }), range: 15 ... 100, disablePadding: true)
           //            .themedListRowLikeBG(enablePadding: true, disableBG: true)
         } footer: {
           Text("Sets how many posts to load per chunk (loads more on scroll)")
         }
-        
+
         Section {
           Toggle("Navigation everywhere", isOn: $behaviorDefSettings.enableSwipeAnywhere)
         } footer: {
           Text("This will allow you to do go back by swiping anywhere in the screen, but will disable post and comments swipe gestures.")
             .padding(.bottom)
         }
-        
+
         Section("Posts") {
           WSNavigationLink(.setting(.postSwipe), "Posts swipe settings")
           Toggle("Loop videos", isOn: $videoDefSettings.loop)
@@ -94,8 +91,7 @@ struct BehaviorPanel: View {
           Toggle("Save sort per subreddit", isOn: $subredditFeedDefSettings.perSubredditSort)
           Toggle("Show floating feed button", isOn: $showFloatingFeedMenu)
           Toggle("Open media from feed", isOn: $postLinkDefSettings.isMediaTappable)
-          
-          
+
           Menu {
             ForEach(Array(SubListingSortOption.allCases), id: \.self) { opt in
               if let children = opt.meta.children {
@@ -117,7 +113,7 @@ struct BehaviorPanel: View {
               }
             }
           } label: {
-            Button { } label: {
+            Button {} label: {
               HStack {
                 Text("Default post sorting")
                 Spacer()
@@ -127,8 +123,7 @@ struct BehaviorPanel: View {
               .foregroundColor(.primary)
             }
           }
-          
-          
+
           Menu {
             ForEach(Array(SubListingSortOption.allCases), id: \.self) { opt in
               if let children = opt.meta.children {
@@ -150,7 +145,7 @@ struct BehaviorPanel: View {
               }
             }
           } label: {
-            Button { } label: {
+            Button {} label: {
               HStack {
                 Text("Default search sorting")
                 Spacer()
@@ -160,8 +155,7 @@ struct BehaviorPanel: View {
               .foregroundColor(.primary)
             }
           }
-          
-          
+
           VStack(alignment: .leading) {
             HStack {
               Text("Max Posts Image Height")
@@ -169,25 +163,24 @@ struct BehaviorPanel: View {
               Text(postLinkDefSettings.maxMediaHeightScreenPercentage == 110 ? "Original" : "\(Int(postLinkDefSettings.maxMediaHeightScreenPercentage))%")
                 .opacity(0.6)
             }
-            Slider(value: $postLinkDefSettings.maxMediaHeightScreenPercentage, in: 10...110, step: 10)
+            Slider(value: $postLinkDefSettings.maxMediaHeightScreenPercentage, in: 10 ... 110, step: 10)
           }
         }
         .themedListSection()
-        
+
         Section("Comments") {
           WSNavigationLink(.setting(.commentSwipe), "Comments Swipe Settings")
-          
+
           Picker("Comments Sorting", selection: $commentsSectionDefSettings.preferredSort) {
             ForEach(CommentSortOption.allCases, id: \.self) { val in
               Label(val.rawVal.id.capitalized, systemImage: val.rawVal.icon)
             }
           }
-          
+
           Toggle("Collapse AutoModerator comments", isOn: $commentsSectionDefSettings.collapseAutoModerator)
           Toggle("Comment skipper button", isOn: $commentsSectionDefSettings.commentSkipper)
           Toggle("Save comment sort per post", isOn: $postPageDefSettings.perPostSort)
         }
-        
       }
       .themedListSection()
     }
@@ -196,9 +189,10 @@ struct BehaviorPanel: View {
     .navigationBarTitleDisplayMode(.inline)
   }
 }
+
 //
-//struct Behavior_Previews: PreviewProvider {
+// struct Behavior_Previews: PreviewProvider {
 //    static var previews: some View {
 //        Behavior()
 //    }
-//}
+// }

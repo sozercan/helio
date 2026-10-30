@@ -1,5 +1,5 @@
 //
-//  JSONCoding.swift
+//  StringJSONConversions.swift
 //  Helio
 //
 //  Created by Igor Marcossi on 23/11/23.
@@ -16,7 +16,6 @@ extension Encodable {
     return nil
   }
 }
-
 
 extension String {
   func toObj<T: Decodable>(_ thing: T.Type) -> T? {

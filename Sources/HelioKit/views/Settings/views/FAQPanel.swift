@@ -9,10 +9,9 @@ import SwiftUI
 
 struct FAQPanel: View {
   @Environment(\.useTheme) private var theme
-  
+
   var body: some View {
-    
-    List{
+    List {
       Section {
         QuestionAnswer(question: "What does the Box Icon do?", answer: "Save posts in the Posts Box to be read later. These will live in Helio and won't be synced to Reddit.", systemImage: "shippingbox")
         QuestionAnswer(question: "What's Helio Everywhere?", answer: "Helio Everywhere is a Safari extension that automatically redirects Reddit links to Helio.", systemImage: "safari")
@@ -25,7 +24,6 @@ struct FAQPanel: View {
     }
     .themedListBG(theme.lists.bg)
     .navigationBarTitle("Frequently Asked Questions", displayMode: .inline)
-    
   }
 }
 
@@ -34,8 +32,8 @@ struct QuestionAnswer: View {
   var answer: String
   var systemImage: String?
   var body: some View {
-    VStack{
-      HStack{
+    VStack {
+      HStack {
         if let systemImage {
           Image(systemName: systemImage)
         }
@@ -45,7 +43,7 @@ struct QuestionAnswer: View {
       .fontWeight(.bold)
       .font(.system(.headline))
       .padding(.bottom, 5)
-      HStack{
+      HStack {
         Text(.init(answer))
         Spacer()
       }

@@ -5,15 +5,15 @@
 //  Created by Igor Marcossi on 07/09/23.
 //
 
+import Defaults
 import Foundation
 import SwiftUI
-import Defaults
 
 struct HelioTheme: Codable, Identifiable, Hashable, Equatable, Defaults.Serializable {
   enum CodingKeys: String, CodingKey {
     case metadata, id, postLinks, posts, comments, lists, general
   }
-  
+
   var metadata: HelioThemeMeta
   var id: String
   var postLinks: SubPostsListTheme
@@ -21,19 +21,21 @@ struct HelioTheme: Codable, Identifiable, Hashable, Equatable, Defaults.Serializ
   var comments: CommentsSectionTheme
   var lists: ListsTheme
   var general: GeneralTheme
-  
+
   func save() {
     guard let index = Defaults[.ThemesDefSettings].themesPresets.firstIndex(where: { $0.id == self.id }) else { return }
     Defaults[.ThemesDefSettings].themesPresets[index] = self
   }
-  
+
   func duplicate() -> HelioTheme {
     var copy = self
     copy.id = UUID().uuidString
-    if copy.metadata.name == "Default" { copy.metadata.name = randomWord().capitalized }
+    if copy.metadata.name == "Default" {
+      copy.metadata.name = randomWord().capitalized
+    }
     return copy
   }
-  
+
   init(
     metadata: HelioThemeMeta = HelioThemeMeta(),
     id: String = UUID().uuidString,
@@ -41,7 +43,7 @@ struct HelioTheme: Codable, Identifiable, Hashable, Equatable, Defaults.Serializ
     posts: PostTheme,
     comments: CommentsSectionTheme,
     lists: ListsTheme,
-    general: GeneralTheme
+    general: GeneralTheme,
   ) {
     self.metadata = metadata
     self.id = id
@@ -51,7 +53,7 @@ struct HelioTheme: Codable, Identifiable, Hashable, Equatable, Defaults.Serializ
     self.lists = lists
     self.general = general
   }
-  
+
   func encode(to encoder: Encoder) throws {
     var container = encoder.container(keyedBy: CodingKeys.self)
     try container.encodeIfPresent(metadata, forKey: .metadata)
@@ -62,7 +64,7 @@ struct HelioTheme: Codable, Identifiable, Hashable, Equatable, Defaults.Serializ
     try container.encodeIfPresent(lists, forKey: .lists)
     try container.encodeIfPresent(general, forKey: .general)
   }
-  
+
   init(from decoder: Decoder) throws {
     let container = try decoder.container(keyedBy: CodingKeys.self)
     self.metadata = try container.decode(HelioThemeMeta.self, forKey: .metadata)

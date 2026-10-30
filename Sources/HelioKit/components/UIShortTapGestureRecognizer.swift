@@ -1,5 +1,5 @@
 //
-//  SingleDoubleTapGestureRecognizer.swift
+//  UIShortTapGestureRecognizer.swift
 //  Helio
 //
 //  Created by Igor Marcossi on 07/08/23.
@@ -10,7 +10,7 @@ import UIKit
 
 class UIShortTapGestureRecognizer: UITapGestureRecognizer {
   var maximumTapLength: Double = 0.35
-  
+
   override func touchesBegan(_ touches: Set<UITouch>, with event: UIEvent) {
     super.touchesBegan(touches, with: event)
     delay(delay: maximumTapLength) {
@@ -20,8 +20,8 @@ class UIShortTapGestureRecognizer: UITapGestureRecognizer {
       }
     }
   }
-  
-  func delay(delay:Double, closure:@escaping ()->()) {
+
+  func delay(delay: Double, closure: @escaping () -> Void) {
     DispatchQueue.main.asyncAfter(deadline: .now() + delay, execute: closure)
   }
 }

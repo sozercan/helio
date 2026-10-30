@@ -5,13 +5,13 @@
 //  Created by Igor Marcossi on 04/07/23.
 //
 
-import Foundation
 import Alamofire
+import Foundation
 
 extension RedditAPI {
   func newReply(_ message: String, _ destinationID: String) async -> Bool? {
     let params = NewReplyPayload(text: message, thing_id: destinationID)
-    switch await self.doRequest("\(RedditAPI.redditApiURLBase)/api/comment?raw_json=1", method: .post, params: params)  {
+    switch await self.doRequest("\(RedditAPI.redditApiURLBase)/api/comment?raw_json=1", method: .post, params: params) {
     case .success:
       return true
     case .failure:
@@ -19,7 +19,7 @@ extension RedditAPI {
       return nil
     }
   }
-  
+
   struct NewReplyPayload: Codable {
     var api_type = "json"
     let text: String

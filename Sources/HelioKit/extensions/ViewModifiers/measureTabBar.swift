@@ -10,31 +10,31 @@ import SwiftUI
 struct TabBarMeasurerAccessor: UIViewControllerRepresentable {
   var setTabBarHeight: (Double) -> Void
   private let proxyController = ViewController()
-  
+
   func makeUIViewController(context: UIViewControllerRepresentableContext<TabBarMeasurerAccessor>) -> UIViewController {
     proxyController.callback = setTabBarHeight
     return proxyController
   }
-  
-  func updateUIViewController(_ uiViewController: UIViewController, context: UIViewControllerRepresentableContext<TabBarMeasurerAccessor>) { }
-  
+
+  func updateUIViewController(_ uiViewController: UIViewController, context: UIViewControllerRepresentableContext<TabBarMeasurerAccessor>) {}
+
   typealias UIViewControllerType = UIViewController
-  
+
   private class ViewController: UIViewController {
     var callback: (Double) -> Void = { _ in }
     private var lastReported: Double?
-    
+
     override func viewWillAppear(_ animated: Bool) {
       super.viewWillAppear(animated)
       report()
     }
-    
-    // Folding iPhone Duo or resizing a window can move the tab bar.
+
+    /// Folding iPhone Duo or resizing a window can move the tab bar.
     override func viewDidLayoutSubviews() {
       super.viewDidLayoutSubviews()
       report()
     }
-    
+
     /// The tab bar's height above the bottom safe area, or 0 when it isn't a horizontal bar
     /// along the bottom of the window: iPad and unfolded iPhone Duo show it at the top, folded
     /// iPhone Duo down the side.

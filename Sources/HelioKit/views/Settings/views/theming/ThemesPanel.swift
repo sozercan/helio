@@ -5,9 +5,9 @@
 //  Created by Igor Marcossi on 08/09/23.
 //
 
+import Defaults
 import SwiftUI
 import UniformTypeIdentifiers
-import Defaults
 import Zip
 
 struct ThemesPanel: View {
@@ -16,12 +16,11 @@ struct ThemesPanel: View {
   @Environment(\.useTheme) private var theme
   var body: some View {
     List {
-      
       Group {
         Section {
           ThemeNavLink(theme: defaultTheme)
             .deleteDisabled(true)
-          
+
           ForEach(themesDefSettings.themesPresets) { theme in
             if theme.id != "default" {
               WListButton(showArrow: true) {
@@ -35,18 +34,18 @@ struct ThemesPanel: View {
             withAnimation { themesDefSettings.themesPresets.remove(atOffsets: index) }
           }
         }
-        
+
         Section {
           WSListButton("Import theme", icon: "doc.zipper") { isUnzipping = true }
             .fileImporter(
               isPresented: $isUnzipping,
               allowedContentTypes: [UTType.zip],
-              allowsMultipleSelection: false
+              allowsMultipleSelection: false,
             ) { res in
               switch res {
-              case .success(let file):
+              case let .success(file):
                 _ = importTheme(at: file[0])
-              case .failure(let error):
+              case let .failure(error):
                 print(error.localizedDescription)
               }
             }
@@ -57,16 +56,16 @@ struct ThemesPanel: View {
     .themedListBG(theme.lists.bg)
     .overlay(
       themesDefSettings.themesPresets.count > 1
-      ? nil
-      : VStack(spacing: 0) {
-        Text("Start by duplicating the")
-        HStack(spacing: 4) {
-          Text("default theme by tapping")
-          Image(systemName: "plus")
+        ? nil
+        : VStack(spacing: 0) {
+          Text("Start by duplicating the")
+          HStack(spacing: 4) {
+            Text("default theme by tapping")
+            Image(systemName: "plus")
+          }
         }
-      }
         .compositingGroup()
-        .opacity(0.25)
+        .opacity(0.25),
     )
     .navigationTitle("Themes")
     .navigationBarTitleDisplayMode(.large)
@@ -79,30 +78,27 @@ struct ThemesPanel: View {
       }
     }
   }
-  
-  
 }
 
 struct ThemeNavLink: View {
   @Default(.ThemesDefSettings) private var themesDefSettings
-  
+
   @Environment(\.useTheme) private var selectedTheme
   @State private var isMoving = false
   @State private var zipUrl: URL? = nil
   var theme: HelioTheme
-  
-  
+
   func zipFiles() {
     var imgNames: [String] = []
-    if case .img(let schemesStr) = theme.postLinks.bg {
+    if case let .img(schemesStr) = theme.postLinks.bg {
       imgNames.append(schemesStr.light)
       imgNames.append(schemesStr.dark)
     }
-    if case .img(let schemesStr) = theme.posts.bg {
+    if case let .img(schemesStr) = theme.posts.bg {
       imgNames.append(schemesStr.light)
       imgNames.append(schemesStr.dark)
     }
-    if case .img(let schemesStr) = theme.lists.bg {
+    if case let .img(schemesStr) = theme.lists.bg {
       imgNames.append(schemesStr.light)
       imgNames.append(schemesStr.dark)
     }
@@ -111,7 +107,7 @@ struct ThemeNavLink: View {
       self.isMoving = true
     }
   }
-  
+
   var body: some View {
     let isDefault = theme.id == "default"
     HStack(spacing: 8) {
@@ -137,9 +133,9 @@ struct ThemeNavLink: View {
           .opacity(0.75)
           .fixedSize(horizontal: false, vertical: true)
       }
-      
+
       Spacer()
-      
+
       Toggle("", isOn: Binding(get: { selectedTheme == theme }, set: { _ in
         themesDefSettings.selectedThemeID = theme.id
       }))
@@ -152,23 +148,23 @@ struct ThemeNavLink: View {
       } label: {
         Label("Duplicate", systemImage: "plus.square.on.square")
       }
-      
+
       Button(action: zipFiles) {
         Label("Export", systemImage: "doc.zipper")
       }
     }
     .fileMover(isPresented: $isMoving, file: zipUrl, onCompletion: { result in
       switch result {
-      case .success(let url):
+      case let .success(url):
         print("Successfully moved the file to \(url)")
-      case .failure(let error):
+      case let .failure(error):
         print("Failed to move the file with error \(error)")
       }
     })
   }
 }
 
-func createZipFile(with imgNames: [String], theme: HelioTheme, completion: @escaping(_ url: URL?) -> Void) {
+func createZipFile(with imgNames: [String], theme: HelioTheme, completion: @escaping (_ url: URL?) -> Void) {
   do {
     let zipURL = try createZip(images: imgNames, theme: theme)
     completion(zipURL)

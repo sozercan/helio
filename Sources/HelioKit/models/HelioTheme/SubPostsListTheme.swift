@@ -11,6 +11,7 @@ struct SubPostsListTheme: Codable, Equatable, Hashable {
   enum CodingKeys: String, CodingKey {
     case theme, spacing, divider, bg, stickyFilters, filterText, filterPadding, filterOpacity
   }
+
   var theme: PostLinkTheme
   var spacing: CGFloat
   var divider: LineTheme
@@ -19,7 +20,7 @@ struct SubPostsListTheme: Codable, Equatable, Hashable {
   var filterText: ThemeText
   var filterPadding: ThemePadding
   var filterOpacity: CGFloat
-  
+
   init(theme: PostLinkTheme, spacing: CGFloat, divider: LineTheme, bg: ThemeBG, stickyFilters: Bool, filterText: ThemeText, filterPadding: ThemePadding, filterOpacity: CGFloat) {
     self.theme = theme
     self.spacing = spacing
@@ -30,7 +31,7 @@ struct SubPostsListTheme: Codable, Equatable, Hashable {
     self.filterPadding = filterPadding
     self.filterOpacity = filterOpacity
   }
-  
+
   func encode(to encoder: Encoder) throws {
     var container = encoder.container(keyedBy: CodingKeys.self)
     try container.encodeIfPresent(theme, forKey: .theme)
@@ -41,9 +42,8 @@ struct SubPostsListTheme: Codable, Equatable, Hashable {
     try container.encodeIfPresent(filterText, forKey: .filterText)
     try container.encodeIfPresent(filterPadding, forKey: .filterPadding)
     try container.encodeIfPresent(filterOpacity, forKey: .filterOpacity)
-
   }
-  
+
   init(from decoder: Decoder) throws {
     let t = defaultTheme.postLinks
     let container = try decoder.container(keyedBy: CodingKeys.self)

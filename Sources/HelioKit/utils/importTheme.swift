@@ -5,9 +5,9 @@
 //  Created by Igor Marcossi on 02/10/23.
 //
 
+import Defaults
 import Foundation
 import Zip
-import Defaults
 
 func importTheme(at rawFileURL: URL) -> Bool {
   do {
@@ -18,13 +18,13 @@ func importTheme(at rawFileURL: URL) -> Bool {
       return false
     }
     let fileURL = documentDirectory.appendingPathComponent("\(UUID().uuidString).zip")
-    
+
     if fileManager.fileExists(atPath: fileURL.path()) {
       try? fileManager.removeItem(at: fileURL)
     }
-    
+
     let gotAccess = rawFileURL.startAccessingSecurityScopedResource()
-    if !rawFileURL.path.hasPrefix(NSTemporaryDirectory()) && !gotAccess {
+    if !rawFileURL.path.hasPrefix(NSTemporaryDirectory()), !gotAccess {
       print("Error getting file access")
       return false
     }
@@ -34,7 +34,7 @@ func importTheme(at rawFileURL: URL) -> Bool {
     let themeJsonURL = unzipDirectory.appendingPathComponent("theme.json")
     let themeData = try Data(contentsOf: themeJsonURL)
     let theme = try JSONDecoder().decode(HelioTheme.self, from: themeData)
-    
+
     let urls = try fileManager.contentsOfDirectory(at: unzipDirectory, includingPropertiesForKeys: nil)
     let destinationURL = fileManager.urls(for: .documentDirectory, in: .userDomainMask).first!
     for url in urls {
@@ -44,11 +44,11 @@ func importTheme(at rawFileURL: URL) -> Bool {
         try fileManager.moveItem(at: url, to: destinationFileURL)
       }
     }
-    
+
     DispatchQueue.main.async {
       Defaults[.ThemesDefSettings].themesPresets.append(theme)
     }
-    
+
     return true
   } catch {
     print("Failed to unzip file with error: \(error)")

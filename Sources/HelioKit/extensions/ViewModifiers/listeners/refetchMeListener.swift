@@ -5,8 +5,8 @@
 //  Created by Igor Marcossi on 13/12/23.
 //
 
-import SwiftUI
 import Defaults
+import SwiftUI
 
 struct RefetchMeListenerModifier: ViewModifier {
   @Default(.GeneralDefSettings) private var generalDefSettings

@@ -5,16 +5,16 @@
 //  Created by Igor Marcossi on 01/07/23.
 //
 
-import SwiftUI
-import SwiftDate
-import Defaults
 import AlertToast
+import Defaults
+import SwiftDate
+import SwiftUI
 
 enum SubInfoTabs: String, CaseIterable, Identifiable {
   var id: Self {
-    return self
+    self
   }
-  
+
   case info = "Info"
   case rules = "Rules"
   case myposts = "My posts"
@@ -22,9 +22,9 @@ enum SubInfoTabs: String, CaseIterable, Identifiable {
 
 struct SubredditInfo: View {
   var subreddit: Subreddit
-  
+
   @State private var selectedTab: SubInfoTabs = .info
-  
+
   @State private var addedToFavs = false
   @Default(.likedButNotSubbed) var likedButNotSubbed
   @Environment(\.useTheme) private var theme
@@ -35,22 +35,21 @@ struct SubredditInfo: View {
         if let data = subreddit.data {
           VStack(spacing: 12) {
             SubredditIcon(subredditIconKit: data.subredditIconKit, size: 125)
-            
+
             VStack {
               Text("r/\(data.display_name ?? "")")
                 .fontSize(22, .bold)
               Text("Created \(data.created == nil ? "at some point" : Date(timeIntervalSince1970: TimeInterval(data.created!)).toFormat("MMM dd, yyyy"))")
                 .fontSize(16, .medium)
                 .opacity(0.5)
-              HStack{
+              HStack {
                 SubscribeButton(subreddit: subreddit)
-                
               }
             }
             //            .toast(isPresenting: $addedToFavs){
             //              AlertToast(displayMode: .hud, type: .systemImage("star.fill", Color.blue), title: "Added to Favorites")
             //            }
-            
+
             Picker("", selection: $selectedTab) {
               ForEach(SubInfoTabs.allCases) { tab in
                 Text(tab.rawValue)
@@ -62,10 +61,10 @@ struct SubredditInfo: View {
           .id("header")
           .listRowBackground(Color.clear)
           .listRowInsets(EdgeInsets(top: 8, leading: 0, bottom: 8, trailing: 0))
-          .toolbar{
-            ToolbarItem(){
-              Button{
-                Task{
+          .toolbar {
+            ToolbarItem {
+              Button {
+                Task {
                   if !data.user_has_favorited! {
                     let liked = subreddit.localFavoriteToggle()
                     if liked {
@@ -82,7 +81,7 @@ struct SubredditInfo: View {
               }
             }
           }
-          
+
           switch selectedTab {
           case .info:
             SubredditInfoTab(subreddit: subreddit)
@@ -101,9 +100,10 @@ struct SubredditInfo: View {
     .navigationBarTitleDisplayMode(.inline)
   }
 }
+
 //
-//struct SubredditInfo_Previews: PreviewProvider {
+// struct SubredditInfo_Previews: PreviewProvider {
 //    static var previews: some View {
 //        SubredditInfo()
 //    }
-//}
+// }

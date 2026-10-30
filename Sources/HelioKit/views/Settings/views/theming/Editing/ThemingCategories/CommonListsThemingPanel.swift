@@ -12,11 +12,10 @@ struct CommonListsThemingPanel: View {
   var body: some View {
     ScrollView {
       VStack(alignment: .leading, spacing: 32) {
-        
         FakeSection("Background", footer: "The screen's background, not the list rows.") {
           ThemeBGPicker(bg: $theme.lists.bg, defaultVal: defaultTheme.lists.bg)
         }
-        
+
         FakeSection("Foreground color", footer: "The list rows background.") {
           ThemeForegroundEdit(theme: $theme.lists.foreground, defaultVal: defaultTheme.lists.foreground)
         }
@@ -32,4 +31,3 @@ struct CommonListsThemingPanel: View {
     .navigationBarTitleDisplayMode(.inline)
   }
 }
-

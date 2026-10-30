@@ -5,13 +5,13 @@
 //  Created by Igor Marcossi on 02/09/23.
 //
 
-import SwiftUI
 import Defaults
+import SwiftUI
 
 struct AttachViewControllerToRouterModifier: ViewModifier {
   var tabID: Nav.TabIdentifier
   @Default(.BehaviorDefSettings) private var behaviorDefSettings
-  
+
   func body(content: Content) -> some View {
     content
       .background { AttachViewControllerToRouterView(tabID: tabID, disable: !behaviorDefSettings.enableSwipeAnywhere) }
@@ -22,34 +22,34 @@ extension View {
   func attachViewControllerToRouter(tabID: Nav.TabIdentifier) -> some View {
     self.modifier(AttachViewControllerToRouterModifier(tabID: tabID))
   }
-  
+
   func injectInTabDestinations() -> some View {
     self
 //      .attachViewControllerToRouter()
       .navigationDestination(for: Router.NavDest.self, destination: { dest in
         switch dest {
-        case .reddit(let reddDest):
+        case let .reddit(reddDest):
           switch reddDest {
-          case .post(let (post)):
+          case let .post(post):
             if let sub = post.helioData?.subreddit {
               PostView(post: post, subreddit: sub)
             }
-          case .postHighlighted(let post, let highlightID):
+          case let .postHighlighted(post, highlightID):
             if let sub = post.helioData?.subreddit {
               PostView(post: post, subreddit: sub, highlightID: highlightID)
             }
-          case .subFeed(let sub):
+          case let .subFeed(sub):
             SubredditPosts(subreddit: sub)
-          case .subInfo(let sub):
+          case let .subInfo(sub):
             SubredditInfo(subreddit: sub)
-          case .multiFeed(let multi):
+          case let .multiFeed(multi):
             MultiPostsView(multi: multi)
-          case .multiInfo(_):
+          case .multiInfo:
             EmptyView()
-          case .user(let user):
+          case let .user(user):
             UserView(user: user)
           }
-        case .setting(let settingsDest):
+        case let .setting(settingsDest):
           switch settingsDest {
           case .general:
             GeneralPanel()
@@ -79,14 +79,13 @@ extension View {
   }
 }
 
-
-fileprivate struct AttachViewControllerToRouterView: UIViewRepresentable {
+private struct AttachViewControllerToRouterView: UIViewRepresentable {
   var tabID: Nav.TabIdentifier
   var disable: Bool
   func makeUIView(context: Context) -> some UIView {
-    return UIView()
+    UIView()
   }
-  
+
   func updateUIView(_ uiView: UIViewType, context: Context) {
     DispatchQueue.main.async {
       if let controller = uiView.parentViewController {
@@ -97,7 +96,7 @@ fileprivate struct AttachViewControllerToRouterView: UIViewRepresentable {
   }
 }
 
-fileprivate extension UIView {
+private extension UIView {
   var parentViewController: UIViewController? {
     sequence(first: self) {
       $0.next

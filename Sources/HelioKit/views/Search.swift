@@ -5,9 +5,9 @@
 //  Created by Igor Marcossi on 24/06/23.
 //
 
-import SwiftUI
-import NukeUI
 import Defaults
+import NukeUI
+import SwiftUI
 
 enum SearchType: String, Codable {
   case subreddit = "Subreddit"
@@ -16,7 +16,7 @@ enum SearchType: String, Codable {
 }
 
 struct SearchOption: View {
-  var activateSearchType: ()->()
+  var activateSearchType: () -> Void
   var active: Bool
   var searchType: SearchType
   var body: some View {
@@ -44,7 +44,7 @@ enum SearchTypeArr {
 
 struct Search: View {
   @State var router: Router
-  
+
   @State private var searchType: SearchType = .subreddit
   @State private var resultsSubs: [Subreddit] = []
   @State private var resultsUsers: [User] = []
@@ -52,21 +52,23 @@ struct Search: View {
   @State private var loading = false
   @State private var hideSpinner = false
   @State var searchQuery = Debouncer("", delay: 0.25)
-  
+
   @State private var dummyAllSub: Subreddit? = nil
   @State private var searchViewLoaded: Bool = false
-  
+
   @Default(.PostLinkDefSettings) private var postLinkDefSettings
   @Default(.searchHistory) private var searchHistory
   @Environment(\.useTheme) private var theme
   @Environment(\.contentWidth) private var contentWidth
-  
+
   init(router: Router) {
     self._router = .init(initialValue: router)
   }
-  
+
   func fetch() {
-    if searchQuery.value == "" { return }
+    if searchQuery.value == "" {
+      return
+    }
     withAnimation {
       loading = true
     }
@@ -74,12 +76,12 @@ struct Search: View {
     case .subreddit:
       resultsSubs.removeAll()
       Task(priority: .background) {
-        let subs = await RedditAPI.shared.searchSubreddits(searchQuery.value)?.map({ Subreddit(data: $0) })
+        let subs = await RedditAPI.shared.searchSubreddits(searchQuery.value)?.map { Subreddit(data: $0) }
         await MainActor.run {
           withAnimation {
             resultsSubs = subs ?? []
             loading = false
-            
+
             hideSpinner = resultsSubs.isEmpty
           }
         }
@@ -87,12 +89,12 @@ struct Search: View {
     case .user:
       resultsUsers.removeAll()
       Task(priority: .background) {
-        let users = await RedditAPI.shared.searchUsers(searchQuery.value)?.map({ User(data: $0) })
+        let users = await RedditAPI.shared.searchUsers(searchQuery.value)?.map { User(data: $0) }
         await MainActor.run {
           withAnimation {
             resultsUsers = users ?? []
             loading = false
-            
+
             hideSpinner = resultsUsers.isEmpty
           }
         }
@@ -102,7 +104,7 @@ struct Search: View {
       Task(priority: .background) {
         let newPosts = await dummyAllSub?.fetchPosts(searchText: searchQuery.value, contentWidth: contentWidth)?.0 ?? []
         let actualNewPosts = newPosts.compactMap {
-          if case .post(let post) = $0 {
+          if case let .post(post) = $0 {
             return post
           }
           return nil
@@ -111,28 +113,30 @@ struct Search: View {
           withAnimation {
             resultPosts = actualNewPosts
             loading = false
-            
+
             hideSpinner = resultPosts.isEmpty
           }
         }
       }
     }
   }
-  
+
   func rememberSearch() {
     searchHistory = SearchHistory.record(searchQuery.value, type: searchType, in: searchHistory)
   }
-  
+
   func search(_ item: SearchHistoryItem) {
     let unchanged = searchType == item.type && searchQuery.debounced == item.query
     searchType = item.type
     // Skips the debounce, so the change below fetches once, now.
     searchQuery.setNow(item.query)
     rememberSearch()
-    if unchanged { fetch() }
+    if unchanged {
+      fetch()
+    }
     UIApplication.shared.dismissKeyboard()
   }
-  
+
   func historyRow(_ item: SearchHistoryItem) -> some View {
     HStack(spacing: 12) {
       Image(systemName: item.type.historyIcon)
@@ -142,7 +146,9 @@ struct Search: View {
         .lineLimit(1)
       Spacer()
       Button {
-        if let i = searchHistory.firstIndex(of: item) { searchHistory[i].isFavorite.toggle() }
+        if let i = searchHistory.firstIndex(of: item) {
+          searchHistory[i].isFavorite.toggle()
+        }
       } label: {
         Image(systemName: item.isFavorite ? "star.fill" : "star")
           .foregroundStyle(item.isFavorite ? Color.yellow : Color.secondary)
@@ -159,7 +165,7 @@ struct Search: View {
       }
     }
   }
-  
+
   var body: some View {
     NavigationStack(path: $router.fullPath) {
       List {
@@ -172,7 +178,7 @@ struct Search: View {
             }
             .id("options")
           }
-          
+
           if searchQuery.value.isEmpty {
             let favorites = searchHistory.filter(\.isFavorite)
             let recents = searchHistory.filter { !$0.isFavorite }
@@ -203,7 +209,7 @@ struct Search: View {
               }
             }
           }
-          
+
           Section {
             switch searchType {
             case .subreddit:
@@ -217,19 +223,19 @@ struct Search: View {
                   .simultaneousGesture(TapGesture().onEnded { rememberSearch() })
               }
             case .post:
-              if let dummyAllSub = dummyAllSub {
+              if let dummyAllSub {
                 ForEach(resultPosts) { post in
                   if let helioData = post.helioData {
                     //                      SwipeRevolution(size: helioData.postDimensions.size, actionsSet: postSwipeActions, entity: post) { controller in
                     PostLink(id: post.id, theme: theme.postLinks, showSub: true, compactPerSubreddit: nil, contentWidth: contentWidth, defSettings: postLinkDefSettings)
 //                    .swipyRev(size: helioData.postDimensions.size, actionsSet: postSwipeActions, entity: post)
-                    //                      }
-                    .listRowInsets(EdgeInsets(top: 0, leading: 0, bottom: 0, trailing: 0))
-                    .simultaneousGesture(TapGesture().onEnded { rememberSearch() })
-                    .animation(.default, value: resultPosts)
-                    .environment(\.contextPost, post)
-                    .environment(\.contextSubreddit, dummyAllSub)
-                    .environment(\.contextPostHelioData, helioData)
+                      //                      }
+                      .listRowInsets(EdgeInsets(top: 0, leading: 0, bottom: 0, trailing: 0))
+                      .simultaneousGesture(TapGesture().onEnded { rememberSearch() })
+                      .animation(.default, value: resultPosts)
+                      .environment(\.contextPost, post)
+                      .environment(\.contextSubreddit, dummyAllSub)
+                      .environment(\.contextPostHelioData, helioData)
                   }
                 }
               }
@@ -265,7 +271,7 @@ struct Search: View {
         }
         fetch()
       }
-      .onAppear() {
+      .onAppear {
         if !searchViewLoaded {
           dummyAllSub = Subreddit(id: "all")
           searchViewLoaded = true

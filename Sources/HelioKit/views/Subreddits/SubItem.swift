@@ -5,23 +5,23 @@
 //  Created by Igor Marcossi on 05/08/23.
 //
 
-import SwiftUI
 import Defaults
+import SwiftUI
 
 struct SubItemButton: View, Equatable {
   static func == (lhs: SubItemButton, rhs: SubItemButton) -> Bool {
     lhs.data == rhs.data
   }
-  
+
   var data: SubredditData
-  var action: () -> ()
+  var action: () -> Void
   var body: some View {
     Button(action: action) {
-        HStack {
-          Text(data.display_name ?? "")
-          SubredditIcon(subredditIconKit: data.subredditIconKit)
-        }
+      HStack {
+        Text(data.display_name ?? "")
+        SubredditIcon(subredditIconKit: data.subredditIconKit)
       }
+    }
   }
 }
 
@@ -29,22 +29,22 @@ struct SubItem: View, Equatable {
   static func == (lhs: SubItem, rhs: SubItem) -> Bool {
     lhs.sub == rhs.sub && lhs.isActive == rhs.isActive
   }
-  
+
   var isActive: Bool
   var sub: Subreddit
   var cachedSub: CachedSub
-  var action: (Subreddit) -> ()
+  var action: (Subreddit) -> Void
 //  @Default(.likedButNotSubbed) private var likedButNotSubbed
-  
+
   func favoriteToggle() {
 //    guard let sub = sub else { return }
 //    if likedButNotSubbed.contains(sub) {
 //      _ = sub.localFavoriteToggle()
 //    } else {
-      sub.favoriteToggle(entity: cachedSub)
+    sub.favoriteToggle(entity: cachedSub)
 //    }
   }
-  
+
   var body: some View {
     if let data = sub.data {
       let favorite = cachedSub.user_has_favorited
@@ -60,15 +60,15 @@ struct SubItem: View, Equatable {
           } icon: {
             SubredditIcon(subredditIconKit: data.subredditIconKit)
           }
-          
+
           Spacer()
-          
+
           Image(systemName: "star.fill")
             .foregroundColor(favorite ? Color.accentColor : .gray.opacity(0.3))
-            .highPriorityGesture( TapGesture().onEnded(favoriteToggle) )
+            .highPriorityGesture(TapGesture().onEnded(favoriteToggle))
         }
       }
-      
+
     } else {
       Text("Error")
     }

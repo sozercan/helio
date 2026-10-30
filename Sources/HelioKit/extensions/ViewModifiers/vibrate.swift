@@ -5,23 +5,20 @@
 //  Created by Igor Marcossi on 29/11/23.
 //
 
-import SwiftUI
 import CoreHaptics
-
-
+import SwiftUI
 
 struct VibrateModifier<T: Equatable>: ViewModifier {
-  
   var vibration: Vibration
   var value: T
   var disabled: Bool
-  
+
   init(_ vibration: Vibration, trigger: T, disabled: Bool = false) {
     self.vibration = vibration
     self.value = trigger
     self.disabled = disabled
   }
-  
+
   @State private var hapticHolder = HapticHolder()
   @Environment(\.scenePhase) private var scenePhase
   func body(content: Content) -> some View {
@@ -36,9 +33,9 @@ struct VibrateModifier<T: Equatable>: ViewModifier {
       .onChange(of: value) { _ in
         guard !disabled else { return }
         switch vibration {
-        case .continuous(let sharpness, let intensity):
+        case let .continuous(sharpness, intensity):
           hapticHolder.playHapticContinuous(intensity: Float(intensity), sharpness: Float(sharpness))
-        case .transient(let sharpness, let intensity):
+        case let .transient(sharpness, intensity):
           hapticHolder.playHapticTransient(intensity: Float(intensity), sharpness: Float(sharpness))
         }
       }
@@ -50,64 +47,61 @@ struct VibrateModifier<T: Equatable>: ViewModifier {
         }
       }
   }
-  
+
   enum Vibration {
     case continuous(sharpness: Double, intensity: Double)
     case transient(sharpness: Double, intensity: Double)
   }
-  
+
   @Observable
   class HapticHolder {
-    private var engine: CHHapticEngine? = nil
-    private var continuousHapticTimer: Timer? = nil
+    private var engine: CHHapticEngine?
+    private var continuousHapticTimer: Timer?
     private var engineNeedsStart = true
-    private var continuousPlayer: CHHapticAdvancedPatternPlayer? = nil
-    private var supportsHaptics: Bool = {
-      return AppDelegate.instance?.supportsHaptics ?? false
-    }()
+    private var continuousPlayer: CHHapticAdvancedPatternPlayer?
+    private var supportsHaptics: Bool = AppDelegate.instance?.supportsHaptics ?? false
+
     private let initialIntensity: Float = 1.0
     private let initialSharpness: Float = 0.5
-    
+
     private func startPlayingContinuousHaptics() {
       guard supportsHaptics, let continuousPlayer = self.continuousPlayer else { return }
-      
+
       do {
         try continuousPlayer.start(atTime: CHHapticTimeImmediate)
-      } catch let error {
+      } catch {
         print("Error starting the continuous haptic player: \(error)")
       }
-      
     }
-    
+
     private func stopPlayingContinuousHaptics() {
       guard supportsHaptics, let continuousPlayer = self.continuousPlayer else { return }
-      
+
       do {
         try continuousPlayer.stop(atTime: CHHapticTimeImmediate)
-      } catch let error {
+      } catch {
         print("Error stopping the continuous haptic player: \(error)")
       }
-      
     }
-    
+
     func playHapticContinuous(intensity: Float, sharpness: Float) {
       guard supportsHaptics, let continuousPlayer = self.continuousPlayer else { return }
-      
+
       if continuousHapticTimer == nil {
         self.startPlayingContinuousHaptics()
       }
-      
+
       let intensityParameter = CHHapticDynamicParameter(parameterID: .hapticIntensityControl, value: intensity * initialIntensity, relativeTime: 0)
       let sharpnessParameter = CHHapticDynamicParameter(parameterID: .hapticSharpnessControl, value: sharpness * initialSharpness, relativeTime: 0)
-      
+
       do {
         try continuousPlayer.sendParameters([intensityParameter, sharpnessParameter], atTime: 0)
-      } catch let error {
+      } catch {
         print("Dynamic Parameter Error: \(error)")
       }
-      
+
       setupTimer()
-      
+
       func setupTimer() {
         continuousHapticTimer?.invalidate()
         continuousHapticTimer = .init(timeInterval: Date().timeIntervalSince1970 + 0.3, repeats: false, block: { _ in
@@ -116,58 +110,57 @@ struct VibrateModifier<T: Equatable>: ViewModifier {
         })
       }
     }
-    
+
     func playHapticTransient(intensity: Float, sharpness: Float) {
-      
       guard supportsHaptics, let engine = self.engine else { return }
-      
+
       let intensityParameter = CHHapticEventParameter(parameterID: .hapticIntensity, value: intensity)
       let sharpnessParameter = CHHapticEventParameter(parameterID: .hapticSharpness, value: sharpness)
       let event = CHHapticEvent(eventType: .hapticTransient, parameters: [intensityParameter, sharpnessParameter], relativeTime: 0)
-      
+
       do {
         let pattern = try CHHapticPattern(events: [event], parameters: [])
         let player = try engine.makePlayer(with: pattern)
         try player.start(atTime: CHHapticTimeImmediate)
-      } catch let error {
+      } catch {
         print("Error creating a haptic transient pattern: \(error)")
       }
     }
-    
+
     func stopEngine() {
       guard self.supportsHaptics, let engine = self.engine else { return }
-      
+
       engine.stop(completionHandler: { error in
-        if let error = error {
+        if let error {
           print("Haptic Engine Shutdown Error: \(error)")
           return
         }
         self.engineNeedsStart = true
       })
     }
-    
+
     func startEngine() {
       guard self.supportsHaptics, let engine = self.engine else { return }
-      
+
       engine.start(completionHandler: { error in
-        if let error = error {
+        if let error {
           print("Haptic Engine Startup Error: \(error)")
           return
         }
         self.engineNeedsStart = false
       })
     }
-    
+
     func createAndStartHapticEngine() {
       do {
         engine = try CHHapticEngine()
-      } catch let error {
+      } catch {
         fatalError("Engine Creation Error: \(error)")
       }
-      guard let engine = engine else { return }
-      
+      guard let engine else { return }
+
       engine.playsHapticsOnly = true
-      
+
       // The stopped handler alerts you of engine stoppage.
       engine.stoppedHandler = { reason in
         print("Stop Handler: The engine stopped for reason: \(reason.rawValue)")
@@ -190,7 +183,7 @@ struct VibrateModifier<T: Equatable>: ViewModifier {
           print("Unknown error")
         }
       }
-      
+
       engine.resetHandler = {
         print("Reset Handler: Restarting the engine.")
         do {
@@ -201,31 +194,26 @@ struct VibrateModifier<T: Equatable>: ViewModifier {
           print("Failed to start the engine")
         }
       }
-      
+
       startEngine()
     }
-    
+
     func createContinuousHapticPlayer() {
-      guard let engine = engine else { return }
+      guard let engine else { return }
       let intensity = CHHapticEventParameter(parameterID: .hapticIntensity, value: initialIntensity)
       let sharpness = CHHapticEventParameter(parameterID: .hapticSharpness, value: initialSharpness)
-      
+
       let continuousEvent = CHHapticEvent(eventType: .hapticContinuous, parameters: [intensity, sharpness], relativeTime: 0, duration: 100)
-      
+
       do {
         let pattern = try CHHapticPattern(events: [continuousEvent], parameters: [])
         continuousPlayer = try engine.makeAdvancedPlayer(with: pattern)
-      } catch let error {
+      } catch {
         print("Pattern Player Creation Error: \(error)")
       }
     }
-    
   }
 }
-
-
-
-
 
 extension View {
   func vibrate<T: Equatable>(_ vibration: VibrateModifier<T>.Vibration, trigger: T, disabled: Bool = false) -> some View {

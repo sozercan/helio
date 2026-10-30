@@ -1,5 +1,5 @@
 //
-//  File.swift
+//  PreviewLink.swift
 //  Helio
 //
 //  Created by Igor Marcossi on 28/07/23.
@@ -13,7 +13,7 @@ struct PreviewLink: View {
   var url: URL
   var compact = false
   @State var previewModel: PreviewModel
-  
+
   var body: some View {
     PreviewLinkContent(compact: compact, viewModel: previewModel, url: url)
   }

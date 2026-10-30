@@ -1,5 +1,5 @@
 //
-//  ListRowBakground.swift
+//  ThemedForegroundBG.swift
 //  Helio
 //
 //  Created by Igor Marcossi on 06/12/23.
@@ -11,28 +11,28 @@ struct ThemedForegroundBG: View, Equatable {
   static func == (lhs: ThemedForegroundBG, rhs: ThemedForegroundBG) -> Bool {
     lhs.theme == rhs.theme && lhs.active == rhs.active && lhs.pressed == rhs.pressed && lhs.shiny == rhs.shiny
   }
+
   let theme: ThemeForegroundBG
   var active = false
   var pressed = false
-  var shiny: Gradient? = nil
-  var shadowStyle: ShadowStyle? = nil
+  var shiny: Gradient?
+  var shadowStyle: ShadowStyle?
   var body: some View {
     ThemedForegroundRawBG(shape: Rectangle(), theme: theme, active: active, pressed: pressed, shiny: shiny, shadowStyle: shadowStyle)
   }
 }
 
-
 struct ThemedForegroundRawBG<S: Shape>: View, Equatable {
   static func == (lhs: ThemedForegroundRawBG, rhs: ThemedForegroundRawBG) -> Bool {
     lhs.theme == rhs.theme && lhs.active == rhs.active && lhs.pressed == rhs.pressed && lhs.shiny == rhs.shiny
   }
-  
+
   var shape: S
   let theme: ThemeForegroundBG
   var active = false
   var pressed = false
-  var shiny: Gradient? = nil
-  var shadowStyle: ShadowStyle? = nil
+  var shiny: Gradient?
+  var shadowStyle: ShadowStyle?
   @Environment(\.brighterBG) private var brighter
   @Environment(\.isInSidebar) private var isInSidebar
   var body: some View {
@@ -52,8 +52,10 @@ struct ThemedForegroundRawBG<S: Shape>: View, Equatable {
       shape.fill(isWideLayout && isInSidebar && !brighter ? .clear : theme.color(brighter: !theme.blurry && brighter, brighterRatio: 0.075))
       shape.fill(Color.primary.opacity(pressed || (!isWideLayout && active) ? 0.1 : 0))
         .animation(active ? nil : .default.speed(2), value: active)
-      
-      if isActive { shape.fill(Color.accentColor) }
+
+      if isActive {
+        shape.fill(Color.accentColor)
+      }
     }
     .if(isWideLayout && isInSidebar) { $0.clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous)) }
   }

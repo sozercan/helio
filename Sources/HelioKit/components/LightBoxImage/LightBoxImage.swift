@@ -1,21 +1,21 @@
 //
-//  LightBox.swift
+//  LightBoxImage.swift
 //  Helio
 //
 //  Created by Igor Marcossi on 28/06/23.
 //
 
-import SwiftUI
-import NukeUI
 import Defaults
+import NukeUI
+import SwiftUI
 
 private let SPACING = 24.0
 
 struct LightBoxImage: View {
-  var postTitle: String? = nil
-  var badgeKit: BadgeKit? = nil
-  var avatarImageRequest: ImageRequest? = nil
-  var markAsSeen: (() async -> ())? = nil
+  var postTitle: String?
+  var badgeKit: BadgeKit?
+  var avatarImageRequest: ImageRequest?
+  var markAsSeen: (() async -> Void)?
   var i: Int
   var imagesArr: [ImgExtracted]
   var doLiveText: Bool
@@ -33,18 +33,18 @@ struct LightBoxImage: View {
   @State private var isPinching: Bool = false
   @State private var isZoomed: Bool = false
   @State private var scale: CGFloat = 1.0
-  
+
   private enum Axis {
     case horizontal
     case vertical
   }
-  
+
   func toggleOverlay() {
     withAnimation(.easeOut(duration: 0.2)) {
       showOverlay.toggle()
     }
   }
-  
+
   var body: some View {
     let interpolate = interpolatorBuilder([0, 100], value: abs(drag.height))
     HStack(spacing: SPACING) {
@@ -62,10 +62,9 @@ struct LightBoxImage: View {
     .frame(maxWidth: .screenW, maxHeight: .screenH, alignment: .leading)
     .highPriorityGesture(
       scale > 1
-      ? nil
-      : DragGesture(minimumDistance: 20)
+        ? nil
+        : DragGesture(minimumDistance: 20)
         .onChanged { val in
-          
           if dragAxis == nil || dragOffset == nil {
             dragOffset = val.translation
             if abs(val.predictedEndTranslation.width) > abs(val.predictedEndTranslation.height) {
@@ -74,12 +73,12 @@ struct LightBoxImage: View {
               dragAxis = .vertical
             }
           }
-          
-          if let dragAxis = dragAxis, let dragOffset = dragOffset {
+
+          if let dragAxis, let dragOffset {
             var transaction = Transaction()
             transaction.isContinuous = true
             transaction.animation = .interpolatingSpring(stiffness: 1000, damping: 100, initialVelocity: 0)
-            
+
             var endPos = val.translation
             if dragAxis == .horizontal {
               endPos.height = 0
@@ -96,7 +95,7 @@ struct LightBoxImage: View {
             xPos += val.translation.width - (dragOffset?.width ?? 0)
             dragOffset = nil
             let newActiveIndex = min(imagesArr.count - 1, max(0, activeIndex + (predictedEnd < -(.screenW / 2) ? 1 : predictedEnd > .screenW / 2 ? -1 : 0)))
-            let finalXPos = -(CGFloat(newActiveIndex) * (.screenW + (SPACING)))
+            let finalXPos = -(CGFloat(newActiveIndex) * (.screenW + SPACING))
             let distance = abs(finalXPos - xPos)
             activeIndex = newActiveIndex
             var initialVel = abs(predictedEnd / distance)
@@ -107,7 +106,7 @@ struct LightBoxImage: View {
             }
           } else {
             let shouldClose = abs(val.translation.width) > 100 || abs(val.translation.height) > 100
-            
+
             if shouldClose {
               withAnimation(.easeOut) {
                 appearBlack = false
@@ -121,17 +120,17 @@ struct LightBoxImage: View {
               }
             }
           }
-        }
+        },
     )
     .overlay {
-      if let postTitle = postTitle, let badgeKit = badgeKit {
+      if let postTitle, let badgeKit {
         LightBoxOverlay(postTitle: postTitle, badgeKit: badgeKit, avatarImageRequest: avatarImageRequest, opacity: !showOverlay || isPinching ? 0 : interpolate([1, 0], false), imagesArr: imagesArr, activeIndex: activeIndex, loading: $loading, done: $done)
       }
     }
     .background(
       !appearBlack
-      ? nil
-      : Color.black
+        ? nil
+        : Color.black
         .opacity(interpolate([1, 0], false))
         .onTapGesture {
           withAnimation(.easeOut) {
@@ -139,7 +138,7 @@ struct LightBoxImage: View {
           }
         }
         .allowsHitTesting(appearBlack)
-        .transition(.opacity)
+        .transition(.opacity),
     )
     .overlay {
       if loading || done {
@@ -178,7 +177,9 @@ struct LightBoxImage: View {
       xPos = -CGFloat(activeIndex) * (.screenW + SPACING)
     }
     .onAppear {
-      if let markAsSeen { Task(priority: .background) { await markAsSeen() } }
+      if let markAsSeen {
+        Task(priority: .background) { await markAsSeen() }
+      }
       xPos = -CGFloat(i) * (.screenW + SPACING)
       activeIndex = i
       doThisAfter(0.0) {
@@ -191,5 +192,3 @@ struct LightBoxImage: View {
     .transition(.opacity)
   }
 }
-
-

@@ -6,18 +6,18 @@
 //  bundle while the code lives in the HelioKit package.
 //
 
-import Foundation
 import CoreData
+import Foundation
 
 @objc(SeenPost)
 public class SeenPost: NSManagedObject {}
 
-extension SeenPost {
-  @nonobjc public class func fetchRequest() -> NSFetchRequest<SeenPost> {
+public extension SeenPost {
+  @nonobjc class func fetchRequest() -> NSFetchRequest<SeenPost> {
     NSFetchRequest<SeenPost>(entityName: "SeenPost")
   }
 
-  @NSManaged public var numComments: Int32
-  @NSManaged public var postID: String?
-  @NSManaged public var seenComments: String?
+  @NSManaged var numComments: Int32
+  @NSManaged var postID: String?
+  @NSManaged var seenComments: String?
 }

@@ -5,13 +5,13 @@
 //  Created by Igor Marcossi on 30/06/23.
 //
 
-import Foundation
 import Alamofire
+import Foundation
 
 extension RedditAPI {
   func subscribeSubs(action: SubscribeSubAction, subs: [String]) async -> Bool? {
     let params = SubscribeSubPayload(action: action, sr_name: subs.joined(separator: ","))
-    switch await self.doRequest("\(RedditAPI.redditApiURLBase)/api/subscribe", method: .post, params: params, paramsLocation: .queryString)  {
+    switch await self.doRequest("\(RedditAPI.redditApiURLBase)/api/subscribe", method: .post, params: params, paramsLocation: .queryString) {
     case .success:
       return true
     case .failure:
@@ -19,7 +19,7 @@ extension RedditAPI {
       return nil
     }
   }
-  
+
   struct SubscribeSubPayload: Codable {
     let action: SubscribeSubAction
     var action_source = "o"
@@ -28,9 +28,9 @@ extension RedditAPI {
     var raw_json = 1
     //    let uh: String
   }
-  
+
   enum SubscribeSubAction: String, Codable {
-    case sub = "sub"
-    case unsub = "unsub"
+    case sub
+    case unsub
   }
 }

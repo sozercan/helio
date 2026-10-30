@@ -12,11 +12,11 @@ struct PeakQuestionsScroller: View, Equatable {
   static func == (lhs: PeakQuestionsScroller, rhs: PeakQuestionsScroller) -> Bool {
     lhs.selectedQuestion == rhs.selectedQuestion && lhs.prevSelectedQuestion == rhs.prevSelectedQuestion
   }
-  
+
   var peakQuestions: [PeakQuestion]
   var selectedQuestion: PeakQuestion?
   var prevSelectedQuestion: PeakQuestion?
-  var selectQuestion: (PeakQuestion) -> ()
+  var selectQuestion: (PeakQuestion) -> Void
   var ns: Namespace.ID
   var body: some View {
     VStack(alignment: .center) {
@@ -28,7 +28,6 @@ struct PeakQuestionsScroller: View, Equatable {
   }
 }
 
-
 struct PeakQuestionsOverlay: View {
   var peakQuestions: [PeakQuestion]
   @State private var selectedQuestion: PeakQuestion? = nil
@@ -38,13 +37,13 @@ struct PeakQuestionsOverlay: View {
   @State private var scaledDown = false
   @State private var closedSize: CGSize? = nil
   @Namespace private var ns
-  
+
   func toggle(_ q: PeakQuestion) {
     let isSelected = selectedQuestion == q
     Task(priority: .background) {
       Hap.shared.play(intensity: 0.5, sharpness: 0.5)
     }
-      
+
     if isSelected {
       withAnimation(.smooth(duration: isSelected ? 0.25 : 0.35)) {
         scaledDown = !isSelected
@@ -53,13 +52,15 @@ struct PeakQuestionsOverlay: View {
     doThisAfter(isSelected ? 0.1 : 0) {
       withAnimation(.snappy) {
         prevSelectedQuestion = selectedQuestion
-        if !isSelected { scaledDown = !isSelected }
+        if !isSelected {
+          scaledDown = !isSelected
+        }
 //        if !isAnswer { shadow = true }
         selectedQuestion = isSelected ? nil : q
       }
     }
   }
-  
+
   var body: some View {
     VStack(alignment: .center, spacing: 24) {
       if closedSize != nil {
@@ -73,7 +74,7 @@ struct PeakQuestionsOverlay: View {
           .opacity(open ? 1 : 0)
           .allowsHitTesting(open)
       }
-      
+
       HStack(spacing: open ? -3 : 1) {
         Text("Any questions")
           .fontSize(open ? 22 : 18, open ? .bold : .semibold, design: .rounded)
@@ -91,7 +92,7 @@ struct PeakQuestionsOverlay: View {
       .contentShape(Rectangle())
       .measureOnce($closedSize)
       .onTapGesture { withAnimation(.bouncy) { open.toggle() } }
-      .onLongPressGesture(minimumDuration: 0.3, maximumDistance: 30, perform: { }) { val in
+      .onLongPressGesture(minimumDuration: 0.3, maximumDistance: 30, perform: {}) { val in
         Hap.shared.play(intensity: val ? 0.5 : 0.65, sharpness: 0)
         withAnimation(.smooth(duration: 0.2)) { pressed = val }
       }
@@ -104,7 +105,7 @@ struct PeakQuestionsOverlay: View {
     .compositingGroup()
     .opacity(scaledDown ? 0.35 : 1)
     .overlay {
-      RoundedRectangle(cornerRadius: open ? 32 : 24, style: .continuous).stroke(Color.primary.opacity(0.05), lineWidth: 0.5) .padding(.all, 0.5).allowsHitTesting(false)
+      RoundedRectangle(cornerRadius: open ? 32 : 24, style: .continuous).stroke(Color.primary.opacity(0.05), lineWidth: 0.5).padding(.all, 0.5).allowsHitTesting(false)
     }
     .scaleEffect(scaledDown ? 0.95 : 1)
     .brightness(pressed ? 0.1 : 0)
@@ -112,7 +113,11 @@ struct PeakQuestionsOverlay: View {
     .overlay {
       if selectedQuestion != nil {
         Rectangle().fill(Color.hitbox)
-          .onTapGesture { if let selectedQuestion { toggle(selectedQuestion) } }
+          .onTapGesture {
+            if let selectedQuestion {
+              toggle(selectedQuestion)
+            }
+          }
           .transition(.identity)
           .allowsHitTesting(selectedQuestion != nil)
       }
@@ -132,7 +137,7 @@ struct PeakQuestionsOverlay: View {
             .fill(.black.opacity(scaledDown ? 0.35 : 0))
             .allowsHitTesting(false)
         }
-        .scaleEffect(scaledDown ? 0.95 : 1)
+        .scaleEffect(scaledDown ? 0.95 : 1),
     )
     .scaleEffect(1)
     .padding(.bottom, open ? 24 : 44)

@@ -37,7 +37,7 @@ struct EndOfFeedView: View {
       Alert(
         title: Text("Secrets Unveiled"),
         message: Text(QuirkyMessageUtil.quirkyGoAwayMessage()),
-        dismissButton: .default(Text("OK"))
+        dismissButton: .default(Text("OK")),
       )
     }
   }
@@ -51,7 +51,6 @@ struct EndOfFeedView: View {
     }
   }
 }
-
 
 func quirkyEndOfFeed() -> String {
   let quirkyResponses = [
@@ -87,7 +86,7 @@ func quirkyEndOfFeed() -> String {
     "HOW YOU CAN TELL THAT IT'S GOING TO BE A ROTTEN DAY: #15 Your pet rock snaps at you.",
     "Pyros of the world... IGNITE !!!",
     "If God didn't mean for us to juggle, tennis balls wouldn't come three to a can.",
-    "The difference between this place and yogurt is that yogurt has a live culture."
+    "The difference between this place and yogurt is that yogurt has a live culture.",
   ]
 
   return quirkyResponses.randomElement() ?? "End of feed."
@@ -100,7 +99,7 @@ private func quirkyGoAwayMessage() -> String {
     "This is not the tap you're looking for.",
     "Go away, or I will taunt you a second time!",
     "The more you tap, the less you find. Strange, isn't it?",
-    "The secret is a lie."
+    "The secret is a lie.",
   ]
 
   return quirkyResponse.randomElement() ?? "Go away!"

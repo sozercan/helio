@@ -5,19 +5,19 @@
 //  Created by Igor Marcossi on 09/08/23.
 //
 
-import Foundation
 import Defaults
+import Foundation
 import SwiftUI
 
 struct SwipeActionItem: Codable, Hashable, Defaults.Serializable {
   var normal: String
   var active: String
-  
+
   init(normal: String, active: String) {
     self.normal = normal
     self.active = active
   }
-  
+
   init(normal: String) {
     self.normal = normal
     self.active = normal
@@ -26,16 +26,15 @@ struct SwipeActionItem: Codable, Hashable, Defaults.Serializable {
 
 struct SwipeActionsSet: Codable, Defaults.Serializable, Equatable, Hashable, Identifiable {
   static func == (prev: SwipeActionsSet, next: SwipeActionsSet) -> Bool {
-    return prev.id == next.id && prev.leftFirst == next.leftFirst && prev.leftSecond == next.leftSecond && prev.rightFirst == next.rightFirst && prev.rightSecond == next.rightSecond
+    prev.id == next.id && prev.leftFirst == next.leftFirst && prev.leftSecond == next.leftSecond && prev.rightFirst == next.rightFirst && prev.rightSecond == next.rightSecond
   }
+
   var id: String
   var leftFirst: AnySwipeAction
   var leftSecond: AnySwipeAction
   var rightFirst: AnySwipeAction
   var rightSecond: AnySwipeAction
 }
-
-
 
 let allPostSwipeActions: [AnySwipeAction] = [
   AnySwipeAction(UpvotePostAction()),
@@ -44,11 +43,12 @@ let allPostSwipeActions: [AnySwipeAction] = [
   AnySwipeAction(SeenPostAction()),
   AnySwipeAction(FilterSubredditAction()),
   AnySwipeAction(ReplyPostAction()),
-  AnySwipeAction(NoneAction())
+  AnySwipeAction(NoneAction()),
 ]
 
 let allCommentSwipeActions: [AnySwipeAction] = [
-  AnySwipeAction(UpvoteCommentAction()), AnySwipeAction(DownvoteCommentAction()), AnySwipeAction(EditCommentAction()), AnySwipeAction(ReplyCommentAction()), AnySwipeAction(SaveCommentAction()), AnySwipeAction(SelectTextCommentAction()),  AnySwipeAction(CopyCommentAction()), AnySwipeAction(DeleteCommentAction()), AnySwipeAction(CollapseCommentAction()),AnySwipeAction(NoneAction())]
+  AnySwipeAction(UpvoteCommentAction()), AnySwipeAction(DownvoteCommentAction()), AnySwipeAction(EditCommentAction()), AnySwipeAction(ReplyCommentAction()), AnySwipeAction(SaveCommentAction()), AnySwipeAction(SelectTextCommentAction()), AnySwipeAction(CopyCommentAction()), AnySwipeAction(DeleteCommentAction()), AnySwipeAction(CollapseCommentAction()), AnySwipeAction(NoneAction()),
+]
 
 let allSwipeActions = allPostSwipeActions + allCommentSwipeActions
 
@@ -56,23 +56,37 @@ struct AnySwipeAction: Codable, Defaults.Serializable, Identifiable, Hashable, E
   static func == (lhs: AnySwipeAction, rhs: AnySwipeAction) -> Bool {
     lhs.id == rhs.id
   }
-  
+
   func hash(into hasher: inout Hasher) {
     hasher.combine(id)
   }
-  
-  var id: String { return base.id }
-  var label: String { return base.label }
-  var icon: SwipeActionItem { return base.icon }
-  var color: SwipeActionItem { return base.color }
-  var bgColor: SwipeActionItem { return base.bgColor }
-  
+
+  var id: String {
+    base.id
+  }
+
+  var label: String {
+    base.label
+  }
+
+  var icon: SwipeActionItem {
+    base.icon
+  }
+
+  var color: SwipeActionItem {
+    base.color
+  }
+
+  var bgColor: SwipeActionItem {
+    base.bgColor
+  }
+
   let actionClosure: (Any) async -> Void
   let activeClosure: (Any) -> Bool
   let enabledClosure: (Any) -> Bool
-  
+
   private let base: Base
-  
+
   init<T: SwipeAction>(_ base: T) where T: Codable {
     self.base = Base(base)
     self.actionClosure = { entity in
@@ -88,49 +102,49 @@ struct AnySwipeAction: Codable, Defaults.Serializable, Identifiable, Hashable, E
       return base.enabled(entity)
     }
   }
-  
+
   init(from decoder: Decoder) throws {
     let values = try decoder.container(keyedBy: CodingKeys.self)
     let newBase = try values.decode(Base.self, forKey: .base)
     base = newBase
-    
+
     // restore the action and active closures using the SwipeActionProvider
     if let swipeAction = allSwipeActions.first(where: { $0.id == newBase.id }) {
       actionClosure = swipeAction.actionClosure
       activeClosure = swipeAction.activeClosure
       enabledClosure = swipeAction.enabledClosure
     } else {
-      actionClosure = { _ in return }
-      activeClosure = { _ in return false }
-      enabledClosure = { _ in return true }
+      actionClosure = { _ in }
+      activeClosure = { _ in false }
+      enabledClosure = { _ in true }
     }
   }
-  
+
   func encode(to encoder: Encoder) throws {
     var container = encoder.container(keyedBy: CodingKeys.self)
     try container.encode(base, forKey: .base)
   }
-  
+
   func action(_ entity: Any) async {
     await actionClosure(entity)
   }
-  
+
   func active(_ entity: Any) -> Bool {
-    return activeClosure(entity)
+    activeClosure(entity)
   }
-  
+
   func enabled(_ entity: Any) -> Bool {
-    return enabledClosure(entity)
+    enabledClosure(entity)
   }
-  
+
   private struct Base: Codable, Defaults.Serializable {
     var id: String
     var label: String
     var icon: SwipeActionItem
     var color: SwipeActionItem
     var bgColor: SwipeActionItem
-    
-    init<T: SwipeAction>(_ base: T) where T: Codable {
+
+    init(_ base: some SwipeAction & Codable) {
       self.id = base.id
       self.label = base.label
       self.icon = base.icon
@@ -138,7 +152,7 @@ struct AnySwipeAction: Codable, Defaults.Serializable, Identifiable, Hashable, E
       self.bgColor = base.bgColor
     }
   }
-  
+
   enum CodingKeys: String, CodingKey {
     case base
   }
@@ -163,9 +177,17 @@ struct UpvotePostAction: SwipeAction {
   var icon = SwipeActionItem(normal: "arrow.up")
   var color = SwipeActionItem(normal: "FFFFFF")
   var bgColor = SwipeActionItem(normal: "FEA00A", active: "FF463B")
-  func action(_ entity: Post) async { _ = await entity.vote(.up) }
-  func active(_ entity: Post) -> Bool { entity.data?.likes == true }
-  func enabled(_ entity: Post) -> Bool { true }
+  func action(_ entity: Post) async {
+    _ = await entity.vote(.up)
+  }
+
+  func active(_ entity: Post) -> Bool {
+    entity.data?.likes == true
+  }
+
+  func enabled(_ entity: Post) -> Bool {
+    true
+  }
 }
 
 struct DownvotePostAction: SwipeAction {
@@ -174,9 +196,17 @@ struct DownvotePostAction: SwipeAction {
   var icon = SwipeActionItem(normal: "arrow.down")
   var color = SwipeActionItem(normal: "FFFFFF")
   var bgColor = SwipeActionItem(normal: "0B84FE", active: "FF463B")
-  func action(_ entity: Post) async { _ = await entity.vote(.down) }
-  func active(_ entity: Post) -> Bool { entity.data?.likes == false }
-  func enabled(_ entity: Post) -> Bool { true }
+  func action(_ entity: Post) async {
+    _ = await entity.vote(.down)
+  }
+
+  func active(_ entity: Post) -> Bool {
+    entity.data?.likes == false
+  }
+
+  func enabled(_ entity: Post) -> Bool {
+    true
+  }
 }
 
 struct SavePostAction: SwipeAction {
@@ -185,12 +215,18 @@ struct SavePostAction: SwipeAction {
   var icon = SwipeActionItem(normal: "bookmark.fill", active: "bookmark.slash.fill")
   var color = SwipeActionItem(normal: "FFFFFF")
   var bgColor = SwipeActionItem(normal: "2FD058", active: "FF463B")
-  func action(_ entity: Post) async { _ = await entity.saveToggle() }
-  func active(_ entity: Post) -> Bool { entity.data?.saved == true }
-  func enabled(_ entity: Post) -> Bool { true }
+  func action(_ entity: Post) async {
+    _ = await entity.saveToggle()
+  }
+
+  func active(_ entity: Post) -> Bool {
+    entity.data?.saved == true
+  }
+
+  func enabled(_ entity: Post) -> Bool {
+    true
+  }
 }
-
-
 
 struct ReplyPostAction: SwipeAction {
   var id = "reply-post-swipe-action"
@@ -198,9 +234,17 @@ struct ReplyPostAction: SwipeAction {
   var icon = SwipeActionItem(normal: "arrowshape.turn.up.left.fill")
   var color = SwipeActionItem(normal: "0B84FE")
   var bgColor = SwipeActionItem(normal: "353439")
-  func action(_ entity: Post) async { ReplyModalInstance.shared.enable(.post(entity)) }
-  func active(_ entity: Post) -> Bool { false }
-  func enabled(_ entity: Post) -> Bool { true }
+  func action(_ entity: Post) async {
+    ReplyModalInstance.shared.enable(.post(entity))
+  }
+
+  func active(_ entity: Post) -> Bool {
+    false
+  }
+
+  func enabled(_ entity: Post) -> Bool {
+    true
+  }
 }
 
 struct SeenPostAction: SwipeAction {
@@ -209,9 +253,17 @@ struct SeenPostAction: SwipeAction {
   var icon = SwipeActionItem(normal: "eye.fill", active: "eye.slash.fill")
   var color = SwipeActionItem(normal: "0B84FE")
   var bgColor = SwipeActionItem(normal: "353439")
-  func action(_ entity: Post) async { await entity.toggleSeen(optimistic: true) }
-  func active(_ entity: Post) -> Bool { entity.data?.helioSeen ?? false }
-  func enabled(_ entity: Post) -> Bool { true }
+  func action(_ entity: Post) async {
+    await entity.toggleSeen(optimistic: true)
+  }
+
+  func active(_ entity: Post) -> Bool {
+    entity.data?.helioSeen ?? false
+  }
+
+  func enabled(_ entity: Post) -> Bool {
+    true
+  }
 }
 
 struct FilterSubredditAction: SwipeAction {
@@ -227,14 +279,18 @@ struct FilterSubredditAction: SwipeAction {
       }
     }
   }
+
   func active(_ entity: Post) -> Bool {
     if let subreddit = entity.data?.subreddit {
       return Defaults[.filteredSubreddits].contains(subreddit)
     }
-    
+
     return false
   }
-  func enabled(_ entity: Post) -> Bool { true }
+
+  func enabled(_ entity: Post) -> Bool {
+    true
+  }
 }
 
 struct UpvoteCommentAction: SwipeAction {
@@ -243,9 +299,17 @@ struct UpvoteCommentAction: SwipeAction {
   var icon = SwipeActionItem(normal: "arrow.up")
   var color = SwipeActionItem(normal: "FFFFFF")
   var bgColor = SwipeActionItem(normal: "FEA00A", active: "FF463B")
-  func action(_ entity: Comment) async { _ = await entity.vote(action: .up) }
-  func active(_ entity: Comment) -> Bool { entity.data?.likes == true }
-  func enabled(_ entity: Comment) -> Bool { true }
+  func action(_ entity: Comment) async {
+    _ = await entity.vote(action: .up)
+  }
+
+  func active(_ entity: Comment) -> Bool {
+    entity.data?.likes == true
+  }
+
+  func enabled(_ entity: Comment) -> Bool {
+    true
+  }
 }
 
 struct DownvoteCommentAction: SwipeAction {
@@ -257,8 +321,14 @@ struct DownvoteCommentAction: SwipeAction {
   func action(_ entity: Comment) async {
     _ = await entity.vote(action: .down)
   }
-  func active(_ entity: Comment) -> Bool { entity.data?.likes == false }
-  func enabled(_ entity: Comment) -> Bool { true }
+
+  func active(_ entity: Comment) -> Bool {
+    entity.data?.likes == false
+  }
+
+  func enabled(_ entity: Comment) -> Bool {
+    true
+  }
 }
 
 struct ReplyCommentAction: SwipeAction {
@@ -272,8 +342,14 @@ struct ReplyCommentAction: SwipeAction {
       ReplyModalInstance.shared.enable(.comment(entity))
     }
   }
-  func active(_ entity: Comment) -> Bool { false }
-  func enabled(_ entity: Comment) -> Bool { true }
+
+  func active(_ entity: Comment) -> Bool {
+    false
+  }
+
+  func enabled(_ entity: Comment) -> Bool {
+    true
+  }
 }
 
 struct SaveCommentAction: SwipeAction {
@@ -282,9 +358,17 @@ struct SaveCommentAction: SwipeAction {
   var icon = SwipeActionItem(normal: "bookmark.fill", active: "bookmark.slash.fill")
   var color = SwipeActionItem(normal: "FFFFFF")
   var bgColor = SwipeActionItem(normal: "2FD058", active: "FF463B")
-  func action(_ entity: Comment) async { _ = await entity.saveToggle() }
-  func active(_ entity: Comment) -> Bool { entity.data?.saved == true }
-  func enabled(_ entity: Comment) -> Bool { true }
+  func action(_ entity: Comment) async {
+    _ = await entity.saveToggle()
+  }
+
+  func active(_ entity: Comment) -> Bool {
+    entity.data?.saved == true
+  }
+
+  func enabled(_ entity: Comment) -> Bool {
+    true
+  }
 }
 
 struct SelectTextCommentAction: SwipeAction {
@@ -293,9 +377,17 @@ struct SelectTextCommentAction: SwipeAction {
   var icon = SwipeActionItem(normal: "selection.pin.in.out")
   var color = SwipeActionItem(normal: "0B84FE")
   var bgColor = SwipeActionItem(normal: "353439")
-  func action(_ entity: Comment) async { entity.data?.helioSelecting = !(entity.data?.helioSelecting ?? false) }
-  func active(_ entity: Comment) -> Bool { false }
-  func enabled(_ entity: Comment) -> Bool { true }
+  func action(_ entity: Comment) async {
+    entity.data?.helioSelecting = !(entity.data?.helioSelecting ?? false)
+  }
+
+  func active(_ entity: Comment) -> Bool {
+    false
+  }
+
+  func enabled(_ entity: Comment) -> Bool {
+    true
+  }
 }
 
 struct ShareCommentAction: SwipeAction {
@@ -304,11 +396,15 @@ struct ShareCommentAction: SwipeAction {
   var icon = SwipeActionItem(normal: "square.and.arrow.up.fill")
   var color = SwipeActionItem(normal: "0B84FE")
   var bgColor = SwipeActionItem(normal: "353439")
-  func action(_ entity: Comment) async { 
-   
+  func action(_ entity: Comment) async {}
+
+  func active(_ entity: Comment) -> Bool {
+    true
   }
-  func active(_ entity: Comment) -> Bool { true }
-  func enabled(_ entity: Comment) -> Bool { true }
+
+  func enabled(_ entity: Comment) -> Bool {
+    true
+  }
 }
 
 struct CopyCommentAction: SwipeAction {
@@ -317,9 +413,17 @@ struct CopyCommentAction: SwipeAction {
   var icon = SwipeActionItem(normal: "clipboard.fill")
   var color = SwipeActionItem(normal: "0B84FE")
   var bgColor = SwipeActionItem(normal: "353439")
-  func action(_ entity: Comment) async { UIPasteboard.general.string = entity.data?.body ?? "" }
-  func active(_ entity: Comment) -> Bool { false }
-  func enabled(_ entity: Comment) -> Bool { true }
+  func action(_ entity: Comment) async {
+    UIPasteboard.general.string = entity.data?.body ?? ""
+  }
+
+  func active(_ entity: Comment) -> Bool {
+    false
+  }
+
+  func enabled(_ entity: Comment) -> Bool {
+    true
+  }
 }
 
 struct EditCommentAction: SwipeAction {
@@ -328,9 +432,17 @@ struct EditCommentAction: SwipeAction {
   var icon = SwipeActionItem(normal: "pencil")
   var color = SwipeActionItem(normal: "0B84FE")
   var bgColor = SwipeActionItem(normal: "353439")
-  func action(_ entity: Comment) async { ReplyModalInstance.shared.enable(.commentEdit(entity)) }
-  func active(_ entity: Comment) -> Bool { false }
-  func enabled(_ entity: Comment) -> Bool { entity.data?.author == entity.redditAPI.me?.data?.name }
+  func action(_ entity: Comment) async {
+    ReplyModalInstance.shared.enable(.commentEdit(entity))
+  }
+
+  func active(_ entity: Comment) -> Bool {
+    false
+  }
+
+  func enabled(_ entity: Comment) -> Bool {
+    entity.data?.author == entity.redditAPI.me?.data?.name
+  }
 }
 
 struct DeleteCommentAction: SwipeAction {
@@ -339,9 +451,17 @@ struct DeleteCommentAction: SwipeAction {
   var icon = SwipeActionItem(normal: "trash")
   var color = SwipeActionItem(normal: "FFFFFF")
   var bgColor = SwipeActionItem(normal: "FF463B")
-  func action(_ entity: Comment) async { _ = await entity.del() }
-  func active(_ entity: Comment) -> Bool { false }
-  func enabled(_ entity: Comment) -> Bool { entity.data?.author == entity.redditAPI.me?.data?.name }
+  func action(_ entity: Comment) async {
+    _ = await entity.del()
+  }
+
+  func active(_ entity: Comment) -> Bool {
+    false
+  }
+
+  func enabled(_ entity: Comment) -> Bool {
+    entity.data?.author == entity.redditAPI.me?.data?.name
+  }
 }
 
 struct CollapseCommentAction: SwipeAction {
@@ -350,9 +470,17 @@ struct CollapseCommentAction: SwipeAction {
   var icon = SwipeActionItem(normal: "eye.slash.fill")
   var color = SwipeActionItem(normal: "FFFFFF")
   var bgColor = SwipeActionItem(normal: "FEA00A", active: "FF463B")
-  func action(_ entity: Comment) async { entity.toggleCollapsed(optimistic: true) }
-  func active(_ entity: Comment) -> Bool { false }
-  func enabled(_ entity: Comment) -> Bool { true }
+  func action(_ entity: Comment) async {
+    entity.toggleCollapsed(optimistic: true)
+  }
+
+  func active(_ entity: Comment) -> Bool {
+    false
+  }
+
+  func enabled(_ entity: Comment) -> Bool {
+    true
+  }
 }
 
 struct NoneAction: SwipeAction {
@@ -361,9 +489,14 @@ struct NoneAction: SwipeAction {
   var icon = SwipeActionItem(normal: "circle.dashed")
   var color = SwipeActionItem(normal: "7F7F80")
   var bgColor = SwipeActionItem(normal: "000000")
-  func action(_ entity: Comment) async { }
-  func active(_ entity: Comment) -> Bool { false }
-  func enabled(_ entity: Comment) -> Bool { false }
+  func action(_ entity: Comment) async {}
+  func active(_ entity: Comment) -> Bool {
+    false
+  }
+
+  func enabled(_ entity: Comment) -> Bool {
+    false
+  }
 }
 
 /// MessageLink's fixed swipe action. Not user-configurable, so it isn't listed in `allSwipeActions`.
@@ -373,7 +506,15 @@ struct ToggleReadMessageAction: SwipeAction {
   var icon = SwipeActionItem(normal: "eye.fill", active: "eye.slash.fill")
   var color = SwipeActionItem(normal: "FFFFFF")
   var bgColor = SwipeActionItem(normal: "0B84FE")
-  func action(_ entity: Message) async { _ = await entity.toggleRead() }
-  func active(_ entity: Message) -> Bool { !(entity.data?.new ?? false) }
-  func enabled(_ entity: Message) -> Bool { true }
+  func action(_ entity: Message) async {
+    _ = await entity.toggleRead()
+  }
+
+  func active(_ entity: Message) -> Bool {
+    !(entity.data?.new ?? false)
+  }
+
+  func enabled(_ entity: Message) -> Bool {
+    true
+  }
 }

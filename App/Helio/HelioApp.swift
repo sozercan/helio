@@ -6,8 +6,8 @@
 //  strings, Core Data model, shaders, media). Everything else lives in HelioKit.
 //
 
-import SwiftUI
 import HelioKit
+import SwiftUI
 
 @main
 struct HelioApp: App {

@@ -5,8 +5,8 @@
 //  Imports the read posts stored in an Apollo backup (`ReadPostIDs` in preferences.plist).
 //
 
-import Foundation
 import CoreData
+import Foundation
 import Zip
 
 enum ApolloReadHistoryImportError: LocalizedError {
@@ -41,7 +41,11 @@ enum ApolloReadHistory {
 
   static func postIDs(inBackupAt url: URL) throws -> (ids: [String], invalid: Int) {
     let didAccess = url.startAccessingSecurityScopedResource()
-    defer { if didAccess { url.stopAccessingSecurityScopedResource() } }
+    defer {
+      if didAccess {
+        url.stopAccessingSecurityScopedResource()
+      }
+    }
 
     switch url.pathExtension.lowercased() {
     case "plist":
@@ -77,8 +81,12 @@ enum ApolloReadHistory {
     var ids: [String] = []
     var invalid = 0
     for rawID in rawIDs {
-      guard let id = postID(rawID) else { invalid += 1; continue }
-      if seen.insert(id).inserted { ids.append(id) }
+      guard let id = postID(rawID) else { invalid += 1
+        continue
+      }
+      if seen.insert(id).inserted {
+        ids.append(id)
+      }
     }
     return (ids, invalid)
   }
@@ -86,7 +94,9 @@ enum ApolloReadHistory {
   /// Bare base-36 post id, without a "t3_" prefix.
   static func postID(_ raw: String) -> String? {
     var id = raw.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
-    if id.hasPrefix("t3_") { id.removeFirst(3) }
+    if id.hasPrefix("t3_") {
+      id.removeFirst(3)
+    }
     guard !id.isEmpty, id.allSatisfy({ $0.isASCII && ($0.isLetter || $0.isNumber) }) else { return nil }
     return id
   }
@@ -99,10 +109,10 @@ enum ApolloReadHistory {
     return try await context.perform(schedule: .enqueued) {
       var added = 0
       for start in stride(from: 0, to: ids.count, by: 500) {
-        let chunk = Array(ids[start..<min(start + 500, ids.count)])
+        let chunk = Array(ids[start ..< min(start + 500, ids.count)])
         let fetchRequest = NSFetchRequest<SeenPost>(entityName: "SeenPost")
         fetchRequest.predicate = NSPredicate(format: "postID IN %@", chunk)
-        let existing = Set(try context.fetch(fetchRequest).compactMap(\.postID))
+        let existing = try Set(context.fetch(fetchRequest).compactMap(\.postID))
         for id in chunk where !existing.contains(id) {
           SeenPost(context: context).postID = id
           added += 1

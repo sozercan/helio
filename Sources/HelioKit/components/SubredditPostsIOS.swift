@@ -5,16 +5,15 @@
 //  Created by Igor Marcossi on 28/09/23.
 //
 
-import SwiftUI
 import Defaults
 import NukeUI
+import SwiftUI
 
-
-//struct SubredditPostsIOS: View, Equatable {
+// struct SubredditPostsIOS: View, Equatable {
 //  static func == (lhs: SubredditPostsIOS, rhs: SubredditPostsIOS) -> Bool {
 //    lhs.posts.count == rhs.posts.count && lhs.subreddit?.id == rhs.subreddit?.id && lhs.searchText == rhs.searchText && lhs.selectedTheme == rhs.selectedTheme && lhs.lastPostAfter == rhs.lastPostAfter && lhs.filter == rhs.filter && lhs.loading == rhs.loading &&
 //  }
-//  
+//
 //  var showSub = false
 //  var lastPostAfter: String?
 //  weak var subreddit: Subreddit?
@@ -28,14 +27,14 @@ import NukeUI
 //  var fetch: (Bool, String?, Bool) -> ()
 //  var selectedTheme: HelioTheme
 //  var loading: Bool
-//  
+//
 //  @Binding var reachedEndOfFeed: Bool
-//  
+//
 //  @Default(.PostLinkDefSettings) private var postLinkDefSettings
 //  @Default(.SubredditFeedDefSettings) private var feedDefSettings
-//  
+//
 //  @Environment(\.contentWidth) private var contentWidth
-//  
+//
 //  func loadMorePosts() {
 //    if !searchText.isEmpty {
 //      fetch(true, searchText, true)
@@ -43,13 +42,13 @@ import NukeUI
 //      fetch(true, nil, true)
 //    }
 //  }
-//  
+//
 //  var body: some View {
 //    let isThereDivider = selectedTheme.postLinks.divider.style != .no
 //    let isFiltered = filter != "flair:All"
 //    let paddingH = selectedTheme.postLinks.theme.outerHPadding
 //    let paddingV = selectedTheme.postLinks.spacing / (isThereDivider ? 4 : 2)
-//    
+//
 //    List {
 //      Section {
 //        ForEach(Array(posts.enumerated()), id: \.self.element.id) { i, post in
@@ -63,14 +62,14 @@ import NukeUI
 //              }
 //              .listRowInsets(EdgeInsets(top: paddingV, leading: paddingH, bottom: paddingV, trailing: paddingH))
 //          }
-//          
+//
 //          if isThereDivider && (i != (posts.count - 1) || isFiltered) {
 //            NiceDivider(divider: selectedTheme.postLinks.divider)
 //              .id("\(post.id)-divider")
 //              .listRowInsets(EdgeInsets(top: 0, leading: 0, bottom: 0, trailing: 0))
 //          }
 //        }
-//        
+//
 //        if isFiltered && posts.count == 0 {
 //          Text("No filtered posts")
 //            .frame(maxWidth: .infinity)
@@ -79,7 +78,7 @@ import NukeUI
 //            .padding(.vertical, 24)
 //            .background(RR(12, Color.primary.opacity(0.1)))
 //        }
-//        
+//
 //        if isFiltered && !loading && !reachedEndOfFeed  {
 //          Button(action: {
 //            loadMorePosts()
@@ -92,7 +91,7 @@ import NukeUI
 //              .padding(.bottom, 48)
 //          }
 //        }
-//        
+//
 //        if reachedEndOfFeed {
 //          EndOfFeedView()
 //        }
@@ -100,7 +99,7 @@ import NukeUI
 //      .listRowSeparator(.hidden)
 //      .listSectionSeparator(.hidden)
 //      .listRowBackground(Color.clear)
-//      
+//
 //      Section {
 //        if loading {
 //          ProgressView()
@@ -121,4 +120,4 @@ import NukeUI
 //    .listSectionSeparator(.hidden)
 ////    .floatingMenu(subId: subreddit?._id ?? "", filters: filters, selected: filter, filterCallback: filterCallback, searchText: searchText, searchCallback: searchCallback, customFilterCallback: editCustomFilter)
 //  }
-//}
+// }

@@ -1,5 +1,5 @@
 //
-//  ListLoader.swift
+//  loader.swift
 //  Helio
 //
 //  Created by Igor Marcossi on 07/08/23.
@@ -8,7 +8,7 @@
 import SwiftUI
 
 extension View {
-  func loader(_ loading: Bool, _ hideSpinner: Bool = false, _ onAppear: (()->())? = nil) -> some View {
+  func loader(_ loading: Bool, _ hideSpinner: Bool = false, _ onAppear: (() -> Void)? = nil) -> some View {
     self
       .overlay(
         Group {
@@ -17,7 +17,7 @@ extension View {
               .frame(.screenSize)
               .ignoresSafeArea()
               .onAppear {
-                if let onAppear = onAppear {
+                if let onAppear {
                   onAppear()
                 }
               }
@@ -27,14 +27,12 @@ extension View {
               .frame(.screenSize)
               .ignoresSafeArea()
               .onAppear {
-                if let onAppear = onAppear {
+                if let onAppear {
                   onAppear()
                 }
               }
-          } else {
-            EmptyView()
           }
-        }
+        },
       )
   }
 }

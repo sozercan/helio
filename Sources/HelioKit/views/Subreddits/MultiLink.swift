@@ -5,13 +5,13 @@
 //  Created by Igor Marcossi on 20/08/23.
 //
 
-import SwiftUI
 import Popovers
+import SwiftUI
 
 struct MultiLink: View {
   var multi: Multi
   @State private var subs: [Subreddit] = []
-  
+
   var body: some View {
     Menu {
       ForEach(subs) { sub in
@@ -37,9 +37,11 @@ struct MultiLink: View {
       Nav.to(.reddit(.multiFeed(multi)))
     }
     .onAppear {
-      if subs.count == 0 {
+      if subs.isEmpty {
         subs = multi.data?.subreddits?.compactMap { sub in
-          if let data = sub.data { return Subreddit(data: data) }
+          if let data = sub.data {
+            return Subreddit(data: data)
+          }
           return nil
         } ?? []
       }

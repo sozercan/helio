@@ -7,10 +7,8 @@
 
 import SwiftUI
 
-
-
 struct OnboardingWelcome: View {
-  var nextStep: ()->()
+  var nextStep: () -> Void
   @State var showMark = false
   @State var showHello = false
   @State var showAppName = false
@@ -23,7 +21,7 @@ struct OnboardingWelcome: View {
           AppMark(size: 128)
             .transition(.scaleAndBlur)
         }
-        
+
         VStack(spacing: -2) {
           if showHello {
             Text("Hello!")
@@ -31,13 +29,13 @@ struct OnboardingWelcome: View {
               .fontSize(20, .medium)
               .transition(.scaleAndBlur)
           }
-          
+
           if showAppName {
             (Text("I'm ").font(Font.system(size: 24, weight: .semibold)).foregroundColor(.primary.opacity(0.75)) + Text("Helio").font(Font.system(size: 34, weight: .bold)).foregroundColor(.yellow))
               .transition(.scaleAndBlur)
           }
         }
-        
+
         if showText {
           Text("I'm a beautiful client (made with A BUNCH of love) for Reddit where you can use your own API key.")
             .fixedSize(horizontal: false, vertical: true)
@@ -45,14 +43,12 @@ struct OnboardingWelcome: View {
             .transition(.opacity)
         }
       }
-        
-        if showBtn {
-          MasterButton(label: "👋 Hi, Helio!", colorHoverEffect: .animated, textSize: 18, height: 48, cornerRadius: 16, action: nextStep)
-            .padding(.top, 16)
-            .transition(.scaleAndBlur)
-        }
-      
 
+      if showBtn {
+        MasterButton(label: "👋 Hi, Helio!", colorHoverEffect: .animated, textSize: 18, height: 48, cornerRadius: 16, action: nextStep)
+          .padding(.top, 16)
+          .transition(.scaleAndBlur)
+      }
     }
     .multilineTextAlignment(.center)
     .frame(maxWidth: .infinity)
@@ -79,7 +75,7 @@ struct OnboardingWelcome: View {
 }
 
 struct OnboardingWelcomeWrapper: View {
-  var nextStep: ()->()
+  var nextStep: () -> Void
 
   var body: some View {
     VStack {
@@ -87,9 +83,10 @@ struct OnboardingWelcomeWrapper: View {
     }
   }
 }
+
 //
-//struct OnboardingWelcome_Previews: PreviewProvider {
+// struct OnboardingWelcome_Previews: PreviewProvider {
 //  static var previews: some View {
 //    OnboardingWelcome()
 //  }
-//}
+// }

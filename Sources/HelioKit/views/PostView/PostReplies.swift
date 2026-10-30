@@ -5,9 +5,9 @@
 //  Created by Igor Marcossi on 31/07/23.
 //
 
-import SwiftUI
 import Defaults
-  
+import SwiftUI
+
 struct PostReplies: View {
   var update: Bool
   var post: Post
@@ -18,17 +18,17 @@ struct PostReplies: View {
   var proxy: ScrollViewProxy
   var geometryReader: GeometryProxy
   @Environment(\.useTheme) private var selectedTheme
-  
-  
+
   // MARK: Properties related to comment skipper
+
   @Binding var topVisibleCommentId: String?
   @Binding var previousScrollTarget: String?
   @Binding var comments: [Comment]
-  
+
   @State private var seenComments: String?
   @State private var loading = true
   @Environment(\.globalLoaderDismiss) private var globalLoaderDismiss
-  
+
   func asyncFetch(_ full: Bool, _ altIgnoreSpecificComment: Bool? = nil) async {
     if let result = await post.refreshPost(commentID: (altIgnoreSpecificComment ?? ignoreSpecificComment) ? nil : highlightID, sort: sort, after: nil, subreddit: subreddit.data?.display_name ?? subreddit.id, full: full), let newComments = result.0 {
       Task(priority: .background) {
@@ -60,7 +60,7 @@ struct PostReplies: View {
       }
     }
   }
-  
+
   var body: some View {
     let theme = selectedTheme.comments
     let horPad = theme.theme.outerHPadding
@@ -97,14 +97,14 @@ struct PostReplies: View {
         .listRowBackground(Color.clear)
         .listRowInsets(EdgeInsets(top: 0, leading: 0, bottom: 0, trailing: 0))
       }
-      
+
       if loading {
         ProgressView()
           .progressViewStyle(.circular)
-          .frame(maxWidth: .infinity, minHeight: 100 )
+          .frame(maxWidth: .infinity, minHeight: 100)
           .listRowBackground(Color.clear)
           .onAppear {
-            if comments.count == 0 || post.data == nil {
+            if comments.isEmpty || post.data == nil {
               Task(priority: .background) {
                 await asyncFetch(post.data == nil)
               }
@@ -112,7 +112,7 @@ struct PostReplies: View {
             withAnimation { seenComments = post.helioData?.seenComments }
           }
           .id("loading-comments")
-      } else if comments.count == 0 {
+      } else if comments.isEmpty {
         Text(QuirkyMessageUtil.noCommentsFoundMessage())
           .frame(maxWidth: .infinity, minHeight: 300)
           .opacity(0.25)

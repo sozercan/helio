@@ -5,18 +5,16 @@
 //  Created by Igor Marcossi on 14/09/23.
 //
 
-import SwiftUI
 import PhotosUI
-
+import SwiftUI
 
 struct ImageThemePicker: View {
-  
   var label: String
   @Binding var image: String
   @State var uiImage: UIImage?
-  
+
   @State private var selectedItem: PhotosPickerItem? = nil
-//  @State private var selectedImageData: Data? = nil
+  ///  @State private var selectedImageData: Data? = nil
   var body: some View {
     HStack {
       Text(label)
@@ -37,22 +35,22 @@ struct ImageThemePicker: View {
         PhotosPicker(
           selection: $selectedItem,
           matching: .images,
-          photoLibrary: .shared()
+          photoLibrary: .shared(),
         ) {
           Rectangle()
             .fill(.clear)
         }
-          .onChange(of: selectedItem) { newItem in
-            Task {
-              // Retrieve selected asset in the form of Data
-              if let data = try? await newItem?.loadTransferable(type: Data.self), let uiImg = UIImage(data: data) {
-//                selectedImageData = data
-                if let imgName = saveImage(image: uiImg) {
-                  image = imgName
-                }
-              }
+        .onChange(of: selectedItem) { newItem in
+          Task {
+            // Retrieve selected asset in the form of Data
+            if let data = try? await newItem?.loadTransferable(type: Data.self), let uiImg = UIImage(data: data),
+               //                selectedImageData = data
+               let imgName = saveImage(image: uiImg)
+            {
+              image = imgName
             }
           }
+        },
       )
     }
     .onAppear {
@@ -60,4 +58,3 @@ struct ImageThemePicker: View {
     }
   }
 }
-

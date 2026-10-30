@@ -5,8 +5,8 @@
 //  Created by Igor Marcossi on 07/09/23.
 //
 
-import SwiftUI
 import Defaults
+import SwiftUI
 
 private enum Category: String, CaseIterable {
   case card, texts, badge
@@ -17,21 +17,22 @@ struct PostLinkThemingPanel: View {
   var previewPostSample: Post
   @State private var selectedCategory = "card"
   @State private var previewPostSubSample = Subreddit(id: postSampleData.subreddit)
-  
+
   @Default(.PostLinkDefSettings) private var postLinkDefSettings
-  
+
   @Environment(\.contentWidth) private var contentWidth
   /// The panel's own width: in an iPad form sheet it's narrower than the window.
   @State private var panelWidth: Double = 0
-  private var previewWidth: Double { panelWidth > 0 ? panelWidth : contentWidth }
-  
+  private var previewWidth: Double {
+    panelWidth > 0 ? panelWidth : contentWidth
+  }
+
   var body: some View {
-    
 //    ScrollWithPreview(theme: theme.postLinks.bg) {
     ScrollWithPreview(theme: theme.postLinks.bg) {
       VStack(alignment: .trailing, spacing: 24) {
-        TagsOptionsCarousel($selectedCategory, (Category.allCases.map { $0.rawValue }))
-        
+        TagsOptionsCarousel($selectedCategory, Category.allCases.map(\.rawValue))
+
         switch selectedCategory {
         case "card":
           CardSettings(theme: $theme.postLinks.theme)
@@ -42,13 +43,11 @@ struct PostLinkThemingPanel: View {
         default:
           EmptyView()
         }
-        
       }
 //      .animation(nil, value: selectedCategory)
       .padding(.top, 12)
       .padding(.bottom, 12)
     } preview: {
-      
       VStack {
         if let helioData = previewPostSample.helioData {
           PostLink(id: previewPostSample.id, theme: theme.postLinks, showSub: true, secondary: false, compactPerSubreddit: nil, contentWidth: previewWidth, defSettings: postLinkDefSettings)
@@ -57,11 +56,11 @@ struct PostLinkThemingPanel: View {
             .environment(\.contextSubreddit, previewPostSubSample)
             .environment(\.contextPostHelioData, helioData)
 //          .environment(\.useTheme, theme)
-          .allowsHitTesting(false)
+            .allowsHitTesting(false)
         }
       }
       .fixedSize(horizontal: false, vertical: true)
-      
+
       FakeSection("Options") {
         HStack {
           Toggle("Seen", isOn: Binding(get: {
@@ -80,8 +79,6 @@ struct PostLinkThemingPanel: View {
         }
         .padding(.horizontal, 16)
       }
-      
-      
     }
     .onAppear { previewPostSample.setupHelioData(helioData: previewPostSample.helioData, contentWidth: previewWidth, theme: theme) }
     .onChange(of: theme) { x in previewPostSample.setupHelioData(helioData: previewPostSample.helioData, contentWidth: previewWidth, theme: x) }

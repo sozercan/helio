@@ -5,14 +5,14 @@
 //  Created by Igor Marcossi on 28/06/23.
 //
 
-import Foundation
 import Alamofire
-import Defaults
-import SwiftUI
 import CoreData
+import Defaults
+import Foundation
+import SwiftUI
 
 func cleanSubs(_ subs: [ListingChild<SubredditData>]) -> [ListingChild<SubredditData>] {
-  return subs.compactMap({ y in
+  subs.compactMap { y in
     var x = y
     x.data?.description = ""
     x.data?.description_html = ""
@@ -21,28 +21,27 @@ func cleanSubs(_ subs: [ListingChild<SubredditData>]) -> [ListingChild<Subreddit
     x.data?.submit_text_html = ""
     x.data?.submit_text = ""
     return x
-  })
+  }
 }
 
 extension RedditAPI {
-  
   func fetchAllSubs(after: String? = nil, accumulatedSubs: [ListingChild<SubredditData>]? = nil) async -> [ListingChild<SubredditData>]? {
     // Base case: If 'after' is nil and some subs are already accumulated, simply return them.
-    if let after = after, after.isEmpty, let accumulatedSubs = accumulatedSubs {
+    if let after, after.isEmpty, let accumulatedSubs {
       return accumulatedSubs
     }
-    
+
     guard let _ = Defaults[.GeneralDefSettings].redditCredentialSelectedID else { return [] }
-    
+
     let params = FetchSubsPayload(limit: 100, after: after)
-    
+
     switch await self.doRequest("\(RedditAPI.redditApiURLBase)/subreddits/mine/subscriber.json", method: .get, params: params, paramsLocation: .queryString, decodable: Listing<SubredditData>.self) {
-    case .success(let data):
+    case let .success(data):
       var newAccumulatedSubs = accumulatedSubs ?? []
       if let fetchedSubs = data.data?.children {
         newAccumulatedSubs += fetchedSubs.filter { $0.data?.subreddit_type != "user" }
       }
-      
+
       if let dataAfter = data.data?.after, !dataAfter.isEmpty {
         // Recursive call with the new 'after' value and the updated accumulated subs.
         return await fetchAllSubs(after: dataAfter, accumulatedSubs: newAccumulatedSubs)
@@ -50,16 +49,16 @@ extension RedditAPI {
         // All subs fetched, return the accumulated result
         return newAccumulatedSubs
       }
-    case .failure(let error):
+    case let .failure(error):
       print(error)
       return accumulatedSubs
     }
   }
-  
+
   func updateSubsInCoreData(with subs: [ListingChild<SubredditData>]) async {
     guard let credentialID = Defaults[.GeneralDefSettings].redditCredentialSelectedID else { return }
     let context = PersistenceController.shared.container.newBackgroundContext()
-    
+
     await context.perform(schedule: .enqueued) {
       let fetchRequest = NSFetchRequest<CachedSub>(entityName: "CachedSub")
       fetchRequest.predicate = NSPredicate(format: "helioCredentialID == %@", credentialID as CVarArg)
@@ -79,7 +78,7 @@ extension RedditAPI {
         }
         let dedupedResults = Array(seenUUIDs.values)
 
-        for sub in subs.compactMap({ $0.data }) {
+        for sub in subs.compactMap(\.data) {
           if let existingSub = dedupedResults.first(where: { $0.uuid == sub.name }) {
             existingSub.update(data: sub, credentialID: credentialID)
           } else {
@@ -90,12 +89,12 @@ extension RedditAPI {
 
         // Delete CachedSubs not present in the fetched subs
         let currentSubsSet = Set(subs.compactMap { $0.data?.name })
-        dedupedResults.forEach { cachedSub in
+        for cachedSub in dedupedResults {
           if !currentSubsSet.contains(cachedSub.uuid ?? "") {
             context.delete(cachedSub)
           }
         }
-        
+
         // Save changes
         try withAnimation {
           try context.save()
@@ -105,14 +104,13 @@ extension RedditAPI {
       }
     }
   }
-  
+
   func fetchSubsAndSyncCoreData() async {
     if let fetchedSubs = await fetchAllSubs() {
       await updateSubsInCoreData(with: fetchedSubs)
     }
   }
-  
-  
+
   //  func fetchSubs(after: String? = nil) async -> [ListingChild<SubredditData>]? {
   //    guard let currentCredentialID = Defaults[.GeneralDefSettings].redditCredentialSelectedID else { return [] }
   //
@@ -170,7 +168,7 @@ extension RedditAPI {
   //      return nil
   //    }
   //  }
-  
+
   struct FetchSubsPayload: Codable {
     var limit: Int
     var after: String?

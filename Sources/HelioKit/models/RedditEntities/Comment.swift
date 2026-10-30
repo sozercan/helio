@@ -1,15 +1,15 @@
 //
-//  CommentData.swift
+//  Comment.swift
 //  Helio
 //
 //  Created by Igor Marcossi on 28/06/23.
 //
 
-import Foundation
-import Defaults
-import SwiftUI
 import CoreData
+import Defaults
+import Foundation
 import NukeUI
+import SwiftUI
 
 typealias Comment = GenericRedditEntity<CommentData, CommentHelioData>
 
@@ -24,11 +24,13 @@ enum CommentParentElement {
 
 extension Comment {
   static var prefix = "t1"
-  var selfPrefix: String { Self.prefix }
-  
+  var selfPrefix: String {
+    Self.prefix
+  }
+
   convenience init(data: T, kind: String? = nil, parent: [GenericRedditEntity<T, B>]? = nil) {
     self.init(data: data, typePrefix: "\(Comment.prefix)_")
-    if let parent = parent {
+    if let parent {
       self.parentHelio = parent
     }
     self.setupHelioData()
@@ -36,27 +38,26 @@ extension Comment {
 
     if let replies = self.data?.replies {
       switch replies {
-      case .first(_):
+      case .first:
         break
-      case.second(let listing):
+      case let .second(listing):
         self.childrenHelio = listing.data?.children?.compactMap { x in
           if let innerData = x.data {
-            let newComment = Comment(data: innerData, kind: x.kind, parent: self.childrenHelio)
-            return newComment
+            return Comment(data: innerData, kind: x.kind, parent: self.childrenHelio)
           }
           return nil
         } ?? []
       }
     }
   }
-  
+
   func setupHelioData() {
     self.helioData = .init()
 //    guard let helioData = self.helioData, let data = self.data else { return }
 //    let theme = InMemoryTheme.shared.currentTheme.comments.theme
 //    let cs: ColorScheme = UIScreen.main.traitCollection.userInterfaceStyle == .dark ? .dark : .light
   }
-  
+
   convenience init(message: Message) throws {
     if let message = message.data {
       var commentData = CommentData(id: message.id)
@@ -101,13 +102,16 @@ extension Comment {
       throw RandomErr.oops
     }
   }
-  
+
   static func initMultiple(datas: [ListingChild<T>], parent: [GenericRedditEntity<T, B>]? = nil) -> [Comment] {
     let comments = datas.compactMap { x in
-      x.data.map { Comment.init(data: $0, kind: x.kind, parent: parent) }
+      x.data.map { Comment(data: $0, kind: x.kind, parent: parent) }
     }
     func walk(_ comments: [Comment], _ body: (Comment) -> Void) {
-      comments.forEach { body($0); walk($0.childrenHelio, body) }
+      for comment in comments {
+        body(comment)
+        walk(comment.childrenHelio, body)
+      }
     }
     var ids: [String] = []
     walk(comments) { ids.append($0.id) }
@@ -118,11 +122,15 @@ extension Comment {
     let collapsedIDs = context.performAndWait { Set(((try? context.fetch(fetchRequest)) ?? []).compactMap(\.commentID)) }
     // Keep Reddit's own collapsed flag (low score, crowd control) unless the user collapsed it.
     if !collapsedIDs.isEmpty {
-      walk(comments) { if collapsedIDs.contains($0.id) { $0.data?.collapsed = true } }
+      walk(comments) {
+        if collapsedIDs.contains($0.id) {
+          $0.data?.collapsed = true
+        }
+      }
     }
     return comments
   }
-  
+
   /// Collapses or expands the comment (toggles when `collapsed` is nil) and stores the result.
   /// The record follows the new state: Reddit can collapse a comment that has no record.
   func toggleCollapsed(_ collapsed: Bool? = nil, optimistic: Bool = false) {
@@ -158,18 +166,17 @@ extension Comment {
       }
     }
   }
-  
+
   func loadChildren(parent: CommentParentElement, postFullname: String, avatarSize: Double, post: Post?) async {
-    if let kind = kind, kind == "more", let data = data, let count = data.count, let parent_id = data.parent_id, let childrenIDS = data.children {
+    if let kind, kind == "more", let data, let count = data.count, let parent_id = data.parent_id, let childrenIDS = data.children {
       let actualID = id
       //      if actualID.hasSuffix("-more") {
       //        actualID.removeLast(5)
       //      }
-      
+
       let childrensLimit = 25
-      
+
       if let children = await RedditAPI.shared.fetchMoreReplies(comments: count > 0 ? Array(childrenIDS.prefix(childrensLimit)) : [String(parent_id.dropFirst(3))], moreID: actualID, postFullname: postFullname, dropFirst: count == 0) {
-        
         let parentID = data.parent_id ?? ""
         //        switch parent {
         //        case .comment(let comment):
@@ -181,17 +188,17 @@ extension Comment {
         //            parentID = postID
         //          }
         //        }
-        
+
         let loadedComments: [Comment] = nestComments(children, parentID: parentID)
-        
+
         Task(priority: .background) { [loadedComments] in
           await RedditAPI.shared.updateCommentsWithAvatar(comments: loadedComments, avatarSize: avatarSize)
           await post?.saveMoreComments(comments: loadedComments)
         }
-        
+
         await MainActor.run { [loadedComments] in
           switch parent {
-          case .comment(let comment):
+          case let .comment(comment):
             if let index = comment.childrenHelio.firstIndex(where: { $0.id == id }) {
               withAnimation {
                 if (self.data?.children?.count ?? 0) <= 25 {
@@ -205,7 +212,7 @@ extension Comment {
                 comment.childrenHelio.insert(contentsOf: loadedComments, at: index)
               }
             }
-          case .post(let postArr):
+          case let .post(postArr):
             if let index = postArr.wrappedValue.firstIndex(where: { $0.id == id }) {
               withAnimation {
                 if (self.data?.children?.count ?? 0) <= 25 {
@@ -224,11 +231,11 @@ extension Comment {
       }
     }
   }
-  
+
   func reply(_ text: String) async -> Bool {
     if let fullname = data?.name {
       let result = await RedditAPI.shared.newReply(text, fullname) ?? false
-      if result, let data = data {
+      if result, let data {
         var newComment = CommentData(id: UUID().uuidString)
         newComment.subreddit_id = data.subreddit_id
         newComment.subreddit = data.subreddit
@@ -273,9 +280,9 @@ extension Comment {
     }
     return false
   }
-  
+
   func saveToggle() async -> Bool {
-    if let data = data, let fullname = data.name {
+    if let data, let fullname = data.name {
       let prev = data.saved ?? false
       await MainActor.run {
         withAnimation {
@@ -295,7 +302,7 @@ extension Comment {
     }
     return false
   }
-  
+
   func vote(action: RedditAPI.VoteAction) async -> Bool? {
     let oldLikes = data?.likes
     let oldUps = data?.ups ?? 0
@@ -318,9 +325,9 @@ extension Comment {
     }
     return result
   }
-  
+
   func edit(_ newBody: String) async -> Bool? {
-    if let data = data, let name = data.name {
+    if let data, let name = data.name {
       //      let oldBody = data.body
       //      await MainActor.run {
       //        withAnimation {
@@ -328,7 +335,7 @@ extension Comment {
       //        }
       //      }
       let result = await RedditAPI.shared.edit(fullname: name, newText: newBody)
-      if (result ?? false) {
+      if result ?? false {
         await MainActor.run {
           withAnimation {
             self.data?.body = newBody
@@ -346,17 +353,15 @@ extension Comment {
     }
     return nil
   }
-  
+
   func del() async -> Bool? {
     if let name = data?.name {
       let result = await RedditAPI.shared.delete(fullname: name)
-      if (result ?? false) {
-        if let parentHelio = self.parentHelio {
-          let newParent = parentHelio.filter { $0.id != id }
-          await MainActor.run {
-            withAnimation {
-              self.parentHelio = newParent
-            }
+      if result ?? false, let parentHelio = self.parentHelio {
+        let newParent = parentHelio.filter { $0.id != id }
+        await MainActor.run {
+          withAnimation {
+            self.parentHelio = newParent
           }
         }
       }
@@ -368,16 +373,18 @@ extension Comment {
 
 @Observable
 class CommentHelioData: Hashable {
-  static func == (lhs: CommentHelioData, rhs: CommentHelioData) -> Bool { lhs.avatarImageRequest?.url == rhs.avatarImageRequest?.url }
-  
+  static func == (lhs: CommentHelioData, rhs: CommentHelioData) -> Bool {
+    lhs.avatarImageRequest?.url == rhs.avatarImageRequest?.url
+  }
+
   //  var permaURL: URL? = nil
   //  @Published var extractedMedia: MediaExtractedType? = nil
   //  var subreddit: Subreddit?
   //  @Published var mediaImageRequest: [ImageRequest] = []
-  var avatarImageRequest: ImageRequest? = nil
+  var avatarImageRequest: ImageRequest?
   var commentBodySize: CGSize = .zero
   var bodyAttr: NSAttributedString?
-  
+
   func hash(into hasher: inout Hasher) {
     hasher.combine(avatarImageRequest?.description)
     hasher.combine(commentBodySize)
@@ -385,20 +392,19 @@ class CommentHelioData: Hashable {
 }
 
 struct CommentData: GenericRedditEntityDataType {
-  
   init(id: String) {
     self.id = id
   }
-  
+
   var subreddit_id: String?
-  //  let approved_at_utc: Int?
-  //  let author_is_blocked: Bool?
-  //  let comment_type: String?
-  //  let awarders: [String]?
-  //  let mod_reason_by: String?
-  //  let banned_by: String?
-  //  let author_flair_type: String?
-  //  let total_awards_received: Int?
+  ///  let approved_at_utc: Int?
+  ///  let author_is_blocked: Bool?
+  ///  let comment_type: String?
+  ///  let awarders: [String]?
+  ///  let mod_reason_by: String?
+  ///  let banned_by: String?
+  ///  let author_flair_type: String?
+  ///  let total_awards_received: Int?
   var subreddit: String?
   //  let author_flair_template_id: String?
   var likes: Bool?
@@ -465,7 +471,7 @@ struct CommentData: GenericRedditEntityDataType {
   var num_reports: Int?
   var ups: Int?
   var helioSelecting: Bool? = false
-  
+
   var badgeKit: BadgeKit {
     BadgeKit(
       numComments: 0,
@@ -473,16 +479,18 @@ struct CommentData: GenericRedditEntityDataType {
       saved: saved ?? false,
       author: author ?? "",
       authorFullname: author_fullname ?? "",
-      userFlair : author_flair_text ?? "",
-      created: created ?? 0
+      userFlair: author_flair_text ?? "",
+      created: created ?? 0,
     )
   }
-  
-  var votesKit: VotesKit { VotesKit(ups: ups ?? 0, ratio: 0, likes: likes, id: id) }
+
+  var votesKit: VotesKit {
+    VotesKit(ups: ups ?? 0, ratio: 0, likes: likes, id: id)
+  }
 }
 
 // Encode AttributedString manually
-//func encode(to encoder: Encoder) throws {
+// func encode(to encoder: Encoder) throws {
 //   var container = encoder.container(keyedBy: CodingKeys.self)
 //
 //   // ...encode all other properties...
@@ -490,10 +498,9 @@ struct CommentData: GenericRedditEntityDataType {
 //   if let helioBodyAttr = helioBodyAttr {
 //       try container.encode(helioBodyAttr.markdownRepresentation, forKey: .helioBodyAttr)
 //   }
-//}
+// }
 
-struct Gildings: Codable {
-}
+struct Gildings: Codable {}
 
 struct CommentSort: Codable, Identifiable {
   var icon: String
@@ -507,7 +514,7 @@ enum CommentSortOption: Codable, CaseIterable, Identifiable, Defaults.Serializab
   var id: String {
     self.rawVal.id
   }
-  
+
   case confidence
   case new
   case top
@@ -516,25 +523,25 @@ enum CommentSortOption: Codable, CaseIterable, Identifiable, Defaults.Serializab
   case random
   case qa
   case live
-  
+
   var rawVal: SubListingSort {
     switch self {
     case .confidence:
-      return SubListingSort(icon: "flame", value: "confidence")
+      SubListingSort(icon: "flame", value: "confidence")
     case .new:
-      return SubListingSort(icon: "newspaper", value: "new")
+      SubListingSort(icon: "newspaper", value: "new")
     case .top:
-      return SubListingSort(icon: "trophy", value: "top")
+      SubListingSort(icon: "trophy", value: "top")
     case .controversial:
-      return SubListingSort(icon: "figure.fencing", value: "controversial")
+      SubListingSort(icon: "figure.fencing", value: "controversial")
     case .old:
-      return SubListingSort(icon: "clock.arrow.circlepath", value: "old")
+      SubListingSort(icon: "clock.arrow.circlepath", value: "old")
     case .random:
-      return SubListingSort(icon: "dice", value: "random")
+      SubListingSort(icon: "dice", value: "random")
     case .qa:
-      return SubListingSort(icon: "bubble.left.and.bubble.right", value: "qa")
+      SubListingSort(icon: "bubble.left.and.bubble.right", value: "qa")
     case .live:
-      return SubListingSort(icon: "dot.radiowaves.left.and.right", value: "live")
+      SubListingSort(icon: "dot.radiowaves.left.and.right", value: "live")
     }
   }
 }

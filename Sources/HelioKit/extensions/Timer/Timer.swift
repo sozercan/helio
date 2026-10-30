@@ -8,7 +8,7 @@
 import SwiftUI
 
 extension Timer {
-  convenience init(_ sec: Double, _ cb: @escaping ()->()) {
+  convenience init(_ sec: Double, _ cb: @escaping () -> Void) {
     self.init(timeInterval: sec, repeats: false) { _ in
       cb()
     }

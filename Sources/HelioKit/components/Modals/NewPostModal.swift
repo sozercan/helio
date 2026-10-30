@@ -5,9 +5,10 @@
 ////  Created by Igor Marcossi on 24/07/23.
 ////
 import SwiftUI
-//import HighlightedTextEditor
-//import Defaults
-//
+
+/// import HighlightedTextEditor
+/// import Defaults
+///
 class NewPostData: ObservableObject {
   @Published var text: String = ""
   @Published var debText: String = ""
@@ -16,10 +17,10 @@ class NewPostData: ObservableObject {
   @Published var url: String?
   @Published var debUrl: String?
   @Published var gallery: [NewPostGalleryItem]?
-  //  @Published var debGallery: [NewPostGalleryItem]?
+  ///  @Published var debGallery: [NewPostGalleryItem]?
   @Published var flair: NewPostFlairData?
   //  @Published var debFlair: NewPostFlairData?
-  
+
   init(delay: DispatchQueue.SchedulerTimeType.Stride, initialText: String = "") {
     self.text = initialText
     self.debText = initialText
@@ -42,18 +43,18 @@ struct NewPostGalleryItem: Codable {
   var asset_id: String
 }
 
-//private let bgFieldColor: Color = .primary.opacity(0.1)
+// private let bgFieldColor: Color = .primary.opacity(0.1)
 //
 //
 //
-//struct FlairPicker: View {
+// struct FlairPicker: View {
 //  var subreddit: Subreddit
 //  @Binding var selectedFlair: Flair?
 //  //  @State var searchQuery = ""
 //  @State var searchQuery = DebouncedText(delay: 0.25)
 //  @FocusState var focused: Bool
 //  @State var searching = false
-//  
+//
 //  func selectFlair(_ flair: Flair) {
 //    withAnimation(spring) {
 //      selectedFlair = flair
@@ -87,13 +88,13 @@ struct NewPostGalleryItem: Codable {
 //          .frame(height: 42)
 //          .background(Capsule(style: .continuous).fill(bgFieldColor))
 //          .mask(Capsule(style: .continuous).fill(.black))
-//          
+//
 //          if let selectedFlair = selectedFlair, !searching {
 //            FlairButton(selected: true, onSelect: selectFlair, flair: selectedFlair)
 //              .padding(.trailing, 4)
 //          }
 //        }
-//        
+//
 //        ScrollView(.horizontal, showsIndicators: false) {
 //          HStack {
 //            if let flairs = subreddit.data?.helioFlairs {
@@ -157,11 +158,11 @@ struct NewPostGalleryItem: Codable {
 //      }
 //    }
 //  }
-//}
+// }
 //
-//struct NewPostModal: View {
+// struct NewPostModal: View {
 //  var subreddit: Subreddit
-//  
+//
 //  @StateObject var postData = NewPostData(delay: 0.5, initialText: "Post creation isn't supported yet. There's no submit button.")
 //  @State var alertExit = false
 //  @Environment(\.dismiss) var dismiss
@@ -173,9 +174,9 @@ struct NewPostGalleryItem: Codable {
 //  @State private var selection: PresentationDetent = .medium
 //  @State var selectedFlair: Flair?
 //  @Environment(\.useTheme) private var selectedTheme
-//  
+//
 //  @FetchRequest(sortDescriptors: []) var drafts: FetchedResults<PostDraft>
-//  
+//
 //  func save() {
 //    Task {
 //      await viewContext.perform(schedule: .enqueued) {
@@ -183,7 +184,7 @@ struct NewPostGalleryItem: Codable {
 //      }
 //    }
 //  }
-//  
+//
 //  var body: some View {
 //    let isEmpty = postData.text.isEmpty && postData.title.isEmpty && (postData.url?.isEmpty ?? true)
 //    NavigationView {
@@ -193,9 +194,9 @@ struct NewPostGalleryItem: Codable {
 //          .fontSize(24, .bold)
 //          .padding(.horizontal, 2)
 //          .padding(.horizontal, 16)
-//        
+//
 //        FlairPicker(subreddit: subreddit, selectedFlair: $selectedFlair)
-//        
+//
 //        if postKind == .link {
 //          HStack {
 //            Image(systemName: "link")
@@ -211,7 +212,7 @@ struct NewPostGalleryItem: Codable {
 //          .padding(.horizontal, 2)
 //          .padding(.horizontal, 16)
 //        }
-//        
+//
 //        MDEditor(text: $postData.text)
 //          .padding(.horizontal, 16)
 //      }
@@ -305,13 +306,13 @@ struct NewPostGalleryItem: Codable {
 //                .cancel()
 //              ])
 //            }
-//            
+//
 //            MasterButton(icon: "chevron.down", mode: .subtle, color: .primary, textColor: .primary, shrinkHoverEffect: true, height: 52, proportional: .circle) {
 //              withAnimation(spring) {
 //                dismiss()
 //              }
 //            }
-//            
+//
 //          }
 //        }
 //      }
@@ -338,10 +339,10 @@ struct NewPostGalleryItem: Codable {
 //    //      alertExit = true
 //    //    }
 //  }
-//}
+// }
 //
-////struct CommentModal_Previews: PreviewProvider {
+//// struct CommentModal_Previews: PreviewProvider {
 ////    static var previews: some View {
 ////        CommentModal()
 ////    }
-////}
+//// }

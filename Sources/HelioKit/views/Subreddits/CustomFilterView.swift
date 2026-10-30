@@ -1,43 +1,43 @@
 //
-//  NewFilterView.swift
+//  CustomFilterView.swift
 //  Helio
 //
 //  Created by Zander Bobronnikov on 12/4/23.
 //
 
-import SwiftUI
-import NukeUI
 import CoreData
+import NukeUI
+import SwiftUI
 
-//struct CustomFilterView: View {
+// struct CustomFilterView: View {
 //  @Environment(\.useTheme) private var theme
 //  @Environment(\.dismiss) private var dismiss
-//  
+//
 //  var filter: FilterData
 //  var subId: String
 //  @Binding var selected: String
-//  
+//
 //  @State var draftFilter: FilterData = .init()
-//  
+//
 //  func removeFromDefaults() {
 //    let context = PersistenceController.shared.container.newBackgroundContext()
 //    let fetchRequest = NSFetchRequest<CachedFilter>(entityName: "CachedFilter")
 //    fetchRequest.predicate = NSPredicate(format: "subreddit_id == %@ && text == %@ && type == %@", subId, filter.text, filter.type)
-//      
+//
 //    context.performAndWait {
 //      let prevFlairs = (try? context.fetch(fetchRequest)) ?? []
 //      if let prevFlair = prevFlairs.first {
 //        context.delete(prevFlair)
 //      }
-//      
+//
 //      try? context.save()
 //    }
-//    
+//
 //    if selected == filter.id {
 //      selected = "flair:All"
 //    }
 //  }
-//  
+//
 //  func saveToDefaults() {
 //    let context = PersistenceController.shared.container.newBackgroundContext()
 //    let fetchRequest = NSFetchRequest<CachedFilter>(entityName: "CachedFilter")
@@ -58,26 +58,26 @@ import CoreData
 //        newFilter.background_color = draftFilter.background_color
 //        newFilter.text_color = draftFilter.text_color
 //      }
-//      
+//
 //      try? context.save()
 //    }
 //  }
-//  
-//  
+//
+//
 //  var body: some View {
 //    let anyChanges = filter != draftFilter
 //    let newFilter = filter.id == ""
-//    
+//
 //    NavigationStack {
 //      ScrollView {
 //        VStack(alignment: .leading, spacing: 20) {
 //          Text(newFilter ? "New filter" : "Edit filter").fontSize(24, .semibold)
-//          
+//
 //          HStack(alignment: .top, spacing: 8) {
 //            BigInput(l: "Filter text", t: Binding(get: { draftFilter.text }, set: { draftFilter.text = $0 }), placeholder: "Ex: filter")
-//            
+//
 //            BigColorPicker(title: "Color", initialValue: filter.background_color, color:  Binding(get: { ThemeColor(hex: draftFilter.background_color) }, set: { draftFilter.background_color = $0.hex }))
-//            
+//
 //          }
 //        }
 //        .padding(.top, 16)
@@ -90,7 +90,7 @@ import CoreData
 //            dismiss()
 //          }
 //        }
-//        
+//
 //        if !newFilter {
 //          ToolbarItem(placement: .topBarTrailing) {
 //            Button("Delete", role: .destructive) {
@@ -100,7 +100,7 @@ import CoreData
 //            .foregroundColor(.red)
 //          }
 //        }
-//        
+//
 //        ToolbarItem(placement: .topBarTrailing) {
 //          Button("Save") {
 //            saveToDefaults()
@@ -115,18 +115,18 @@ import CoreData
 //      .interactiveDismissDisabled(anyChanges)
 //    }
 //  }
-//}
+// }
 //
-//struct BigColorPicker: View {
+// struct BigColorPicker: View {
 //  var title: String
 //  var initialValue: String
 //  @Binding var color: ThemeColor
 //  var placeholder: String? = nil
-//    
+//
 //  var body: some View {
 //    VStack(alignment: .leading, spacing: 5) {
 //      Text(title.uppercased()).fontSize(12, .semibold).frame(minWidth: title.uppercased().width(font: UIFont.systemFont(ofSize: 12, weight: .semibold)), alignment: .leading).padding(.leading, 12).opacity(0.5)
-//      
+//
 //      VStack (alignment: .leading) {
 //        ThemeColorPicker("", $color)
 //          .overlay(
@@ -142,4 +142,4 @@ import CoreData
 //      .background(RR(16, Color("acceptableBlack")))
 //    }
 //  }
-//}
+// }

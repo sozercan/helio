@@ -8,13 +8,15 @@
 import SwiftUI
 
 extension View {
-  func increaseHitboxBy<S: Shape>(_ amount: Double, shape: S = Rectangle(), disable: Bool = false) -> some View {
+  func increaseHitboxBy(_ amount: Double, shape: some Shape = Rectangle(), disable: Bool = false) -> some View {
     self.background(GeometryReader { Color.hitbox.frame($0.size * (disable ? 1 : amount)).contentShape(shape) })
   }
-  func increaseHitboxOf<S: Shape>(_ size: CGSize, by: Double, shape: S = Rectangle(), disable: Bool = false) -> some View {
+
+  func increaseHitboxOf(_ size: CGSize, by: Double, shape: some Shape = Rectangle(), disable: Bool = false) -> some View {
     self.background(Color.hitbox.frame(size * (disable ? 1 : by)).contentShape(shape))
   }
-  func increaseHitboxOf<S: Shape>(_ size: Double, by: Double, shape: S = Rectangle(), disable: Bool = false) -> some View {
+
+  func increaseHitboxOf(_ size: Double, by: Double, shape: some Shape = Rectangle(), disable: Bool = false) -> some View {
     self.background(Color.hitbox.frame(size * (disable ? 1 : by)).contentShape(shape))
   }
 }

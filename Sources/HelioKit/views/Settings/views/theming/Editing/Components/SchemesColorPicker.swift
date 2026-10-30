@@ -19,17 +19,17 @@ struct SchemesColorPicker: View {
           Color.clear
             .frame(maxWidth: .infinity)
             .resetter($theme.light, defaultVal.light)
-            .padding(.trailing, 44)
+            .padding(.trailing, 44),
         )
-      
+
       VDivider()
-      
+
       ThemeColorPicker("Dark", $theme.dark)
         .overlay(
           Color.clear
             .frame(maxWidth: .infinity)
             .resetter($theme.dark, defaultVal.dark)
-            .padding(.trailing, 44)
+            .padding(.trailing, 44),
         )
     }
     .padding(.horizontal, 16)

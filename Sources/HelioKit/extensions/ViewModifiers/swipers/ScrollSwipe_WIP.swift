@@ -5,9 +5,9 @@
 ////  Created by Igor Marcossi on 29/06/23.
 ////
 //
+import Defaults
 import Foundation
 import SwiftUI
-import Defaults
 
 struct ScrollSwipeModifier<T: GenericRedditEntityDataType, B: Hashable>: ViewModifier, Equatable {
   static func == (lhs: ScrollSwipeModifier<T, B>, rhs: ScrollSwipeModifier<T, B>) -> Bool {
@@ -15,8 +15,8 @@ struct ScrollSwipeModifier<T: GenericRedditEntityDataType, B: Hashable>: ViewMod
     //    lhs.size == rhs.size && lhs.actionsSet == rhs.actionsSet
     lhs.entity?.id == rhs.entity?.id
   }
-  
-  //struct SwipeRevolution: ViewModifier {
+
+  /// struct SwipeRevolution: ViewModifier {
   @Default(.BehaviorDefSettings) private var behaviorDefSettings
   //  @State private var pressing: Bool = false
   @State private var dragAmount: CGFloat = 0
@@ -32,10 +32,10 @@ struct ScrollSwipeModifier<T: GenericRedditEntityDataType, B: Hashable>: ViewMod
   weak var entity: GenericRedditEntity<T, B>?
   var disabled: Bool = false
   //  @ViewBuilder var content: (UIViewController?) -> Content
-  
+
   private let firstActionThreshold: CGFloat = 75
   private let secondActionThreshold: CGFloat = 150
-  
+
   func infoRight() -> (SwipeActionItem, SwipeActionItem, SwipeActionItem, Bool)? {
     let rightFirstNil = actionsSet.rightFirst.id == "none"
     let rightSecondNil = actionsSet.rightSecond.id == "none"
@@ -44,7 +44,7 @@ struct ScrollSwipeModifier<T: GenericRedditEntityDataType, B: Hashable>: ViewMod
       var icon = !rightFirstNil ? actionsSet.rightFirst.icon : actionsSet.rightSecond.icon
       var textColor = !rightFirstNil ? actionsSet.rightFirst.color : actionsSet.rightSecond.color
       var bgColor = !rightFirstNil ? actionsSet.rightFirst.bgColor : actionsSet.rightSecond.bgColor
-      if actionsSet.rightSecond.id != "none" && triggeredAction == .rightSecond {
+      if actionsSet.rightSecond.id != "none", triggeredAction == .rightSecond {
         icon = actionsSet.rightSecond.icon
         textColor = actionsSet.rightSecond.color
         bgColor = actionsSet.rightSecond.bgColor
@@ -54,7 +54,7 @@ struct ScrollSwipeModifier<T: GenericRedditEntityDataType, B: Hashable>: ViewMod
     }
     return nil
   }
-  
+
   func infoLeft() -> (SwipeActionItem, SwipeActionItem, SwipeActionItem, Bool)? {
     let leftFirstNil = actionsSet.leftFirst.id == "none"
     let leftSecondNil = actionsSet.leftSecond.id == "none"
@@ -63,7 +63,7 @@ struct ScrollSwipeModifier<T: GenericRedditEntityDataType, B: Hashable>: ViewMod
       var icon = !leftFirstNil ? actionsSet.leftFirst.icon : actionsSet.leftSecond.icon
       var textColor = !leftFirstNil ? actionsSet.leftFirst.color : actionsSet.leftSecond.color
       var bgColor = !leftFirstNil ? actionsSet.leftFirst.bgColor : actionsSet.leftSecond.bgColor
-      if actionsSet.leftSecond.id != "none" && triggeredAction == .leftSecond {
+      if actionsSet.leftSecond.id != "none", triggeredAction == .leftSecond {
         icon = actionsSet.leftSecond.icon
         textColor = actionsSet.leftSecond.color
         bgColor = actionsSet.leftSecond.bgColor
@@ -73,36 +73,38 @@ struct ScrollSwipeModifier<T: GenericRedditEntityDataType, B: Hashable>: ViewMod
     }
     return nil
   }
-  
+
   func dragChanged(_ cancel: @escaping () -> Void, _ translation: CGPoint, _ location: CGPoint, _ velocity: CGPoint) {
-    if let entity = entity {
+    if let entity {
       let x = translation.x
       if controlledDragAmount != nil {
-        controlledDragAmount?.wrappedValue =  x
+        controlledDragAmount?.wrappedValue = x
       } else {
         dragAmount = x
       }
-      
+
       let newValue = x
-      
+
       //        if let entity = entity {
-      if !controlledIsSource { return }
-      
+      if !controlledIsSource {
+        return
+      }
+
       var triggering: TriggeredAction = .none
-      
-      if (actionsSet.rightFirst.id != "none" && actionsSet.rightFirst.enabled(entity) && newValue >= firstActionThreshold) {
+
+      if actionsSet.rightFirst.id != "none", actionsSet.rightFirst.enabled(entity), newValue >= firstActionThreshold {
         triggering = .rightFirst
       }
-      if actionsSet.rightSecond.id != "none" && actionsSet.rightSecond.enabled(entity) && (newValue) >= secondActionThreshold {
+      if actionsSet.rightSecond.id != "none", actionsSet.rightSecond.enabled(entity), newValue >= secondActionThreshold {
         triggering = .rightSecond
       }
-      if (actionsSet.leftFirst.id != "none" && actionsSet.leftFirst.enabled(entity) && newValue <= -firstActionThreshold) {
+      if actionsSet.leftFirst.id != "none", actionsSet.leftFirst.enabled(entity), newValue <= -firstActionThreshold {
         triggering = .leftFirst
       }
-      if actionsSet.leftSecond.id != "none" && actionsSet.leftSecond.enabled(entity) && (newValue) <= -secondActionThreshold {
+      if actionsSet.leftSecond.id != "none", actionsSet.leftSecond.enabled(entity), newValue <= -secondActionThreshold {
         triggering = .leftSecond
       }
-      
+
       if triggering != triggeredAction {
         let increasing = triggering.rawValue > triggeredAction.rawValue
         let isSecond = triggering == .leftSecond || triggering == .rightSecond
@@ -119,15 +121,15 @@ struct ScrollSwipeModifier<T: GenericRedditEntityDataType, B: Hashable>: ViewMod
       }
     }
   }
-  
+
   func dragEnded(_ translation: CGPoint, _ velocity: CGPoint) {
-    if let entity = entity {
+    if let entity {
       var initialVel = abs(velocity.x) / abs(translation.x)
-      if (velocity.x > 0 && translation.x > 0) || (velocity.x < 0 && translation.x < 0) { initialVel = -initialVel }
-      
-      
+      if (velocity.x > 0 && translation.x > 0) || (velocity.x < 0 && translation.x < 0) {
+        initialVel = -initialVel
+      }
+
       Task(priority: .background) { [triggeredAction] in
-        
         switch triggeredAction {
         case .leftFirst:
           await actionsSet.leftFirst.action(entity)
@@ -141,10 +143,10 @@ struct ScrollSwipeModifier<T: GenericRedditEntityDataType, B: Hashable>: ViewMod
           break
         }
       }
-      
+
       withAnimation(.interpolatingSpring(stiffness: 150, damping: 16, initialVelocity: initialVel)) {
         if controlledDragAmount != nil {
-          controlledDragAmount?.wrappedValue =  0
+          controlledDragAmount?.wrappedValue = 0
         } else {
           dragAmount = 0
         }
@@ -152,16 +154,16 @@ struct ScrollSwipeModifier<T: GenericRedditEntityDataType, B: Hashable>: ViewMod
       }
     }
   }
-  
+
   func body(content: Content) -> some View {
     let enableSwipeAnywhere = behaviorDefSettings.enableSwipeAnywhere
-    if let entity = entity {
+    if let entity {
       let actualOffsetX = controlledDragAmount?.wrappedValue ?? dragAmount
       let offsetXInterpolate = interpolatorBuilder([0, firstActionThreshold], value: actualOffsetX)
       let offsetXNegativeInterpolate = interpolatorBuilder([0, -firstActionThreshold], value: actualOffsetX)
 //      ScrollViewReader { proxy in
-        ScrollView(.horizontal, showsIndicators: false) {
-          content
+      ScrollView(.horizontal, showsIndicators: false) {
+        content
           .background(GeometryReader {
             Color.clear.preference(key: ViewOffsetKey.self,
                                    value: -$0.frame(in: .named("swipe")).origin.x)
@@ -169,42 +171,40 @@ struct ScrollSwipeModifier<T: GenericRedditEntityDataType, B: Hashable>: ViewMod
           .onPreferenceChange(ViewOffsetKey.self) {
             dragAmount = -$0
           }
-        }
+      }
       //            .offset(x: dragAmount)
-        .coordinateSpace(name: "swipe")
+      .coordinateSpace(name: "swipe")
 //      }
       .frame(width: size.width, height: size.height)
       .background(
         !controlledIsSource || enableSwipeAnywhere || dragAmount == 0
-        ? nil
-        : HStack {
-          
-          SwipeUIBtn(info: infoRight(), secondActiveFunc: actionsSet.rightSecond.active, firstActiveFunc: actionsSet.rightFirst.active, entity: entity)
-          //            .equatable()
-            .scaleEffect(triggeredAction == .rightSecond ? 1.25 : triggeredAction == .rightFirst ? 1 : max(0.001, offsetXInterpolate([-0.9, 0.85], false)))
-            .opacity(max(0, offsetXInterpolate([-0.9, 1], false)))
-            .frame(width: actualOffsetX < 0 ? 10 : abs(actualOffsetX))
-            .offset(x: -8)
-          
-          Spacer()
-          
-          SwipeUIBtn(info: infoLeft(), secondActiveFunc: actionsSet.leftSecond.active, firstActiveFunc: actionsSet.leftFirst.active, entity: entity)
-          //            .equatable()
-            .scaleEffect(triggeredAction == .leftSecond ? 1.25 : triggeredAction == .leftFirst ? 1 : max(0.001, offsetXNegativeInterpolate([-0.9, 0.85], false)))
-            .opacity(max(0, offsetXNegativeInterpolate([-0.9, 1], false)))
-            .frame(width: actualOffsetX > 0 ? 10 : abs(actualOffsetX))
-            .offset(x: 8)
-        }
+          ? nil
+          : HStack {
+            SwipeUIBtn(info: infoRight(), secondActiveFunc: actionsSet.rightSecond.active, firstActiveFunc: actionsSet.rightFirst.active, entity: entity)
+              //            .equatable()
+              .scaleEffect(triggeredAction == .rightSecond ? 1.25 : triggeredAction == .rightFirst ? 1 : max(0.001, offsetXInterpolate([-0.9, 0.85], false)))
+              .opacity(max(0, offsetXInterpolate([-0.9, 1], false)))
+              .frame(width: actualOffsetX < 0 ? 10 : abs(actualOffsetX))
+              .offset(x: -8)
+
+            Spacer()
+
+            SwipeUIBtn(info: infoLeft(), secondActiveFunc: actionsSet.leftSecond.active, firstActiveFunc: actionsSet.leftFirst.active, entity: entity)
+              //            .equatable()
+              .scaleEffect(triggeredAction == .leftSecond ? 1.25 : triggeredAction == .leftFirst ? 1 : max(0.001, offsetXNegativeInterpolate([-0.9, 0.85], false)))
+              .opacity(max(0, offsetXNegativeInterpolate([-0.9, 1], false)))
+              .frame(width: actualOffsetX > 0 ? 10 : abs(actualOffsetX))
+              .offset(x: 8)
+          }
           .frame(maxWidth: .infinity, maxHeight: .infinity)
           .offset(y: offsetYAction)
-          .allowsHitTesting(false)
+          .allowsHitTesting(false),
         //        .animation(nil, value: dragAmount)
         //        .animation(nil, value: dragAmount)
       )
       .onChange(of: isScrolling) { isIt in
         if !isIt {
           Task(priority: .background) { [triggeredAction] in
-            
             switch triggeredAction {
             case .leftFirst:
               await actionsSet.leftFirst.action(entity)
@@ -222,30 +222,32 @@ struct ScrollSwipeModifier<T: GenericRedditEntityDataType, B: Hashable>: ViewMod
         }
       }
       .onChange(of: (controlledDragAmount?.wrappedValue ?? dragAmount)) { newValue in
-        if !controlledIsSource { return }
+        if !controlledIsSource {
+          return
+        }
 //        if newValue == 0 {
 //
 //        }
-        
+
         var triggering: TriggeredAction = .none
-        
-        if (actionsSet.rightFirst.id != "none" && actionsSet.rightFirst.enabled(entity) && newValue >= firstActionThreshold) {
+
+        if actionsSet.rightFirst.id != "none", actionsSet.rightFirst.enabled(entity), newValue >= firstActionThreshold {
           triggering = .rightFirst
         }
-        if actionsSet.rightSecond.id != "none" && actionsSet.rightSecond.enabled(entity) && (newValue) >= secondActionThreshold {
+        if actionsSet.rightSecond.id != "none", actionsSet.rightSecond.enabled(entity), newValue >= secondActionThreshold {
           triggering = .rightSecond
         }
-        if (actionsSet.leftFirst.id != "none" && actionsSet.leftFirst.enabled(entity) && newValue <= -firstActionThreshold) {
+        if actionsSet.leftFirst.id != "none", actionsSet.leftFirst.enabled(entity), newValue <= -firstActionThreshold {
           triggering = .leftFirst
         }
-        if actionsSet.leftSecond.id != "none" && actionsSet.leftSecond.enabled(entity) && (newValue) <= -secondActionThreshold {
+        if actionsSet.leftSecond.id != "none", actionsSet.leftSecond.enabled(entity), newValue <= -secondActionThreshold {
           triggering = .leftSecond
         }
-        
+
         if triggering != triggeredAction {
           let increasing = triggering.rawValue > triggeredAction.rawValue
           let isSecond = triggering == .leftSecond || triggering == .rightSecond
-          
+
           let impact = UIImpactFeedbackGenerator(style: increasing ? .rigid : .soft)
           impact.prepare()
           impact.impactOccurred()
@@ -260,15 +262,15 @@ struct ScrollSwipeModifier<T: GenericRedditEntityDataType, B: Hashable>: ViewMod
 }
 
 extension View {
-  func scrollSwipe<T: GenericRedditEntityDataType, B: Hashable>(
+  func scrollSwipe(
     size: CGSize,
     actionsSet: SwipeActionsSet,
-    entity: GenericRedditEntity<T, B>?
+    entity: GenericRedditEntity<some GenericRedditEntityDataType, some Hashable>?,
   ) -> some View {
     self.modifier(ScrollSwipeModifier(
       size: size,
       actionsSet: actionsSet,
-      entity: entity
+      entity: entity,
       //      id: entity?.id ?? ""
     ))
     //    self.modifier(SwipeRevolution(size: size))

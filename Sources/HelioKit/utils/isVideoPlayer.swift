@@ -5,9 +5,11 @@
 //  Created by Igor Marcossi on 31/07/23.
 //
 
-import Foundation
 import AVKit
+import Foundation
 
 extension AVPlayer {
-        var isPlaying: Bool { self.timeControlStatus == AVPlayer.TimeControlStatus.playing }
+  var isPlaying: Bool {
+    self.timeControlStatus == AVPlayer.TimeControlStatus.playing
+  }
 }

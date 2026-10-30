@@ -10,11 +10,11 @@ import SwiftUI
 struct GetInitialSizeModifier: ViewModifier {
   @Binding var size: CGSize?
   var disabled = false
-  
+
   func body(content: Content) -> some View {
     content
       .background {
-        if size == nil && !disabled {
+        if size == nil, !disabled {
           GeometryReader { geometry in
             Color.clear.onAppear {
               if size == nil {

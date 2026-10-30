@@ -5,13 +5,13 @@
 //  Created by Igor Marcossi on 08/12/23.
 //
 
+import CoreData
 import Foundation
 import SwiftUI
-import CoreData
 
-fileprivate let samplePost = Post(data: postSampleData)
-fileprivate let sampleSub = Subreddit(id: postSampleData.subreddit)
-fileprivate let samplePostHelioData = samplePost.helioData ?? PostHelioData()
+private let samplePost = Post(data: postSampleData)
+private let sampleSub = Subreddit(id: postSampleData.subreddit)
+private let samplePostHelioData = samplePost.helioData ?? PostHelioData()
 
 private struct ContextPostKey: EnvironmentKey {
   static let defaultValue: Post = samplePost
@@ -30,7 +30,7 @@ private struct SheetHeightKey: EnvironmentKey {
 }
 
 private struct SetTabBarHeightKey: EnvironmentKey {
-  static let defaultValue: (Double)->() = { x in }
+  static let defaultValue: (Double) -> Void = { _ in }
 }
 
 private struct TabBarHeightKey: EnvironmentKey {
@@ -66,50 +66,60 @@ extension EnvironmentValues {
     get { self[ContextPostKey.self] }
     set { self[ContextPostKey.self] = newValue }
   }
+
   var contextSubreddit: Subreddit {
     get { self[ContextSubredditKey.self] }
     set { self[ContextSubredditKey.self] = newValue }
   }
+
   var contextPostHelioData: PostHelioData {
     get { self[ContextPostHelioDataKey.self] }
     set { self[ContextPostHelioDataKey.self] = newValue }
   }
+
   var sheetHeight: Double {
     get { self[SheetHeightKey.self] }
     set { self[SheetHeightKey.self] = newValue }
   }
-  var setTabBarHeight: (Double)->() {
+
+  var setTabBarHeight: (Double) -> Void {
     get { self[SetTabBarHeightKey.self] }
     set { self[SetTabBarHeightKey.self] = newValue }
   }
+
   var tabBarHeight: Double? {
     get { self[TabBarHeightKey.self] }
     set { self[TabBarHeightKey.self] = newValue }
   }
+
   /// BehaviorDefSettings.enableSwipeAnywhere, read once at the root instead of per swipeable row.
   var enableSwipeAnywhere: Bool {
     get { self[EnableSwipeAnywhereKey.self] }
     set { self[EnableSwipeAnywhereKey.self] = newValue }
   }
+
   var brighterBG: Bool {
     get { self[BrighterBGKey.self] }
     set { self[BrighterBGKey.self] = newValue }
   }
+
   var isInSidebar: Bool {
     get { self[IsInSidebarKey.self] }
     set { self[IsInSidebarKey.self] = newValue }
   }
+
   var primaryBGContext: NSManagedObjectContext {
     get { self[PrimaryBGContextKey.self] }
     set { self[PrimaryBGContextKey.self] = newValue }
   }
+
   var contentWidth: Double {
     get { self[ContentWidthKey.self] }
     set { self[ContentWidthKey.self] = newValue }
   }
+
   var useTheme: HelioTheme {
     get { self[CurrentThemeKey.self] }
     set { self[CurrentThemeKey.self] = newValue }
   }
 }
-

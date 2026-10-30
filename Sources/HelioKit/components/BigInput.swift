@@ -9,10 +9,10 @@ import SwiftUI
 
 struct BigInput: View {
   var l: String
-  var bg: Color = Color("acceptableBlack")
+  var bg: Color = .init("acceptableBlack")
   @Binding var t: String
   @FocusState var focused: Bool
-  var placeholder: String? = nil
+  var placeholder: String?
   @Environment(\.colorScheme) private var cs
   var body: some View {
     VStack(alignment: .leading, spacing: 5) {
@@ -32,7 +32,7 @@ struct BigInput: View {
             .animation(.easeOut.speed(2.5), value: focused)
             .onTapGesture {
               focused = true
-            }
+            },
         )
     }
   }

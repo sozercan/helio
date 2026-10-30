@@ -15,10 +15,9 @@ func calculateDistance(between firstPoint: CGPoint, and secondPoint: CGPoint) ->
 
 extension CGPoint {
   func distanceTo(point: CGPoint) -> Double {
-    return calculateDistance(between: self, and: point)
+    calculateDistance(between: self, and: point)
   }
 }
-
 
 func calculateDistancePoint(point1: CGPoint, point2: CGPoint) -> CGPoint {
   let xDistance = point2.x - point1.x
@@ -29,6 +28,6 @@ func calculateDistancePoint(point1: CGPoint, point2: CGPoint) -> CGPoint {
 
 extension CGPoint {
   func distancePointTo(point: CGPoint) -> CGPoint {
-    return calculateDistancePoint(point1: self, point2: point)
+    calculateDistancePoint(point1: self, point2: point)
   }
 }

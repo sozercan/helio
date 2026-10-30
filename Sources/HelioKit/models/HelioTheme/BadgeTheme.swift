@@ -11,7 +11,7 @@ struct BadgeTheme: Codable, Hashable, Equatable {
   enum CodingKeys: String, CodingKey {
     case avatar, authorText, subColor, flairText, flairBackground, statsText, spacing, forceSubsAsTags
   }
-  
+
   var avatar: AvatarTheme
   var authorText: ThemeText
   var subColor: ColorSchemes<ThemeColor>
@@ -20,7 +20,7 @@ struct BadgeTheme: Codable, Hashable, Equatable {
   var statsText: ThemeText
   var spacing: CGFloat
   var forceSubsAsTags: Bool
-  
+
   init(avatar: AvatarTheme, authorText: ThemeText, subColor: ColorSchemes<ThemeColor>, flairText: ThemeText, flairBackground: ColorSchemes<ThemeColor>, statsText: ThemeText, spacing: CGFloat, forceSubsAsTags: Bool) {
     self.avatar = avatar
     self.authorText = authorText
@@ -31,7 +31,7 @@ struct BadgeTheme: Codable, Hashable, Equatable {
     self.spacing = spacing
     self.forceSubsAsTags = forceSubsAsTags
   }
-  
+
   func encode(to encoder: Encoder) throws {
     var container = encoder.container(keyedBy: CodingKeys.self)
     try container.encodeIfPresent(avatar, forKey: .avatar)
@@ -43,7 +43,7 @@ struct BadgeTheme: Codable, Hashable, Equatable {
     try container.encodeIfPresent(spacing, forKey: .spacing)
     try container.encodeIfPresent(forceSubsAsTags, forKey: .forceSubsAsTags)
   }
-  
+
   init(from decoder: Decoder) throws {
     let t = badgeTheme
     let container = try decoder.container(keyedBy: CodingKeys.self)

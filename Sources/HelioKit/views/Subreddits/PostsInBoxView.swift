@@ -5,28 +5,28 @@
 //  Created by Igor Marcossi on 05/08/23.
 //
 
-import SwiftUI
-import Defaults
 import Combine
+import Defaults
+import SwiftUI
 
 struct PostsInBoxView: View {
   @Default(.postsInBox) private var postsInBox
-  
+
   var body: some View {
-      if postsInBox.count > 0 {
-        Section("Posts Box") {
-          ScrollView(.horizontal) {
-            HStack(spacing: 12) {
-              ForEach(postsInBox, id: \.self.id) { post in
-                PostInBoxLink(postInBox: post, post: Post(id: post.id, subID: post.subredditName), sub: Subreddit(id: post.subredditName))
-                  .animation(spring, value: postsInBox)
-              }
+    if !postsInBox.isEmpty {
+      Section("Posts Box") {
+        ScrollView(.horizontal) {
+          HStack(spacing: 12) {
+            ForEach(postsInBox, id: \.self.id) { post in
+              PostInBoxLink(postInBox: post, post: Post(id: post.id, subID: post.subredditName), sub: Subreddit(id: post.subredditName))
+                .animation(spring, value: postsInBox)
             }
           }
-          .id("quickPosts")
-          .onAppear { Task(priority: .background) { await updatePostsInBox(RedditAPI.shared) } }
         }
-        .listRowInsets(EdgeInsets(top: 0, leading: 0, bottom: 0, trailing: 0))
+        .id("quickPosts")
+        .onAppear { Task(priority: .background) { await updatePostsInBox(RedditAPI.shared) } }
       }
+      .listRowInsets(EdgeInsets(top: 0, leading: 0, bottom: 0, trailing: 0))
+    }
   }
 }

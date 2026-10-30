@@ -10,21 +10,21 @@ import Foundation
 enum ThemeBG: Codable, Hashable, Equatable {
   case color(ColorSchemes<ThemeColor>)
   case img(ColorSchemes<String>)
-  
+
   func isEqual(_ to: ThemeBG) -> Bool {
-    if case .color(_) = self {
+    if case .color = self {
       switch to {
-      case .color(_):
-        return true
-      case .img(_):
-        return false
+      case .color:
+        true
+      case .img:
+        false
       }
     } else {
       switch to {
-      case .color(_):
-        return false
-      case .img(_):
-        return true
+      case .color:
+        false
+      case .img:
+        true
       }
     }
   }

@@ -1,5 +1,5 @@
 //
-//  SecondaryButton.swift
+//  ActionButton.swift
 //  Helio
 //
 //  Created by Igor Marcossi on 06/12/23.
@@ -7,15 +7,13 @@
 
 import SwiftUI
 
-
-
 struct SecondaryOutlinedActionButtonPrimitive: PrimitiveButtonStyle {
   var fullWidth = false
-  public func makeBody(configuration: Configuration) -> some View {
+  func makeBody(configuration: Configuration) -> some View {
     Button(configuration)
       .buttonStyle(Style(fullWidth: fullWidth))
   }
-  
+
   struct Style: ButtonStyle {
     var fullWidth: Bool
     func makeBody(configuration: Configuration) -> some View {
@@ -32,21 +30,19 @@ struct SecondaryOutlinedActionButtonPrimitive: PrimitiveButtonStyle {
   }
 }
 
-
-
 struct ActionButtonPrimitive: PrimitiveButtonStyle {
   var fullWidth = false
   var color: Color = .accentColor
-  var textColor: Color? = nil
-  public func makeBody(configuration: Configuration) -> some View {
+  var textColor: Color?
+  func makeBody(configuration: Configuration) -> some View {
     Button(configuration)
       .buttonStyle(Style(fullWidth: fullWidth, color: color, textColor: textColor))
   }
-  
+
   struct Style: ButtonStyle {
     var fullWidth: Bool
     var color: Color = .accentColor
-    var textColor: Color? = nil
+    var textColor: Color?
     func makeBody(configuration: Configuration) -> some View {
       configuration.label
         .padding(.horizontal, 20)
@@ -62,12 +58,25 @@ struct ActionButtonPrimitive: PrimitiveButtonStyle {
 }
 
 extension PrimitiveButtonStyle where Self == SecondaryOutlinedActionButtonPrimitive {
-  static var actionOutlined: SecondaryOutlinedActionButtonPrimitive { SecondaryOutlinedActionButtonPrimitive() }
+  static var actionOutlined: SecondaryOutlinedActionButtonPrimitive {
+    SecondaryOutlinedActionButtonPrimitive()
+  }
 }
 
 extension PrimitiveButtonStyle where Self == ActionButtonPrimitive {
-  static var action: ActionButtonPrimitive { ActionButtonPrimitive() }
-  static func action(fullWidth: Bool = true) -> ActionButtonPrimitive { ActionButtonPrimitive(fullWidth: fullWidth) }
-  static var actionSecondary: ActionButtonPrimitive { ActionButtonPrimitive(color: .acceptablePrimary, textColor: .primary) }
-  static func actionSecondary(fullWidth: Bool = true) -> ActionButtonPrimitive { ActionButtonPrimitive(fullWidth: fullWidth, color: .acceptablePrimary, textColor: .primary) }
+  static var action: ActionButtonPrimitive {
+    ActionButtonPrimitive()
+  }
+
+  static func action(fullWidth: Bool = true) -> ActionButtonPrimitive {
+    ActionButtonPrimitive(fullWidth: fullWidth)
+  }
+
+  static var actionSecondary: ActionButtonPrimitive {
+    ActionButtonPrimitive(color: .acceptablePrimary, textColor: .primary)
+  }
+
+  static func actionSecondary(fullWidth: Bool = true) -> ActionButtonPrimitive {
+    ActionButtonPrimitive(fullWidth: fullWidth, color: .acceptablePrimary, textColor: .primary)
+  }
 }

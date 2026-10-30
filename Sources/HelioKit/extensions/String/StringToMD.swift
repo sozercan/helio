@@ -13,14 +13,13 @@ extension String {
     //    if let htmlDecodedString = self.escape() {
     let htmlDecodedString = self
     do {
-      let asq = try AttributedString(markdown: htmlDecodedString, options: AttributedString.MarkdownParsingOptions(interpretedSyntax: .inlineOnlyPreservingWhitespace))
-      return asq
+      return try AttributedString(markdown: htmlDecodedString, options: AttributedString.MarkdownParsingOptions(interpretedSyntax: .inlineOnlyPreservingWhitespace))
     } catch {}
-    
+
     let lines = htmlDecodedString.split(whereSeparator: \.isNewline)
     var attributedString = AttributedString("")
-    
-    lines.forEach { line in
+
+    for line in lines {
       var newLineStr = String(line)
       if newLineStr.hasPrefix("#") {
         newLineStr.removeFirst()
@@ -29,20 +28,20 @@ extension String {
           newLineAttrStr.foregroundColor = .orange
           newLineAttrStr.backgroundColor = .white
           attributedString.append(newLineAttrStr)
-        } catch { }
+        } catch {}
       } else {
         do {
           let newLineAttrStr = try AttributedString(markdown: newLineStr)
           attributedString.append(newLineAttrStr)
-        } catch { }
+        } catch {}
       }
     }
-    
+
     return attributedString
   }
 }
 
-//extension String {
+// extension String {
 //    var markdownToAttributedString: AttributedString {
 //        var as = AttributedString(self)
 //
@@ -83,8 +82,7 @@ extension String {
 //
 //        return as
 //    }
-//}
-
+// }
 
 extension String {
   var niceMD: AttributedString {
@@ -96,24 +94,24 @@ extension String {
       "\\#\\s(.+?)\\n": [NSAttributedString.Key.font: UIFont.boldSystemFont(ofSize: 24)],
       "\\#\\#\\s(.+?)\\n": [NSAttributedString.Key.font: UIFont.boldSystemFont(ofSize: 18)],
       "\\#\\#\\#\\s(.+?)\\n": [NSAttributedString.Key.font: UIFont.boldSystemFont(ofSize: 14)],
-      "\\#\\#\\#\\#\\s(.+?)\\n": [ NSAttributedString.Key.font: UIFont.boldSystemFont(ofSize: 10) ],
-      "\\s{2,}(\\n)": [ NSAttributedString.Key.font: UIFont.boldSystemFont(ofSize: 10) ],
+      "\\#\\#\\#\\#\\s(.+?)\\n": [NSAttributedString.Key.font: UIFont.boldSystemFont(ofSize: 10)],
+      "\\s{2,}(\\n)": [NSAttributedString.Key.font: UIFont.boldSystemFont(ofSize: 10)],
     ]
-    
+
     var input = [String]()
     self.enumerateLines { line, _ in
       input.append(line)
     }
-    
+
     let output = NSMutableAttributedString()
-    
-    input.forEach { line in
+
+    for line in input {
       let formattedLine = NSMutableAttributedString(string: line)
-      
-      patterns.forEach { pattern, attributes in
+
+      for (pattern, attributes) in patterns {
         let regex = try! NSRegularExpression(pattern: pattern, options: [])
         let matches = regex.matches(in: line, range: NSRange(formattedLine.string.startIndex..., in: formattedLine.string))
-        
+
         for match in matches {
           let range = match.range(at: 1)
           let string = (formattedLine.string as NSString).substring(with: range)
@@ -121,13 +119,11 @@ extension String {
           formattedLine.replaceCharacters(in: range, with: attributedString)
         }
       }
-      
+
       output.append(formattedLine)
       output.append(NSAttributedString(string: "\n"))
     }
-    
+
     return AttributedString(output)
   }
 }
-
-

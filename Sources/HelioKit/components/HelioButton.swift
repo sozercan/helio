@@ -12,15 +12,17 @@ struct HelioButtonConfig {
   static func success(fullWidth: Bool = false, cornerRadius: Double = 12, fontSize: Double = 17) -> HelioButtonConfig {
     HelioButtonConfig(fullWidth: fullWidth, bgColor: .green, textColor: .white, cornerRadius: cornerRadius, fontSize: fontSize, fontWeight: .medium, animation: .easeIn(duration: 0.135))
   }
+
   static let primary = Self.primary()
   static func primary(fullWidth: Bool = false, cornerRadius: Double = 12, fontSize: Double = 17) -> HelioButtonConfig {
     HelioButtonConfig(fullWidth: fullWidth, bgColor: .accentColor, textColor: .white, cornerRadius: cornerRadius, fontSize: fontSize, fontWeight: .medium, animation: .easeIn(duration: 0.135))
   }
+
   static let secondary = Self.secondary()
   static func secondary(fullWidth: Bool = false, cornerRadius: Double = 12, fontSize: Double = 17) -> HelioButtonConfig {
     HelioButtonConfig(fullWidth: fullWidth, bgColor: .acceptablePrimary, textColor: .primary, cornerRadius: cornerRadius, fontSize: fontSize, fontWeight: .medium, animation: .easeIn(duration: 0.135))
   }
-  
+
   var fullWidth: Bool
   var bgColor: Color
   var textColor: Color?
@@ -31,16 +33,16 @@ struct HelioButtonConfig {
 }
 
 struct HelioButton<C: View>: View {
-  var action: () -> ()
+  var action: () -> Void
   @ViewBuilder var label: () -> C
   var config: HelioButtonConfig
-  
+
   init(config: HelioButtonConfig = .primary, _ action: @escaping () -> Void, label: @escaping () -> C) {
     self.action = action
     self.label = label
     self.config = config
   }
-  
+
   @State private var pressed = false
   @Environment(\.colorScheme) private var cs
   var body: some View {

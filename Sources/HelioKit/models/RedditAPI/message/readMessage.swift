@@ -5,8 +5,8 @@
 //  Created by Igor Marcossi on 10/07/23.
 //
 
-import Foundation
 import Alamofire
+import Foundation
 
 extension RedditAPI {
   func readMessage(_ fullname: String) async -> Bool? {
@@ -19,7 +19,7 @@ extension RedditAPI {
       return nil
     }
   }
-  
+
   struct ReadMessagePayload: Codable {
     var id: String
   }

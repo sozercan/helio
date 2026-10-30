@@ -28,18 +28,21 @@ final class WindowMetrics: @unchecked Sendable {
     access(keyPath: \.size)
     return lock.withLock { _size }
   }
+
   /// The width inside the safe area, which full-width content gets: left of the folded
   /// iPhone Duo's side tab bar, for example.
   var contentWidth: CGFloat {
     access(keyPath: \.contentWidth)
     return lock.withLock { _contentWidth }
   }
+
   /// Regular width: unfolded iPhone Duo, full-screen iPad, Mac. Compact: iPhone, folded Duo,
   /// narrow iPad split.
   var isWide: Bool {
     access(keyPath: \.isWide)
     return lock.withLock { _isWide }
   }
+
   var displayScale: CGFloat {
     access(keyPath: \.displayScale)
     return lock.withLock { _displayScale }
@@ -62,7 +65,9 @@ final class WindowMetrics: @unchecked Sendable {
     }
     if let horizontalSizeClass {
       let wide = horizontalSizeClass == .regular
-      if wide != isWide { withMutation(keyPath: \.isWide) { lock.withLock { _isWide = wide } } }
+      if wide != isWide {
+        withMutation(keyPath: \.isWide) { lock.withLock { _isWide = wide } }
+      }
     }
     if let displayScale, displayScale > 0, displayScale != self.displayScale {
       withMutation(keyPath: \.displayScale) { lock.withLock { _displayScale = displayScale } }
@@ -72,7 +77,9 @@ final class WindowMetrics: @unchecked Sendable {
 
 /// Wide (regular width) window layout. Replaces device-idiom checks, which can't tell an
 /// unfolded iPhone Duo or a narrow iPad window apart.
-var isWideLayout: Bool { WindowMetrics.shared.isWide }
+var isWideLayout: Bool {
+  WindowMetrics.shared.isWide
+}
 
 private struct WindowMetricsReader: ViewModifier {
   @Environment(\.horizontalSizeClass) private var horizontalSizeClass

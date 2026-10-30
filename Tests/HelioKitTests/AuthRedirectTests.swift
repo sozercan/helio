@@ -12,8 +12,8 @@ struct AuthRedirectTests {
     #expect(URL(string: redirect)?.scheme == "https")
   }
 
-  @Test func readsCodeFromForwardedCallback() {
-    let callback = URL(string: "helioapp://auth-success?state=s&code=abc#_")!
+  @Test func readsCodeFromForwardedCallback() throws {
+    let callback = try #require(URL(string: "helioapp://auth-success?state=s&code=abc#_"))
     #expect(RedditAPI.authCode(from: callback, state: "s") == "abc")
     #expect(RedditAPI.authCode(from: callback, state: "other") == nil)
   }

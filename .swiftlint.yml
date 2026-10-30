@@ -1,0 +1,118 @@
+# SwiftLint configuration. Run `swiftlint --strict` before committing; CI runs it with the
+# baseline so only new violations fail. Formatting rules are left to SwiftFormat.
+
+included:
+  - Sources
+  - Tests
+  - App
+
+excluded:
+  - .build
+  - DerivedData
+
+# Existing violations, recorded so --strict fails only on new ones. Fix them over time and
+# regenerate with `swiftlint lint --write-baseline .swiftlint.baseline.json`.
+baseline: .swiftlint.baseline.json
+
+
+disabled_rules:
+  - line_length
+  - trailing_comma
+  - opening_brace # SwiftFormat owns brace placement
+  - todo
+  # SwiftFormat's redundantNilInit owns this; the two disagree on `var x: T? = nil`.
+  - implicit_optional_initialization
+
+opt_in_rules:
+  - closure_spacing
+  - contains_over_first_not_nil
+  - empty_count
+  - empty_string
+  - first_where
+  - last_where
+  - modifier_order
+  - overridden_super_call
+  - redundant_nil_coalescing
+  - sorted_first_last
+  - toggle_bool
+  - yoda_condition
+
+identifier_name:
+  min_length: 1
+  max_length: 60
+  allowed_symbols:
+    - _
+
+type_name:
+  min_length: 2
+  max_length: 60
+
+file_length:
+  warning: 900
+  error: 1500
+
+function_body_length:
+  warning: 100
+  error: 150
+
+type_body_length:
+  warning: 700
+  error: 1000
+
+cyclomatic_complexity:
+  warning: 15
+  error: 25
+
+redundant_discardable_let:
+  # `let _ =` is the only form a ViewBuilder accepts, so autocorrect must leave view bodies alone.
+  ignore_swiftui_view_bodies: true
+
+nesting:
+  type_level: 3
+  function_level: 3
+
+custom_rules:
+  no_navigation_view:
+    name: "No NavigationView"
+    regex: "\\bNavigationView\\b"
+    message: "Use NavigationStack or NavigationSplitView instead of NavigationView"
+    severity: error
+    excluded_match_kinds:
+      - comment
+      - doccomment
+
+  no_dispatch_queue:
+    name: "No DispatchQueue"
+    regex: "\\bDispatchQueue\\b"
+    message: "Use Swift concurrency (async/await, MainActor, Task.sleep) instead of DispatchQueue"
+    severity: warning
+    excluded_match_kinds:
+      - comment
+      - doccomment
+
+  no_print:
+    name: "No print statements"
+    regex: "\\bprint\\("
+    message: "Don't ship print(); use os.Logger or remove it"
+    severity: warning
+    excluded_match_kinds:
+      - comment
+      - doccomment
+
+  no_foreground_color:
+    name: "No foregroundColor"
+    regex: "\\.foregroundColor\\("
+    message: "Use .foregroundStyle() instead of .foregroundColor()"
+    severity: warning
+
+  no_screen_or_idiom_layout:
+    name: "No screen bounds or device idiom"
+    regex: "UIScreen\\.main\\.bounds|\\.userInterfaceIdiom"
+    message: "Layout reads WindowMetrics (window size and size class), not UIScreen.main or the device idiom"
+    severity: warning
+    excluded:
+      - "Sources/HelioKit/globals/WindowMetrics.swift" # seeds the initial value
+      - "App/HelioUITests"
+    excluded_match_kinds:
+      - comment
+      - doccomment

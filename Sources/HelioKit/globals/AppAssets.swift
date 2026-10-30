@@ -24,7 +24,15 @@ extension ColorResource {
 }
 
 extension Color {
-  static var acceptablePrimary: Color { Color(.acceptablePrimary) }
-  static var listBG: Color { Color(.listBG) }
-  static var starsBGGradient: Color { Color(.starsBGGradient) }
+  static var acceptablePrimary: Color {
+    Color(.acceptablePrimary)
+  }
+
+  static var listBG: Color {
+    Color(.listBG)
+  }
+
+  static var starsBGGradient: Color {
+    Color(.starsBGGradient)
+  }
 }

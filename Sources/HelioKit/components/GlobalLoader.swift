@@ -21,13 +21,12 @@ struct GlobalLoaderView: View {
           .progressViewStyle(CircularProgressViewStyle(tint: .teal))
           .transition(.scaleAndBlur)
       }
-      
+
       Text(loader?.loadingText ?? "Done!")
         .foregroundColor(loader?.loadingText == nil ? .green : .teal)
         .fontSize(15, .semibold)
         .transition(.asymmetric(insertion: .move(edge: .bottom), removal: .move(edge: .top)).combined(with: .opacity))
         .id(loader?.loadingText ?? "Done!")
-      
     }
     .padding(.horizontal, 12)
     .padding(.vertical, 8)
@@ -47,7 +46,7 @@ struct GlobalLoader {
 
 struct GlobalLoaderProviderModifier: ViewModifier {
   @State private var loader: GlobalLoader? = nil
-  
+
   func enable(_ str: String) {
     self.loader = GlobalLoader(loadingText: str, showing: true)
     //    doThisAfter(0.0) {
@@ -56,7 +55,7 @@ struct GlobalLoaderProviderModifier: ViewModifier {
     //      }
     //    }
   }
-  
+
   func dismiss() {
     let heavy = UIImpactFeedbackGenerator(style: .heavy)
     let soft = UIImpactFeedbackGenerator(style: .rigid)
@@ -75,6 +74,7 @@ struct GlobalLoaderProviderModifier: ViewModifier {
       }
     }
   }
+
   func body(content: Content) -> some View {
     content
       .environment(\.globalLoaderStart, enable)
@@ -84,8 +84,8 @@ struct GlobalLoaderProviderModifier: ViewModifier {
           GlobalLoaderView(loader: loader)
             .frame(width: geo.size.width, height: geo.size.height, alignment: .bottom)
         }
-          .ignoresSafeArea(.keyboard)
-        , alignment: .bottom
+        .ignoresSafeArea(.keyboard),
+        alignment: .bottom,
       )
   }
 }
@@ -102,15 +102,16 @@ private struct GlobalLoaderDismissLoadingKey: EnvironmentKey {
 }
 
 private struct GlobalLoaderStartLoadingKey: EnvironmentKey {
-  static let defaultValue: (String) -> () = { _ in }
+  static let defaultValue: (String) -> Void = { _ in }
 }
 
 extension EnvironmentValues {
-  var globalLoaderStart: (String) -> () {
+  var globalLoaderStart: (String) -> Void {
     get { self[GlobalLoaderStartLoadingKey.self] }
     set { self[GlobalLoaderStartLoadingKey.self] = newValue }
   }
-  var globalLoaderDismiss: () -> () {
+
+  var globalLoaderDismiss: () -> Void {
     get { self[GlobalLoaderDismissLoadingKey.self] }
     set { self[GlobalLoaderDismissLoadingKey.self] = newValue }
   }

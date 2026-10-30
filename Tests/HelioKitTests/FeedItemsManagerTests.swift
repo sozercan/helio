@@ -1,6 +1,6 @@
+import Defaults
 import Foundation
 import Testing
-import Defaults
 @testable import HelioKit
 
 @MainActor
@@ -19,7 +19,13 @@ struct FeedItemsManagerTests {
   }
 
   private func ids(_ entities: [RedditEntityType]) -> [String] {
-    entities.compactMap { if case .post(let post) = $0 { post.data?.id } else { nil } }
+    entities.compactMap {
+      if case let .post(post) = $0 {
+        post.data?.id
+      } else {
+        nil
+      }
+    }
   }
 
   /// `fetchPage` appends later pages on the main queue; let those blocks run.
@@ -87,7 +93,7 @@ struct FeedItemsManagerTests {
   @Test func offersToContinueAfterTooManyPagesOfReadPosts() async {
     await withHideOnRead(true) {
       var pages: [String: ([RedditEntityType], String?)] = [:]
-      for i in 0..<10 {
+      for i in 0 ..< 10 {
         pages[i == 0 ? "first" : "p\(i)"] = ([post("a\(i)", read: true), post("b\(i)", read: true)], "p\(i + 1)")
       }
       let (manager, requested) = makeManager(hideReadPosts: true, pages: pages)

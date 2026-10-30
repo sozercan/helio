@@ -4,42 +4,103 @@ on:
   push:
     branches: [main]
   pull_request:
-    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+permissions:
+  contents: read
+
+env:
+  # Pinned so runner image updates can't change the toolchain under us. Bump on purpose.
+  XCODE_VERSION: "26.6"
 
 jobs:
-  build:
+  test:
+    name: Unit tests
     runs-on: macos-26
+    timeout-minutes: 30
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Select Xcode
-        uses: maxim-lobanov/setup-xcode@v1
-        with:
-          xcode-version: latest-stable
+        run: |
+          sudo xcode-select -s "/Applications/Xcode_${XCODE_VERSION}.app/Contents/Developer"
+          xcodebuild -version
 
-      - name: Unit tests
+      - name: Cache Swift packages
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: .spm
+          key: spm-test-${{ env.XCODE_VERSION }}-${{ hashFiles('Package.resolved') }}
+          restore-keys: spm-test-${{ env.XCODE_VERSION }}-
+
+      - name: Pick simulator
+        id: simulator
+        run: echo "destination=$(.github/scripts/simulator-destination.sh)" >> "$GITHUB_OUTPUT"
+
+      - name: Run HelioKit tests
         run: |
           xcodebuild \
             -scheme HelioKit \
-            -destination 'platform=iOS Simulator,name=iPhone 17 Pro' \
+            -destination '${{ steps.simulator.outputs.destination }}' \
+            -clonedSourcePackagesDirPath .spm \
+            -resultBundlePath TestResults.xcresult \
             -skipPackagePluginValidation \
             test
+
+      - name: Upload test results
+        if: failure()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: TestResults
+          path: TestResults.xcresult
+          if-no-files-found: ignore
+
+  build:
+    name: Build (${{ matrix.name }})
+    runs-on: macos-26
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: iOS
+            destination: generic/platform=iOS
+          - name: Mac Catalyst
+            destination: generic/platform=macOS,variant=Mac Catalyst
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Select Xcode
+        run: |
+          sudo xcode-select -s "/Applications/Xcode_${XCODE_VERSION}.app/Contents/Developer"
+          xcodebuild -version
 
       # Xcode 26 ships the Metal toolchain as a separate component; the app has shaders.
       - name: Install Metal toolchain
         run: xcodebuild -downloadComponent MetalToolchain
+
+      - name: Cache Swift packages
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: .spm
+          key: spm-app-${{ env.XCODE_VERSION }}-${{ hashFiles('App/Helio.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved') }}
+          restore-keys: spm-app-${{ env.XCODE_VERSION }}-
 
       - name: Build
         run: |
           xcodebuild \
             -project App/Helio.xcodeproj \
             -scheme Helio \
-            -destination 'generic/platform=iOS' \
+            -destination '${{ matrix.destination }}' \
+            -clonedSourcePackagesDirPath .spm \
             -skipPackagePluginValidation \
             CODE_SIGNING_ALLOWED=NO \
-            Helio_BUILD_NUMBER=$(git rev-list --count HEAD) \
             build

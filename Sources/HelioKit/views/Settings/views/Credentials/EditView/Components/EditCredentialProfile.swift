@@ -11,14 +11,14 @@ struct EditCredentialProfile: View {
   let pictureURL: String?
   let username: String
   let statusInfo: RedditCredential.CredentialValidationState.Meta
-  
+
   struct StatusInfo: Equatable {
     let color: Color
     let lottieIcon: String
     let label: String
     let description: String
   }
-  
+
   var body: some View {
     HStack(spacing: 12) {
       if let pictureURL, let url = URL(string: pictureURL) {
@@ -33,14 +33,13 @@ struct EditCredentialProfile: View {
           .frame(96)
           .foregroundStyle(.gray)
       }
-      
+
       VStack(alignment: .leading, spacing: 2) {
-        
         Text(username).fontSize(24, .bold)
-        
+
         VStack(alignment: .leading, spacing: 2) {
           CredentialStatusMetaView(statusInfo)
-          
+
           Text(statusInfo.description.fixWidowedLines())
             .fontSize(13)
             .opacity(0.5)

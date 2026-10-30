@@ -5,7 +5,6 @@
 //  Created by Igor Marcossi on 06/12/23.
 //
 
-import SwiftUI
 import Foundation
 import SwiftUI
 
@@ -13,7 +12,7 @@ import SwiftUI
 struct ThemedListSectionModifier: ViewModifier {
   var disable = false
   @Environment(\.useTheme) private var theme
-    
+
   func body(content: Content) -> some View {
     if disable {
       content

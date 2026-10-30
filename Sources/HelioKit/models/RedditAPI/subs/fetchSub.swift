@@ -5,15 +5,15 @@
 //  Created by Igor Marcossi on 30/06/23.
 //
 
-import Foundation
 import Alamofire
+import Foundation
 
 extension RedditAPI {
   func fetchSub(_ name: String) async -> ListingChild<SubredditData>? {
-    switch await self.doRequest("\(RedditAPI.redditApiURLBase)\(name.hasPrefix("/r/") ? name : "/r/\(name)/")about.json?raw_json=1", method: .get, decodable: ListingChild<SubredditData>.self)  {
-    case .success(let data):
+    switch await self.doRequest("\(RedditAPI.redditApiURLBase)\(name.hasPrefix("/r/") ? name : "/r/\(name)/")about.json?raw_json=1", method: .get, decodable: ListingChild<SubredditData>.self) {
+    case let .success(data):
       return data
-    case .failure(let error):
+    case let .failure(error):
       print(error)
       return nil
     }

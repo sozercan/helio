@@ -5,18 +5,17 @@
 //  Created by Igor Marcossi on 19/07/23.
 //
 
-import SwiftUI
 import Defaults
+import SwiftUI
 
 struct SubscribeButton: View {
-  
   @Environment(\.colorScheme) var colorScheme: ColorScheme
   @FetchRequest(sortDescriptors: [], animation: .default) var subs: FetchedResults<CachedSub>
   var subreddit: Subreddit
   var isSmall: Bool = false
   @State var loading = false
   @GestureState var pressing = false
-  
+
   var body: some View {
     let subscribed = subs.contains(where: { $0.name == subreddit.data?.name })
     if let _ = subreddit.data {
@@ -26,7 +25,7 @@ struct SubscribeButton: View {
             ProgressView()
               .padding(.trailing, isSmall ? 0 : 8)
               .colorScheme(subscribed ? .dark : colorScheme)
-            
+
           } else {
             if subscribed {
               if isSmall {
@@ -47,7 +46,6 @@ struct SubscribeButton: View {
           }
         }
         .transition(.scaleAndBlur)
-        
       }
       .contentTransition(.symbolEffect)
       .fontSize(16, isSmall ? .medium : .semibold)
@@ -55,7 +53,7 @@ struct SubscribeButton: View {
       .padding(.horizontal, isSmall ? 0 : 16)
       .padding(.vertical, isSmall ? 0 : 12)
       .frame(width: isSmall ? 56 : nil, height: isSmall ? 28 : nil)
-      .background(RR(16, (subscribed ? .green : isSmall ? .clear : .secondary.opacity(0.2))))
+      .background(RR(16, subscribed ? .green : isSmall ? .clear : .secondary.opacity(0.2)))
       .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).stroke(isSmall ? Color.accentColor.opacity(subscribed ? 0 : 1.5) : .secondary.opacity(subscribed ? 0 : 0.2), lineWidth: 2))
       .brightness(pressing ? -0.1 : 0)
       .contentShape(Rectangle())
@@ -77,7 +75,7 @@ struct SubscribeButton: View {
           .updating($pressing, body: { val, state, transaction in
             transaction.animation = .default
             state = val
-          })
+          }),
       )
     }
   }

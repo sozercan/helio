@@ -1,12 +1,12 @@
 //
-//  Appearance.swift
+//  AppearancePanel.swift
 //  Helio
 //
 //  Created by Igor Marcossi on 05/07/23.
 //
 
-import SwiftUI
 import Defaults
+import SwiftUI
 
 struct AppearancePanel: View {
   @Default(.AppearanceDefSettings) var appearanceDefSettings

@@ -18,9 +18,7 @@ struct AccountSwitcherFingerLightLayer: View, Equatable {
 struct AccountSwitcherFingerLight: View, Equatable {
   var body: some View {
     Image(.spotlight)
-      .resizable()
-      .aspectRatio(contentMode: .fit)
+      .resizable().scaledToFit()
       .frame(200)
   }
 }
-

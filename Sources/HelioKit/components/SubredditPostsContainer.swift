@@ -9,6 +9,5 @@ import SwiftUI
 
 struct SubredditPostsContainerPayload: Hashable {
   var sub: Subreddit
-  var highlightID: String? = nil
+  var highlightID: String?
 }
-

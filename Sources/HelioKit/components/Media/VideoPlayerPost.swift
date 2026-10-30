@@ -1,9 +1,9 @@
-import SwiftUI
-import Defaults
-import CoreMedia
-import AVKit
 import AVFoundation
+import AVKit
 import Combine
+import CoreMedia
+import Defaults
+import SwiftUI
 
 /// Owns ONE AVPlayer for the lifetime of a single VideoPlayerPost view. Held via @StateObject, so its
 /// `deinit` fires reliably when SwiftUI destroys the cell (de-realizes it from the List) — unlike
@@ -24,10 +24,10 @@ final class VideoPlayerHolder: ObservableObject {
   private var statusObservation: NSKeyValueObservation?
   private var reloads = 0
   private let maxReloads = 2
-  
+
   init(url: URL?) {
     self.url = url
-    if let url = url {
+    if let url {
       let p = AVPlayer(playerItem: AVPlayerItem(url: url))
       p.volume = 0.0
       player = p
@@ -36,7 +36,7 @@ final class VideoPlayerHolder: ObservableObject {
     }
     observeCurrentItem()
   }
-  
+
   /// Swaps in a fresh item for a failed or stuck one. Returns false once retries are used up.
   @discardableResult
   func reload() -> Bool {
@@ -48,9 +48,11 @@ final class VideoPlayerHolder: ObservableObject {
     observeCurrentItem()
     return true
   }
-  
-  var hasFailed: Bool { player?.status == .failed || player?.currentItem?.status == .failed }
-  
+
+  var hasFailed: Bool {
+    player?.status == .failed || player?.currentItem?.status == .failed
+  }
+
   private func observeCurrentItem() {
     statusObservation = player?.currentItem?.observe(\.status, options: [.initial, .new]) { [weak self] item, _ in
       let ready = item.status == .readyToPlay
@@ -61,7 +63,7 @@ final class VideoPlayerHolder: ObservableObject {
       }
     }
   }
-  
+
   deinit {
     statusObservation?.invalidate()
     player?.pause()
@@ -76,14 +78,14 @@ struct SharedVideo: Equatable {
 
   var url: URL
   var size: CGSize
-  var posterURL: URL? = nil
+  var posterURL: URL?
 
   static func get(url: URL, size: CGSize, posterURL: URL? = nil, resetCache: Bool = false) -> SharedVideo {
-    return SharedVideo(url: url, size: size, posterURL: posterURL)
+    SharedVideo(url: url, size: size, posterURL: posterURL)
   }
 
   static func cacheKey(url: URL, size: CGSize) -> String {
-    return "\(url.absoluteString):\(size.width)x\(size.height)"
+    "\(url.absoluteString):\(size.width)x\(size.height)"
   }
 
   init(url: URL, size: CGSize, posterURL: URL? = nil) {
@@ -102,10 +104,12 @@ final class VideoObserverBag {
     removeAll()
     tokens = newTokens
   }
+
   func removeAll() {
     tokens.forEach { NotificationCenter.default.removeObserver($0) }
     tokens = []
   }
+
   deinit { removeAll() }
 }
 
@@ -113,10 +117,10 @@ struct VideoPlayerPost: View, Equatable {
   static func == (lhs: VideoPlayerPost, rhs: VideoPlayerPost) -> Bool {
     lhs.url == rhs.url && lhs.sharedVideo == rhs.sharedVideo
   }
-  
+
   weak var controller: UIViewController?
   var sharedVideo: SharedVideo?
-  let markAsSeen: (() async -> ())?
+  let markAsSeen: (() async -> Void)?
   var compact = false
   var contentWidth: CGFloat
   var url: URL
@@ -130,12 +134,23 @@ struct VideoPlayerPost: View, Equatable {
   @State private var isVisible = false
   @StateObject private var holder: VideoPlayerHolder
 
-  private var autoPlayVideos: Bool { videoDefSettings.autoPlay }
-  private var loopVideos: Bool { videoDefSettings.loop }
-  private var muteVideos: Bool { videoDefSettings.mute }
-  private var pauseBackgroundAudioOnFullscreen: Bool { videoDefSettings.pauseBGAudioOnFullscreen }
-  
-  init(controller: UIViewController?, cachedVideo: SharedVideo?, markAsSeen: (() async -> ())?, compact: Bool = false, contentWidth: CGFloat, url: URL, maxMediaHeightScreenPercentage: CGFloat) {
+  private var autoPlayVideos: Bool {
+    videoDefSettings.autoPlay
+  }
+
+  private var loopVideos: Bool {
+    videoDefSettings.loop
+  }
+
+  private var muteVideos: Bool {
+    videoDefSettings.mute
+  }
+
+  private var pauseBackgroundAudioOnFullscreen: Bool {
+    videoDefSettings.pauseBGAudioOnFullscreen
+  }
+
+  init(controller: UIViewController?, cachedVideo: SharedVideo?, markAsSeen: (() async -> Void)?, compact: Bool = false, contentWidth: CGFloat, url: URL, maxMediaHeightScreenPercentage: CGFloat) {
     self.controller = controller
     self.sharedVideo = cachedVideo
     self.markAsSeen = markAsSeen
@@ -146,41 +161,43 @@ struct VideoPlayerPost: View, Equatable {
     self.maxMediaHeightScreenPercentage = maxMediaHeightScreenPercentage
     _holder = StateObject(wrappedValue: VideoPlayerHolder(url: cachedVideo != nil ? url : nil))
   }
-  
-  var safe: Double { getSafeArea().top + getSafeArea().bottom }
-  
-  
+
+  var safe: Double {
+    getSafeArea().top + getSafeArea().bottom
+  }
+
   var body: some View {
-    let maxHeight: CGFloat = (maxMediaHeightScreenPercentage / 100) * (.screenH)
+    let maxHeight: CGFloat = (maxMediaHeightScreenPercentage / 100) * .screenH
     // Square until Reddit gives us real dimensions, matching getPostDimensions.
     let knownSize = size.width > 0 && size.height > 0
     let sourceWidth = knownSize ? size.width : contentWidth
     let sourceHeight = knownSize ? size.height : contentWidth
     let propHeight = (contentWidth * sourceHeight) / sourceWidth
     let finalHeight = maxMediaHeightScreenPercentage != 110 ? Double(min(maxHeight, propHeight)) : Double(propHeight)
-    
-    if let sharedVideo = sharedVideo, let player = holder.player {
-			// (player comes from the per-view holder, bound in the if-let above)
-      if let controller = controller {
+
+    if let sharedVideo, let player = holder.player {
+      // (player comes from the per-view holder, bound in the if-let above)
+      if let controller {
         AVPlayerRepresentable(fullscreen: $fullscreen, autoPlayVideos: autoPlayVideos, player: player, aspect: .resizeAspectFill, controller: controller)
           .frame(width: compact ? scaledCompactModeThumbSize() : contentWidth, height: compact ? scaledCompactModeThumbSize() : CGFloat(finalHeight))
           .mask(RR(12, Color.black))
           .allowsHitTesting(false)
           .contentShape(Rectangle())
           .onTapGesture {
-            if markAsSeen != nil { Task(priority: .background) { await markAsSeen?() } }
+            if markAsSeen != nil {
+              Task(priority: .background) { await markAsSeen?() }
+            }
             withAnimation {
               fullscreen = true
             }
           }
       } else {
         ZStack {
-          
           Group {
             // Only attach a player layer (= a decode pipeline) when this cell is actually
             // on-screen and not in fullscreen. Off-screen cells render Color.clear, which
             // tears the layer down via InlinePlayerLayer.dismantleUIView and frees the pipeline.
-            if isVisible && !fullscreen {
+            if isVisible, !fullscreen {
               InlinePlayerLayer(player: player)
             } else {
               Color.clear
@@ -199,47 +216,57 @@ struct VideoPlayerPost: View, Equatable {
           .mask(RR(12, Color.black))
           .allowsHitTesting(false)
           .contentShape(Rectangle())
-          .highPriorityGesture(TapGesture().onEnded({ _ in
-            if markAsSeen != nil { Task(priority: .background) { await markAsSeen?() } }
+          .highPriorityGesture(TapGesture().onEnded { _ in
+            if markAsSeen != nil {
+              Task(priority: .background) { await markAsSeen?() }
+            }
             withAnimation {
               fullscreen = true
             }
-          }))
+          })
           .allowsHitTesting(false)
           .mask(RR(12, Color.black))
           .overlay(
             Color.clear
               .contentShape(Rectangle())
               .onTapGesture {
-                if markAsSeen != nil { Task(priority: .background) { await markAsSeen?() } }
+                if markAsSeen != nil {
+                  Task(priority: .background) { await markAsSeen?() }
+                }
                 withAnimation {
                   fullscreen = true
                 }
-              }
+              },
           )
-          
+
           Image(systemName: "play.fill").foregroundColor(.white.opacity(0.75)).fontSize(32).shadow(color: .black.opacity(0.45), radius: 12, y: 8).opacity(autoPlayVideos ? 0 : 1).allowsHitTesting(false)
         }
         .onAppear {
           isVisible = true
           observePlayback(player)
-          if holder.hasFailed { reload(player) }
+          if holder.hasFailed {
+            reload(player)
+          }
           if autoPlayVideos {
             player.play()
           }
         }
         .onChange(of: holder.itemFailed) { _, failed in
-          if failed && isVisible { reload(player) }
+          if failed, isVisible {
+            reload(player)
+          }
         }
         .onChange(of: scenePhase) { _, newPhase in
           if newPhase == .active {
-            if holder.hasFailed { reload(player) }
-            if autoPlayVideos && isVisible && !PictureInPicture.shared.isPlaying(player) {
+            if holder.hasFailed {
+              reload(player)
+            }
+            if autoPlayVideos, isVisible, !PictureInPicture.shared.isPlaying(player) {
               player.play()
             }
           }
         }
-        .onDisappear() {
+        .onDisappear {
           isVisible = false
           removeObserver()
           // Synchronous on purpose: a deferred pause could land after the cell reappeared and
@@ -255,7 +282,7 @@ struct VideoPlayerPost: View, Equatable {
             player.isMuted = muteVideos
             player.play()
           }
-          if !val && !autoPlayVideos {
+          if !val, !autoPlayVideos {
             // Opening fullscreen again plays it, even after leaving it for PiP.
             firstFullscreen = false
             if !inPictureInPicture {
@@ -263,11 +290,11 @@ struct VideoPlayerPost: View, Equatable {
               player.pause()
             }
           }
-          
-          if pauseBackgroundAudioOnFullscreen && !inPictureInPicture {
+
+          if pauseBackgroundAudioOnFullscreen, !inPictureInPicture {
             scheduleAudioMixing(!val)
           }
-          
+
           if !inPictureInPicture {
             player.volume = val ? 1.0 : 0.0
           }
@@ -278,14 +305,16 @@ struct VideoPlayerPost: View, Equatable {
       }
     }
   }
-  
+
   /// Swaps in a fresh item and re-attaches the observers, which are tied to the old one.
   func reload(_ player: AVPlayer) {
     guard holder.reload() else { return }
     observePlayback(player)
-    if autoPlayVideos && isVisible { player.play() }
+    if autoPlayVideos, isVisible {
+      player.play()
+    }
   }
-  
+
   func observePlayback(_ player: AVPlayer) {
     let center = NotificationCenter.default
     let item = player.currentItem
@@ -295,7 +324,9 @@ struct VideoPlayerPost: View, Equatable {
     // Store the tokens so they can actually be removed; the bag's deinit is the safety net.
     observerBag.set([
       center.addObserver(forName: .AVPlayerItemDidPlayToEndTime, object: item, queue: .main) { _ in
-        if loop { player.seek(to: .zero) }
+        if loop {
+          player.seek(to: .zero)
+        }
       },
       center.addObserver(forName: .AVPlayerItemFailedToPlayToEndTime, object: item, queue: .main) { _ in
         reload(player)
@@ -323,14 +354,18 @@ struct VideoPlayerPost: View, Equatable {
 /// VideoPlayerPost, the number of live decode pipelines stays near the on-screen video count.
 /// The shared cached AVPlayer is left intact for instant resume.
 final class PlayerLayerHostView: UIView {
-  override class var layerClass: AnyClass { AVPlayerLayer.self }
-  var playerLayer: AVPlayerLayer { layer as! AVPlayerLayer }
+  override class var layerClass: AnyClass {
+    AVPlayerLayer.self
+  }
+
+  var playerLayer: AVPlayerLayer {
+    layer as! AVPlayerLayer
+  }
 }
 
 struct InlinePlayerLayer: UIViewRepresentable {
   let player: AVPlayer
   var gravity: AVLayerVideoGravity = .resizeAspectFill
-
 
   func makeUIView(context: Context) -> PlayerLayerHostView {
     let view = PlayerLayerHostView()
@@ -340,7 +375,9 @@ struct InlinePlayerLayer: UIViewRepresentable {
   }
 
   func updateUIView(_ view: PlayerLayerHostView, context: Context) {
-    if view.playerLayer.player !== player { view.playerLayer.player = player }
+    if view.playerLayer.player !== player {
+      view.playerLayer.player = player
+    }
     view.playerLayer.videoGravity = gravity
   }
 
@@ -366,27 +403,31 @@ struct FullScreenVP: View {
     FullScreenPlayerView(player: player, holder: holder, onPictureInPictureStart: { dismiss() })
       .background(
         size != .zero
-        ? nil
-        : GeometryReader { geo in
-          Color.clear
-            .onAppear { altSize = geo.size }
-            .onChange(of: geo.size) { _, newValue in altSize = newValue }
-        }
+          ? nil
+          : GeometryReader { geo in
+            Color.clear
+              .onAppear { altSize = geo.size }
+              .onChange(of: geo.size) { _, newValue in altSize = newValue }
+          },
       )
-    //      .pinchToZoom(size: sharedVideo.size == .zero ? altSize : sharedVideo.size, isPinching: $isPinching, scale: $scale, anchor: $anchor, offset: $offset)
+      //      .pinchToZoom(size: sharedVideo.size == .zero ? altSize : sharedVideo.size, isPinching: $isPinching, scale: $scale, anchor: $anchor, offset: $offset)
       .scaleEffect(interpolate([1, 0.9], true))
       .offset(cancelDrag ?? false ? .zero : drag)
       .gesture(
         scale != 1.0
-        ? nil
-        : DragGesture(minimumDistance: 10)
+          ? nil
+          : DragGesture(minimumDistance: 10)
           .onChanged { val in
-            if cancelDrag == nil { cancelDrag = abs(val.translation.width) > abs(val.translation.height) }
-            if cancelDrag == nil || cancelDrag! { return }
+            if cancelDrag == nil {
+              cancelDrag = abs(val.translation.width) > abs(val.translation.height)
+            }
+            if cancelDrag == nil || cancelDrag! {
+              return
+            }
             var transaction = Transaction()
             transaction.isContinuous = true
             transaction.animation = .interpolatingSpring(stiffness: 1000, damping: 100, initialVelocity: 0)
-            
+
             let endPos = val.translation
             withTransaction(transaction) {
               drag = endPos
@@ -395,7 +436,9 @@ struct FullScreenVP: View {
           .onEnded { val in
             let prevCancelDrag = cancelDrag
             cancelDrag = nil
-            if prevCancelDrag == nil || prevCancelDrag! { return }
+            if prevCancelDrag == nil || prevCancelDrag! {
+              return
+            }
             let shouldClose = abs(val.translation.width) > 100 || abs(val.translation.height) > 100
             withAnimation(.interpolatingSpring(stiffness: 200, damping: 20, initialVelocity: 0)) {
               drag = .zero
@@ -403,7 +446,7 @@ struct FullScreenVP: View {
                 dismiss()
               }
             }
-          }
+          },
       )
   }
 }
@@ -418,15 +461,17 @@ final class PictureInPicture {
   private var delegate: AVPlayerViewControllerDelegate?
   /// Fullscreen players on screen, which own the audio session while they're up.
   var fullscreenPlayers = 0
-  
-  func isPlaying(_ player: AVPlayer) -> Bool { holder?.player === player }
-  
+
+  func isPlaying(_ player: AVPlayer) -> Bool {
+    holder?.player === player
+  }
+
   func begin(_ holder: VideoPlayerHolder, controller: AVPlayerViewController, delegate: AVPlayerViewControllerDelegate) {
     self.holder = holder
     self.controller = controller
     self.delegate = delegate
   }
-  
+
   func end(_ controller: AVPlayerViewController) {
     guard self.controller === controller else { return }
     // Back to the feed's muted inline playback.
@@ -435,7 +480,7 @@ final class PictureInPicture {
     self.controller = nil
     delegate = nil
     // Fullscreen paused other apps' audio, and leaving it for PiP skipped resuming it.
-    if Defaults[.VideoDefSettings].pauseBGAudioOnFullscreen && fullscreenPlayers == 0 {
+    if Defaults[.VideoDefSettings].pauseBGAudioOnFullscreen, fullscreenPlayers == 0 {
       scheduleAudioMixing(true)
     }
   }
@@ -447,7 +492,7 @@ struct FullScreenPlayerView: UIViewControllerRepresentable {
   let player: AVPlayer
   let holder: VideoPlayerHolder
   var onPictureInPictureStart: () -> Void
-  
+
   func makeUIViewController(context: Context) -> AVPlayerViewController {
     let controller = AVPlayerViewController()
     controller.player = player
@@ -457,37 +502,41 @@ struct FullScreenPlayerView: UIViewControllerRepresentable {
     PictureInPicture.shared.fullscreenPlayers += 1
     return controller
   }
-  
+
   func updateUIViewController(_ controller: AVPlayerViewController, context: Context) {
     context.coordinator.parent = self
   }
-  
+
   static func dismantleUIViewController(_ controller: AVPlayerViewController, coordinator: Coordinator) {
     PictureInPicture.shared.fullscreenPlayers -= 1
   }
-  
-  func makeCoordinator() -> Coordinator { Coordinator(parent: self) }
-  
+
+  func makeCoordinator() -> Coordinator {
+    Coordinator(parent: self)
+  }
+
   final class Coordinator: NSObject, AVPlayerViewControllerDelegate {
     var parent: FullScreenPlayerView
-    init(parent: FullScreenPlayerView) { self.parent = parent }
-    
+    init(parent: FullScreenPlayerView) {
+      self.parent = parent
+    }
+
     func playerViewControllerDidStartPictureInPicture(_ controller: AVPlayerViewController) {
       PictureInPicture.shared.begin(parent.holder, controller: controller, delegate: self)
       // Leave fullscreen so the feed is usable while the video floats.
       parent.onPictureInPictureStart()
     }
-    
+
     func playerViewControllerDidStopPictureInPicture(_ controller: AVPlayerViewController) {
       PictureInPicture.shared.end(controller)
     }
-    
+
     func playerViewControllerShouldAutomaticallyDismissAtPictureInPictureStart(_ controller: AVPlayerViewController) -> Bool {
       false
     }
-    
-    // Starting PiP dismissed the fullscreen player, and its feed row may be gone too, so
-    // there's no player to return to.
+
+    /// Starting PiP dismissed the fullscreen player, and its feed row may be gone too, so
+    /// there's no player to return to.
     func playerViewController(_ controller: AVPlayerViewController, restoreUserInterfaceForPictureInPictureStopWithCompletionHandler completionHandler: @escaping (Bool) -> Void) {
       completionHandler(false)
     }
@@ -526,14 +575,14 @@ struct AVPlayerRepresentable: UIViewRepresentable {
     }
   }
 
-  // Without this, every video cell scrolled past leaks its AVPlayerViewController:
-  // `makeUIView` calls `controller.addChild(...)` but nothing ever calls
-  // `removeFromParent()`, so the child VC (and its AVPlayerLayer / decode session)
-  // stays alive on the long-lived feed controller. iOS only allows ~16 simultaneous
-  // video pipelines, so after scrolling past enough videos new ones can't render
-  // (no autoplay in the list, a frame or two then a stall in the post). Detaching
-  // here releases the layer's decode session while leaving the shared cached
-  // AVPlayer intact for reuse.
+  /// Without this, every video cell scrolled past leaks its AVPlayerViewController:
+  /// `makeUIView` calls `controller.addChild(...)` but nothing ever calls
+  /// `removeFromParent()`, so the child VC (and its AVPlayerLayer / decode session)
+  /// stays alive on the long-lived feed controller. iOS only allows ~16 simultaneous
+  /// video pipelines, so after scrolling past enough videos new ones can't render
+  /// (no autoplay in the list, a frame or two then a stall in the post). Detaching
+  /// here releases the layer's decode session while leaving the shared cached
+  /// AVPlayer intact for reuse.
   static func dismantleUIView(_ uiView: UIView, coordinator: Coordinator) {
     if let playerController = coordinator.controller {
       playerController.willMove(toParent: nil)
@@ -549,7 +598,7 @@ struct AVPlayerRepresentable: UIViewRepresentable {
   }
 
   class Coordinator: NSObject {
-    var controller: NiceAVPlayer? = nil
+    var controller: NiceAVPlayer?
   }
 }
 
@@ -561,7 +610,7 @@ class NiceAVPlayer: AVPlayerViewController, AVPlayerViewControllerDelegate {
   private var loopObserver: NSObjectProtocol?
   @Default(.VideoDefSettings) private var videoDefSettings
   override open var prefersStatusBarHidden: Bool {
-    return true
+    true
   }
 
   init(fullscreen: Binding<Bool>, autoPlayVideos: Bool) {
@@ -574,7 +623,7 @@ class NiceAVPlayer: AVPlayerViewController, AVPlayerViewControllerDelegate {
 
   required init?(coder aDecoder: NSCoder) {
     self.autoPlayVideos = false
-    self._fullscreen = Binding(get: { true }, set: { _, _ in return })
+    self._fullscreen = Binding(get: { true }, set: { _, _ in })
     super.init(coder: aDecoder)
   }
 
@@ -584,13 +633,14 @@ class NiceAVPlayer: AVPlayerViewController, AVPlayerViewControllerDelegate {
       loopObserver = NotificationCenter.default.addObserver(
         forName: .AVPlayerItemDidPlayToEndTime,
         object: player.currentItem,
-        queue: nil) { [weak self] _ in
-          guard self != nil else { return }
-          player.seek(to: .zero)
-          player.play()
-        }
+        queue: nil,
+      ) { [weak self] _ in
+        guard self != nil else { return }
+        player.seek(to: .zero)
+        player.play()
+      }
     }
-    if autoPlayVideos && gone {
+    if autoPlayVideos, gone {
       self.player?.play()
       gone = false
     }
@@ -610,7 +660,9 @@ class NiceAVPlayer: AVPlayerViewController, AVPlayerViewControllerDelegate {
   }
 
   deinit {
-    if let token = loopObserver { NotificationCenter.default.removeObserver(token) }
+    if let token = loopObserver {
+      NotificationCenter.default.removeObserver(token)
+    }
   }
 
   @objc private func didTapView() {
@@ -620,7 +672,7 @@ class NiceAVPlayer: AVPlayerViewController, AVPlayerViewControllerDelegate {
 
   func enterFullScreen(animated: Bool) {
     let selector = NSSelectorFromString("enterFullScreenAnimated:completionHandler:")
-    
+
     if self.responds(to: selector) {
       self.perform(selector, with: animated, with: nil)
     }
@@ -628,7 +680,7 @@ class NiceAVPlayer: AVPlayerViewController, AVPlayerViewControllerDelegate {
 
   func exitFullScreen(animated: Bool) {
     let selector = NSSelectorFromString("exitFullScreenAnimated:completionHandler:")
-    
+
     if self.responds(to: selector) {
       self.perform(selector, with: animated, with: nil)
     }
@@ -636,10 +688,10 @@ class NiceAVPlayer: AVPlayerViewController, AVPlayerViewControllerDelegate {
 
   func playerViewController(
     _ playerViewController: AVPlayerViewController,
-    willBeginFullScreenPresentationWithAnimationCoordinator coordinator: UIViewControllerTransitionCoordinator
+    willBeginFullScreenPresentationWithAnimationCoordinator coordinator: UIViewControllerTransitionCoordinator,
   ) {
     coordinator.animate(alongsideTransition: nil) { [weak self] context in
-      guard let self = self else { return }
+      guard let self else { return }
       if context.isCancelled {
         // Still embedded inline
       } else {
@@ -654,11 +706,11 @@ class NiceAVPlayer: AVPlayerViewController, AVPlayerViewControllerDelegate {
 
   func playerViewController(
     _ playerViewController: AVPlayerViewController,
-    willEndFullScreenPresentationWithAnimationCoordinator coordinator: UIViewControllerTransitionCoordinator
+    willEndFullScreenPresentationWithAnimationCoordinator coordinator: UIViewControllerTransitionCoordinator,
   ) {
     let isPlaying = self.player?.isPlaying ?? false
     coordinator.animate(alongsideTransition: nil) { [weak self] context in
-      guard let self = self else { return }
+      guard let self else { return }
       if context.isCancelled {
         // Still full screen
       } else {
@@ -669,7 +721,11 @@ class NiceAVPlayer: AVPlayerViewController, AVPlayerViewControllerDelegate {
           self.player?.volume = 0.0
         }
         self.showsPlaybackControls = false
-        if !self.autoPlayVideos { self.player?.pause() } else if isPlaying { self.player?.play() }
+        if !self.autoPlayVideos {
+          self.player?.pause()
+        } else if isPlaying {
+          self.player?.play()
+        }
       }
     }
   }
@@ -677,6 +733,6 @@ class NiceAVPlayer: AVPlayerViewController, AVPlayerViewControllerDelegate {
 
 extension AVPlayer {
   var isVideoPlaying: Bool {
-    return rate != 0 && error == nil
+    rate != 0 && error == nil
   }
 }

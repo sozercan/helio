@@ -11,7 +11,7 @@ struct VoteButton: View, Equatable {
   var active: Bool
   var color: Color
   var image: String
-  
+
   var body: some View {
     Image(systemName: image)
       .symbolEffect(active ? .bounce.up : .bounce.down, options: .speed(2.75), value: active)

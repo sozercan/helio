@@ -12,11 +12,9 @@ struct AlphabetJumper: View {
   var proxy: ScrollViewProxy
   @GestureState private var scrollLetter = ""
   @State private var haptic = UIImpactFeedbackGenerator(style: .rigid)
-  
-  func goToLetter(_ letter: String, _ disableState: Bool = false) {
 
-  }
-  
+  func goToLetter(_ letter: String, _ disableState: Bool = false) {}
+
   func scrollTo(_ letter: String) {
     if !letter.isEmpty {
       proxy.scrollTo(letter, anchor: .center)
@@ -24,6 +22,7 @@ struct AlphabetJumper: View {
       haptic.impactOccurred()
     }
   }
+
   var body: some View {
     VStack(spacing: 0) {
       ForEach(letters, id: \.self) { letter in
@@ -46,7 +45,9 @@ struct AlphabetJumper: View {
       DragGesture(minimumDistance: 0)
         .updating($scrollLetter) { val, state, trans in
           let stepI = Int(val.location.y / 15.3)
-          if stepI >= letters.count || stepI < 0 { return }
+          if stepI >= letters.count || stepI < 0 {
+            return
+          }
           if letters.count - 1 >= stepI {
             let newLetter = letters[stepI]
             if newLetter != state {
@@ -54,7 +55,7 @@ struct AlphabetJumper: View {
               state = newLetter
             }
           }
-        }
+        },
     )
     .onChange(of: scrollLetter, perform: scrollTo)
     .frame(height: .screenH, alignment: .trailing)

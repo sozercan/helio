@@ -5,8 +5,8 @@
 //  Created by daniel on 12/8/23.
 //
 
-import SwiftUI
 import Defaults
+import SwiftUI
 
 struct CommentSkipper: ViewModifier {
   @Environment(\.useTheme) private var selectedTheme
@@ -17,17 +17,15 @@ struct CommentSkipper: ViewModifier {
 
   var comments: [Comment]
   var reader: ScrollViewProxy
-  
+
   func body(content: Content) -> some View {
     content.overlay {
       if showJumpToNextCommentButton {
         HStack {
-          
-          
-          if selectedTheme.posts.inlineFloatingPill && !defSettings.jumpNextCommentButtonLeft{
+          if selectedTheme.posts.inlineFloatingPill && !defSettings.jumpNextCommentButtonLeft {
             Spacer()
           }
-          
+
           VStack {
             Spacer()
             Button {
@@ -41,12 +39,12 @@ struct CommentSkipper: ViewModifier {
                 .padding()
                 .background(
                   Circle()
-                    .foregroundStyle(.thinMaterial)
+                    .foregroundStyle(.thinMaterial),
                 )
             }
           }
           .padding()
-          
+
           if !selectedTheme.posts.inlineFloatingPill || defSettings.jumpNextCommentButtonLeft {
             Spacer()
           }
@@ -54,16 +52,16 @@ struct CommentSkipper: ViewModifier {
       }
     }
   }
-  
+
   private func jumpToNextComment() {
     if topVisibleCommentId == nil, let id = comments.first?.id {
       reader.scrollTo(id, anchor: .top)
       topVisibleCommentId = id
       return
     }
-    
-    if let topVisibleCommentId = topVisibleCommentId {
-      let topVisibleCommentIndex = comments.map { $0.id }.firstIndex(of: topVisibleCommentId) ?? 0
+
+    if let topVisibleCommentId {
+      let topVisibleCommentIndex = comments.map(\.id).firstIndex(of: topVisibleCommentId) ?? 0
       if topVisibleCommentId == previousScrollTarget {
         let nextIndex = min(topVisibleCommentIndex + 1, comments.count - 1)
         reader.scrollTo(comments[nextIndex].id, anchor: .top)
@@ -88,7 +86,7 @@ extension View {
     previousScrollTarget: Binding<String?>,
     comments: [Comment],
 
-    reader: ScrollViewProxy
+    reader: ScrollViewProxy,
   ) -> some View {
     modifier(
       CommentSkipper(
@@ -96,8 +94,8 @@ extension View {
         topVisibleCommentId: topVisibleCommentId,
         previousScrollTarget: previousScrollTarget,
         comments: comments,
-        reader: reader
-      )
+        reader: reader,
+      ),
     )
   }
 }

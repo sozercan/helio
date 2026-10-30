@@ -10,7 +10,7 @@ import SwiftUI
 struct BigInfoCredential: View {
   var label: String
   var value: String?
-  var refresh: (() async -> ())? = nil
+  var refresh: (() async -> Void)?
   @State private var copied = false
   @State private var refreshed = false
   @State private var bounce = 0
@@ -22,14 +22,15 @@ struct BigInfoCredential: View {
     VStack(alignment: .leading, spacing: 6) {
       HStack(alignment: .bottom) {
         Text(label).fontSize(20, .semibold)
-        
+
         Spacer()
-        
+
         HStack(spacing: 12) {
-          
           Button {
             UIPasteboard.general.string = value
-            withAnimation(.bouncy) { copied = true; bounce += 1 }
+            withAnimation(.bouncy) { copied = true
+              bounce += 1
+            }
             doThisAfter(0.3) { withAnimation {
               copied = false
               Hap.shared.play(intensity: 1, sharpness: 1)
@@ -41,10 +42,12 @@ struct BigInfoCredential: View {
               .brightness(copied ? 0.2 : 0)
               .symbolEffect(.bounce, value: bounce)
           }
-          
-          if let refresh = refresh {
+
+          if let refresh {
             Button {
-              withAnimation(.bouncy) { refreshed = true; spin = true }
+              withAnimation(.bouncy) { refreshed = true
+                spin = true
+              }
               withAnimation { loading = true }
               doThisAfter(0.3) { refreshed = false }
               doThisAfter(0.5) { spin = false }
@@ -67,7 +70,6 @@ struct BigInfoCredential: View {
                 .rotationEffect(.degrees(spin ? 360 : 0))
             }
           }
-          
         }
         .fontSize(16, .semibold)
         .foregroundStyle(Color.accentColor)
@@ -80,8 +82,8 @@ struct BigInfoCredential: View {
         .blur(radius: loading ? 24 : 0)
         .overlay {
           !loading
-          ? nil
-          : ProgressView()
+            ? nil
+            : ProgressView()
         }
     }
     .padding(.horizontal, 12)

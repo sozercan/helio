@@ -5,9 +5,9 @@
 //  Created by Igor Marcossi on 07/08/23.
 //
 
-import SwiftUI
 import Defaults
 import NukeUI
+import SwiftUI
 
 struct LightBoxOverlay: View {
   let postTitle: String
@@ -20,7 +20,7 @@ struct LightBoxOverlay: View {
   @Environment(\.dismiss) var dismiss
   @Binding var done: Bool
   @Environment(\.useTheme) private var selectedTheme
-    @State private var isPresentingShareSheet = false
+  @State private var isPresentingShareSheet = false
   @State private var sharedImageData: Data?
   var body: some View {
     VStack(alignment: .leading) {
@@ -30,9 +30,9 @@ struct LightBoxOverlay: View {
           .allowsHitTesting(false)
         BadgeView(avatarRequest: avatarImageRequest, saved: false, usernameColor: nil, author: badgeKit.author, fullname: badgeKit.authorFullname, userFlair: badgeKit.userFlair, created: badgeKit.created, avatarURL: nil, theme: selectedTheme.postLinks.theme.badge)
       }
-      
+
       Spacer()
-      
+
       if imagesArr.count > 1 {
         Text("\(activeIndex + 1)/\(imagesArr.count)")
           .fontSize(16, .semibold)
@@ -42,10 +42,9 @@ struct LightBoxOverlay: View {
           .frame(maxWidth: .infinity)
           .allowsHitTesting(false)
       }
-      
+
       HStack(spacing: 12) {
-        
-          // MANDRAKE
+        // MANDRAKE
 //           if let post {
 //               LightBoxButton(icon: "bubble.right") {
 //             if let data = post.data {
@@ -54,27 +53,26 @@ struct LightBoxOverlay: View {
 //                 }
 //               }
 //           }
-        
-        
+
         LightBoxButton(icon: "square.and.arrow.down") {
           withAnimation(spring) {
             loading = true
           }
-          saveMedia(imagesArr[activeIndex].url.absoluteString, .image) { result in
+          saveMedia(imagesArr[activeIndex].url.absoluteString, .image) { _ in
             withAnimation(spring) {
               done = true
             }
           }
         }
-        LightBoxButton(icon: "square.and.arrow.up"){
-          Task{
+        LightBoxButton(icon: "square.and.arrow.up") {
+          Task {
             sharedImageData = try await downloadAndSaveImage(url: imagesArr[activeIndex].url)
           }
           isPresentingShareSheet.toggle()
         }
         .contentShape(Circle())
         .sheet(isPresented: $isPresentingShareSheet) {
-          if let sharedImageData = sharedImageData, let uiimg = UIImage(data: sharedImageData){
+          if let sharedImageData, let uiimg = UIImage(data: sharedImageData) {
             let image = ShareImage(placeholderItem: uiimg)
             ShareSheet(items: [image])
           }
@@ -95,10 +93,10 @@ struct LightBoxOverlay: View {
           .fill(LinearGradient(
             gradient: Gradient(stops: [
               .init(color: Color.black.opacity(1), location: 0),
-              .init(color: Color.black.opacity(0), location: 1)
+              .init(color: Color.black.opacity(0), location: 1),
             ]),
             startPoint: .top,
-            endPoint: .bottom
+            endPoint: .bottom,
           ))
           .frame(height: 150)
         Spacer()
@@ -106,15 +104,15 @@ struct LightBoxOverlay: View {
           .fill(LinearGradient(
             gradient: Gradient(stops: [
               .init(color: Color.black.opacity(1), location: 0),
-              .init(color: Color.black.opacity(0), location: 1)
+              .init(color: Color.black.opacity(0), location: 1),
             ]),
             startPoint: .bottom,
-            endPoint: .top
+            endPoint: .top,
           ))
           .frame(height: 150)
       }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .allowsHitTesting(false)
+      .frame(maxWidth: .infinity, maxHeight: .infinity)
+      .allowsHitTesting(false),
     )
     .compositingGroup()
     .opacity(opacity)

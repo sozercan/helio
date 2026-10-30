@@ -5,13 +5,13 @@
 ////  Created by Igor Marcossi on 30/08/23.
 ////
 //
-//import SwiftUI
-//import Defaults
-//import CoreMedia
-//import AVKit
-//import AVFoundation
+// import SwiftUI
+// import Defaults
+// import CoreMedia
+// import AVKit
+// import AVFoundation
 //
-//struct EnhancedVideoPlayer<VideoOverlay: View>: View {
+// struct EnhancedVideoPlayer<VideoOverlay: View>: View {
 //  @StateObject private var viewModel: ViewModel
 //  @ViewBuilder var videoOverlay: () -> VideoOverlay
 //
@@ -53,12 +53,12 @@
 //  enum EndAction: Equatable {
 //    case none,
 //         loop
-//}
+// }
 //
-//extension EnhancedVideoPlayer where VideoOverlay == EmptyView {
+// extension EnhancedVideoPlayer where VideoOverlay == EmptyView {
 //  init(_ urls: [URL], endAction: EndAction) {
 //    self.init(urls, endAction: endAction) {
 //      EmptyView()
 //    }
 //  }
-//}
+// }

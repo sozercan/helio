@@ -22,19 +22,18 @@ struct GuidedErrorScene: View {
         }
       }
       VStack(spacing: 16) {
-        
         HelioButton {
           withAnimation(.spring) { scene = .tutorial }
         } label: {
           Label("Repeat tutorial", systemImage: "arrow.clockwise")
         }
-        
+
         HelioButton(config: .secondary) {
           nav.append(.advanced)
         } label: {
           Text("I wanna do it manually")
         }
-        
+
         HelioButton(config: .secondary) {
           openURL(URL(string: "https://discord.gg/Jw3Syb3nrz")!)
         } label: {
@@ -43,7 +42,6 @@ struct GuidedErrorScene: View {
             Text("Ask in the Discord server")
           }
         }
-        
       }
     }
     .multilineTextAlignment(.center)

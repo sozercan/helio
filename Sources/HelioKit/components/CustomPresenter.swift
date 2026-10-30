@@ -7,38 +7,37 @@
 
 import SwiftUI
 
-struct ModalPresenter<Content>: UIViewRepresentable where Content: View {
-  
+struct ModalPresenter<Content: View>: UIViewRepresentable {
   @Binding private var isPresented: Bool
-  
+
   private let content: () -> Content
   private let onDismiss: (() -> Void)?
   private let parentController: UIViewController?
-  
+
   init(
     parentController: UIViewController?,
     isPresented: Binding<Bool>,
     onDismiss: (() -> Void)? = nil,
-    @ViewBuilder content: @escaping () -> Content
+    @ViewBuilder content: @escaping () -> Content,
   ) {
     self.parentController = parentController
     self.onDismiss = onDismiss
     self.content = content
-    
+
     _isPresented = isPresented
   }
-  
+
   func makeCoordinator() -> Coordinator {
     Coordinator()
   }
-  
+
   func makeUIView(context: Context) -> UIView {
     let controller = UIViewController()
     parentController?.addChild(controller)
     context.coordinator.controller = controller
     return controller.view
   }
-  
+
   func updateUIView(_ uiView: UIView, context: Context) {
     if isPresented {
       let hc = ModalHostingController(rootView: content())
@@ -48,7 +47,7 @@ struct ModalPresenter<Content>: UIViewRepresentable where Content: View {
       hc.dismissHandler = {
         self.isPresented = false
       }
-      
+
       if let controller = context.coordinator.controller {
         DispatchQueue.main.throttle(interval: 1.0, context: controller) {
           controller.present(hc, animated: true)
@@ -56,18 +55,18 @@ struct ModalPresenter<Content>: UIViewRepresentable where Content: View {
       }
     }
   }
-  
+
   class Coordinator: NSObject {
-    var controller: UIViewController? = nil
+    var controller: UIViewController?
   }
 }
 
-class ModalHostingController<Content: View> : UIHostingController<Content> {
-  var dismissHandler: () -> Void = { }
+class ModalHostingController<Content: View>: UIHostingController<Content> {
+  var dismissHandler: () -> Void = {}
 }
 
 extension View {
-  func customPresenter<Content: View>(parentController: UIViewController?, isPresented: Binding<Bool>, @ViewBuilder content: @escaping () -> Content) -> some View {
+  func customPresenter(parentController: UIViewController?, isPresented: Binding<Bool>, @ViewBuilder content: @escaping () -> some View) -> some View {
     self
       .background(ModalPresenter(parentController: parentController, isPresented: isPresented, content: content))
   }

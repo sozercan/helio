@@ -10,13 +10,17 @@ extension MediaExtractedType {
   /// extracting a link again would fetch its preview again. Reposts are laid out in place, and
   /// YouTube thumbnails requested again (see `relayoutingParts`).
   var dependsOnWidth: Bool {
-    if case .imgs = self { true } else { false }
+    if case .imgs = self {
+      true
+    } else {
+      false
+    }
   }
 
   /// The width-dependent part of media that's kept across a relayout: a YouTube embed's
   /// thumbnail request. Keeps its player.
   func relayoutingParts(contentWidth: Double, theme: HelioTheme) -> MediaExtractedType {
-    guard case .yt(let yt) = self else { return self }
+    guard case let .yt(yt) = self else { return self }
     return .yt(YTMediaExtracted(videoID: yt.videoID, size: yt.size, thumbnailURL: yt.thumbnailURL, thumbnailRequest: youTubeThumbnailRequest(yt.thumbnailURL, contentWidth: contentWidth, theme: theme), player: yt.player, author: yt.author, authorURL: yt.authorURL))
   }
 }
@@ -43,7 +47,7 @@ extension Post {
     // Extracting a repost again would build a new embedded post, losing its votes and
     // previews, so lay the existing one out instead.
     for media in [helioData.extractedMedia, helioData.extractedMediaForcedNormal] {
-      if case .repost(let embedded) = media {
+      if case let .repost(embedded) = media {
         embedded.relayout(contentWidth: contentWidth, theme: theme, secondary: true)
       }
     }

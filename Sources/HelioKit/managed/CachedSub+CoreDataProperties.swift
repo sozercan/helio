@@ -6,48 +6,46 @@
 //
 //
 
-import Foundation
 import CoreData
+import Foundation
 
+public extension CachedSub {
+  @nonobjc class func fetchRequest() -> NSFetchRequest<CachedSub> {
+    NSFetchRequest<CachedSub>(entityName: "CachedSub")
+  }
 
-extension CachedSub {
+  @NSManaged var allow_galleries: Bool
+  @NSManaged var allow_images: Bool
+  @NSManaged var allow_videos: Bool
+  @NSManaged var banner_background_color: String?
+  @NSManaged var banner_background_image: String?
+  @NSManaged var banner_img: String?
+  @NSManaged var community_icon: String?
+  @NSManaged var display_name: String?
+  @NSManaged var header_img: String?
+  @NSManaged var icon_img: String?
+  @NSManaged var key_color: String?
+  @NSManaged var name: String?
+  @NSManaged var over18: Bool
+  @NSManaged var primary_color: String?
+  @NSManaged var restrict_commenting: Bool
+  @NSManaged var subscribers: Double
+  @NSManaged var title: String?
+  @NSManaged var url: String?
+  @NSManaged var user_flair_background_color: String?
+  @NSManaged var user_has_favorited: Bool
+  @NSManaged var user_is_banned: Bool
+  @NSManaged var user_is_moderator: Bool
+  @NSManaged var user_is_subscriber: Bool
+  @NSManaged var uuid: String?
+  @NSManaged var helioCredentialID: UUID?
 
-    @nonobjc public class func fetchRequest() -> NSFetchRequest<CachedSub> {
-        return NSFetchRequest<CachedSub>(entityName: "CachedSub")
-    }
-
-    @NSManaged public var allow_galleries: Bool
-    @NSManaged public var allow_images: Bool
-    @NSManaged public var allow_videos: Bool
-    @NSManaged public var banner_background_color: String?
-    @NSManaged public var banner_background_image: String?
-    @NSManaged public var banner_img: String?
-    @NSManaged public var community_icon: String?
-    @NSManaged public var display_name: String?
-    @NSManaged public var header_img: String?
-    @NSManaged public var icon_img: String?
-    @NSManaged public var key_color: String?
-    @NSManaged public var name: String?
-    @NSManaged public var over18: Bool
-    @NSManaged public var primary_color: String?
-    @NSManaged public var restrict_commenting: Bool
-    @NSManaged public var subscribers: Double
-    @NSManaged public var title: String?
-    @NSManaged public var url: String?
-    @NSManaged public var user_flair_background_color: String?
-    @NSManaged public var user_has_favorited: Bool
-    @NSManaged public var user_is_banned: Bool
-    @NSManaged public var user_is_moderator: Bool
-    @NSManaged public var user_is_subscriber: Bool
-    @NSManaged public var uuid: String?
-    @NSManaged public var helioCredentialID: UUID?
-  
-  convenience init(data: SubredditData, context: NSManagedObjectContext, credentialID: UUID) {
+  internal convenience init(data: SubredditData, context: NSManagedObjectContext, credentialID: UUID) {
     self.init(context: context)
     update(data: data, credentialID: credentialID)
   }
-  
-  func update(data x: SubredditData, credentialID: UUID) {
+
+  internal func update(data x: SubredditData, credentialID: UUID) {
     self.uuid = x.name
     self.allow_galleries = x.allow_galleries ?? false
     self.allow_images = x.allow_images ?? false
@@ -74,9 +72,6 @@ extension CachedSub {
     self.subscribers = Double(x.subscribers ?? 0)
     self.helioCredentialID = credentialID
   }
-
 }
 
-extension CachedSub : Identifiable {
-
-}
+extension CachedSub: Identifiable {}

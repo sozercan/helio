@@ -5,46 +5,46 @@
 //  Created by Igor Marcossi on 28/06/23.
 //
 
-import Foundation
 import Alamofire
 import Defaults
+import Foundation
 
 extension RedditAPI {
   func fetchSubPosts(_ id: String, limit: Int = Defaults[.SubredditFeedDefSettings].chunkLoadSize, sort: SubListingSortOption = .best, after: String? = nil) async -> ([ListingChild<Either<PostData, CommentData>>]?, String?)? {
-      let subID = buildSubID(id, sort, after)
+    let subID = buildSubID(id, sort, after)
     let params = FetchSubPostsPayload(limit: limit, after: after)
-          
-      let urlString = "\(RedditAPI.redditApiURLBase)\(subID)".replacingOccurrences(of: " ", with: "%20")
 
-      switch await self.doRequest(urlString, method: .get, params: params, paramsLocation: .queryString, decodable: Listing<Either<PostData, CommentData>>.self)  {
-      case .success(let data):
-        return (data.data?.children, data.data?.after)
-      case .failure(let error):
-        print(error)
-        return nil
-      }
-  }
-  
-  func fetchSavedPosts(_ id: String, after: String? = nil, searchText: String? = nil) async -> [Either<PostData, CommentData>]? {
-    let subID = buildSubID(id, nil, after, searchText)
-    let limit = Defaults[.SubredditFeedDefSettings].chunkLoadSize
-    let params = FetchSubsPayload(limit: limit, after: after)
-    
     let urlString = "\(RedditAPI.redditApiURLBase)\(subID)".replacingOccurrences(of: " ", with: "%20")
-    
-    switch await self.doRequest(urlString, method: .get, params: params, paramsLocation: .queryString, decodable: Listing<Either<PostData, CommentData>>.self)  {
-    case .success(let data):
-      return data.data?.children?.map { $0.data }.compactMap { $0 }
-    case .failure(let error):
+
+    switch await self.doRequest(urlString, method: .get, params: params, paramsLocation: .queryString, decodable: Listing<Either<PostData, CommentData>>.self) {
+    case let .success(data):
+      return (data.data?.children, data.data?.after)
+    case let .failure(error):
       print(error)
       return nil
     }
   }
-  
+
+  func fetchSavedPosts(_ id: String, after: String? = nil, searchText: String? = nil) async -> [Either<PostData, CommentData>]? {
+    let subID = buildSubID(id, nil, after, searchText)
+    let limit = Defaults[.SubredditFeedDefSettings].chunkLoadSize
+    let params = FetchSubsPayload(limit: limit, after: after)
+
+    let urlString = "\(RedditAPI.redditApiURLBase)\(subID)".replacingOccurrences(of: " ", with: "%20")
+
+    switch await self.doRequest(urlString, method: .get, params: params, paramsLocation: .queryString, decodable: Listing<Either<PostData, CommentData>>.self) {
+    case let .success(data):
+      return data.data?.children?.map(\.data).compactMap(\.self)
+    case let .failure(error):
+      print(error)
+      return nil
+    }
+  }
+
   private func buildSubID(_ id: String, _ sort: SubListingSortOption?, _ after: String?, _ searchText: String? = nil) -> String {
     let appendedFileType = ".json"
     var subID = ""
-  
+
     if id != savedKeyword {
       subID = id == "" ? "/" : id.hasPrefix("/r/") ? id : "/r/\(id)"
     } else if let username = RedditAPI.shared.me?.data?.name {
@@ -52,13 +52,13 @@ extension RedditAPI {
     } else {
       print("Sub ID failed to build. Invalid logic... content will fail to load.")
     }
-    
+
     subID = !subID.hasSuffix("/") ? "\(subID)/" : subID
-    
+
     if searchText != nil {
       subID += "search\(appendedFileType)"
     } else {
-      if let sort = sort {
+      if let sort {
         switch sort {
         case .best:
           subID += "best\(appendedFileType)"
@@ -66,7 +66,7 @@ extension RedditAPI {
           subID += "hot\(appendedFileType)"
         case .new:
           subID += "new\(appendedFileType)"
-        case .top(let topSortOption):
+        case let .top(topSortOption):
           subID += "top\(appendedFileType)"
           subID += buildTopSortQuery(topSortOption)
         case .controversial:
@@ -74,46 +74,46 @@ extension RedditAPI {
         }
       }
     }
-    
-    if let searchText = searchText {
+
+    if let searchText {
       subID += subID.contains("?") ? "&q=\(searchText)" : "?q=\(searchText)"
       subID += "&restrict_sr=on"
-      
+
       // Add preferred sort to search url
       subID += "&sort=\(Defaults[.SubredditFeedDefSettings].preferredSearchSort)"
     }
-    
-    if let after = after {
+
+    if let after {
       subID += subID.contains("?") ? "&after=\(after)" : "?after=\(after)"
     }
-    
+
     return subID
   }
-    
+
   private func buildTopSortQuery(_ topSortOption: SubListingSortOption.TopListingSortOption) -> String {
     switch topSortOption {
     case .hour:
-      return "?t=hour"
+      "?t=hour"
     case .day:
-      return "?t=day"
+      "?t=day"
     case .week:
-      return "?t=week"
+      "?t=week"
     case .month:
-      return "?t=month"
+      "?t=month"
     case .year:
-      return "?t=year"
+      "?t=year"
     case .all:
-      return "?t=all"
+      "?t=all"
     }
   }
-  
+
   struct FetchSubPostsPayload: Codable {
     var limit: Int
     var after: String?
     var count: Int
     var f: String?
     var raw_json: Int
-    
+
     init(limit: Int, after: String? = nil, count: Int = 0, flair: String? = nil, raw_json: Int = 1) {
       self.limit = limit
       self.after = after
@@ -125,4 +125,3 @@ extension RedditAPI {
     }
   }
 }
-

@@ -30,7 +30,7 @@ class QuirkyMessageUtil {
       "...this is awkward. You are at the end!",
       "You’ve read all of Reddit. Does that make you feel good about yourself?",
       "Sorry Mario, your post is in another castle.",
-      "It’s dangerous to go alone, take another post!"
+      "It’s dangerous to go alone, take another post!",
     ]
 
     return quirkyResponses.randomElement() ?? "End of feed."
@@ -43,12 +43,12 @@ class QuirkyMessageUtil {
       "This is not the tap you're looking for.",
       "Go away, or I will taunt you a second time!",
       "The more you tap, the less you find. Strange, isn't it?",
-      "The secret is a lie."
+      "The secret is a lie.",
     ]
 
     return quirkyResponse.randomElement() ?? "Go away!"
   }
-  
+
   static func noCommentsFoundMessage() -> String {
     let quirkyResponse = [
       "No comments here! It's like a comment desert.",
@@ -60,8 +60,7 @@ class QuirkyMessageUtil {
       "No comments in sight! Must be a commentless masterpiece.",
       "The comment elves are on break. Please enjoy the silence.",
     ]
-    
+
     return quirkyResponse.randomElement() ?? "No comments found. Maybe they're on strike!"
   }
-
 }

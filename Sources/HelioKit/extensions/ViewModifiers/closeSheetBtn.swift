@@ -8,7 +8,7 @@
 import SwiftUI
 
 extension View {
-  func closeSheetBtn(_ action: @escaping ()->()) -> some View {
+  func closeSheetBtn(_ action: @escaping () -> Void) -> some View {
     self
       .overlay(
         Button(action: action) {
@@ -20,9 +20,9 @@ extension View {
             .frame(width: 44, height: 44)
             .contentShape(Rectangle())
         }
-          .buttonStyle(.plain)
-          .padding(.all, 6)
-        , alignment: .topTrailing
+        .buttonStyle(.plain)
+        .padding(.all, 6),
+        alignment: .topTrailing,
       )
   }
 }

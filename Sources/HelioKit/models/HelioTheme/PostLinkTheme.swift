@@ -1,5 +1,5 @@
 //
-//  PostsTheme.swift
+//  PostLinkTheme.swift
 //  Helio
 //
 //  Created by Igor Marcossi on 07/09/23.
@@ -11,7 +11,7 @@ struct PostLinkTheme: Codable, Hashable, Equatable {
   enum CodingKeys: String, CodingKey {
     case cornerRadius, mediaCornerRadius, innerPadding, outerHPadding, stickyPostBorderColor, titleText, bodyText, linespacing, badge, verticalElementsSpacing, bg, unseenType, unseenFadeOpacity, compactSelftextPostLinkPlaceholderImg, showDivider
   }
-  
+
   var cornerRadius: CGFloat
   var mediaCornerRadius: CGFloat
   var innerPadding: ThemePadding
@@ -27,7 +27,7 @@ struct PostLinkTheme: Codable, Hashable, Equatable {
   var unseenFadeOpacity: CGFloat
   var compactSelftextPostLinkPlaceholderImg: CompactSelftextPostLinkPlaceholderImg
   var showDivider: Bool
-  
+
   init(cornerRadius: CGFloat, mediaCornerRadius: CGFloat, innerPadding: ThemePadding, outerHPadding: CGFloat, stickyPostBorderColor: LineTheme, titleText: ThemeText, bodyText: ThemeText, linespacing: CGFloat, badge: BadgeTheme, verticalElementsSpacing: CGFloat, bg: ThemeForegroundBG, unseenType: UnseenType, unseenFadeOpacity: CGFloat, compactSelftextPostLinkPlaceholderImg: CompactSelftextPostLinkPlaceholderImg, showDivider: Bool) {
     self.cornerRadius = cornerRadius
     self.mediaCornerRadius = mediaCornerRadius
@@ -45,7 +45,7 @@ struct PostLinkTheme: Codable, Hashable, Equatable {
     self.compactSelftextPostLinkPlaceholderImg = compactSelftextPostLinkPlaceholderImg
     self.showDivider = showDivider
   }
-  
+
   func encode(to encoder: Encoder) throws {
     var container = encoder.container(keyedBy: CodingKeys.self)
     try container.encodeIfPresent(cornerRadius, forKey: .cornerRadius)
@@ -64,7 +64,7 @@ struct PostLinkTheme: Codable, Hashable, Equatable {
     try container.encodeIfPresent(compactSelftextPostLinkPlaceholderImg, forKey: .compactSelftextPostLinkPlaceholderImg)
     try container.encodeIfPresent(showDivider, forKey: .showDivider)
   }
-  
+
   init(from decoder: Decoder) throws {
     let t = defaultTheme.postLinks.theme
     let container = try decoder.container(keyedBy: CodingKeys.self)
@@ -84,7 +84,7 @@ struct PostLinkTheme: Codable, Hashable, Equatable {
     self.compactSelftextPostLinkPlaceholderImg = try container.decodeIfPresent(CompactSelftextPostLinkPlaceholderImg.self, forKey: .compactSelftextPostLinkPlaceholderImg) ?? t.compactSelftextPostLinkPlaceholderImg
     self.showDivider = try container.decodeIfPresent(Bool.self, forKey: .showDivider) ?? t.showDivider
   }
-  
+
   struct CompactSelftextPostLinkPlaceholderImg: Codable, Hashable, Equatable {
     var type: ImgType
     var color: ColorSchemes<ThemeColor>

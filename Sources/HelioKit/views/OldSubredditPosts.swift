@@ -1,21 +1,21 @@
 //
-//  SubredditPosts.swift
+//  OldSubredditPosts.swift
 //  Helio
 //
 //  Created by Igor Marcossi on 26/06/23.
 //
 
-import SwiftUI
-import Defaults
 import CoreData
+import Defaults
+import SwiftUI
 
-//struct OldSubredditPosts: View, Equatable {
+// struct OldSubredditPosts: View, Equatable {
 //  static func == (lhs: SubredditPosts, rhs: SubredditPosts) -> Bool {
 //    lhs.subreddit == rhs.subreddit
 //  }
-//  
+//
 //  var subreddit: Subreddit
-//  
+//
 //  @Default(.filteredSubreddits) private var filteredSubreddits
 //  @State private var loading = true
 //  @State private var posts: [Post] = []
@@ -27,40 +27,40 @@ import CoreData
 ////  @State private var filters: [FilterData] = []
 //  @State private var filter = "flair:All"
 ////  @State private var customFilter: FilterData?
-//  
+//
 //  @State private var savedMixedMediaLinks: [Either<Post, Comment>]?
 //  @State private var loadNextSavedData: Bool = false
 //  @State private var isSavedSubreddit: Bool = false
 //  @State private var hasViewLoaded: Bool = false
 //  @State private var reachedEndOfFeed: Bool = false
 //  @State private var showLoadMoreButton: Bool = false
-//  
+//
 //  @State private var unfilteredPosts: [Post] = []
 //  @State private var unfilteredLastPostAfter: String?
 //  @State private var unfilteredreachedEndOfFeed: Bool = false
-//  
+//
 //  @Environment(\.useTheme) private var selectedTheme
 //  //  @Environment(\.colorScheme) private var cs
 //  @Environment(\.contentWidth) private var contentWidth
 //  @Environment(\.horizontalSizeClass) private var hSizeClass
-//  
+//
 //  @Default(.SubredditFeedDefSettings) var subredditFeedDefSettings
-//  
+//
 //  let context = PersistenceController.shared.container.newBackgroundContext()
-//  
+//
 //  init(subreddit: Subreddit) {
 //    self.subreddit = subreddit
 //    let defSettings = Defaults[.SubredditFeedDefSettings]
 //    _sort = State(initialValue: defSettings.perSubredditSort ? (defSettings.subredditSorts[subreddit.id] ?? defSettings.preferredSort) : defSettings.preferredSort)
 //  }
-//  
+//
 //  var isFeedsAndSuch: Bool { feedsAndSuch.contains(subreddit.id) }
-//  
+//
 ////  func getFilteredPosts(posts: [Post], onlyUnseen: Bool = false) -> [Post] {
 ////    let filtered = posts
-////    
+////
 ////    let filterData = FilterData.getTypeAndText(filter)
-////    
+////
 ////    if filterData[0] == "flair" {
 ////      if filterData[1] == "All" { return posts }
 ////      return filtered.filter({ flairWithoutEmojis(str: $0.data?.link_flair_text)?.first ?? "" == filterData[1] })
@@ -68,23 +68,23 @@ import CoreData
 ////      return filtered.filter({ ($0.data?.title.lowercased().contains(filterData[1].lowercased()) ?? false) ||
 ////        (($0.data?.selftext ?? "").lowercased().contains(filterData[1].lowercased()) ?? false) })
 ////    }
-////    
+////
 ////    return filtered
 ////  }
-//  
+//
 //  func searchCallback(str: String?) {
 //    withAnimation {
 //      searchText = str ?? ""
 //    }
-//    
+//
 //    clearAndLoadData(withSearchText: str)
 //  }
-//  
+//
 ////  func filterCallback(str: String) {
 ////    withAnimation {
 ////      filter = str
 ////    }
-////    
+////
 ////    // No posts left to appear, so load more posts
 ////    if filter == "flair:All" && lastPostAfter != nil && getFilteredPosts(posts: posts, onlyUnseen: true).count == 0 {
 ////      if searchText.isEmpty {
@@ -94,45 +94,45 @@ import CoreData
 ////      }
 ////    }
 ////  }
-//  
+//
 ////  func editCustomFilter(filterData: FilterData) {
 ////    customFilter = filterData
 ////  }
-//  
+//
 //  func asyncFetch(force: Bool = false, loadMore: Bool = false, searchText: String? = nil, forceRefresh: Bool = false) async throws {
 //    if (subreddit.data == nil || force) && !isFeedsAndSuch {
 //      await subreddit.refreshSubreddit()
 //    }
-//    
+//
 //    if (searchText == nil || searchText!.isEmpty) && !loadMore && !forceRefresh && !unfilteredPosts.isEmpty {
 //      posts = unfilteredPosts
 //      lastPostAfter = unfilteredLastPostAfter
 //      reachedEndOfFeed = unfilteredreachedEndOfFeed
 //      return
 //    }
-//    
+//
 //    if posts.count > 0 && lastPostAfter == nil && !force {
 //      reachedEndOfFeed = true
 //      return
 //    }
-//    
+//
 //    if !loadMore && !subreddit.id.starts(with: "t5") {
 //      // Remove filters from home/all/popular so it only shows filters for current posts
 //      Task(priority: .userInitiated) {
 //        subreddit.resetFlairs()
 //      }
 //    }
-//    
+//
 //    withAnimation {
 //      loading = true
 //    }
-//    
+//
 //    if subreddit.id != "saved" {
 //      if let result = await subreddit.fetchPosts(sort: sort, after: loadMore ? lastPostAfter : nil, searchText: searchText, contentWidth: contentWidth), let newPosts = result.0 {
 //        Task(priority: .background) { await RedditAPI.shared.updatePostsWithAvatar(posts: newPosts, avatarSize: selectedTheme.postLinks.theme.badge.avatar.size) }
 //        withAnimation {
 //          let newPostsFiltered = newPosts.filter { !loadedPosts.contains($0.id) && !filteredSubreddits.contains($0.data?.subreddit ?? "") }
-//          
+//
 //          if loadMore {
 //            posts.append(contentsOf: newPostsFiltered)
 //            //            posts.append(contentsOf: newPosts)
@@ -140,9 +140,9 @@ import CoreData
 //            posts = newPostsFiltered
 //            //            posts = newPosts
 //          }
-//          
+//
 //          newPostsFiltered.forEach { loadedPosts.insert($0.id) }
-//          
+//
 //          loading = false
 //          lastPostAfter = result.1
 //
@@ -152,7 +152,7 @@ import CoreData
 //            unfilteredLastPostAfter = lastPostAfter
 //            unfilteredreachedEndOfFeed = reachedEndOfFeed
 //          }
-//          
+//
 //        }
 //      }
 //    } else {
@@ -163,18 +163,18 @@ import CoreData
 //          } else {
 //            savedMixedMediaLinks = result
 //          }
-//          
+//
 //          loading = false
 //          if let lastItem = result.last {
 //            lastPostAfter = getItemId(for: lastItem)
 //          }
 //        }
-//        
+//
 //        reachedEndOfFeed = result.count == 0
 //      }
 //    }
 //  }
-//  
+//
 //  func fetch(_ loadMore: Bool = false, _ searchText: String? = nil, forceRefresh: Bool = false) {
 //    Task(priority: .background) {
 //      do {
@@ -184,35 +184,35 @@ import CoreData
 //      }
 //    }
 //  }
-//  
+//
 //  func clearAndLoadData(withSearchText searchText: String? = nil, forceRefresh: Bool = false) {
 //    withAnimation {
 //      //      posts.removeAll()
 //      loadedPosts.removeAll()
 //      reachedEndOfFeed = false
-//      
+//
 //      if isSavedSubreddit {
 //        savedMixedMediaLinks?.removeAll()
 //      }
 //    }
-//    
+//
 //    if let searchText = searchText, !searchText.isEmpty {
 //      fetch(false, searchText, forceRefresh: forceRefresh)
 //    } else {
 //      fetch(forceRefresh: forceRefresh)
 //    }
 //  }
-//  
+//
 //  func updatePostsCalcs(_ newTheme: HelioTheme) {
 //    Task(priority: .background) { posts.forEach { $0.setupHelioData(data: $0.data, helioData: $0.helioData, contentWidth: contentWidth, secondary: false, theme: selectedTheme, sub: subreddit, fetchAvatar: false) } }
 //  }
-//  
+//
 //  var body: some View {
 //    Group {
 //      if !isSavedSubreddit {
 //        Group {
 ////          let filteredPosts = getFilteredPosts(posts: posts)
-//          
+//
 ////          if IPAD && hSizeClass == .regular {
 ////            SubredditPostsIPAD(showSub: isFeedsAndSuch, lastPostAfter: lastPostAfter, subreddit: subreddit, posts: posts, filter: filter, searchText: searchText, fetch: fetch, selectedTheme: selectedTheme, loading: loading, reachedEndOfFeed: $reachedEndOfFeed)
 ////          } else {
@@ -272,11 +272,11 @@ import CoreData
 ////      CustomFilterView(filter: custom, subId: subreddit.id, selected: $filter)
 ////    }
 //  }
-//  
-//}
+//
+// }
 //
 //
-//struct SubredditPostsNavBtns: View, Equatable {
+// struct SubredditPostsNavBtns: View, Equatable {
 //  static func == (lhs: SubredditPostsNavBtns, rhs: SubredditPostsNavBtns) -> Bool {
 //    lhs.sort == rhs.sort && (lhs.subreddit.data == nil) == (rhs.subreddit.data == nil)
 //  }
@@ -329,7 +329,7 @@ import CoreData
 //          .fontSize(17, .bold)
 //      }
 //      .disabled(subreddit.id == "saved")
-//      
+//
 //      if let data = subreddit.data {
 //        Button {
 //          Nav.to(.reddit(.subInfo(subreddit)))
@@ -340,4 +340,4 @@ import CoreData
 //    }
 //    .animation(nil, value: sort)
 //  }
-//}
+// }

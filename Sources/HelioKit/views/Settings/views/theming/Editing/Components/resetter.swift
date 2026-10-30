@@ -11,28 +11,26 @@ struct ResetterModifier<T>: ViewModifier {
   @Binding var thing: T
   var defaultVal: T
   @State var opened = false
-  
+
   func body(content: Content) -> some View {
     content
       .contentShape(Rectangle())
-      .onTapGesture { }
+      .onTapGesture {}
       .gesture(
         LongPressGesture(maximumDistance: 0)
-          .onEnded({ val in
+          .onEnded { _ in
             let impact = UIImpactFeedbackGenerator(style: .medium)
             impact.prepare()
             impact.impactOccurred()
             opened = true
-          })
+          },
       )
       .alert("Do you wanna reset this property?", isPresented: $opened) {
         VStack {
           Button("Yes, reset", role: .destructive) {
             thing = defaultVal
           }
-          Button("Cancel", role: .cancel) {
-            
-          }
+          Button("Cancel", role: .cancel) {}
         }
       }
   }

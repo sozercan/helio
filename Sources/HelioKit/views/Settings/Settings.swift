@@ -5,28 +5,27 @@
 //  Created by Igor Marcossi on 24/06/23.
 //
 
-import SwiftUI
 import Defaults
+import SwiftUI
 import WhatsNewKit
-//import SceneKit
+
+// import SceneKit
 
 struct Settings: View {
   @State var router: Router
-  
-  
+
   @Environment(\.openURL) private var openURL
   //  @Default(.likedButNotSubbed) private var likedButNotSubbed
   @Environment(\.useTheme) private var selectedTheme
   @State private var id = UUID().uuidString
   @State private var presentingWhatsNew: Bool = false
-  
+
   init(router: Router) {
     self._router = .init(initialValue: router)
   }
-  
+
   var body: some View {
     NavigationStack(path: $router.fullPath) {
-      
       List {
         Group {
           Section {
@@ -35,7 +34,7 @@ struct Settings: View {
             WSNavigationLink(.setting(.appearance), "Appearance", icon: "theatermask.and.paintbrush.fill")
             WSNavigationLink(.setting(.credentials), "Credentials", icon: "key.horizontal.fill")
           }
-          
+
           Section {
             WSNavigationLink(.setting(.faq), "FAQ", icon: "exclamationmark.questionmark")
             WSNavigationLink(.setting(.about), "About", icon: "cup.and.saucer.fill")
@@ -43,16 +42,15 @@ struct Settings: View {
               presentingWhatsNew.toggle()
             }
             .disabled(getCurrentChangelog().isEmpty)
-            
-              WSListButton("Report a Bug", icon: "ladybug.fill") {
-                openURL(URL(string: "https://github.com/sozercan/helio/issues")!)
-              }
 
+            WSListButton("Report a Bug", icon: "ladybug.fill") {
+              openURL(URL(string: "https://github.com/sozercan/helio/issues")!)
+            }
           }
         }
       }
       .themedListSection()
-      .sheet(isPresented: $presentingWhatsNew){
+      .sheet(isPresented: $presentingWhatsNew) {
         if let isNew = getCurrentChangelog().first {
           WhatsNewView(whatsNew: isNew)
         }
@@ -66,8 +64,8 @@ struct Settings: View {
   }
 }
 
-//struct Settings_Previews: PreviewProvider {
+// struct Settings_Previews: PreviewProvider {
 //  static var previews: some View {
 //    Settings()
 //  }
-//}
+// }

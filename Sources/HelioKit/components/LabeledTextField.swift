@@ -11,11 +11,12 @@ struct LabeledTextField: View {
   var label: String
   @Binding var text: String
   @FocusState private var focused: Bool
-  
+
   init(_ label: String, _ text: Binding<String>) {
     self.label = label
     self._text = text
   }
+
   var body: some View {
     HStack {
       Text(label)
@@ -29,4 +30,3 @@ struct LabeledTextField: View {
     .frame(maxWidth: .infinity)
   }
 }
-

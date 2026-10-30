@@ -1,13 +1,13 @@
 //
-//  helioMDEditorTheme.swift
+//  helioMDEditorPreset.swift
 //  Helio
 //
 //  Created by Igor Marcossi on 25/07/23.
 //
 
 import Foundation
-import SwiftUI
 import HighlightedTextEditor
+import SwiftUI
 
 private let defaultEditorFont = UIFont.preferredFont(forTextStyle: .body)
 private let defaultEditorTextColor = UIColor.label
@@ -15,9 +15,9 @@ private let defaultEditorTextColor = UIColor.label
 private let inlineCodeRegex = try! NSRegularExpression(pattern: "`[^`]*`", options: [])
 private let codeBlockRegex = try! NSRegularExpression(
   pattern: "(`){3}((?!\\1).)+\\1{3}",
-  options: [.dotMatchesLineSeparators]
+  options: [.dotMatchesLineSeparators],
 )
-//private let headingRegex = try! NSRegularExpression(pattern: "(?<=(^#{1,6})[^\\S\\r\\n]).+$", options: [.anchorsMatchLines])
+// private let headingRegex = try! NSRegularExpression(pattern: "(?<=(^#{1,6})[^\\S\\r\\n]).+$", options: [.anchorsMatchLines])
 private let headingRegex = try! NSRegularExpression(pattern: "^#{1,6}[^\\S\\r\\n].+$", options: [.anchorsMatchLines])
 private let linkOrImageRegex = try! NSRegularExpression(pattern: "!?\\[([^\\[\\]]*)\\]\\((.*?)\\)", options: [])
 private let linkOrImageTagRegex = try! NSRegularExpression(pattern: "!?\\[([^\\[\\]]*)\\]\\[(.*?)\\]", options: [])
@@ -39,7 +39,7 @@ private let hashtagsSymbolsRegex = try! NSRegularExpression(pattern: "(^#{1,6}(?
 // courtesy https://www.regular-expressions.info/examples.html
 private let htmlRegex = try! NSRegularExpression(
   pattern: "<([A-Z][A-Z0-9]*)\\b[^>]*>(.*?)</\\1>",
-  options: [.dotMatchesLineSeparators, .caseInsensitive]
+  options: [.dotMatchesLineSeparators, .caseInsensitive],
 )
 
 let codeFont = UIFont.monospacedSystemFont(ofSize: UIFont.systemFontSize, weight: .thin)
@@ -66,81 +66,81 @@ var helioMDEditorPreset: [HighlightRule] {
 //        let fontSize = CGFloat(maxHeadingLevel - level) * 2.5 + defaultEditorFont.pointSize
         let fontSize = CGFloat(23 - level)
         return SystemFontAlias(descriptor: defaultEditorFont.fontDescriptor, size: fontSize) as Any
-      })
+      }),
     ]),
     HighlightRule(
       pattern: linkOrImageRegex,
-      formattingRule: TextFormattingRule(key: .underlineStyle, value: NSUnderlineStyle.single.rawValue)
+      formattingRule: TextFormattingRule(key: .underlineStyle, value: NSUnderlineStyle.single.rawValue),
     ),
     HighlightRule(
       pattern: linkOrImageTagRegex,
-      formattingRule: TextFormattingRule(key: .underlineStyle, value: NSUnderlineStyle.single.rawValue)
+      formattingRule: TextFormattingRule(key: .underlineStyle, value: NSUnderlineStyle.single.rawValue),
     ),
     HighlightRule(pattern: boldRegex, formattingRule: TextFormattingRule(fontTraits: boldTraits)),
     HighlightRule(
       pattern: asteriskEmphasisRegex,
-      formattingRule: TextFormattingRule(fontTraits: emphasisTraits)
+      formattingRule: TextFormattingRule(fontTraits: emphasisTraits),
     ),
     HighlightRule(
       pattern: underscoreEmphasisRegex,
-      formattingRule: TextFormattingRule(fontTraits: emphasisTraits)
+      formattingRule: TextFormattingRule(fontTraits: emphasisTraits),
     ),
     HighlightRule(
       pattern: boldEmphasisAsteriskRegex,
-      formattingRule: TextFormattingRule(fontTraits: boldEmphasisTraits)
+      formattingRule: TextFormattingRule(fontTraits: boldEmphasisTraits),
     ),
     HighlightRule(
       pattern: blockquoteRegex,
-      formattingRule: TextFormattingRule(key: .backgroundColor, value: secondaryBackground)
+      formattingRule: TextFormattingRule(key: .backgroundColor, value: secondaryBackground),
     ),
     HighlightRule(
       pattern: horizontalRuleRegex,
-      formattingRule: TextFormattingRule(key: .foregroundColor, value: lighterColor)
+      formattingRule: TextFormattingRule(key: .foregroundColor, value: lighterColor),
     ),
     HighlightRule(
       pattern: unorderedListRegex,
-      formattingRule: TextFormattingRule(key: .foregroundColor, value: lighterColor)
+      formattingRule: TextFormattingRule(key: .foregroundColor, value: lighterColor),
     ),
     HighlightRule(
       pattern: orderedListRegex,
-      formattingRule: TextFormattingRule(key: .foregroundColor, value: lighterColor)
+      formattingRule: TextFormattingRule(key: .foregroundColor, value: lighterColor),
     ),
     HighlightRule(
       pattern: asteriskSymbolsRegex,
-      formattingRule: TextFormattingRule(key: .foregroundColor, value: lighterColor)
+      formattingRule: TextFormattingRule(key: .foregroundColor, value: lighterColor),
     ),
     HighlightRule(
       pattern: underscoresSymbolsRegex,
-      formattingRule: TextFormattingRule(key: .foregroundColor, value: lighterColor)
+      formattingRule: TextFormattingRule(key: .foregroundColor, value: lighterColor),
     ),
     HighlightRule(
       pattern: hashtagsSymbolsRegex,
       formattingRules: [
         TextFormattingRule(key: .foregroundColor, value: lighterColor),
-        TextFormattingRule(key: .font, calculateValue: { content, _ in
-          return SystemFontAlias(descriptor: defaultEditorFont.fontDescriptor, size: 15) as Any
-        })
-      ]
+        TextFormattingRule(key: .font, calculateValue: { _, _ in
+          SystemFontAlias(descriptor: defaultEditorFont.fontDescriptor, size: 15) as Any
+        }),
+      ],
     ),
     HighlightRule(
       pattern: buttonRegex,
-      formattingRule: TextFormattingRule(key: .foregroundColor, value: lighterColor)
+      formattingRule: TextFormattingRule(key: .foregroundColor, value: lighterColor),
     ),
     HighlightRule(pattern: strikethroughRegex, formattingRules: [
       TextFormattingRule(key: .strikethroughStyle, value: NSUnderlineStyle.single.rawValue),
-      TextFormattingRule(key: .strikethroughColor, value: textColor)
+      TextFormattingRule(key: .strikethroughColor, value: textColor),
     ]),
     HighlightRule(
       pattern: tagRegex,
-      formattingRule: TextFormattingRule(key: .foregroundColor, value: lighterColor)
+      formattingRule: TextFormattingRule(key: .foregroundColor, value: lighterColor),
     ),
     HighlightRule(
       pattern: footnoteRegex,
-      formattingRule: TextFormattingRule(key: .foregroundColor, value: lighterColor)
+      formattingRule: TextFormattingRule(key: .foregroundColor, value: lighterColor),
     ),
     HighlightRule(pattern: htmlRegex, formattingRules: [
       TextFormattingRule(key: .font, value: codeFont),
-      TextFormattingRule(key: .foregroundColor, value: lighterColor)
-    ])
+      TextFormattingRule(key: .foregroundColor, value: lighterColor),
+    ]),
   ]
 }

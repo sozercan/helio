@@ -1,5 +1,5 @@
 //
-//  OnboardingOpeningSettings.swift
+//  Onboarding1OpeningSettings.swift
 //  Helio
 //
 //  Created by Igor Marcossi on 01/08/23.
@@ -8,40 +8,40 @@
 import SwiftUI
 
 struct Onboarding1OpeningSettings: View {
-  var prevStep: ()->()
-  var nextStep: ()->()
+  var prevStep: () -> Void
+  var nextStep: () -> Void
   @Environment(\.openURL) var openURL
   var body: some View {
     VStack(spacing: 16) {
       OnboardingBigStep(step: 1)
-      
+
       Text("Open Reddit API settings in Safari by clicking the button below, then switch back to Helio.")
         .fixedSize(horizontal: false, vertical: true)
         .frame(maxWidth: 300)
-      
+
       MasterButton(icon: "safari.fill", label: "Open Reddit API settings", colorHoverEffect: .animated, textSize: 18, height: 48, fullWidth: true, cornerRadius: 16, action: {
         nextStep()
         openURL(URL(string: "https://reddit.com/prefs/apps")!)
       })
-        .padding(.top, 32)
+      .padding(.top, 32)
     }
     .padding(.horizontal, 16)
     .multilineTextAlignment(.center)
   }
 }
 
-//struct Onboarding1OpeningSettings: View {
+// struct Onboarding1OpeningSettings: View {
 //  var prevStep: ()->()
 //  var nextStep: ()->()
 //  @Environment(\.openURL) var openURL
 //  var body: some View {
 //    VStack(spacing: 16) {
 //      OnboardingBigStep(step: 1)
-//      
+//
 //      Text("Open Reddit API settings in Safari by clicking the button below, then switch back to Helio.")
 //        .fixedSize(horizontal: false, vertical: true)
 //        .frame(maxWidth: 300)
-//      
+//
 //      MasterButton(icon: "safari.fill", label: "Open Reddit API settings", colorHoverEffect: .animated, textSize: 18, height: 48, fullWidth: true, cornerRadius: 16, action: {
 //        nextStep()
 //        openURL(URL(string: "https://reddit.com/prefs/apps")!)
@@ -51,4 +51,4 @@ struct Onboarding1OpeningSettings: View {
 //    .padding(.horizontal, 16)
 //    .multilineTextAlignment(.center)
 //  }
-//}
+// }

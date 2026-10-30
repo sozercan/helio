@@ -1,25 +1,27 @@
 //
-//  PostLinkSettings.swift
+//  PostLinkDefSettings.swift
 //  Helio
 //
 //  Created by Igor Marcossi on 15/12/23.
 //
 
-import Foundation
 import Defaults
+import Foundation
 import SwiftUI
 
 enum ThumbnailSizeModifier: Codable, CaseIterable, Identifiable, Defaults.Serializable {
-  var id: CGFloat { self.rawVal }
+  var id: CGFloat {
+    self.rawVal
+  }
 
   case hidden, small, medium, large
 
   var rawVal: CGFloat {
     switch self {
-    case .hidden: return 0.0
-    case .small: return 0.75
-    case .medium: return 1.0
-    case .large: return 1.25
+    case .hidden: 0.0
+    case .small: 0.75
+    case .medium: 1.0
+    case .large: 1.25
     }
   }
 }
@@ -58,7 +60,7 @@ struct PostLinkDefSettings: Equatable, Hashable, Codable, Defaults.Serializable 
   var hideOnRead: Bool = false
 }
 
-//struct ModalsDefSettings: Hashable, Codable, Defaults.Serializable {
+// struct ModalsDefSettings: Hashable, Codable, Defaults.Serializable {
 //  let showTestersCelebrationModal: Bool
 //  let showTipJarModal: Bool
-//}
+// }

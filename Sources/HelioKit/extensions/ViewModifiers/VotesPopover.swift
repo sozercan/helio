@@ -1,13 +1,13 @@
 //
-//  VotesCounter.swift
+//  VotesPopover.swift
 //  Helio
 //
 //  Created by Igor Marcossi on 18/07/23.
 //
 
-import SwiftUI
-import Popovers
 import Defaults
+import Popovers
+import SwiftUI
 
 struct ViewVotesModifier: ViewModifier {
   @Default(.PostLinkDefSettings) private var postLinkDefSettings
@@ -20,19 +20,19 @@ struct ViewVotesModifier: ViewModifier {
       .contentShape(Rectangle())
       .highPriorityGesture(
         !postLinkDefSettings.enableVotesPopover
-        ? nil
-        : TapGesture().onEnded {
-          withAnimation(spring) {
-            show.toggle()
-          }
-        }
+          ? nil
+          : TapGesture().onEnded {
+            withAnimation(spring) {
+              show.toggle()
+            }
+          },
       )
       .popover(
         present: $show,
         attributes: {
           $0.position = .absolute(
             originAnchor: .left,
-            popoverAnchor: .right
+            popoverAnchor: .right,
           )
           $0.rubberBandingMode = [.xAxis, .yAxis]
           $0.dismissal.dragDismissalProximity = CGFloat(50)
@@ -43,7 +43,7 @@ struct ViewVotesModifier: ViewModifier {
           $0.blocksBackgroundTouches = true
           $0.onTapOutside = { withAnimation { show = false } }
           $0.sourceFrameInset = .init(top: -12, left: -12, bottom: -12, right: -12)
-        }
+        },
       ) {
         VStack {
           HStack {
@@ -65,7 +65,6 @@ struct ViewVotesModifier: ViewModifier {
       }
   }
 }
-
 
 extension View {
   func viewVotes(_ ups: Int, _ downs: Int) -> some View {

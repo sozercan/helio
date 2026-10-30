@@ -26,10 +26,15 @@ struct PreviewSheetModifier<T: View>: ViewModifier {
   @GestureState private var dragOffsetRaw: CGFloat?
   @State private var initialDragOffset: CGFloat?
   @State private var currentStepIndex: Int = 0
-  
-  var pointZero: CGFloat { .screenH - handlerHeight }
-  var stepPoints: [CGFloat] { [pointZero - forcedOffset, pointZero - (sheetContentSize.height / 2) - max(0, forcedOffset - (sheetContentSize.height / 2)), pointZero - sheetContentSize.height] }
-  
+
+  var pointZero: CGFloat {
+    .screenH - handlerHeight
+  }
+
+  var stepPoints: [CGFloat] {
+    [pointZero - forcedOffset, pointZero - (sheetContentSize.height / 2) - max(0, forcedOffset - (sheetContentSize.height / 2)), pointZero - sheetContentSize.height]
+  }
+
   func body(content: Content) -> some View {
     let dragOffset = dragOffsetRaw ?? 0
     let isDragging = initialDragOffset != nil
@@ -38,12 +43,12 @@ struct PreviewSheetModifier<T: View>: ViewModifier {
     let dragGesture = DragGesture(minimumDistance: 0)
       .updating($dragOffsetRaw) { val, state, trans in
         let y = val.translation.height
-        if initialDragOffset == nil && y != 0 {
+        if initialDragOffset == nil, y != 0 {
           Task {
             initialDragOffset = y
           }
         }
-        if let initialDragOffset = initialDragOffset {
+        if let initialDragOffset {
           trans.isContinuous = true
           //          trans.animation = .interpolatingSpring(stiffness: 1000, damping: 100) 2349
           trans.animation = .interactiveSpring()
@@ -52,7 +57,7 @@ struct PreviewSheetModifier<T: View>: ViewModifier {
           }
         }
       }
-      .onEnded({ val in
+      .onEnded { val in
         dragOffsetPersist = val.translation.height - (initialDragOffset ?? 0)
         guard let nextI = stepPoints.closest(to: stepPoints[currentStepIndex] + val.predictedEndTranslation.height) else { return }
         let newI = nextI
@@ -60,9 +65,8 @@ struct PreviewSheetModifier<T: View>: ViewModifier {
           currentStepIndex = newI
           dragOffsetPersist = 0
         }
-      })
-    
-    
+      }
+
     content
       .overlay(
         VStack {
@@ -75,35 +79,39 @@ struct PreviewSheetModifier<T: View>: ViewModifier {
         //            print(newValue) 103 / 69
         //          })
         //          .padding(.top, handlerHeight)
-          .frame(.screenSize,  .top)
-          .mask(SheetShape(width: .screenW, height: .screenH).fill(.black))
-          .overlay(
-            Capsule(style: .continuous).fill(.ultraThinMaterial)
-              .overlay(Capsule(style: .continuous).fill(.primary.opacity(!isDragging ? 0.15 : 0.3)))
-              .frame(width: interpolate([handlerDashWidth - (isDragging ? 8 : 0), 8], false), height: isDragging ? 10 : 8)
-              .padding(.top, 12)
-              .animation(.spring(), value: isDragging)
-              .allowsHitTesting(false)
-            , alignment: .top
-          )
-          .background(
-            SheetShape(width: .screenW, height: .screenH)
-              .fill(AnyShapeStyle(bg))
-              .shadow(radius: 16)
-              .allowsHitTesting(!disabled)
-          )
+        .frame(.screenSize, .top)
+        .mask(SheetShape(width: .screenW, height: .screenH).fill(.black))
+        .overlay(
+          Capsule(style: .continuous).fill(.ultraThinMaterial)
+            .overlay(Capsule(style: .continuous).fill(.primary.opacity(!isDragging ? 0.15 : 0.3)))
+            .frame(width: interpolate([handlerDashWidth - (isDragging ? 8 : 0), 8], false), height: isDragging ? 10 : 8)
+            .padding(.top, 12)
+            .animation(.spring(), value: isDragging)
+            .allowsHitTesting(false),
+          alignment: .top,
+        )
+        .background(
+          SheetShape(width: .screenW, height: .screenH)
+            .fill(AnyShapeStyle(bg))
+            .shadow(radius: 16)
+            .allowsHitTesting(!disabled),
+        )
 //          .contentShape(.contextMenuPreview, SheetShape(width: .screenW, height: .screenH))
 //          .contentShape()
-          .scaleEffect(1)
-          .compositingGroup()
-          .offset(y: max(stepPoints[stepPoints.count - 1], stepPoints[currentStepIndex] + dragOffset + dragOffsetPersist))
-          .animation(.default, value: scrollContentHeight)
-          .gesture(handlerBGOnly || disabled ? nil : dragGesture)
-          .opacity(disappear ? 0 : 1)
-          .offset(y: disappear ? handlerHeight : 0)
-          .onAppear { doThisAfter(0.3) { withAnimation(spring) { disappear = false } } }
-          .onChange(of: dragOffsetRaw == nil) { newValue in if newValue { initialDragOffset = nil } }
-        , alignment: .bottom
+        .scaleEffect(1)
+        .compositingGroup()
+        .offset(y: max(stepPoints[stepPoints.count - 1], stepPoints[currentStepIndex] + dragOffset + dragOffsetPersist))
+        .animation(.default, value: scrollContentHeight)
+        .gesture(handlerBGOnly || disabled ? nil : dragGesture)
+        .opacity(disappear ? 0 : 1)
+        .offset(y: disappear ? handlerHeight : 0)
+        .onAppear { doThisAfter(0.3) { withAnimation(spring) { disappear = false } } }
+        .onChange(of: dragOffsetRaw == nil) {
+          newValue in if newValue {
+            initialDragOffset = nil
+          }
+        },
+        alignment: .bottom,
       )
   }
 }
@@ -114,68 +122,67 @@ extension View {
   }
 }
 
-
 struct SheetShape: InsettableShape {
   var width: CGFloat
   var height: CGFloat
   var insetAmount = 0.0
-  
+
   func inset(by amount: CGFloat) -> some InsettableShape {
     var arc = self
     arc.insetAmount += amount
     return arc
   }
-  
+
   func path(in rect: CGRect) -> Path {
     //    let bodyHeight = height - handlerHeight
-    
+
     var path = Path()
-    
+
     // start from the top left corner of the handler
     path.move(to: CGPoint(x: ((width - handlerWidth) / 2 + handlerRadius) + insetAmount, y: 0 + insetAmount))
-    
+
     // top edge of the handler
     path.addLine(to: CGPoint(x: ((width + handlerWidth) / 2 - handlerRadius) - insetAmount, y: 0 + insetAmount))
-    
+
     // top right corner of the handler
     path.addArc(center: CGPoint(x: ((width + handlerWidth) / 2 - handlerRadius) - insetAmount, y: handlerRadius + insetAmount), radius: handlerRadius - insetAmount, startAngle: .radians(-1.5 * CGFloat.pi), endAngle: .radians(0), clockwise: false)
-    
+
     // right edge of the handler
     path.addLine(to: CGPoint(x: ((width + handlerWidth) / 2) - insetAmount, y: (handlerHeight - handlerRadius) + insetAmount))
-    
+
     // bottom right corner of the handler
     path.addArc(center: CGPoint(x: ((width + handlerWidth) / 2 + handlerRadius) + insetAmount, y: handlerHeight - handlerRadius + insetAmount), radius: handlerRadius + insetAmount, startAngle: .radians(CGFloat.pi), endAngle: .radians(0.5 * CGFloat.pi), clockwise: true)
-    
+
     // connection between the handler and the body on the right side
     path.addLine(to: CGPoint(x: width - bodyRadius - insetAmount, y: handlerHeight + insetAmount))
-    
+
     // top right corner of the body
     path.addArc(center: CGPoint(x: width - bodyRadius - insetAmount, y: handlerHeight + bodyRadius + insetAmount), radius: bodyRadius - insetAmount, startAngle: .radians(-0.5 * CGFloat.pi), endAngle: .radians(0), clockwise: false)
-    
+
     // right edge of the body
     path.addLine(to: CGPoint(x: width - insetAmount, y: height - insetAmount))
-    
+
     // bottom edge of the body
     path.addLine(to: CGPoint(x: 0, y: height - insetAmount))
-    
+
     // left edge of the body
     path.addLine(to: CGPoint(x: 0, y: handlerHeight + bodyRadius + insetAmount))
-    
+
     // top left corner of the body
     path.addArc(center: CGPoint(x: bodyRadius + insetAmount, y: handlerHeight + bodyRadius + insetAmount), radius: bodyRadius - insetAmount, startAngle: .radians(CGFloat.pi), endAngle: .radians(1.5 * CGFloat.pi), clockwise: false)
-    
+
     // connection between the handler and the body on the left side
     path.addLine(to: CGPoint(x: ((width - handlerWidth) / 2) + insetAmount, y: handlerHeight + insetAmount))
-    
+
     // bottom left corner of the handler
     path.addArc(center: CGPoint(x: ((width - handlerWidth) / 2 - handlerRadius) + insetAmount, y: (handlerHeight - handlerRadius) + insetAmount), radius: handlerRadius + insetAmount, startAngle: .radians(0.5 * CGFloat.pi), endAngle: .radians(0), clockwise: true)
-    
+
     // left edge of the handler
     path.addLine(to: CGPoint(x: ((width - handlerWidth) / 2) + insetAmount, y: handlerRadius + insetAmount))
-    
+
     // top left corner of the handler
-    path.addArc(center: CGPoint(x: ((width - handlerWidth) / 2 + handlerRadius) + insetAmount, y: handlerRadius + insetAmount), radius:  handlerRadius - insetAmount, startAngle: .radians(CGFloat.pi), endAngle: .radians(-0.5 * CGFloat.pi), clockwise: false)
-    
+    path.addArc(center: CGPoint(x: ((width - handlerWidth) / 2 + handlerRadius) + insetAmount, y: handlerRadius + insetAmount), radius: handlerRadius - insetAmount, startAngle: .radians(CGFloat.pi), endAngle: .radians(-0.5 * CGFloat.pi), clockwise: false)
+
     return path
   }
 }

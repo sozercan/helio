@@ -7,6 +7,6 @@
 
 import SwiftUI
 
-extension AnyTransition {
-  public static var scacity: AnyTransition = .scale.combined(with: .opacity)
+public extension AnyTransition {
+  static var scacity: AnyTransition = .scale.combined(with: .opacity)
 }

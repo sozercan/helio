@@ -7,4 +7,4 @@
 
 import Foundation
 
-//private var data = SubredditData(
+// private var data = SubredditData(

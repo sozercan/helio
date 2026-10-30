@@ -12,7 +12,7 @@ extension String {
   func height(font: UIFont, withConstrainedWidth width: CGFloat = .greatestFiniteMagnitude) -> CGFloat {
     let constraintRect = CGSize(width: width, height: .greatestFiniteMagnitude)
     let boundingBox = self.boundingRect(with: constraintRect, options: .usesLineFragmentOrigin, attributes: [.font: font], context: nil)
-  
+
     return ceil(boundingBox.height)
   }
 

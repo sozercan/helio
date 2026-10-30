@@ -5,13 +5,13 @@
 //  Created by Igor Marcossi on 20/08/23.
 //
 
-import Foundation
 import Alamofire
+import Foundation
 
 extension RedditAPI {
   func duplicateMulti(from: String, to: String) async -> Bool? {
     if let myName = me?.data?.name {
-      let params = ["from":"/user/\(myName)/m/\(from)","to":"/user/\(myName)/m/\(to)"]
+      let params = ["from": "/user/\(myName)/m/\(from)", "to": "/user/\(myName)/m/\(to)"]
       switch await self.doRequest("\(RedditAPI.redditApiURLBase)/api/multi/copy?raw_json=1", method: .post, params: params) {
       case .success:
         return true

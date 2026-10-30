@@ -5,14 +5,14 @@
 //  Created by Igor Marcossi on 05/07/23.
 //
 
-import SwiftUI
 import Defaults
 import Nuke
+import SwiftUI
 
 struct CredentialsPanel: View {
   private let credentialsManager = RedditCredentialsManager.shared
   @Environment(\.useTheme) private var theme
-  
+
   var body: some View {
     Group {
       if credentialsManager.credentials.isEmpty {
@@ -38,7 +38,7 @@ struct CredentialsPanel: View {
 struct CredentialsPanelList: View {
   var credentials: [RedditCredential]
   var selectedCredentialID: UUID?
-  
+
   var body: some View {
     List {
       Group {
@@ -55,4 +55,3 @@ struct CredentialsPanelList: View {
     .navigationBarTitleDisplayMode(.large)
   }
 }
-

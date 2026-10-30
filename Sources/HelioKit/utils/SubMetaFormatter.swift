@@ -11,7 +11,7 @@ struct SubMetaFormatter {
   var id: String?
   var fullname: String?
   var name: String?
-  
+
   init(_ id: String) {
     var formattedId = id
     if formattedId.hasPrefix("t2_") {
@@ -23,14 +23,14 @@ struct SubMetaFormatter {
     self.id = formattedId
     self.fullname = "t2_" + formattedId
   }
-  
+
   init(name: String) {
     var formattedName = name
     if formattedName.hasPrefix("r/") {
       formattedName.removeFirst(2)
     } else if formattedName.hasPrefix("/r/") {
       formattedName.removeFirst(3)
-    } else if formattedName.hasPrefix("/"){
+    } else if formattedName.hasPrefix("/") {
       formattedName.removeFirst()
     }
     if formattedName.hasSuffix("/") {

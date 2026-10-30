@@ -5,8 +5,8 @@
 //  Created by Igor Marcossi on 27/07/23.
 //
 
-import SwiftUI
 import HighlightedTextEditor
+import SwiftUI
 
 private let placeholders: [String] = [
   "Say what again, SAY WHAT AGAIN! I dare you, I double dare you...",
@@ -28,24 +28,23 @@ private let placeholders: [String] = [
 struct MDEditor: View {
   @Binding var text: String
   @State var placeholder: String = placeholders.randomElement()!
-    var body: some View {
-      ZStack(alignment: .topLeading) {
-        if text.isEmpty {
-          Text(placeholder)
-            .opacity(0.35)
-            .padding(.top, 8)
-            .padding(.leading, 5)
-        }
-        TextEditor(text: $text)
-          .scrollContentBackground(.hidden)
-          .background(.clear)
-        // The HighlightedTextEditor package currently does not integrate well with iOS 17's predictive text. It will be disabled until that issue is remedied.
-        // HighlightedTextEditor(text: $text, highlightRules: helioMDEditorPreset)
+  var body: some View {
+    ZStack(alignment: .topLeading) {
+      if text.isEmpty {
+        Text(placeholder)
+          .opacity(0.35)
+          .padding(.top, 8)
+          .padding(.leading, 5)
+      }
+      TextEditor(text: $text)
+        .scrollContentBackground(.hidden)
+        .background(.clear)
+      // The HighlightedTextEditor package currently does not integrate well with iOS 17's predictive text. It will be disabled until that issue is remedied.
+      // HighlightedTextEditor(text: $text, highlightRules: helioMDEditorPreset)
 //          .introspect { editor in
 //            editor.textView.backgroundColor = .clear
 //          }
-      }
-      .animation(nil, value: text.isEmpty)
     }
+    .animation(nil, value: text.isEmpty)
+  }
 }
-

@@ -17,14 +17,18 @@ final class SmokeUITests: XCTestCase {
     if close.waitForExistence(timeout: 5) {
       // A tap while the sheet is still animating in can be lost, so retry until it lands.
       let confirm = app.alerts.buttons["Yes"]
-      for _ in 0..<3 where !confirm.exists {
+      for _ in 0 ..< 3 where !confirm.exists {
         close.tap()
         _ = confirm.waitForExistence(timeout: 3)
       }
-      if confirm.exists { confirm.tap() }
+      if confirm.exists {
+        confirm.tap()
+      }
     }
     let whatsNew = app.buttons["Continue"]
-    if whatsNew.waitForExistence(timeout: 3) { whatsNew.tap() }
+    if whatsNew.waitForExistence(timeout: 3) {
+      whatsNew.tap()
+    }
   }
 
   /// Taps the tab's icon center like a finger would. XCUITest's element tap on iOS 26 tab bar
@@ -44,7 +48,7 @@ final class SmokeUITests: XCTestCase {
   /// Lists only expose rows that are on screen, so scroll until `element` appears.
   @discardableResult
   private func scrollTo(_ element: XCUIElement, attempts: Int = 4) -> Bool {
-    for _ in 0..<attempts where !element.waitForExistence(timeout: 2) {
+    for _ in 0 ..< attempts where !element.waitForExistence(timeout: 2) {
       app.swipeUp()
     }
     return element.exists

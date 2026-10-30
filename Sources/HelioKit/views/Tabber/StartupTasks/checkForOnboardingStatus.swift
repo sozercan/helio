@@ -5,8 +5,8 @@
 //  Created by Igor Marcossi on 31/12/23.
 //
 
-import Foundation
 import Defaults
+import Foundation
 
 func checkForOnboardingStatus() {
   var open = false
@@ -15,5 +15,7 @@ func checkForOnboardingStatus() {
   case .unknown: RedditCredentialsManager.shared.credentials.isEmpty
   case .dismissed: false
   }
-  if open { Nav.present(.onboarding) }
+  if open {
+    Nav.present(.onboarding)
+  }
 }

@@ -1,0 +1,68 @@
+name: Lint
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+permissions:
+  contents: read
+
+env:
+  # Pinned so new rules in a release can't fail CI without a code change. Match these locally.
+  SWIFTLINT_VERSION: "0.65.1"
+  SWIFTFORMAT_VERSION: "0.64.0"
+
+jobs:
+  swiftformat:
+    name: SwiftFormat
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Install SwiftFormat
+        run: |
+          curl -fsSL -o swiftformat.zip \
+            "https://github.com/nicklockwood/SwiftFormat/releases/download/${SWIFTFORMAT_VERSION}/swiftformat_linux.zip"
+          unzip -q swiftformat.zip -d "$RUNNER_TEMP/swiftformat"
+          rm swiftformat.zip
+          chmod +x "$RUNNER_TEMP/swiftformat/swiftformat_linux"
+          echo "$RUNNER_TEMP/swiftformat" >> "$GITHUB_PATH"
+
+      - name: Check formatting
+        run: |
+          swiftformat_linux --version
+          swiftformat_linux --lint --reporter github-actions-log . || {
+            echo "::error::Code is not formatted. Run 'swiftformat .' locally and commit the result."
+            exit 1
+          }
+
+  swiftlint:
+    name: SwiftLint
+    runs-on: macos-26
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Install SwiftLint
+        run: |
+          curl -fsSL -o swiftlint.zip \
+            "https://github.com/realm/SwiftLint/releases/download/${SWIFTLINT_VERSION}/portable_swiftlint.zip"
+          unzip -q swiftlint.zip -d "$RUNNER_TEMP/swiftlint"
+          rm swiftlint.zip
+          echo "$RUNNER_TEMP/swiftlint" >> "$GITHUB_PATH"
+
+      - name: Lint
+        run: |
+          swiftlint version
+          swiftlint lint --strict --reporter github-actions-logging

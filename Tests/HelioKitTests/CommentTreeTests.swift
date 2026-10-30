@@ -38,8 +38,9 @@ struct CommentTreeTests {
     let rows = CommentTree.rows(for: roots)
     #expect(labels(rows) == ["a-top", "a", "a1", "a1x", "a2", "a-bottom", "b-top", "b", "b-bottom"])
 
-    guard case .rootBottom(let aIsLast) = rows[5].kind, case .rootBottom(let bIsLast) = rows[8].kind else {
-      Issue.record("expected root bottom rows"); return
+    guard case let .rootBottom(aIsLast) = rows[5].kind, case let .rootBottom(bIsLast) = rows[8].kind else {
+      Issue.record("expected root bottom rows")
+      return
     }
     #expect(!aIsLast)
     #expect(bIsLast)
@@ -49,7 +50,13 @@ struct CommentTreeTests {
 
   @Test func buildsThreadArrowsPerLevel() {
     let roots = [comment("a", children: [comment("a1", children: [comment("a1x")]), comment("a2", children: [comment("a2x")])])]
-    let arrows = Dictionary(uniqueKeysWithValues: CommentTree.rows(for: roots).filter { if case .comment = $0.kind { true } else { false } }.map { ($0.comment.data!.id, $0.arrowKinds) })
+    let arrows = Dictionary(uniqueKeysWithValues: CommentTree.rows(for: roots).filter {
+      if case .comment = $0.kind {
+        true
+      } else {
+        false
+      }
+    }.map { ($0.comment.data!.id, $0.arrowKinds) })
     #expect(arrows["a"] == [])
     #expect(arrows["a1"] == [.straightCurve])
     #expect(arrows["a1x"] == [.straight, .curve])
@@ -64,7 +71,9 @@ struct CommentTreeTests {
     ])]
     let rows = CommentTree.rows(for: roots)
     #expect(labels(rows) == ["a-top", "a", "a-bottom"])
-    guard case .comment(let hidden) = rows[1].kind else { Issue.record("expected comment row"); return }
+    guard case let .comment(hidden) = rows[1].kind else { Issue.record("expected comment row")
+      return
+    }
     #expect(hidden == 7)
   }
 
@@ -78,9 +87,13 @@ struct CommentTreeTests {
     #expect(labels(rows) == ["a-top", "a", "a1", "continue", "a2", "continue", "more:more1", "a-bottom"])
     #expect(Set(rows.map(\.id)).count == rows.count)
 
-    guard case .more(let parent) = rows[6].kind else { Issue.record("expected more row"); return }
+    guard case let .more(parent) = rows[6].kind else { Issue.record("expected more row")
+      return
+    }
     #expect(parent?.data?.id == "a")
-    guard case .continueThread = rows[3].kind else { Issue.record("expected continue row"); return }
+    guard case .continueThread = rows[3].kind else { Issue.record("expected continue row")
+      return
+    }
   }
 }
 

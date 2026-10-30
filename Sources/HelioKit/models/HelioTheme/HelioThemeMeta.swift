@@ -11,13 +11,13 @@ struct HelioThemeMeta: Codable, Hashable, Equatable {
   enum CodingKeys: String, CodingKey {
     case name, description, color, icon, author
   }
-  
+
   var name: String
   var description: String
   var color: ThemeColor
   var icon: String
   var author: String
-  
+
   init(name: String = randomWord(), description: String = "", color: ThemeColor = .init(hex: "0B84FE"), icon: String = "paintbrush.fill", author: String = "") {
     self.name = name
     self.description = description
@@ -25,7 +25,7 @@ struct HelioThemeMeta: Codable, Hashable, Equatable {
     self.icon = icon
     self.author = author
   }
-  
+
   func encode(to encoder: Encoder) throws {
     var container = encoder.container(keyedBy: CodingKeys.self)
     try container.encodeIfPresent(name, forKey: .name)
@@ -34,7 +34,7 @@ struct HelioThemeMeta: Codable, Hashable, Equatable {
     try container.encodeIfPresent(icon, forKey: .icon)
     try container.encodeIfPresent(author, forKey: .author)
   }
-  
+
   init(from decoder: Decoder) throws {
     let t = HelioThemeMeta()
     let container = try decoder.container(keyedBy: CodingKeys.self)
