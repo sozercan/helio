@@ -134,13 +134,6 @@ struct FloatingFeedMenu: View, Equatable {
         VStack(spacing: itemsSpacingDownscaled) {
           VStack(spacing: itemsSpacing) {
             if menuOpen {
-              Image(systemName: "star.fill")
-                .fontSize(22, .bold)
-                .frame(width: actionsSize, height: actionsSize)
-                .foregroundStyle(Color.accentColor)
-                .floating()
-                .transition(.comeFrom(.bottom, index: 1, total: 2))
-              
               Image(systemName: compact ? "doc.text.image" : "doc.plaintext")
                 .fontSize(22, .bold)
                 .frame(width: actionsSize, height: actionsSize)
@@ -152,18 +145,6 @@ struct FloatingFeedMenu: View, Equatable {
                   Hap.shared.play(intensity: 0.75, sharpness: 0.9)
                   compact = !compact
                   subredditFeedDefSettings.compactPerSubreddit[self.subId] = compact
-                }))
-              
-              Image(systemName: "plus")
-                .fontSize(22, .bold)
-                .frame(width: actionsSize, height: actionsSize)
-                .foregroundColor(Color.accentColor)
-                .floating()
-                .transition(.comeFrom(.bottom, index: 0, total: 2))
-                .increaseHitboxOf(actionsSize, by: 1.125, shape: Circle(), disable: menuOpen)
-                .highPriorityGesture(TapGesture().onEnded({
-                  Hap.shared.play(intensity: 0.75, sharpness: 0.9)
-//                  customFilterCallback(FilterData())
                 }))
             }
           }
@@ -178,14 +159,26 @@ struct FloatingFeedMenu: View, Equatable {
 
 
 
-extension View {
-  func floatingMenu(subId: String?, filters: [ShallowCachedFilter], selectedFilter: Binding<ShallowCachedFilter?>) -> some View {
-    self
+private struct FloatingMenuModifier: ViewModifier {
+  let subId: String?
+  let filters: [ShallowCachedFilter]
+  @Binding var selectedFilter: ShallowCachedFilter?
+
+  @Default(.showFloatingFeedMenu) private var showFloatingFeedMenu
+
+  func body(content: Content) -> some View {
+    content
       .overlay(alignment: .bottomTrailing) {
-        if let subId {
-          FloatingFeedMenu(subId: subId, filters: filters, selectedFilter: selectedFilter)
+        if showFloatingFeedMenu, let subId {
+          FloatingFeedMenu(subId: subId, filters: filters, selectedFilter: $selectedFilter)
         }
       }
+  }
+}
+
+extension View {
+  func floatingMenu(subId: String?, filters: [ShallowCachedFilter], selectedFilter: Binding<ShallowCachedFilter?>) -> some View {
+    self.modifier(FloatingMenuModifier(subId: subId, filters: filters, selectedFilter: selectedFilter))
   }
 }
 
