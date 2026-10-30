@@ -85,7 +85,9 @@ struct Tabber: View {
         .hidesTabBarOnMac()
       }
     }
-    .tabBarMinimizeBehavior(.onScrollDown)
+    // Only the bottom tab bar minimizes. On wide layouts (iPad, unfolded iPhone Duo) it would only
+    // keep the posts split view from showing its sidebar.
+    .tabBarMinimizeBehavior(isWideLayout ? .automatic : .onScrollDown)
     .openFromWebListener()
     .newCredentialListener()
     .themeImportingListener() // From local file
