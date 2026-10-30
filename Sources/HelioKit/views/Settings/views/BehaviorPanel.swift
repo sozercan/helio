@@ -91,7 +91,6 @@ struct BehaviorPanel: View {
           Toggle("Blur NSFW in opened posts", isOn: $postPageDefSettings.blurNSFW)
           Toggle("Blur NSFW", isOn: $postLinkDefSettings.blurNSFW)
           Toggle("Save sort per subreddit", isOn: $subredditFeedDefSettings.perSubredditSort)
-          Toggle("Open subreddit options on tap", isOn: $subredditFeedDefSettings.openOptionsOnTap)
           Toggle("Open media from feed", isOn: $postLinkDefSettings.isMediaTappable)
           
           

@@ -25,8 +25,6 @@ struct FloatingMainTrigger: View, Equatable {
   @State private var toggleTimer: Timer? = nil
   @GestureState private var pressingDown = false
   
-  @Default(.SubredditFeedDefSettings) var subredditFeedDefSettings
-  
   private let longPressDuration: Double = 0.275
   
   var body: some View {
@@ -67,7 +65,7 @@ struct FloatingMainTrigger: View, Equatable {
       .simultaneousGesture(TapGesture().onEnded({
         if menuOpen {
           dismiss()
-        } else if subredditFeedDefSettings.openOptionsOnTap  {
+        } else {
           Hap.shared.play(intensity: 0.75, sharpness: 0.4)
           withAnimation(.snappy(extraBounce: 0.3)) {
             menuOpen = true
