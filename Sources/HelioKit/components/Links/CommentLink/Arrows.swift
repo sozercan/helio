@@ -116,3 +116,55 @@ struct CurveShape: Shape {
     return path
   }
 }
+
+/// Apollo's reply indent: one straight bar in the depth's color, with the content after it.
+struct CommentDepthBar: ViewModifier {
+  static let width: CGFloat = 2
+  static let contentSpacing: CGFloat = 15
+
+  let depth: Int
+  let theme: CommentTheme
+  var topInset: CGFloat = 0
+  var bottomInset: CGFloat = 0
+  var separator = false
+
+  static func leading(depth: Int, theme: CommentTheme) -> CGFloat {
+    depth > 0 ? (theme.indentCurve * CGFloat(depth)) + width + contentSpacing : theme.innerPadding.horizontal
+  }
+
+  func body(content: Content) -> some View {
+    let barX = theme.indentCurve * CGFloat(depth)
+    content
+      .padding(.leading, CommentDepthBar.leading(depth: depth, theme: theme))
+      .padding(.trailing, theme.innerPadding.horizontal)
+      .background(alignment: .leading) {
+        if depth > 0, !theme.indentColors.isEmpty {
+          Capsule(style: .continuous)
+            .fill(theme.indentColors[(depth - 1) % theme.indentColors.count]())
+            .frame(width: CommentDepthBar.width)
+            .padding(.top, topInset)
+            .padding(.bottom, bottomInset)
+            .padding(.leading, barX)
+        }
+      }
+      .overlay(alignment: .top) {
+        if separator {
+          theme.indentColor()
+            .frame(height: 0.5)
+            .padding(.leading, depth > 0 ? barX : 0)
+        }
+      }
+  }
+}
+
+extension View {
+  /// Applies `CommentDepthBar` when `depth` is set, otherwise leaves the view alone.
+  @ViewBuilder
+  func commentDepthBar(_ depth: Int?, theme: CommentTheme, top: CGFloat = 0, bottom: CGFloat = 0, separator: Bool = false) -> some View {
+    if let depth {
+      modifier(CommentDepthBar(depth: depth, theme: theme, topInset: top, bottomInset: bottom, separator: separator))
+    } else {
+      self
+    }
+  }
+}

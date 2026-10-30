@@ -75,12 +75,15 @@ struct CommentLinkContent: View {
     let theme = selectedTheme.comments
     let selectable = (comment.data?.helioSelecting ?? false)
     let horPad = theme.theme.innerPadding.horizontal
+    let bars = !theme.theme.indentColors.isEmpty
 
     if let data = comment.data {
       let collapsed = data.collapsed ?? false
+      let barDepth = bars ? (data.depth ?? 0) : nil
+      let headerTopPad = max(0, theme.theme.innerPadding.vertical + (data.depth == 0 ? -theme.theme.cornerRadius : theme.theme.repliesSpacing))
       Group {
         HStack(spacing: CommentLinkContent.indentLineContentSpacing) {
-          if data.depth != 0, indentLines != 0 {
+          if !bars, data.depth != 0, indentLines != 0 {
             HStack(alignment: .bottom, spacing: CommentLinkContent.indentLinesSpacing) {
               let shapes = Array(1 ... Int(indentLines ?? data.depth ?? 1))
               ForEach(shapes, id: \.self) { i in
@@ -92,7 +95,9 @@ struct CommentLinkContent: View {
             }
           }
           HStack(spacing: 8) {
-            if let author = data.author {
+            if bars {
+              CommentHeaderLine(data: data, isOP: (post?.data?.author ?? "") == data.author, unseen: seenComments == nil ? false : !seenComments!.contains(data.id), theme: theme.theme)
+            } else if let author = data.author {
               BadgeView(avatarRequest: helioData.avatarImageRequest, saved: data.badgeKit.saved, unseen: seenComments == nil ? false : !seenComments!.contains(data.id), usernameColor: (post?.data?.author ?? "") == author ? Color.green : nil, author: data.badgeKit.author, fullname: data.badgeKit.authorFullname, userFlair: data.badgeKit.userFlair, created: data.badgeKit.created, theme: theme.theme.badge, commentTheme: theme.theme)
             }
 
@@ -120,7 +125,18 @@ struct CommentLinkContent: View {
               .onTapGesture { withAnimation { comment.data?.helioSelecting = false } }
             }
 
-            if let ups = data.ups {
+            if bars {
+              if collapsed, hiddenReplyCount > 0 {
+                Text("+\(formatBigNumber(hiddenReplyCount))")
+                  .font(.system(size: theme.theme.badge.statsText.size, weight: .medium))
+                  .foregroundStyle(theme.theme.badge.statsText.color())
+                  .padding(.horizontal, 6)
+                  .background(theme.theme.loadMoreBackground(), in: Capsule(style: .continuous))
+              }
+              Text(timeSince(Int(data.badgeKit.created)))
+                .font(.system(size: theme.theme.badge.statsText.size, weight: theme.theme.badge.statsText.weight.t))
+                .foregroundStyle(theme.theme.badge.statsText.color())
+            } else if let ups = data.ups {
               HStack(alignment: .center, spacing: 4) {
                 Image(systemName: "arrow.up")
                   .foregroundColor(data.likes != nil && data.likes! ? .orange : .gray)
@@ -171,9 +187,9 @@ struct CommentLinkContent: View {
               }
             }
           }
-          .padding(.top, max(0, theme.theme.innerPadding.vertical + (data.depth == 0 ? -theme.theme.cornerRadius : theme.theme.repliesSpacing)))
+          .padding(.top, headerTopPad)
           .compositingGroup()
-          .opacity(collapsed ? 0.5 : 1)
+          .opacity(collapsed && !bars ? 0.5 : 1)
           .contentShape(Rectangle())
           .offset(x: offsetX)
           .animation(draggingAnimation, value: offsetX)
@@ -186,8 +202,10 @@ struct CommentLinkContent: View {
             skipAnimation: true,
           )
         }
-        .padding(.horizontal, horPad)
-        .frame(height: max((theme.theme.badge.authorText.size * 1.2) + (theme.theme.badge.statsText.size * 1.2) + 2, theme.theme.badge.avatar.size) + max(0, theme.theme.innerPadding.vertical + (data.depth == 0 ? -theme.theme.cornerRadius : theme.theme.repliesSpacing)), alignment: .leading)
+        .padding(.horizontal, bars ? 0 : horPad)
+        .frame(height: (bars ? theme.theme.badge.authorText.size * 1.25 : max((theme.theme.badge.authorText.size * 1.2) + (theme.theme.badge.statsText.size * 1.2) + 2, theme.theme.badge.avatar.size)) + headerTopPad, alignment: .leading)
+        .padding(.bottom, bars && collapsed ? theme.theme.innerPadding.vertical : 0)
+        .commentDepthBar(barDepth, theme: theme.theme, top: max(0, headerTopPad - 2), bottom: collapsed ? 8 : 0, separator: true)
         .mask(Color.black)
         .onAppear {
           if !commentViewLoaded, sectionDefSettings.collapseAutoModerator {
@@ -202,7 +220,7 @@ struct CommentLinkContent: View {
 
         if !collapsed {
           HStack(spacing: CommentLinkContent.indentLineContentSpacing) {
-            if data.depth != 0, indentLines != 0 {
+            if !bars, data.depth != 0, indentLines != 0 {
               HStack(alignment: .bottom, spacing: CommentLinkContent.indentLinesSpacing) {
                 let shapes = Array(1 ... Int(indentLines ?? data.depth ?? 1))
                 ForEach(shapes, id: \.self) { i in
@@ -257,7 +275,7 @@ struct CommentLinkContent: View {
               )
               .frame(maxWidth: .infinity, alignment: .topLeading)
               .padding(.top, theme.theme.bodyAuthorSpacing)
-              .padding(.bottom, max(0, theme.theme.innerPadding.vertical + (data.depth == 0 && comment.childrenHelio.isEmpty ? -theme.theme.cornerRadius : theme.theme.innerPadding.vertical)))
+              .padding(.bottom, bars ? theme.theme.innerPadding.vertical : max(0, theme.theme.innerPadding.vertical + (data.depth == 0 && comment.childrenHelio.isEmpty ? -theme.theme.cornerRadius : theme.theme.innerPadding.vertical)))
               .scaleEffect(1)
               .contentShape(Rectangle())
               .measure($size)
@@ -265,7 +283,8 @@ struct CommentLinkContent: View {
               Spacer()
             }
           }
-          .padding(.horizontal, horPad)
+          .padding(.horizontal, bars ? 0 : horPad)
+          .commentDepthBar(barDepth, theme: theme.theme, bottom: 8)
           .mask(Color.black.padding(.top, -(data.depth != 0 ? 42 : 30)).padding(.bottom, -8))
           .id("\(data.id)-body\(forcedBodySize == nil ? "" : "-preview")")
         }
@@ -322,6 +341,42 @@ struct CommentLinkContent: View {
       }
     } else {
       Text("oops")
+    }
+  }
+}
+
+/// Apollo's comment header: author, flair and score on one line.
+struct CommentHeaderLine: View {
+  var data: CommentData
+  var isOP: Bool
+  var unseen: Bool
+  var theme: CommentTheme
+
+  var body: some View {
+    let badge = theme.badge
+    HStack(alignment: .center, spacing: 6) {
+      if let author = data.author {
+        Text(author)
+          .font(.system(size: badge.authorText.size, weight: badge.authorText.weight.t))
+          .foregroundStyle(author == "[deleted]" ? .red : isOP ? Color.accentColor : badge.authorText.color())
+          .lineLimit(1)
+          .onTapGesture { Nav.to(.reddit(.user(User(id: author)))) }
+      }
+
+      if unseen {
+        PostLinkGlowDot(unseenType: .dot(theme.unseenDot), seen: false, badge: true).equatable()
+      }
+
+      if let flair = flairWithoutEmojis(str: data.author_flair_text)?.first {
+        UserFlair(flair: flair, flairText: badge.flairText, flairBackground: badge.flairBackground).equatable()
+      }
+
+      if let ups = data.ups {
+        BadgeStat(icon: data.likes == false ? "arrow.down" : "arrow.up", text: data.score_hidden == true ? "–" : formatBigNumber(ups))
+          .font(.system(size: badge.statsText.size, weight: badge.statsText.weight.t))
+          .foregroundStyle(data.likes == nil ? badge.statsText.color() : data.likes == true ? .upvote : .downvote)
+          .accessibilityLabel(data.score_hidden == true ? "Score hidden" : "\(ups) points")
+      }
     }
   }
 }

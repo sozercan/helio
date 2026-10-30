@@ -29,10 +29,8 @@ struct AppContent: View {
   }
 
   var body: some View {
-    AccountSwitcherProvider {
-      GlobalDestinationsProvider {
-        Tabber(theme: InMemoryTheme.shared.currentTheme)
-      }
+    GlobalDestinationsProvider {
+      Tabber(theme: InMemoryTheme.shared.currentTheme)
     }
     .whatsNewSheet()
     .environment(\.tabBarHeight, tabBarHeight)

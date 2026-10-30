@@ -89,9 +89,17 @@ func buildTitleWithTags(attrString: NSAttributedString, title: String, fontSize:
   text.isUserInteractionEnabled = false
   text.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
   text.translatesAutoresizingMaskIntoConstraints = false
-  text.attributedText = attrString
+  text.attributedText = titleColored(attrString, title: title, color: color)
 //  text.sizeToFit()
   return text
+}
+
+/// The title with `color`, leaving the tags after it as they are.
+private func titleColored(_ attrString: NSAttributedString, title: String, color: UIColor) -> NSAttributedString {
+  let colored = NSMutableAttributedString(attributedString: attrString)
+  let range = NSRange(location: 0, length: min((title as NSString).length, colored.length))
+  colored.addAttribute(.foregroundColor, value: color, range: range)
+  return colored
 }
 
 struct Prepend: UIViewRepresentable, Equatable {
@@ -111,6 +119,10 @@ struct Prepend: UIViewRepresentable, Equatable {
   }
 
   func updateUIView(_ uiLabel: SwiftyLabel, context: Context) {
+    let current = uiLabel.attributedText.flatMap { $0.length > 0 ? $0.attribute(.foregroundColor, at: 0, effectiveRange: nil) as? UIColor : nil }
+    if current != color {
+      uiLabel.attributedText = titleColored(attrString, title: title, color: color)
+    }
 //    if size != uiLabel.frame.size { uiLabel.frame.size = size }
 //    if !(uiLabel.attributedText?.isEqual(to: attrString) ?? false) { uiLabel.attributedText = attrString }
   }

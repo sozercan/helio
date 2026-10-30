@@ -23,79 +23,69 @@ struct Tabber: View {
     @State private var macTabToolbar = MacTabToolbar()
   #endif
 
-  func meTabTap() {
-    if nav.activeTab == .me {
-      nav[.me].resetNavPath()
-    } else {
-      nav.activeTab = .me
-    }
-  }
-
   init(theme: HelioTheme) {
     Tabber.updateTabAndNavBar(tabTheme: theme.general.tabBarBG, navTheme: theme.general.navPanelBG)
   }
 
+  /// Blurry bars are left to the system, which draws them in Liquid Glass with the scroll edge
+  /// effect. Only opaque theme colors override the appearance.
   static func updateTabAndNavBar(tabTheme: ThemeForegroundBG, navTheme: ThemeForegroundBG) {
-    let toolbarAppearence = UINavigationBarAppearance()
     if !navTheme.blurry {
-      toolbarAppearence.configureWithOpaqueBackground()
+      let navAppearance = UINavigationBarAppearance()
+      navAppearance.configureWithOpaqueBackground()
+      navAppearance.backgroundColor = UIColor(navTheme.color())
+      UINavigationBar.appearance().standardAppearance = navAppearance
     }
-    toolbarAppearence.backgroundColor = UIColor(navTheme.color())
-    UINavigationBar.appearance().standardAppearance = toolbarAppearence
-    let transparentAppearence = UITabBarAppearance()
     if !tabTheme.blurry {
-      transparentAppearence.configureWithOpaqueBackground()
+      let tabAppearance = UITabBarAppearance()
+      tabAppearance.configureWithOpaqueBackground()
+      tabAppearance.backgroundColor = UIColor(tabTheme.color())
+      UITabBar.appearance().standardAppearance = tabAppearance
     }
-    transparentAppearence.backgroundColor = UIColor(tabTheme.color())
-    UITabBar.appearance().standardAppearance = transparentAppearence
   }
 
   var body: some View {
     TabView(selection: $nav.activeTab) {
-      WithCredentialOnly(credential: redditCredentialsManager.selectedCredential) {
-        SubredditsStack(router: nav[.posts])
-      }
-      .measureTabBar(setTabBarHeight)
-      .hidesTabBarOnMac()
-      .tag(Nav.TabIdentifier.posts)
-      .tabItem { Label("Posts", systemImage: "doc.text.image") }
-
-      WithCredentialOnly(credential: redditCredentialsManager.selectedCredential) {
-        Inbox(router: nav[.inbox])
-      }
-      .measureTabBar(setTabBarHeight)
-      .hidesTabBarOnMac()
-      .tag(Nav.TabIdentifier.inbox)
-      .tabItem { Label("Inbox", systemImage: "bell.fill") }
-
-      WithCredentialOnly(credential: redditCredentialsManager.selectedCredential) {
-        Me(router: nav[.me])
-      }
-      .measureTabBar(setTabBarHeight)
-      .hidesTabBarOnMac()
-      .tag(Nav.TabIdentifier.me)
-      .tabItem {
-        Label(
-          appearanceDefSettings.showUsernameInTabBar ? RedditAPI.shared.me?.data?.name ?? "Me" : "Me",
-          systemImage: "person.fill",
-        )
-      }
-      //
-      WithCredentialOnly(credential: redditCredentialsManager.selectedCredential) {
-        Search(router: nav[.search])
-      }
-      .measureTabBar(setTabBarHeight)
-      .hidesTabBarOnMac()
-      .tag(Nav.TabIdentifier.search)
-      .tabItem { Label("Search", systemImage: "magnifyingglass") }
-
-      Settings(router: nav[.settings])
+      Tab("Posts", systemImage: "doc.text.image", value: Nav.TabIdentifier.posts) {
+        WithCredentialOnly(credential: redditCredentialsManager.selectedCredential) {
+          SubredditsStack(router: nav[.posts])
+        }
         .measureTabBar(setTabBarHeight)
         .hidesTabBarOnMac()
-        .tag(Nav.TabIdentifier.settings)
-        .tabItem { Label("Settings", systemImage: "gearshape.fill") }
+      }
+
+      Tab("Inbox", systemImage: "bell.fill", value: Nav.TabIdentifier.inbox) {
+        WithCredentialOnly(credential: redditCredentialsManager.selectedCredential) {
+          Inbox(router: nav[.inbox])
+        }
+        .measureTabBar(setTabBarHeight)
+        .hidesTabBarOnMac()
+      }
+
+      Tab(appearanceDefSettings.showUsernameInTabBar ? RedditAPI.shared.me?.data?.name ?? "Me" : "Me", systemImage: "person.fill", value: Nav.TabIdentifier.me) {
+        WithCredentialOnly(credential: redditCredentialsManager.selectedCredential) {
+          Me(router: nav[.me])
+        }
+        .measureTabBar(setTabBarHeight)
+        .hidesTabBarOnMac()
+      }
+
+      Tab("Settings", systemImage: "gearshape.fill", value: Nav.TabIdentifier.settings) {
+        Settings(router: nav[.settings])
+          .measureTabBar(setTabBarHeight)
+          .hidesTabBarOnMac()
+      }
+
+      // The search role puts Search in its own glass button after the tab bar.
+      Tab("Search", systemImage: "magnifyingglass", value: Nav.TabIdentifier.search, role: .search) {
+        WithCredentialOnly(credential: redditCredentialsManager.selectedCredential) {
+          Search(router: nav[.search])
+        }
+        .measureTabBar(setTabBarHeight)
+        .hidesTabBarOnMac()
+      }
     }
-    .overlay(TabBarOverlay(meTabTap: meTabTap), alignment: .bottom)
+    .tabBarMinimizeBehavior(.onScrollDown)
     .openFromWebListener()
     .newCredentialListener()
     .themeImportingListener() // From local file

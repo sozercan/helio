@@ -18,7 +18,7 @@ struct VotesKit: Equatable, Identifiable {
 
 /// A cluster consisting of the upvote, downvote button and the amount of upvotes with an optional upvote ratio
 struct VotesCluster: View, Equatable {
-  static let verticalWidth: Double = 24
+  static let verticalWidth: Double = VoteButton.size
   static func == (lhs: VotesCluster, rhs: VotesCluster) -> Bool {
     lhs.votesKit == rhs.votesKit
   }
@@ -28,6 +28,8 @@ struct VotesCluster: View, Equatable {
   //  @ObservedObject var post: Post
   var voteAction: (RedditAPI.VoteAction) async -> Bool?
   var vertical = false
+  /// Without the score, it's just the two buttons side by side, like Apollo's post cells.
+  var showScore = true
   var showUpVoteRatio: Bool
 
   nonisolated func haptic() {
@@ -56,6 +58,11 @@ struct VotesCluster: View, Equatable {
     //    let votes = calculateUpAndDownVotes(upvoteRatio: votesKit.ratio, score: votesKit.ups)
     if vertical {
       VotesClusterVertical(id: votesKit.id, likes: votesKit.likes, upvote: upvote, downvote: downvote)
+    } else if !showScore {
+      HStack(spacing: 2) {
+        VoteButton(active: votesKit.likes ?? false, color: .upvote, image: "arrow.up").highPriorityGesture(TapGesture().onEnded(upvote))
+        VoteButton(active: !(votesKit.likes ?? true), color: .downvote, image: "arrow.down").highPriorityGesture(TapGesture().onEnded(downvote))
+      }
     } else {
       VotesClusterHorizontal(id: votesKit.id, likes: votesKit.likes, ups: votesKit.ups, upvote_ratio: votesKit.ratio, upvote: upvote, downvote: downvote, showUpVoteRatio: showUpVoteRatio)
     }
@@ -76,11 +83,11 @@ struct VotesClusterHorizontal: View, Equatable {
   var showUpVoteRatio: Bool
   var body: some View {
     HStack(spacing: showUpVoteRatio ? 4 : 8) {
-      VoteButton(active: likes ?? false, color: .orange, image: "arrow.up").onTapGesture(perform: upvote)
+      VoteButton(active: likes ?? false, color: .upvote, image: "arrow.up").onTapGesture(perform: upvote)
 
       VotesClusterInfo(ups: ups, likes: likes, likeRatio: upvote_ratio, showUpVoteRatio: showUpVoteRatio).allowsHitTesting(false)
 
-      VoteButton(active: !(likes ?? true), color: .blue, image: "arrow.down").onTapGesture(perform: downvote)
+      VoteButton(active: !(likes ?? true), color: .downvote, image: "arrow.down").onTapGesture(perform: downvote)
     }
     .scaleEffect(1)
     //    .drawingGroup()
@@ -97,10 +104,10 @@ struct VotesClusterVertical: View, Equatable {
   let upvote: () -> Void
   let downvote: () -> Void
   var body: some View {
-    VStack(spacing: 12) {
-      VoteButton(active: likes ?? false, color: .orange, image: "arrow.up").highPriorityGesture(TapGesture().onEnded(upvote))
+    VStack(spacing: 2) {
+      VoteButton(active: likes ?? false, color: .upvote, image: "arrow.up").highPriorityGesture(TapGesture().onEnded(upvote))
 
-      VoteButton(active: !(likes ?? true), color: .blue, image: "arrow.down").highPriorityGesture(TapGesture().onEnded(downvote))
+      VoteButton(active: !(likes ?? true), color: .downvote, image: "arrow.down").highPriorityGesture(TapGesture().onEnded(downvote))
     }
     .frame(width: VotesCluster.verticalWidth, alignment: .top)
   }
@@ -132,12 +139,12 @@ struct VotesClusterInfo: View {
     VStack(spacing: 0) {
       Text(formatBigNumber(ups))
         .contentTransition(.numericText())
-        .foregroundColor(likes != nil ? (likes! ? .orange : .blue) : .gray)
+        .foregroundStyle(likes != nil ? (likes! ? Color.upvote : Color.downvote) : Color.gray)
         .fontSize(16, .semibold)
         .changeEffect(
           .rise(origin: UnitPoint(x: 0.75, y: 0.25)) {
             Text(flyingNumber.value > 0 ? "+\(flyingNumber.value)" : "\(flyingNumber.value)")
-              .foregroundStyle(flyingNumber.color == true ? .orange : flyingNumber.color == nil ? .gray : .blue)
+              .foregroundStyle(flyingNumber.color == true ? .upvote : flyingNumber.color == nil ? .gray : .downvote)
               .font(.system(size: 12, weight: .semibold))
           },
           value: flyingNumber,

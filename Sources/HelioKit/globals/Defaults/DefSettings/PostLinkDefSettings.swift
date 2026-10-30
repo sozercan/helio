@@ -37,7 +37,7 @@ enum VSide: String, Equatable, Codable, Hashable, Defaults.Serializable {
 struct CompactPostLinkDefSettings: Equatable, Hashable, Codable, Defaults.Serializable {
   var enabled: Bool = false
   var thumbnailSize: ThumbnailSizeModifier = .small
-  var thumbnailSide: HSide = .trailing
+  var thumbnailSide: HSide = .leading
   var voteButtonsSide: HSide = .trailing
   var showPlaceholderThumbnail: Bool = false
 }
