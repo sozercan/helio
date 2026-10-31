@@ -41,7 +41,7 @@ swiftformat . && swiftlint --strict
 
 Privacy is the app's main promise, so these hold unless the human explicitly changes them:
 
-- The app's own services are Reddit's OAuth and API endpoints and nothing else. Don't add analytics, crash reporting, ad SDKs, or any app-level backend. The upstream ThemeStore and lo.cafe API were removed on purpose; don't bring them back when porting code from Winston or its forks.
+- The app's own services are Reddit's OAuth and API endpoints and nothing else. Don't add analytics, crash reporting, ad SDKs, or any app-level backend. Winston's ThemeStore and lo.cafe API were removed on purpose; don't bring them back when porting code from Winston or its forks.
 - Loading the content a post points to is expected: images and video from their hosts, link-preview metadata from the linked page (`PreviewModel`), and hosts such as Streamable or YouTube to resolve and play embeds. Keep those requests limited to content the user is viewing, and don't send them account data or identifiers.
 - Use Reddit's OAuth REST API. Don't adopt the private GraphQL API or cookie capture that the d0lb33 fork uses; they risk Reddit's terms and depend on a private package.
 - Never put real Reddit client IDs, secrets, refresh tokens or usernames in code, tests, fixtures, logs, commits or PR text. Use obvious placeholders.
@@ -63,6 +63,6 @@ Privacy is the app's main promise, so these hold unless the human explicitly cha
 
 ## Git and releases
 
-- `origin` is upstream `lo-cafe/winston`. Push to the `sozercan` remote (`sozercan/helio`), and open PRs only against `sozercan/helio`'s `main`.
+- The repository is `sozercan/helio`, a standalone repo with no upstream. Open PRs against its `main`.
 - Commits use Conventional Commits with a sign-off (`git commit -s`). Subjects describe the user-visible behavior in plain words, such as `fix: show tall images whole instead of cropping them`; the body explains why.
 - Pushing a `v*` tag runs `release.yml`, which publishes the unsigned IPA and Mac zip and updates the sideload feed on `gh-pages`. Don't tag a release unless asked.
