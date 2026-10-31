@@ -46,6 +46,10 @@ struct RedditCredential: Identifiable, Equatable, Hashable, Codable, Sendable {
   mutating func updateAccessToken(_ token: AccessToken?, for authorization: AuthorizationID) -> Bool {
     guard authorizationID == authorization else { return false }
     if let token {
+      // A delayed shared-refresh waiter must not restore an older rejected token.
+      if let current = accessToken, current.lastRefresh > token.lastRefresh {
+        return false
+      }
       accessToken = token
     } else {
       clearIdentity()

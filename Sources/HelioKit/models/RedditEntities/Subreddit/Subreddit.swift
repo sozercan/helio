@@ -219,10 +219,10 @@ extension Subreddit {
     }
   }
 
-  func fetchPosts(sort: SubListingSortOption = .best, after: String? = nil, searchText: String? = nil, contentWidth: CGFloat = .screenW, flair: String? = nil, limit: Int = Defaults[.SubredditFeedDefSettings].chunkLoadSize) async -> ([RedditEntityType]?, String?)? {
+  func fetchPosts(sort: SubListingSortOption = .best, after: String? = nil, searchText: String? = nil, contentWidth: CGFloat = .screenW, flair: String? = nil, limit: Int = Defaults[.SubredditFeedDefSettings].chunkLoadSize, altCredential: RedditCredential? = nil) async -> ([RedditEntityType]?, String?)? {
     let response = flair == nil && searchText == nil
-      ? await RedditAPI.shared.fetchSubPosts(data?.url ?? (id == "home" ? "" : id), limit: limit, sort: sort, after: after)
-      : await RedditAPI.shared.searchInSubreddit(data?.url ?? (id == "home" ? nil : id), RedditAPI.AdvancedPostsSearch(after: after, subreddit: data?.url ?? (id == "home" ? "" : id), flairs: flair == nil ? nil : [flair!], searchQuery: searchText, sortOption: sort, limit: limit))
+      ? await RedditAPI.shared.fetchSubPosts(data?.url ?? (id == "home" ? "" : id), limit: limit, sort: sort, after: after, altCredential: altCredential)
+      : await RedditAPI.shared.searchInSubreddit(data?.url ?? (id == "home" ? nil : id), RedditAPI.AdvancedPostsSearch(after: after, subreddit: data?.url ?? (id == "home" ? "" : id), flairs: flair == nil ? nil : [flair!], searchQuery: searchText, sortOption: sort, limit: limit), altCredential: altCredential)
     if let response, let data = response.0 {
       var isMixed = false
       let datas = data.compactMap {

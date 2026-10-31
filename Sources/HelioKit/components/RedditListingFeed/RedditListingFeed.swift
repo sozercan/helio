@@ -23,6 +23,10 @@ struct RedditListingFeed<Header: View, Footer: View, S: Sorting>: View {
   @Default(.SubredditFeedDefSettings) private var subredditFeedDefSettings
   @Default(.GeneralDefSettings) private var generalDefSettings
 
+  private var selectedAuthorization: RedditCredential.AuthorizationID? {
+    RedditCredentialsManager.shared.selectedCredential(id: generalDefSettings.redditCredentialSelectedID)?.authorizationID
+  }
+
   init(feedId: String, showSubInPosts: Bool = false, title: String, theme: ThemeBG, fetch: @escaping FeedItemsManager<S>.ItemsFetchFn, @ViewBuilder header: @escaping () -> Header = { EmptyView() }, @ViewBuilder footer: @escaping () -> Footer = { EmptyView() }, initialSorting: S? = nil, disableSearch: Bool = true, subreddit: Subreddit? = nil, forceRefresh: Binding<Bool>? = nil, hideReadPosts: Bool = false) where S == SubListingSortOption {
     self.showSubInPosts = showSubInPosts
     self.feedId = feedId
@@ -315,7 +319,7 @@ struct RedditListingFeed<Header: View, Footer: View, S: Sorting>: View {
       } }, contentWidth: contentWidth, theme: selectedTheme)
       //    .onChange(of: itemsManager.selectedFilter) { searchEnabled = $1?.type != .custom }
       .refreshable { await refetch() }
-      .onChange(of: generalDefSettings.redditCredentialSelectedID) { _, _ in
+      .onChange(of: selectedAuthorization) { _, _ in
         Task { await refetch(clearItems: true) }
       }
       .onChange(of: subredditFeedDefSettings.chunkLoadSize) { itemsManager.chunkSize = $1 }

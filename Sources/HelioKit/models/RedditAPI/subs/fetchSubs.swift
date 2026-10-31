@@ -38,6 +38,10 @@ extension RedditAPI {
 
     switch await self.doRequest("\(RedditAPI.redditApiURLBase)/subreddits/mine/subscriber.json", method: .get, params: params, paramsLocation: .queryString, decodable: Listing<SubredditData>.self, altCredential: account) {
     case let .success(data):
+      // Same as a failed page: the sync would delete the subscriptions that were skipped.
+      if let skipped = data.data?.skippedChildren, skipped > 0 {
+        return nil
+      }
       var newAccumulatedSubs = accumulatedSubs ?? []
       if let fetchedSubs = data.data?.children {
         newAccumulatedSubs += fetchedSubs.filter { $0.data?.subreddit_type != "user" }

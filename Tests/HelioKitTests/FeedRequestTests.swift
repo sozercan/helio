@@ -95,3 +95,55 @@ struct FeedRequestTests {
     #expect(requests.first?.url?.path == "/best.json")
   }
 }
+
+extension FeedRequestTests {
+  @MainActor
+  @Test func anAccountSwitchAndBackDuringDispatchCannotFetchAnotherAccountsSavedItems() async throws {
+    let first = account("placeholder_first")
+    let second = account("placeholder_second")
+    var selected = first
+    let reads = Mutex(0)
+    let api = RedditAPI(session: session(), currentAccount: {
+      reads.withLock { $0 += 1 }
+      return second
+    })
+    let manager = FeedItemsManager<SubListingSortOption>(sorting: .best, currentCredential: { selected }, fetchFn: { after, sorting, _, _, context in
+      selected = second
+      // Endpoint dispatch crosses an actor boundary while B is selected. Restoring
+      // A before publishing is not enough: the HTTP request itself must use A.
+      let result = await api.fetchSubPosts(savedKeyword, limit: context.limit, sort: sorting ?? .best, after: after, altCredential: context.credential)
+      selected = first
+      guard let result else { return nil }
+      return ([], result.1)
+    })
+    await manager.reload()
+    let requests = FeedRequestProtocol.requests.withLock { $0 }
+    let request = try #require(requests.first)
+    #expect(requests.count == 1)
+    #expect(request.url?.path == "/user/placeholder_first/saved/best.json")
+    #expect(request.value(forHTTPHeaderField: "Authorization") == "Bearer placeholder-placeholder_first-access-token")
+    #expect(reads.withLock { $0 } == 0)
+    #expect(manager.displayMode == .empty)
+  }
+
+  @Test func everyFeedEndpointHonorsTheCapturedCredentialWithoutReadingSelection() async {
+    let first = account("placeholder_first")
+    let second = account("placeholder_second")
+    let reads = Mutex(0)
+    let api = RedditAPI(session: session(), currentAccount: {
+      reads.withLock { $0 += 1 }
+      return second
+    })
+    _ = await api.fetchSubPosts("", limit: 15, altCredential: first)
+    _ = await api.fetchMultiPosts(path: "/user/placeholder_first/m/example", limit: 15, altCredential: first)
+    _ = await api.fetchUserOverview("placeholder_first", limit: 15, altCredential: first)
+    _ = await api.fetchInbox(limit: 15, altCredential: first)
+    _ = await api.searchInSubreddit("example", RedditAPI.AdvancedPostsSearch(subreddit: "example", flairs: nil, sortOption: .best, limit: 15), altCredential: first)
+    let requests = FeedRequestProtocol.requests.withLock { $0 }
+    #expect(requests.count == 5)
+    for request in requests {
+      #expect(request.value(forHTTPHeaderField: "Authorization") == "Bearer placeholder-placeholder_first-access-token")
+    }
+    #expect(reads.withLock { $0 } == 0)
+  }
+}

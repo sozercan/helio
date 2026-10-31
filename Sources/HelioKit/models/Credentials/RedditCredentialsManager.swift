@@ -33,11 +33,12 @@ class RedditCredentialsManager {
   var cancelables: [Defaults.Observation] = []
 
   var selectedCredential: RedditCredential? {
-    if !credentials.isEmpty {
-      let selectedID = Defaults[.GeneralDefSettings].redditCredentialSelectedID
-      return credentials.first { $0.id == selectedID } ?? credentials[0]
-    }
-    return nil
+    selectedCredential(id: Defaults[.GeneralDefSettings].redditCredentialSelectedID)
+  }
+
+  /// Reuse the installed selection/fallback while letting views observe the Defaults ID.
+  func selectedCredential(id: UUID?) -> RedditCredential? {
+    credentials.first { $0.id == id } ?? credentials.first
   }
 
   func syncCredentialsWithKeychain() {

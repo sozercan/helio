@@ -10,14 +10,14 @@ import Defaults
 import Foundation
 
 extension RedditAPI {
-  func searchInSubreddit(_ subreddit: String?, _ advanced: AdvancedPostsSearch) async -> ([ListingChild<Either<PostData, CommentData>>]?, String?)? {
+  func searchInSubreddit(_ subreddit: String?, _ advanced: AdvancedPostsSearch, altCredential: RedditCredential? = nil) async -> ([ListingChild<Either<PostData, CommentData>>]?, String?)? {
     var url = "\(RedditAPI.redditApiURLBase)"
     if let subreddit, let subName = SubMetaFormatter(name: subreddit).name {
       url += "/r/\(subName)"
     }
     url += "/search.json"
     print(advanced)
-    switch await self.doRequest(url, method: .get, params: advanced, paramsLocation: .queryString, decodable: Listing<Either<PostData, CommentData>>.self) {
+    switch await self.doRequest(url, method: .get, params: advanced, paramsLocation: .queryString, decodable: Listing<Either<PostData, CommentData>>.self, altCredential: altCredential) {
     case let .success(data):
       return (data.data?.children, data.data?.after)
     case .failure:

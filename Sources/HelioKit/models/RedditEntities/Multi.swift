@@ -32,8 +32,8 @@ extension Multi {
     nil
   }
 
-  func fetchPosts(sort: SubListingSortOption = .best, after: String? = nil, contentWidth: CGFloat = .screenW, limit: Int = Defaults[.SubredditFeedDefSettings].chunkLoadSize) async -> ([RedditEntityType]?, String?)? {
-    if let data, let response = await RedditAPI.shared.fetchMultiPosts(path: data.path, sort: sort, after: after, limit: limit), let data = response.0 {
+  func fetchPosts(sort: SubListingSortOption = .best, after: String? = nil, contentWidth: CGFloat = .screenW, limit: Int = Defaults[.SubredditFeedDefSettings].chunkLoadSize, altCredential: RedditCredential? = nil) async -> ([RedditEntityType]?, String?)? {
+    if let data, let response = await RedditAPI.shared.fetchMultiPosts(path: data.path, sort: sort, after: after, limit: limit, altCredential: altCredential), let data = response.0 {
       return (Post.initMultiple(datas: data.compactMap(\.data), contentWidth: contentWidth).map { .post($0) }, response.1)
     }
     return nil
@@ -47,7 +47,7 @@ extension Multi {
   }
 }
 
-struct MultiData: GenericRedditEntityDataType, Defaults.Serializable {
+struct MultiData: GenericRedditEntityDataType, Defaults.Serializable, Sendable {
   var can_edit: Bool?
   let display_name, name: String
   var description_html: String?
@@ -96,7 +96,7 @@ struct MultiData: GenericRedditEntityDataType, Defaults.Serializable {
   }
 }
 
-struct MultiSub: Codable, Hashable, Identifiable {
+struct MultiSub: Codable, Hashable, Identifiable, Sendable {
   let name: String
   var id: String {
     name
@@ -105,7 +105,7 @@ struct MultiSub: Codable, Hashable, Identifiable {
   var data: SubredditData?
 }
 
-enum MultiVisibility: String, CaseIterable, Codable {
+enum MultiVisibility: String, CaseIterable, Codable, Sendable {
   case priv = "private"
   case pub = "public"
   case hid = "hidden"

@@ -12,13 +12,21 @@ import SwiftUI
 @MainActor
 @Observable
 class FeedItemsManager<S> {
-  typealias ItemsFetchFn = @MainActor (_ lastElementId: String?, _ sorting: S?, _ searchQuery: String?, _ flair: String?, _ limit: Int) async -> (entities: [RedditEntityType]?, after: String?)?
+  struct FetchContext {
+    let limit: Int
+    let credential: RedditCredential
+  }
+
+  typealias ItemsFetchFn = @MainActor (_ lastElementId: String?, _ sorting: S?, _ searchQuery: String?, _ flair: String?, _ context: FetchContext) async -> (entities: [RedditEntityType]?, after: String?)?
 
   /// `onlyReadPosts`: paging stopped after several pages in a row held only hidden read posts.
   enum DisplayMode: String { case loading, empty, items, endOfFeed, error, onlyReadPosts }
 
   @ObservationIgnored private var currentTask: Task<Void, Never>?
   @ObservationIgnored private var currentRequestID: UUID?
+  @ObservationIgnored private var currentTaskIsReload = false
+  @ObservationIgnored private var loadMoreHeldBack = false
+  @ObservationIgnored private var listRequest: Request?
 
   /// One immutable query for the whole page chain, including pages hidden as already read.
   private struct Request {
@@ -26,6 +34,10 @@ class FeedItemsManager<S> {
     let searchQuery: String?
     let flair: String?
     let chunkSize: Int
+    let credential: RedditCredential?
+    var authorization: RedditCredential.AuthorizationID? {
+      credential?.authorizationID
+    }
   }
 
   /// Set once the feed starts loading its first page.
@@ -50,16 +62,19 @@ class FeedItemsManager<S> {
 
   var chunkSize: Int
   private let fetchFn: ItemsFetchFn
+  private let currentCredential: @MainActor () -> RedditCredential?
+  @ObservationIgnored private var authorization: RedditCredential.AuthorizationID?
   private let prefetchRange = 2
   /// Whether this feed drops already-read posts when "Hide read posts" is on.
   private let hideReadPosts: Bool
   /// Pages fetched in a row whose posts were all hidden, before giving up.
   private let maxHiddenPagesInARow = 5
 
-  init(sorting: S?, hideReadPosts: Bool = false, fetchFn: @escaping ItemsFetchFn) {
+  init(sorting: S?, hideReadPosts: Bool = false, currentCredential: @escaping @MainActor () -> RedditCredential? = { RedditCredentialsManager.shared.selectedCredential }, fetchFn: @escaping ItemsFetchFn) {
     self.sorting = sorting
     self.hideReadPosts = hideReadPosts
     self.fetchFn = fetchFn
+    self.currentCredential = currentCredential
     self.chunkSize = Defaults[.SubredditFeedDefSettings].chunkLoadSize
   }
 
@@ -89,50 +104,88 @@ class FeedItemsManager<S> {
 
   /// Reserve the request synchronously, so rows appearing together share one page fetch.
   private func startFetch(loadingMore: Bool, clearItems: Bool = false) -> Task<Void, Never>? {
-    if loadingMore {
+    let credential = currentCredential()
+    let currentAuthorization = credential?.authorizationID
+    let accountChanged = initialLoadStarted && authorization != currentAuthorization
+    let paging = loadingMore && !accountChanged
+    if paging {
       if let currentTask {
+        // The still-visible rows will not appear again if the refresh returns
+        // the same posts. Carry their paging intent over to its replacement list.
+        if currentTaskIsReload, !entities.isEmpty {
+          loadMoreHeldBack = true
+        }
         return currentTask
       }
       guard lastElementId != nil, displayMode == .items || displayMode == .onlyReadPosts || displayMode == .error else { return nil }
     } else {
+      if clearItems || accountChanged {
+        loadMoreHeldBack = false
+        listRequest = nil
+      } else if currentTask != nil, !currentTaskIsReload {
+        loadMoreHeldBack = true
+      }
       currentTask?.cancel()
     }
 
     initialLoadStarted = true
-    isLoadingMore = loadingMore
-    if clearItems {
+    isLoadingMore = paging
+    if clearItems || accountChanged {
       entities = []
       loadedEntitiesIds = []
       lastElementId = nil
     }
-    withAnimation { displayMode = loadingMore ? .items : .loading }
+    withAnimation { displayMode = paging ? .items : .loading }
     let requestID = UUID()
     currentRequestID = requestID
-    let request = Request(
-      sorting: sorting,
-      searchQuery: selectedFilter?.type == .custom ? selectedFilter?.text : searchQuery.debounced.isEmpty ? nil : searchQuery.debounced,
-      flair: selectedFilter?.type != .custom ? selectedFilter?.text : nil,
-      chunkSize: chunkSize,
-    )
-    let after = loadingMore ? lastElementId : nil
+    let request = if paging, let listRequest {
+      // The cursor belongs to the displayed list's query, not settings for a
+      // reload that has not started yet. Each new chain adopts the current limit.
+      Request(sorting: listRequest.sorting, searchQuery: listRequest.searchQuery, flair: listRequest.flair, chunkSize: chunkSize, credential: credential)
+    } else {
+      Request(
+        sorting: sorting,
+        searchQuery: selectedFilter?.type == .custom ? selectedFilter?.text : searchQuery.debounced.isEmpty ? nil : searchQuery.debounced,
+        flair: selectedFilter?.type != .custom ? selectedFilter?.text : nil,
+        chunkSize: chunkSize,
+        credential: credential,
+      )
+    }
+    authorization = currentAuthorization
+    let after = paging ? lastElementId : nil
     let task = Task {
-      await self.fetchPage(loadingMore: loadingMore, after: after, hiddenPagesInARow: 0, request: request, requestID: requestID)
+      await self.fetchPage(loadingMore: paging, after: after, hiddenPagesInARow: 0, request: request, requestID: requestID)
       // A superseded task must not release a newer request's reservation.
       if self.currentRequestID == requestID {
         self.currentTask = nil
         self.currentRequestID = nil
+        self.currentTaskIsReload = false
         self.isLoadingMore = false
+        if !paging, self.displayMode != .error {
+          let resumePaging = self.loadMoreHeldBack
+          self.loadMoreHeldBack = false
+          if resumePaging, self.displayMode == .items, self.currentCredential()?.authorizationID == request.authorization, !Task.isCancelled {
+            await self.startFetch(loadingMore: true)?.value
+          }
+        }
       }
     }
+    currentTaskIsReload = !paging
     currentTask = task
     return task
   }
 
   private func fetchPage(loadingMore: Bool, after lastElementId: String?, hiddenPagesInARow: Int, request: Request, requestID: UUID) async {
-    guard currentRequestID == requestID, !Task.isCancelled else { return }
-    let result = await fetchFn(lastElementId, request.sorting, request.searchQuery, request.flair, request.chunkSize)
+    guard currentRequestID == requestID, !Task.isCancelled, currentCredential()?.authorizationID == request.authorization else { return }
+    // A captured signed-out state must not resolve whatever account is selected later.
+    guard let credential = request.credential else {
+      failedLoadingMore = loadingMore
+      withAnimation { displayMode = .error }
+      return
+    }
+    let result = await fetchFn(lastElementId, request.sorting, request.searchQuery, request.flair, FetchContext(limit: request.chunkSize, credential: credential))
     // Cancellation is cooperative: a network callback may still return data or an error.
-    guard currentRequestID == requestID, !Task.isCancelled else { return }
+    guard currentRequestID == requestID, !Task.isCancelled, currentCredential()?.authorizationID == request.authorization else { return }
     guard let (fetchedEntities, after) = result, let fetchedEntities else {
       failedLoadingMore = loadingMore
       withAnimation { displayMode = .error }
@@ -140,13 +193,16 @@ class FeedItemsManager<S> {
     }
 
     // Without a cursor, the next fetch would start over from the first page.
-    let reachedEnd = fetchedEntities.count < request.chunkSize || after == nil
+    // Reddit can return short pages and lossy decoding can skip individual
+    // children. A nonempty page with a cursor is still pageable.
+    let reachedEnd = after == nil || fetchedEntities.isEmpty
     let shownEntities = withoutReadPosts(fetchedEntities)
     let onlyReadPosts = shownEntities.isEmpty && !fetchedEntities.isEmpty && !reachedEnd
     let skipPage = onlyReadPosts && hiddenPagesInARow < maxHiddenPagesInARow
     let gaveUp = onlyReadPosts && !skipPage
 
     if !loadingMore {
+      listRequest = request
       withAnimation {
         displayMode = skipPage ? .items : gaveUp ? .onlyReadPosts : shownEntities.isEmpty ? .empty : reachedEnd ? .endOfFeed : .items
         entities = shownEntities
@@ -186,8 +242,12 @@ class FeedItemsManager<S> {
   /// loading the next page.
   func elementAppeared(entity: RedditEntityType) {
     guard let index = indexByID[entity.id] else { return }
-    if displayMode == .items, !entities.isEmpty, index >= entities.count - 7, currentTask == nil {
-      startFetch(loadingMore: true)
+    if !entities.isEmpty, index >= entities.count - 7 {
+      if currentTask != nil, currentTaskIsReload {
+        loadMoreHeldBack = true
+      } else if displayMode == .items, currentTask == nil {
+        startFetch(loadingMore: true)
+      }
     }
 
     let start = index - prefetchRange < 0 ? 0 : index - prefetchRange

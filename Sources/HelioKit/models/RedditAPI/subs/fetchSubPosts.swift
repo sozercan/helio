@@ -10,8 +10,13 @@ import Defaults
 import Foundation
 
 extension RedditAPI {
-  func fetchSubPosts(_ id: String, limit: Int = Defaults[.SubredditFeedDefSettings].chunkLoadSize, sort: SubListingSortOption = .best, after: String? = nil) async -> ([ListingChild<Either<PostData, CommentData>>]?, String?)? {
-    guard let account = await captureAccount(), let subID = buildSubID(id, sort, after, account: account) else { return nil }
+  func fetchSubPosts(_ id: String, limit: Int = Defaults[.SubredditFeedDefSettings].chunkLoadSize, sort: SubListingSortOption = .best, after: String? = nil, altCredential: RedditCredential? = nil) async -> ([ListingChild<Either<PostData, CommentData>>]?, String?)? {
+    let account = if let altCredential {
+      altCredential
+    } else {
+      await captureAccount()
+    }
+    guard let account, let subID = buildSubID(id, sort, after, account: account) else { return nil }
     let params = FetchSubPostsPayload(limit: limit, after: after)
 
     let urlString = "\(RedditAPI.redditApiURLBase)\(subID)".replacingOccurrences(of: " ", with: "%20")
