@@ -281,42 +281,46 @@ struct RedditListingFeed<Header: View, Footer: View, S: Sorting>: View {
       .navigationTitle(title)
       .environment(\.defaultMinListRowHeight, 1)
       .toolbar {
-        ToolbarItem(placement: .topBarTrailing) {
-          HStack {
-            if let currSort = itemsManager.sorting {
-              Menu {
-                ForEach(Array(S.allCases), id: \.self) { opt in
-                  if let children = opt.meta.children {
-                    Menu {
-                      ForEach(children, id: \.self.meta.apiValue) { child in
-                        if let val = child.valueWithParent as? S {
-                          Button(child.meta.label, systemImage: child.meta.icon) {
-                            itemsManager.sorting = val
+        // An empty item still draws a glass button on iOS 26, so feeds without a sort or a
+        // subreddit (such as a user's) get none.
+        if itemsManager.sorting != nil || subreddit?.data != nil {
+          ToolbarItem(placement: .topBarTrailing) {
+            HStack {
+              if let currSort = itemsManager.sorting {
+                Menu {
+                  ForEach(Array(S.allCases), id: \.self) { opt in
+                    if let children = opt.meta.children {
+                      Menu {
+                        ForEach(children, id: \.self.meta.apiValue) { child in
+                          if let val = child.valueWithParent as? S {
+                            Button(child.meta.label, systemImage: child.meta.icon) {
+                              itemsManager.sorting = val
+                            }
                           }
                         }
+                      } label: {
+                        Label(opt.meta.label, systemImage: opt.meta.icon)
                       }
-                    } label: {
-                      Label(opt.meta.label, systemImage: opt.meta.icon)
-                    }
-                  } else {
-                    Button(opt.meta.label, systemImage: opt.meta.icon) {
-                      itemsManager.sorting = opt
+                    } else {
+                      Button(opt.meta.label, systemImage: opt.meta.icon) {
+                        itemsManager.sorting = opt
+                      }
                     }
                   }
+                } label: {
+                  Image(systemName: currSort.meta.icon)
+                    .foregroundStyle(Color.accentColor)
+                    .fontSize(17, .bold)
                 }
-              } label: {
-                Image(systemName: currSort.meta.icon)
-                  .foregroundColor(Color.accentColor)
-                  .fontSize(17, .bold)
               }
-            }
-            //          .disabled(subreddit.id == "saved")
-            //        }
-            if let sub = subreddit, let data = sub.data {
-              Button {
-                Nav.to(.reddit(.subInfo(sub)))
-              } label: {
-                SubredditIcon(subredditIconKit: data.subredditIconKit)
+              //          .disabled(subreddit.id == "saved")
+              //        }
+              if let sub = subreddit, let data = sub.data {
+                Button {
+                  Nav.to(.reddit(.subInfo(sub)))
+                } label: {
+                  SubredditIcon(subredditIconKit: data.subredditIconKit)
+                }
               }
             }
           }
