@@ -10,7 +10,7 @@ Helio is a privacy-focused Reddit client for iPhone, iPad and Mac (Mac Catalyst)
 - `App/Helio.xcodeproj`: a thin shell that builds the app bundle and the Safari extension on top of `HelioKit`. It owns the entry point (`App/Helio/HelioApp.swift`), `Info.plist`, entitlements and every resource: asset catalog, `App/Localizable.xcstrings`, the Core Data model, shaders, Lottie animations and media.
 - Because resources live in the app bundle, `HelioKit` code looks them up in `Bundle.main`. Asset catalog symbols used from `HelioKit` (such as `Image(.loader)`) are declared by hand in `Sources/HelioKit/globals/AppAssets.swift`; add new ones there.
 - Add dependencies in `Package.swift`, never in the Xcode project.
-- `App/helio-everywhere` is the Safari extension. Its built bundle in `dist/` is committed and is what the app embeds, so after changing `src/`, run `npm run build` in that directory and commit `dist/` with the change.
+- `App/helio-everywhere` is the Safari extension. Its built bundle in `dist/` is committed and is what the app embeds, so after changing `src/`, run `npm run build` in that directory and commit `dist/` with the change. The extension target's Resources phase lists each `dist/` file by its hashed name, so if the build adds, removes or renames files, update the file references and Resources phase in `App/Helio.xcodeproj` to match and delete the stale files.
 - `App/HelioUITests` is not a synced folder: a new test file must also be added to the target in the project file.
 
 ## Build, test, lint
@@ -41,7 +41,8 @@ swiftformat . && swiftlint --strict
 
 Privacy is the app's main promise, so these hold unless the human explicitly changes them:
 
-- The app talks only to Reddit's OAuth and API endpoints. Don't add analytics, crash reporting, ad SDKs, or calls to other servers. The upstream ThemeStore and lo.cafe API were removed on purpose; don't bring them back when porting code from Winston or its forks.
+- The app's own services are Reddit's OAuth and API endpoints and nothing else. Don't add analytics, crash reporting, ad SDKs, or any app-level backend. The upstream ThemeStore and lo.cafe API were removed on purpose; don't bring them back when porting code from Winston or its forks.
+- Loading the content a post points to is expected: images and video from their hosts, link-preview metadata from the linked page (`PreviewModel`), and hosts such as Streamable or YouTube to resolve and play embeds. Keep those requests limited to content the user is viewing, and don't send them account data or identifiers.
 - Use Reddit's OAuth REST API. Don't adopt the private GraphQL API or cookie capture that the d0lb33 fork uses; they risk Reddit's terms and depend on a private package.
 - Never put real Reddit client IDs, secrets, refresh tokens or usernames in code, tests, fixtures, logs, commits or PR text. Use obvious placeholders.
 - The OAuth redirect is `https://sozercan.github.io/helio/auth-success`, a static page on the `gh-pages` branch that forwards to `helioapp://auth-success`. Reddit requires an https redirect for web-app keys, so a bare `helioapp://` redirect breaks login.
