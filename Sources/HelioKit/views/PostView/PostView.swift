@@ -30,7 +30,7 @@ struct PostView: View, Equatable {
   @State private var ignoreSpecificComment = false
   @State private var hideElements = true
   @State private var sort: CommentSortOption
-  @State private var commentsPrefetch = CommentsPrefetch()
+  @State private var commentsLoad = CommentsLoad()
 
   @SilentState private var topVisibleCommentId: String? = nil
   @SilentState private var previousScrollTarget: String? = nil
@@ -51,13 +51,16 @@ struct PostView: View, Equatable {
 
   /// Reloads the post and its comments (pull to refresh, another sort).
   func asyncFetch() async {
+    let request = await MainActor.run { commentsLoad.begin() }
     if let result = await post.refreshPost(commentID: ignoreSpecificComment ? nil : highlightID, sort: sort, after: nil, subreddit: subreddit.data?.display_name ?? subreddit.id, full: true), let newComments = result.0 {
       newComments.forEach { $0.parentHelio = comments }
-      await MainActor.run {
-        withAnimation {
-          comments = newComments
-        }
+      let applied = await MainActor.run {
+        // A later request (another sort) replaces these.
+        guard commentsLoad.isCurrent(request) else { return false }
+        comments = newComments
+        return true
       }
+      guard applied else { return }
       Task(priority: .utility) {
         await RedditAPI.shared.updateCommentsWithAvatar(comments: newComments, avatarSize: selectedTheme.comments.theme.badge.avatar.size)
       }
@@ -102,7 +105,7 @@ struct PostView: View, Equatable {
             .listRowBackground(Color.clear)
 
             if !hideElements {
-              PostReplies(prefetch: commentsPrefetch, post: post, subreddit: subreddit, ignoreSpecificComment: ignoreSpecificComment, highlightID: highlightID, sort: sort, proxy: proxy, geometryReader: geometryReader, topVisibleCommentId: $topVisibleCommentId, previousScrollTarget: $previousScrollTarget, comments: $comments)
+              PostReplies(commentsLoad: commentsLoad, post: post, subreddit: subreddit, ignoreSpecificComment: ignoreSpecificComment, highlightID: highlightID, sort: sort, proxy: proxy, geometryReader: geometryReader, topVisibleCommentId: $topVisibleCommentId, previousScrollTarget: $previousScrollTarget, comments: $comments)
             }
 
             if !ignoreSpecificComment, highlightID != nil {
@@ -160,12 +163,12 @@ struct PostView: View, Equatable {
             }
           }
           // Comments start loading now; they're shown once the push animation is over.
-          if !commentsPrefetch.started {
-            commentsPrefetch.started = true
+          if !commentsLoad.started {
             let full = post.data == nil
-            commentsPrefetch.task = Task(priority: .userInitiated) {
+            let task = Task(priority: .userInitiated) {
               await post.refreshPost(commentID: highlightID, sort: sort, after: nil, subreddit: subreddit.data?.display_name ?? subreddit.id, full: full)
             }
+            commentsLoad.startPrefetch(CommentsLoad.Prefetch(task: task, sort: sort, commentID: highlightID))
           }
 
           Task(priority: .background) {
@@ -195,14 +198,40 @@ struct PostView: View, Equatable {
   }
 }
 
-/// The first comments request, started when the post opens and picked up by `PostReplies`.
-final class CommentsPrefetch {
-  var started = false
-  var task: Task<([Comment]?, String?)?, Never>?
+/// A post's comment requests: the first one, started when the post opens and picked up by
+/// `PostReplies`, and the reloads after it. Only the latest request's comments are shown.
+@MainActor
+final class CommentsLoad {
+  struct Prefetch {
+    let task: Task<([Comment]?, String?)?, Never>
+    let sort: CommentSortOption
+    let commentID: String?
+  }
 
-  func take() -> Task<([Comment]?, String?)?, Never>? {
-    defer { task = nil }
-    return task
+  private(set) var started = false
+  private var prefetch: Prefetch?
+  private var generation = 0
+
+  func startPrefetch(_ prefetch: Prefetch) {
+    started = true
+    self.prefetch = prefetch
+  }
+
+  /// The prefetch, if it asked for the same comments. Taken once.
+  func takePrefetch(sort: CommentSortOption, commentID: String?) -> Task<([Comment]?, String?)?, Never>? {
+    defer { prefetch = nil }
+    guard let prefetch, prefetch.sort == sort, prefetch.commentID == commentID else { return nil }
+    return prefetch.task
+  }
+
+  /// Starts a request. Its comments apply only while it's the latest: `isCurrent(request)`.
+  func begin() -> Int {
+    generation += 1
+    return generation
+  }
+
+  func isCurrent(_ request: Int) -> Bool {
+    request == generation
   }
 }
 

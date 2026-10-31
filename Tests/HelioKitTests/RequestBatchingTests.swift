@@ -84,14 +84,14 @@ struct RedditInfoLoaderTests {
 
   @Test func batchesPostsAndSubredditsAndCachesThem() async {
     let calls = Calls()
-    let loader = RedditInfoLoader { fullnames, names in
+    let loader = RedditInfoLoader(currentAccount: { nil }, fetch: { fullnames, names, _ in
       calls.record(fullnames + names.map { "sr:\($0)" })
       var things = fullnames.compactMap { self.post(String($0.dropFirst(3))).map(RedditInfoLoader.Thing.post) }
       if names.contains("apple"), let apple = self.subreddit("apple") {
         things.append(.subreddit(apple))
       }
       return things
-    }
+    })
     async let a = loader.post("t3_a")
     async let b = loader.post("t3_b")
     async let sub = loader.subreddit(named: "Apple")
@@ -103,6 +103,24 @@ struct RedditInfoLoaderTests {
     #expect(apple?.display_name == "apple")
     #expect(again?.id == "a")
     #expect(calls.all.sorted { $0.count > $1.count } == [["t3_a", "t3_b"], ["sr:apple"]])
+  }
+
+  /// Results carry the account's votes and saves, and only some accounts see private subreddits.
+  @Test func keepsEachAccountsResultsApart() async {
+    let calls = Calls()
+    let first = RedditCredential(apiAppID: "first"), second = RedditCredential(apiAppID: "second")
+    let selected = Mutex(first)
+    let loader = RedditInfoLoader(currentAccount: { selected.withLock { $0 } }, fetch: { fullnames, _, account in
+      calls.record(fullnames.map { "\(account?.apiAppID ?? "none"):\($0)" })
+      return fullnames.compactMap { self.post(String($0.dropFirst(3))).map(RedditInfoLoader.Thing.post) }
+    })
+    _ = await loader.post("t3_a")
+    selected.withLock { $0 = second }
+    _ = await loader.post("t3_a")
+    selected.withLock { $0 = first }
+    _ = await loader.post("t3_a")
+
+    #expect(calls.all == [["first:t3_a"], ["second:t3_a"]])
   }
 }
 
@@ -148,20 +166,36 @@ struct AccessTokenRefresherTests {
     #expect(calls.all.count == 1)
   }
 
-  @Test func forcedRenewalRefreshesAStaleToken() async {
+  @Test func forcedRenewalReplacesTheRejectedToken() async {
     let calls = Calls()
     let refresher = AccessTokenRefresher()
     _ = await refresher.token(refreshToken: "r", forceRenew: false) {
       calls.record(["first"])
-      return self.token("old", age: AccessTokenRefresher.forcedReuseWindow + 1)
+      return self.token("revoked")
     }
-    let renewed = await refresher.token(refreshToken: "r", forceRenew: true) {
+    let renewed = await refresher.token(refreshToken: "r", forceRenew: true, rejected: "revoked") {
       calls.record(["second"])
       return self.token("new")
     }
 
     #expect(renewed?.token == "new")
     #expect(calls.all.count == 2)
+  }
+
+  @Test func forcedRenewalReusesATokenNewerThanTheRejectedOne() async {
+    let calls = Calls()
+    let refresher = AccessTokenRefresher()
+    _ = await refresher.token(refreshToken: "r", forceRenew: false) {
+      calls.record(["first"])
+      return self.token("new")
+    }
+    let reused = await refresher.token(refreshToken: "r", forceRenew: true, rejected: "expired") {
+      calls.record(["second"])
+      return self.token("newer")
+    }
+
+    #expect(reused?.token == "new")
+    #expect(calls.all.count == 1)
   }
 }
 

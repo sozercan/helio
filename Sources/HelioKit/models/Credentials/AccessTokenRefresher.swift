@@ -12,18 +12,18 @@ import Foundation
 actor AccessTokenRefresher {
   static let shared = AccessTokenRefresher()
 
-  /// A forced renewal (after a 401) reuses a token refreshed this recently: the 401 came from a
-  /// request that still carried the old one.
-  static let forcedReuseWindow: TimeInterval = 30
-
   private var inFlight: [String: Task<RedditCredential.AccessToken?, Never>] = [:]
   private var latest: [String: RedditCredential.AccessToken] = [:]
 
-  func token(refreshToken: String, forceRenew: Bool, refresh: @escaping @Sendable () async -> RedditCredential.AccessToken?) async -> RedditCredential.AccessToken? {
+  /// `forceRenew` with `rejected`, the token a request was just refused with: the latest token is
+  /// reused only when it's a different one, since the request then carried an older token.
+  func token(refreshToken: String, forceRenew: Bool, rejected: String? = nil,
+             refresh: @escaping @Sendable () async -> RedditCredential.AccessToken?) async -> RedditCredential.AccessToken?
+  {
     if let task = inFlight[refreshToken] {
       return await task.value
     }
-    if let token = latest[refreshToken], token.isFresh, !forceRenew || Date().timeIntervalSince(token.lastRefresh) < Self.forcedReuseWindow {
+    if let token = latest[refreshToken], token.isFresh, !forceRenew || (rejected != nil && token.token != rejected) {
       return token
     }
     let task = Task { await refresh() }

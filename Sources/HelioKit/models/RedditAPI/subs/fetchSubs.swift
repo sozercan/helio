@@ -56,11 +56,13 @@ extension RedditAPI {
     }
   }
 
-  func updateSubsInCoreData(with subs: [ListingChild<SubredditData>]) async {
-    guard let credentialID = Defaults[.GeneralDefSettings].redditCredentialSelectedID else { return }
+  /// Whether the subscriptions were saved.
+  @discardableResult
+  func updateSubsInCoreData(with subs: [ListingChild<SubredditData>]) async -> Bool {
+    guard let credentialID = Defaults[.GeneralDefSettings].redditCredentialSelectedID else { return false }
     let context = PersistenceController.shared.container.newBackgroundContext()
 
-    await context.perform(schedule: .enqueued) {
+    return await context.perform(schedule: .enqueued) {
       let fetchRequest = NSFetchRequest<CachedSub>(entityName: "CachedSub")
       fetchRequest.predicate = NSPredicate(format: "helioCredentialID == %@", credentialID as CVarArg)
       do {
@@ -100,8 +102,10 @@ extension RedditAPI {
         try withAnimation {
           try context.save()
         }
+        return true
       } catch {
         print("Failed to fetch or save CachedSubs: \(error)")
+        return false
       }
     }
   }
@@ -109,8 +113,7 @@ extension RedditAPI {
   @discardableResult
   func fetchSubsAndSyncCoreData() async -> Bool {
     guard let fetchedSubs = await fetchAllSubs() else { return false }
-    await updateSubsInCoreData(with: fetchedSubs)
-    return true
+    return await updateSubsInCoreData(with: fetchedSubs)
   }
 
   //  func fetchSubs(after: String? = nil) async -> [ListingChild<SubredditData>]? {

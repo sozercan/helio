@@ -42,12 +42,18 @@ extension Post {
     self.helioData = newHelioData
   }
 
-  /// Loads a post known only by id (a link to it inside another post).
+  /// Loads a post known only by id (a link to it inside another post), and lays it out like a
+  /// feed post, which also gives it the subreddit its post page needs.
   func fetchItself() {
     let fullname = fullname
     Task(priority: .utility) {
       if let data = await RedditInfoLoader.shared.post(fullname) {
-        await MainActor.run { withAnimation { self.data = data } }
+        await MainActor.run {
+          withAnimation {
+            self.data = data
+            self.setupHelioData(data: data, theme: InMemoryTheme.shared.currentTheme)
+          }
+        }
       }
     }
   }

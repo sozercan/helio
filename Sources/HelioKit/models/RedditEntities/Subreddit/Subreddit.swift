@@ -155,22 +155,26 @@ extension Subreddit {
 
   static func fetchAndCacheFlairsFrom(_ subID: String) async {
     // Home, Popular and the like are feeds, not subreddits: Reddit has no flairs for them.
-    guard !feedsAndSuch.contains(subID), flairsFetched.withLock({ $0.insert(subID.lowercased()).inserted }) else { return }
-    if let flairs = await RedditAPI.shared.getFlairs(subID) {
-      let context = PersistenceController.shared.container.viewContext
-      await context.perform {
-        let fetchRequest = NSFetchRequest<CachedFilter>(entityName: "CachedFilter")
-        fetchRequest.predicate = NSPredicate(format: "subID == %@", subID)
-        let existentFlairs = (try? context.fetch(fetchRequest)) ?? []
-        for flair in flairs {
-          if let foundFlair = existentFlairs.first(where: { $0.text == flair.text }) {
-            foundFlair.update(flair)
-          } else {
-            _ = CachedFilter(context: context, subID: subID, flair)
-          }
+    let key = subID.lowercased()
+    guard !feedsAndSuch.contains(subID), flairsFetched.withLock({ $0.insert(key).inserted }) else { return }
+    guard let flairs = await RedditAPI.shared.getFlairs(subID) else {
+      // Failed: the next visit tries again.
+      flairsFetched.withLock { _ = $0.remove(key) }
+      return
+    }
+    let context = PersistenceController.shared.container.viewContext
+    await context.perform {
+      let fetchRequest = NSFetchRequest<CachedFilter>(entityName: "CachedFilter")
+      fetchRequest.predicate = NSPredicate(format: "subID == %@", subID)
+      let existentFlairs = (try? context.fetch(fetchRequest)) ?? []
+      for flair in flairs {
+        if let foundFlair = existentFlairs.first(where: { $0.text == flair.text }) {
+          foundFlair.update(flair)
+        } else {
+          _ = CachedFilter(context: context, subID: subID, flair)
         }
-        try? context.save()
       }
+      try? context.save()
     }
   }
 

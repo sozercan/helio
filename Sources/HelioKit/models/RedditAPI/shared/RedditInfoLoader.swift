@@ -9,6 +9,9 @@ import Foundation
 /// Loads posts, comments and subreddits through `/api/info`, which takes up to 100 of them per
 /// request. Lookups made together (the reddit links in a feed page, the same link laid out twice)
 /// share one request, and results are kept for a few minutes.
+///
+/// Everything is per account: results carry the account's votes, saves and subscriptions, and
+/// only some accounts can see a private subreddit. Each request is made as the account that asked.
 actor RedditInfoLoader {
   static let shared = RedditInfoLoader()
 
@@ -22,21 +25,34 @@ actor RedditInfoLoader {
     case subreddit(SubredditData)
   }
 
-  /// A fullname (`t3_abc`) or a subreddit name (`r/apple`, lowercased).
-  enum Key: Hashable, Sendable {
+  /// A fullname (`t3_abc`) or a subreddit name (lowercased).
+  enum Target: Hashable, Sendable {
     case fullname(String)
     case subredditName(String)
   }
 
-  private let fetch: @Sendable (_ fullnames: [String], _ subredditNames: [String]) async -> [Thing]?
+  struct Key: Hashable, Sendable {
+    let account: UUID?
+    let target: Target
+  }
+
+  typealias Fetch = @Sendable (_ fullnames: [String], _ subredditNames: [String], _ account: RedditCredential?) async -> [Thing]?
+
+  private let fetch: Fetch
+  private let currentAccount: @Sendable () -> RedditCredential?
   private var cache: [Key: (thing: Thing, date: Date)] = [:]
   private var pending: Set<Key> = []
+  private var accounts: [UUID: RedditCredential] = [:]
   private var flush: Task<Void, Never>?
   private var inFlight: [Key: Task<Void, Never>] = [:]
 
-  init(fetch: @escaping @Sendable (_ fullnames: [String], _ subredditNames: [String]) async -> [Thing]? = { fullnames, names in
-    await RedditAPI.shared.fetchInfoThings(fullnames: fullnames, subredditNames: names)
-  }) {
+  init(
+    currentAccount: @escaping @Sendable () -> RedditCredential? = { RedditCredentialsManager.shared.selectedCredential },
+    fetch: @escaping Fetch = { fullnames, names, account in
+      await RedditAPI.shared.fetchInfoThings(fullnames: fullnames, subredditNames: names, account: account)
+    },
+  ) {
+    self.currentAccount = currentAccount
     self.fetch = fetch
   }
 
@@ -64,11 +80,16 @@ actor RedditInfoLoader {
     }
   }
 
-  func thing(_ key: Key) async -> Thing? {
+  func thing(_ target: Target) async -> Thing? {
+    let account = currentAccount()
+    let key = Key(account: account?.id, target: target)
     if let cached = cache[key], Date().timeIntervalSince(cached.date) < Self.maxAge {
       return cached.thing
     }
     if inFlight[key] == nil {
+      if let account {
+        accounts[account.id] = account
+      }
       pending.insert(key)
       let flush = flush ?? Task {
         try? await Task.sleep(for: Self.coalesceDelay)
@@ -85,28 +106,41 @@ actor RedditInfoLoader {
     let keys = Array(pending)
     pending = []
     flush = nil
-    var fullnames: [String] = []
-    var names: [String] = []
-    for key in keys {
-      switch key {
-      case let .fullname(fullname): fullnames.append(fullname)
-      case let .subredditName(name): names.append(name)
-      }
-    }
     func batches(_ list: [String]) -> [[String]] {
       stride(from: 0, to: list.count, by: Self.batchSize).map { Array(list[$0 ..< min($0 + Self.batchSize, list.count)]) }
     }
-    let requests = batches(fullnames).map { ($0, [String]()) } + batches(names).map { ([String](), $0) }
-    let things = await withTaskGroup(of: [Thing].self) { group in
-      for (ids, srNames) in requests {
-        group.addTask { [fetch] in await fetch(ids, srNames) ?? [] }
+    struct Request {
+      let account: UUID?
+      let fullnames: [String]
+      let names: [String]
+    }
+    var requests: [Request] = []
+    for (account, accountKeys) in Dictionary(grouping: keys, by: \.account) {
+      var fullnames: [String] = []
+      var names: [String] = []
+      for key in accountKeys {
+        switch key.target {
+        case let .fullname(fullname): fullnames.append(fullname)
+        case let .subredditName(name): names.append(name)
+        }
       }
-      return await group.reduce(into: []) { $0 += $1 }
+      requests += batches(fullnames).map { Request(account: account, fullnames: $0, names: []) }
+        + batches(names).map { Request(account: account, fullnames: [], names: $0) }
+    }
+    let accounts = accounts
+    let results = await withTaskGroup(of: (UUID?, [Thing]).self) { group in
+      for request in requests {
+        let credential = request.account.flatMap { accounts[$0] }
+        group.addTask { [fetch] in await (request.account, fetch(request.fullnames, request.names, credential) ?? []) }
+      }
+      return await group.reduce(into: []) { $0.append($1) }
     }
     let now = Date()
-    for thing in things {
-      for key in Self.keys(of: thing) {
-        cache[key] = (thing, now)
+    for (account, things) in results {
+      for thing in things {
+        for target in Self.targets(of: thing) {
+          cache[Key(account: account, target: target)] = (thing, now)
+        }
       }
     }
     for key in keys {
@@ -114,7 +148,7 @@ actor RedditInfoLoader {
     }
   }
 
-  static func keys(of thing: Thing) -> [Key] {
+  static func targets(of thing: Thing) -> [Target] {
     switch thing {
     case let .post(data): [.fullname("t3_\(data.id)")]
     case let .comment(data): [.fullname("t1_\(data.id)")]
@@ -124,10 +158,11 @@ actor RedditInfoLoader {
 }
 
 extension RedditAPI {
-  /// `/api/info` for fullnames or for subreddit names (Reddit takes one or the other).
-  func fetchInfoThings(fullnames: [String], subredditNames: [String]) async -> [RedditInfoLoader.Thing]? {
+  /// `/api/info` for fullnames or for subreddit names (Reddit takes one or the other), as `account`
+  /// (the selected account when nil).
+  func fetchInfoThings(fullnames: [String], subredditNames: [String], account: RedditCredential?) async -> [RedditInfoLoader.Thing]? {
     let params = subredditNames.isEmpty ? FetchInfoThingsPayload(id: fullnames.joined(separator: ",")) : FetchInfoThingsPayload(sr_name: subredditNames.joined(separator: ","))
-    switch await self.doRequest("\(RedditAPI.redditApiURLBase)/api/info", method: .get, params: params, paramsLocation: .queryString, decodable: InfoListing.self) {
+    switch await self.doRequest("\(RedditAPI.redditApiURLBase)/api/info", method: .get, params: params, paramsLocation: .queryString, decodable: InfoListing.self, altCredential: account) {
     case let .success(listing):
       return listing.data?.children?.compactMap(\.thing)
     case .failure:

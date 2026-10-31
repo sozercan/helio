@@ -24,6 +24,8 @@ final class PreviewModel: Equatable {
   var loading = true
 
   var previewURL: URL?
+  /// The key this model is shared under, when it is.
+  @ObservationIgnored private var sharedKey: NSString?
 
   private static let instances: NSCache<NSString, PreviewModel> = {
     let cache = NSCache<NSString, PreviewModel>()
@@ -33,21 +35,23 @@ final class PreviewModel: Equatable {
 
   /// The model for a link in a layout. A post is laid out compact and full, laid out again when
   /// the window resizes, and views rebuild their previews on every update; they all share one
-  /// model instead of each downloading the page.
+  /// model instead of each downloading the page. A model whose download failed is dropped, so a
+  /// later layout tries again (`LinkMetadataLoader` waits a while between attempts).
   static func shared(_ url: URL, compact: Bool) -> PreviewModel {
     let key = "\(compact ? "c" : "n")|\(url.absoluteString)" as NSString
     if let model = instances.object(forKey: key) {
       return model
     }
-    let model = PreviewModel(url, compact: compact)
+    let model = PreviewModel(url, compact: compact, sharedKey: key)
     instances.setObject(model, forKey: key)
     return model
   }
 
   init() {}
 
-  init(_ url: URL, compact: Bool) {
+  init(_ url: URL, compact: Bool, sharedKey: NSString? = nil) {
     self.previewURL = url
+    self.sharedKey = sharedKey
     Task(priority: .utility) {
       await fetchMetadata(compact: compact)
     }
@@ -71,6 +75,9 @@ final class PreviewModel: Equatable {
         loading = false
       }
     } else {
+      if let sharedKey, Self.instances.object(forKey: sharedKey) === self {
+        Self.instances.removeObject(forKey: sharedKey)
+      }
       await MainActor.run {
         loading = false
       }

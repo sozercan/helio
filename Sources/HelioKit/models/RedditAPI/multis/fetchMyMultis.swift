@@ -21,7 +21,7 @@ extension RedditAPI {
     case let .success(data):
       let context = PersistenceController.shared.container.newBackgroundContext()
 
-      _ = await context.perform(schedule: .enqueued) {
+      return await context.perform(schedule: .enqueued) {
         let multisFetchRequest = NSFetchRequest<CachedMulti>(entityName: "CachedMulti")
         multisFetchRequest.predicate = NSPredicate(format: "helioCredentialID == %@", currentCredentialID as CVarArg)
 
@@ -56,7 +56,6 @@ extension RedditAPI {
           return false
         }
       }
-      return true
 
     case let .failure(error):
       print(error)
