@@ -1,0 +1,10 @@
+{
+  "_comment": "Reddit requests in one run of the perf benchmark (perf.py bench). `perf.py check` fails when a count goes over; lower a count when a change saves requests.",
+  "reddit_requests": 18,
+  "requests.avatars": 3,
+  "requests.comments": 1,
+  "requests.feed": 4,
+  "requests.info": 9,
+  "requests.me": 1,
+  "link_preview_requests": 16
+}
