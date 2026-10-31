@@ -67,10 +67,11 @@ For non-trivial code changes, run the vendored autoreview skill (`.agents/skills
 
 ```bash
 AUTOREVIEW=.agents/skills/autoreview/scripts/autoreview
-python3 "$AUTOREVIEW" --mode local                         # uncommitted work
-python3 "$AUTOREVIEW" --mode branch --base <PR base ref>   # committed branch
+python3 "$AUTOREVIEW" --mode local --max-priority P1                         # uncommitted work
+python3 "$AUTOREVIEW" --mode branch --base <PR base ref> --max-priority P1   # committed branch
 ```
 
+- Use `--max-priority P1`. The skill's default accepts only P0 blockers, which would pass a broken Mac layout or a tab whose state stops updating. P2 and P3 are mostly minor issues and nits that would keep the repeat-until-clean loop going without making the app better; they still appear in the audit output.
 - Read the skill and its `references/diagnostics-and-results.md` before the first run; they cover targets, engines and how to read the result.
 - PRs here are often stacked, so pass the PR's actual base branch, not `main`, or the review covers the lower PRs' commits too.
 - Findings are advice. Check each against the real code path before changing anything, and say which ones you rejected and why.
