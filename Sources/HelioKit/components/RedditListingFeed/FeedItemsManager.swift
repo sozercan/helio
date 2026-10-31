@@ -10,7 +10,7 @@ import Nuke
 import SwiftUI
 
 @Observable
-class FeedItemsManager<S: Equatable> {
+class FeedItemsManager<S> {
   typealias ItemsFetchFn = (_ lastElementId: String?, _ sorting: S?, _ searchQuery: String?, _ flair: String?) async -> (entities: [RedditEntityType]?, after: String?)?
 
   /// `onlyReadPosts`: paging stopped after several pages in a row held only hidden read posts.
@@ -41,23 +41,12 @@ class FeedItemsManager<S: Equatable> {
   @ObservationIgnored private var indexByID: [String: Int] = [:]
   var loadedEntitiesIds: Set<String> = []
   var lastElementId: String?
-  var sorting: S? {
-    // Picking the current value again starts no reload, so it mustn't show the spinner.
-    willSet {
-      if newValue != sorting {
-        withAnimation { displayMode = .loading }
-      }
-    }
-  }
+  /// Changing the sort, search or filter doesn't touch `displayMode`: the feed shows the spinner
+  /// when it starts the reload, so the spinner can't stay up for a reload that never comes.
+  var sorting: S?
 
   var searchQuery = Debouncer("")
-  var selectedFilter: ShallowCachedFilter? {
-    willSet {
-      if newValue != selectedFilter {
-        withAnimation { displayMode = .loading }
-      }
-    }
-  }
+  var selectedFilter: ShallowCachedFilter?
 
   var chunkSize: Int
   private var onScreenEntities: [(entity: RedditEntityType, index: Int)] = []

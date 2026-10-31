@@ -409,19 +409,19 @@ struct FeedItemsManagerTests {
     }
   }
 
-  @Test func pickingTheCurrentSortAgainKeepsTheFeed() async {
+  @Test func changingTheQueryLeavesTheSpinnerToTheReload() async {
     await withHideOnRead(false) {
       let manager = FeedItemsManager<SubListingSortOption>(sorting: .hot) { _, _, _, _ in ([post("a", read: false)], "p2") }
       manager.chunkSize = 1
       await manager.fetchCaller(loadingMore: false)
       #expect(manager.displayMode == .items)
 
-      // No reload follows an unchanged sort, so a spinner here would never go away.
+      // Re-picking the sort, or flipping it away and back before the feed reloads, starts no
+      // reload, so a spinner set here would never go away. The feed's reload sets it instead.
+      manager.sorting = .hot
+      manager.sorting = .new
       manager.sorting = .hot
       #expect(manager.displayMode == .items)
-
-      manager.sorting = .new
-      #expect(manager.displayMode == .loading)
     }
   }
 

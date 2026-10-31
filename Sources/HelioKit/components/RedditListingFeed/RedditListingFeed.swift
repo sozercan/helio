@@ -73,7 +73,7 @@ struct RedditListingFeed<Header: View, Footer: View, S: Sorting>: View {
   }
 
   private var queryKey: [String?] {
-    [itemsManager.searchQuery.debounced, itemsManager.selectedFilter?.text, itemsManager.sorting?.meta.apiValue]
+    [itemsManager.searchQuery.debounced, itemsManager.selectedFilter.map { "\($0.type)/\($0.text)" }, itemsManager.sorting?.meta.apiValue]
   }
 
   /// Reloads from the first page after the sort, search or filter changed.
