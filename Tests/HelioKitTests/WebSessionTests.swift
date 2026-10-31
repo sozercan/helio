@@ -1,4 +1,5 @@
 import Foundation
+import Synchronization
 import Testing
 @testable import HelioKit
 
@@ -68,5 +69,57 @@ struct WebSessionTests {
     let credential = try JSONDecoder().decode(RedditCredential.self, from: Data(json.utf8))
     #expect(credential.signInMethod == .apiKey)
     #expect(credential.renewalKey == "placeholder-refresh")
+  }
+}
+
+struct RateLimitTests {
+  private final class Clock: Sendable {
+    let time = Mutex(Date(timeIntervalSince1970: 1_000_000))
+    var now: Date {
+      time.withLock { $0 }
+    }
+
+    func advance(_ seconds: TimeInterval) {
+      time.withLock { $0 += seconds }
+    }
+  }
+
+  private func response(_ status: Int, _ headers: [String: String], host: String = "oauth.reddit.com") throws -> HTTPURLResponse {
+    try #require(HTTPURLResponse(url: URL(string: "https://\(host)/r/pics/hot")!, statusCode: status, httpVersion: nil, headerFields: headers))
+  }
+
+  @Test func spentBudgetHoldsRequestsUntilTheWindowResets() throws {
+    let clock = Clock()
+    let limit = RedditRateLimit(now: { clock.now })
+    let account = UUID()
+    try limit.record(response(200, ["x-ratelimit-remaining": "99.0", "x-ratelimit-reset": "300"]), account: account)
+    #expect(limit.limitedUntil(account: account) == nil)
+    #expect(!limit.isLow(account: account))
+
+    try limit.record(response(200, ["x-ratelimit-remaining": "4.0", "x-ratelimit-reset": "200"]), account: account)
+    #expect(limit.isLow(account: account))
+
+    try limit.record(response(429, ["x-ratelimit-reset": "120"]), account: account)
+    #expect(limit.limitedUntil(account: account) == clock.now.addingTimeInterval(120))
+    // Other accounts have their own budget.
+    #expect(limit.limitedUntil(account: UUID()) == nil)
+
+    clock.advance(121)
+    #expect(limit.limitedUntil(account: account) == nil)
+    #expect(!limit.isLow(account: account))
+  }
+
+  @Test func onlyRedditAPIResponsesCount() throws {
+    let limit = RedditRateLimit()
+    try limit.record(response(429, [:], host: "api.streamable.com"), account: nil)
+    #expect(limit.limitedUntil(account: nil) == nil)
+    try limit.record(response(429, [:]), account: nil)
+    #expect(limit.limitedUntil(account: nil) != nil)
+  }
+
+  @Test func retryTextRoundsUpToWholeMinutes() {
+    let now = Date()
+    #expect(RedditRateLimit.retryText(until: now.addingTimeInterval(61), now: now) == "Reddit's rate limit was reached. Try again in 2 min.")
+    #expect(RedditRateLimit.retryText(until: now.addingTimeInterval(5), now: now) == "Reddit's rate limit was reached. Try again in 1 min.")
   }
 }

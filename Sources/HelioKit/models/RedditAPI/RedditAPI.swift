@@ -71,9 +71,11 @@ class RedditAPI {
     attempt: Int = 0,
     saveToken: Bool = true,
   ) async -> Result<D, AFError> {
-    await self._doRequest(authenticated: authenticated, altCredential: altCredential, saveToken: saveToken) { headers in
+    // Taken before the request: the selected account can change while it's in flight.
+    let account = Self.accountID(altCredential)
+    return await self._doRequest(authenticated: authenticated, altCredential: altCredential, saveToken: saveToken) { headers in
       let req = AF.request(url, method: method, parameters: params, encoder: URLEncodedFormParameterEncoder(destination: paramsLocation), headers: headers, requestModifier: reqModifier).validate()
-      return await req.serializingDecodable(decodable).response.result
+      return await RedditRateLimit.shared.recording(req.serializingDecodable(decodable).response, account: account)
     }
   }
 
@@ -86,9 +88,11 @@ class RedditAPI {
     attempt: Int = 0,
     saveToken: Bool = true,
   ) async -> Result<D, AFError> {
-    await self._doRequest(authenticated: authenticated, altCredential: altCredential, saveToken: saveToken) { headers in
+    // Taken before the request: the selected account can change while it's in flight.
+    let account = Self.accountID(altCredential)
+    return await self._doRequest(authenticated: authenticated, altCredential: altCredential, saveToken: saveToken) { headers in
       let req = AF.request(url, method: method, parameters: ["raw_json": 1], headers: headers, requestModifier: reqModifier).validate()
-      return await req.serializingDecodable(decodable).response.result
+      return await RedditRateLimit.shared.recording(req.serializingDecodable(decodable).response, account: account)
     }
   }
 
@@ -102,9 +106,11 @@ class RedditAPI {
     attempt: Int = 0,
     saveToken: Bool = true,
   ) async -> Result<String, AFError> {
-    await self._doRequest(authenticated: authenticated, altCredential: altCredential, saveToken: saveToken) { headers in
+    // Taken before the request: the selected account can change while it's in flight.
+    let account = Self.accountID(altCredential)
+    return await self._doRequest(authenticated: authenticated, altCredential: altCredential, saveToken: saveToken) { headers in
       let req = AF.request(url, method: method, parameters: params, encoder: URLEncodedFormParameterEncoder(destination: paramsLocation), headers: headers, requestModifier: reqModifier).validate()
-      return await req.serializingString().result
+      return await RedditRateLimit.shared.recording(req.serializingString().response, account: account)
     }
   }
 
@@ -117,9 +123,11 @@ class RedditAPI {
     attempt: Int = 0,
     saveToken: Bool = true,
   ) async -> Result<String, AFError> {
-    await self._doRequest(authenticated: authenticated, altCredential: altCredential, saveToken: saveToken) { headers in
+    // Taken before the request: the selected account can change while it's in flight.
+    let account = Self.accountID(altCredential)
+    return await self._doRequest(authenticated: authenticated, altCredential: altCredential, saveToken: saveToken) { headers in
       let req = AF.request(url, method: method, parameters: ["raw_json": 1], headers: headers).validate()
-      return await req.serializingString().result
+      return await RedditRateLimit.shared.recording(req.serializingString().response, account: account)
     }
   }
 
@@ -134,6 +142,10 @@ class RedditAPI {
     renewedToken: Bool = false,
     req: (HTTPHeaders) async -> Result<D, AFError>,
   ) async -> Result<D, AFError> {
+    // Once the budget is spent Reddit refuses everything until the window resets.
+    if authenticated, RedditRateLimit.shared.limitedUntil(account: Self.accountID(altCredential)) != nil {
+      return .failure(RedditRateLimit.limitedError)
+    }
     guard let headers = await fetchRequestHeaders(force: forceAuth, includeAuth: authenticated, altCredential: altCredential, saveToken: saveToken, rejectedToken: rejectedToken) else { return .failure(.serverTrustEvaluationFailed(reason: .noPublicKeysFound)) }
 
     let result = await req(headers)
@@ -154,6 +166,11 @@ class RedditAPI {
   }
 
   static let maxRetries = 2
+
+  /// The account a request is made as, which its rate limit belongs to.
+  static func accountID(_ altCredential: RedditCredential?) -> UUID? {
+    (altCredential ?? RedditCredentialsManager.shared.selectedCredential)?.id
+  }
 
   /// Whether sending the same request again can succeed: a dropped connection or one of
   /// Reddit's intermittent 5xx. A 4xx (other than 401), a 429 or an undecodable body fails the

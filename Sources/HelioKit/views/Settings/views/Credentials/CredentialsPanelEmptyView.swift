@@ -24,7 +24,7 @@ struct CredentialsPanelEmptyView: View {
 
       VStack(spacing: 16) {
         Button("Sign in with Reddit", systemImage: "person.fill.badge.plus") {
-          Nav.present(.redditSignIn)
+          Nav.present(.redditSignIn(nil))
         }
         .buttonStyle(.action)
 

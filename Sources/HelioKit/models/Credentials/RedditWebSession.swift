@@ -6,6 +6,7 @@
 import Alamofire
 import Foundation
 import os
+import Synchronization
 
 /// Signing in without an API key. The user signs in on reddit.com (`RedditWebLoginView`), Helio
 /// keeps the session's cookies, and it trades them for ~24 h OAuth bearer tokens at the token
@@ -23,6 +24,12 @@ enum RedditWebSession {
 
   private static let logger = Logger(subsystem: "com.sertacozercan.helio", category: "WebSession")
 
+  /// How long a session whose token request failed waits before asking again. Without it every
+  /// API request would ask anew while the token service is down or refusing.
+  static let failedMintCooldown: TimeInterval = 30
+  /// When each session's last token request failed, by its cookies.
+  private static let failedMints = Mutex<[String: Date]>([:])
+
   enum MintResult: Equatable {
     /// `cookies`: the session's cookies with any Reddit renewed in the response.
     case token(RedditCredential.AccessToken, cookies: String)
@@ -38,6 +45,21 @@ enum RedditWebSession {
   }
 
   static func mintToken(cookies: String, userAgent: String) async -> MintResult {
+    if let failedAt = failedMints.withLock({ $0[cookies] }), Date().timeIntervalSince(failedAt) < failedMintCooldown {
+      return .failed
+    }
+    let result = await requestToken(cookies: cookies, userAgent: userAgent)
+    failedMints.withLock { failed in
+      if result == .failed {
+        failed[cookies] = Date()
+      } else {
+        failed[cookies] = nil
+      }
+    }
+    return result
+  }
+
+  private static func requestToken(cookies: String, userAgent: String) async -> MintResult {
     var setCookies: [HTTPCookie] = []
     let result = await RedditAPI.shared._doRequest(authenticated: false) { _ in
       var headers: HTTPHeaders = ["User-Agent": userAgent, "Cookie": cookies]
@@ -147,7 +169,9 @@ enum RedditWebSession {
     guard case let .token(token, renewedCookies) = await mintToken(cookies: cookies, userAgent: userAgent) else { return nil }
     signedIn.accessToken = token
     signedIn.webSessionCookies = renewedCookies
-    guard let me = await RedditAPI.shared.fetchMe(force: true, altCredential: signedIn, saveToken: false) else { return nil }
+    // Not `fetchMe`, which would also make this account the app's current one before it's saved.
+    let me = await RedditAPI.shared.doRequest("\(RedditAPI.redditApiURLBase)/api/v1/me", method: .get, decodable: UserData.self, altCredential: signedIn, saveToken: false)
+    guard case let .success(me) = me else { return nil }
     signedIn.setProfile(from: me)
     return signedIn
   }

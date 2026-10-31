@@ -240,7 +240,12 @@ struct RedditListingFeed<Header: View, Footer: View, S: Sorting>: View {
             if itemsManager.displayMode == .error {
               Section {
                 VStack {
-                  Text("There was an error")
+                  if let limitedUntil = RedditRateLimit.shared.limitedUntil(account: RedditAPI.accountID(nil)) {
+                    Text(RedditRateLimit.retryText(until: limitedUntil))
+                      .multilineTextAlignment(.center)
+                  } else {
+                    Text("There was an error")
+                  }
 
                   Button("Manually reload", systemImage: "arrow.clockwise") {
                     withAnimation {

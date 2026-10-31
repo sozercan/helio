@@ -57,7 +57,7 @@ struct OnboardingAPIIntro: View {
 
         VStack(spacing: 12) {
           MasterButton(label: "Sign in with Reddit", colorHoverEffect: .animated, textSize: 18, height: 48, fullWidth: true, cornerRadius: 16, action: {
-            Nav.present(.redditSignIn)
+            Nav.present(.redditSignIn(nil))
           })
 
           Button("Use my own API key") {

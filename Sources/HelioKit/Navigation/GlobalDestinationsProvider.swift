@@ -24,7 +24,7 @@ struct GlobalDestinationsProvider<C: View>: View {
             case let .editingTheme(theme): ThemeEditPanel(theme: theme)
             case let .editingCredential(cred): CredentialEditStack(credential: cred).id("editing-credential-view-\(cred.id)")
             case .onboarding: Onboarding().interactiveDismissDisabled(true)
-            case .redditSignIn: NavigationStack { RedditWebLoginView(credential: RedditCredential(), showsCancel: true) }
+            case let .redditSignIn(cred): NavigationStack { RedditWebLoginView(credential: cred ?? RedditCredential(), showsCancel: true) }
             case let .selectText(text): SelectableTextSheet(markdown: text)
             }
           }
