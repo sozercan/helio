@@ -20,6 +20,9 @@ class FeedItemsManager<S: Equatable> {
   /// Bumped on the main actor each time the first page is fetched again. A page fetched under an
   /// older generation is dropped, so a slow earlier response can't overwrite a newer one.
   @ObservationIgnored private var generation = 0
+  /// The generation of the first page the shown list and its cursor came from. It lags behind
+  /// `generation` while a new first page is pending, so a load-more continuing the old list is dropped.
+  @ObservationIgnored private var listGeneration = 0
   /// Set once the feed starts loading its first page.
   @ObservationIgnored var initialLoadStarted = false
   var displayMode: DisplayMode = .loading
@@ -68,13 +71,15 @@ class FeedItemsManager<S: Equatable> {
   }
 
   func fetchCaller(loadingMore: Bool) async {
-    let generation = await MainActor.run {
-      if !loadingMore {
-        self.generation += 1
+    // Read with the cursor: a load-more belongs to the list its cursor continues.
+    let (generation, cursor) = await MainActor.run {
+      if loadingMore {
+        return (self.listGeneration, self.lastElementId)
       }
-      return self.generation
+      self.generation += 1
+      return (self.generation, nil as String?)
     }
-    await fetchPage(loadingMore: loadingMore, after: loadingMore ? lastElementId : nil, hiddenPagesInARow: 0, generation: generation)
+    await fetchPage(loadingMore: loadingMore, after: cursor, hiddenPagesInARow: 0, generation: generation)
     await MainActor.run { self.currentTask = nil }
   }
 
@@ -89,13 +94,16 @@ class FeedItemsManager<S: Equatable> {
     guard let (fetchedEntities, after) = await fetchFn(lastElementId, sorting, searchQuery, filter), let fetchedEntities else {
       await MainActor.run {
         guard generation == self.generation else { return }
+        // The list still shown, and its cursor, are what paging continues from.
+        listGeneration = generation
         withAnimation { displayMode = .error }
       }
       return
     }
 
-    // Without a cursor, the next fetch would start over from the first page.
-    let reachedEnd = fetchedEntities.count < chunkSize || after == nil
+    // Without a cursor, the next fetch would start over from the first page. A short page isn't
+    // the end: Reddit can return fewer items than asked for, and undecodable items are skipped.
+    let reachedEnd = after == nil || fetchedEntities.isEmpty
     let shownEntities = withoutReadPosts(fetchedEntities)
     let onlyReadPosts = shownEntities.isEmpty && !fetchedEntities.isEmpty && !reachedEnd
     // Every post on this page was already read: keep paging instead of showing a gap.
@@ -112,6 +120,7 @@ class FeedItemsManager<S: Equatable> {
       // On the main actor, which renders `entities` and reads the row index.
       applied = await MainActor.run { [newLoadedEntitiesIds] in
         guard generation == self.generation else { return false }
+        listGeneration = generation
         withAnimation {
           displayMode = skipPage ? .items : gaveUp ? .onlyReadPosts : shownEntities.isEmpty ? .empty : reachedEnd ? .endOfFeed : .items
           entities = shownEntities

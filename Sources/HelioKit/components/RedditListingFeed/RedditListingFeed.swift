@@ -359,8 +359,9 @@ struct RedditListingFeed<Header: View, Footer: View, S: Sorting>: View {
           loadedQueryKey = queryKey
           await refetch()
           initialLoadDone = true
-          // The sort, search or filter changed while the first page was loading.
-          if queryKey != loadedQueryKey {
+          // The sort, search or filter changed while the first page was loading. Also recover when
+          // it changed and changed back: the keys match, but the spinner is up with no fetch coming.
+          if queryKey != loadedQueryKey || itemsManager.displayMode == .loading {
             await reloadForQueryChange()
           }
         }

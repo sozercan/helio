@@ -215,6 +215,75 @@ struct FeedItemsManagerTests {
     }
   }
 
+  @Test func dropsALoadMoreStartedWhileARefreshIsPending() async {
+    await withHideOnRead(false) {
+      let refreshGate = Gate()
+      let loadMoreGate = Gate()
+      var refreshing = false
+      let manager = FeedItemsManager<SubListingSortOption>(sorting: nil) { after, _, _, _ in
+        if after == "p2" {
+          await loadMoreGate.wait()
+          return ([post("stale", read: false)], "p3")
+        }
+        if refreshing {
+          await refreshGate.wait()
+          return ([post("b", read: false)], "q2")
+        }
+        return ([post("a", read: false)], "p2")
+      }
+      manager.chunkSize = 1
+      await manager.fetchCaller(loadingMore: false)
+
+      // Pull to refresh; the old rows stay on screen and ask for the next page meanwhile.
+      refreshing = true
+      let refresh = Task { await manager.fetchCaller(loadingMore: false) }
+      await refreshGate.untilWaiting()
+      let loadMore = Task { await manager.fetchCaller(loadingMore: true) }
+      await loadMoreGate.untilWaiting()
+
+      await refreshGate.open()
+      await refresh.value
+      await loadMoreGate.open()
+      await loadMore.value
+
+      #expect(ids(manager.entities) == ["b"])
+      #expect(manager.lastElementId == "q2")
+    }
+  }
+
+  @Test func keepsPagingAfterAShortPageThatHasACursor() async {
+    await withHideOnRead(false) {
+      let (manager, requested) = makeManager(hideReadPosts: false, pages: [
+        // One item short of a chunk, as when Reddit returns fewer or one fails to decode.
+        "first": ([post("a", read: false)], "p2"),
+        "p2": ([post("b", read: false), post("c", read: false)], nil),
+      ])
+      await manager.fetchCaller(loadingMore: false)
+      #expect(manager.displayMode == .items)
+
+      await manager.fetchCaller(loadingMore: true)
+      #expect(requested() == [nil, "p2"])
+      #expect(ids(manager.entities) == ["a", "b", "c"])
+      #expect(manager.displayMode == .endOfFeed)
+    }
+  }
+
+  @Test func reloadingAfterAFailedFirstPageAppliesItsPage() async {
+    await withHideOnRead(false) {
+      var fail = true
+      let manager = FeedItemsManager<SubListingSortOption>(sorting: nil) { _, _, _, _ in
+        fail ? nil : ([post("a", read: false)], "p2")
+      }
+      await manager.fetchCaller(loadingMore: false)
+      #expect(manager.displayMode == .error)
+
+      // The error row's reload button asks for more from the (empty) list.
+      fail = false
+      await manager.fetchCaller(loadingMore: true)
+      #expect(ids(manager.entities) == ["a"])
+    }
+  }
+
   @Test func pickingTheCurrentSortAgainKeepsTheFeed() async {
     await withHideOnRead(false) {
       let manager = FeedItemsManager<SubListingSortOption>(sorting: .hot) { _, _, _, _ in ([post("a", read: false)], "p2") }
