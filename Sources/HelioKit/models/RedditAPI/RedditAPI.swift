@@ -132,19 +132,34 @@ class RedditAPI {
     guard let headers = await fetchRequestHeaders(force: forceAuth, includeAuth: authenticated, altCredential: altCredential, saveToken: saveToken) else { return .failure(.serverTrustEvaluationFailed(reason: .noPublicKeysFound)) }
 
     let result = await req(headers)
-    if case let .failure(error) = result {
-      print(error)
-      if attempt < (authenticated ? 5 : 2) {
-        return await self._doRequest(attempt: attempt + 1, forceAuth: authenticated && attempt == 2, authenticated: authenticated, altCredential: altCredential, saveToken: saveToken, req: req)
-      }
-      switch error.responseCode {
-      case 401:
-        break
-      default:
-        break
-      }
+    guard case let .failure(error) = result else { return result }
+    // A 401 means the token expired or was revoked early: renew it once.
+    if authenticated, !forceAuth, error.responseCode == 401 {
+      return await self._doRequest(attempt: attempt, forceAuth: true, authenticated: authenticated, altCredential: altCredential, saveToken: saveToken, req: req)
+    }
+    if attempt < Self.maxRetries, Self.isTransient(error) {
+      try? await Task.sleep(for: .milliseconds(300 * (attempt + 1)))
+      return await self._doRequest(attempt: attempt + 1, authenticated: authenticated, altCredential: altCredential, saveToken: saveToken, req: req)
     }
     return result
+  }
+
+  static let maxRetries = 2
+
+  /// Whether sending the same request again can succeed: a dropped connection or one of
+  /// Reddit's intermittent 5xx. A 4xx (other than 401), a 429 or an undecodable body fails the
+  /// same way every time, and each retry still counts against the rate limit.
+  static func isTransient(_ error: AFError) -> Bool {
+    if let code = error.responseCode {
+      return (500 ... 599).contains(code)
+    }
+    guard case let .sessionTaskFailed(underlying) = error, let urlError = underlying as? URLError else { return false }
+    switch urlError.code {
+    case .timedOut, .networkConnectionLost, .notConnectedToInternet, .cannotConnectToHost, .cannotFindHost, .dnsLookupFailed:
+      return true
+    default:
+      return false
+    }
   }
 
   func injectFirstAccessTokenInto(_ credential: inout RedditCredential, authCode: String) async -> Bool {

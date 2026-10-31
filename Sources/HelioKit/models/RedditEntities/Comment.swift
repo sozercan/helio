@@ -51,6 +51,23 @@ extension Comment {
     }
   }
 
+  /// Loads a comment known only by id (a link to it inside a post).
+  func fetchItself() {
+    let fullname = fullname
+    Task(priority: .utility) {
+      if let data = await RedditInfoLoader.shared.comment(fullname) {
+        await MainActor.run {
+          withAnimation {
+            self.data = data
+            if self.helioData == nil {
+              self.setupHelioData()
+            }
+          }
+        }
+      }
+    }
+  }
+
   func setupHelioData() {
     self.helioData = .init()
 //    guard let helioData = self.helioData, let data = self.data else { return }

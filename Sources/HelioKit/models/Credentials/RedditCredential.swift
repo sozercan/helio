@@ -127,16 +127,10 @@ struct RedditCredential: Identifiable, Equatable, Hashable, Codable {
 
   func getUpToDateToken(forceRenew: Bool = false, saveToken: Bool = true) async -> AccessToken? {
     guard let refreshToken = self.refreshToken, !apiAppID.isEmpty else { return nil }
-    if !forceRenew, let accessToken = self.accessToken {
-      let lastRefresh = Double(accessToken.lastRefresh.timeIntervalSince1970)
-      let expiration = Double(max(0, accessToken.expiration - 100))
-      let now = Double(Date().timeIntervalSince1970)
-
-      if (now - lastRefresh) < expiration {
-        return accessToken
-      }
+    if !forceRenew, let accessToken = self.accessToken, accessToken.isFresh {
+      return accessToken
     }
-    return await fetchNewToken()
+    return await AccessTokenRefresher.shared.token(refreshToken: refreshToken, forceRenew: forceRenew) { await fetchNewToken() }
 
     func fetchNewToken(count: Int = 0) async -> AccessToken? {
       let payload = RedditAPI.RefreshAccessTokenPayload(refresh_token: refreshToken)
@@ -184,6 +178,11 @@ struct RedditCredential: Identifiable, Equatable, Hashable, Codable {
     let token: String
     let expiration: Int
     let lastRefresh: Date
+
+    /// Still usable, with a 100 s margin for requests in flight.
+    var isFresh: Bool {
+      Date().timeIntervalSince(lastRefresh) < Double(max(0, expiration - 100))
+    }
   }
 
   enum CredentialValidationState: String {

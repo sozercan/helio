@@ -42,8 +42,18 @@ extension Post {
     self.helioData = newHelioData
   }
 
+  /// Loads a post known only by id (a link to it inside another post).
+  func fetchItself() {
+    let fullname = fullname
+    Task(priority: .utility) {
+      if let data = await RedditInfoLoader.shared.post(fullname) {
+        await MainActor.run { withAnimation { self.data = data } }
+      }
+    }
+  }
+
   static func isCompact(_ data: PostData, sub: Subreddit?) -> Bool {
-    Defaults[.SubredditFeedDefSettings].compactPerSubreddit[sub?.id ?? data.subreddit_id ?? ""] ?? Defaults[.PostLinkDefSettings].compactMode.enabled
+    CachedDefaults[.SubredditFeedDefSettings].compactPerSubreddit[sub?.id ?? data.subreddit_id ?? ""] ?? CachedDefaults[.PostLinkDefSettings].compactMode.enabled
   }
 
   /// Without a `contentWidth` (refreshing a post, changing theme), keeps the width the post
@@ -60,7 +70,8 @@ extension Post {
       self.helioData?.permaURL = URL(string: "https://reddit.com\(data.permalink.urlEncoded)")
 
       var extractedMedia = mediaExtractor(compact: compact, contentWidth: contentWidth, data, theme: theme)
-      var extractedMediaForcedNormal = mediaExtractor(compact: false, contentWidth: contentWidth, data, theme: theme)
+      // Extracting builds players, embedded posts and link previews, so a large row shares its media.
+      var extractedMediaForcedNormal = compact ? mediaExtractor(compact: false, contentWidth: contentWidth, data, theme: theme) : extractedMedia
 
       switch extractedMedia {
       case let .streamable(streamable):

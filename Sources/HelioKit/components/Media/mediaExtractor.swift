@@ -211,8 +211,8 @@ func mediaExtractor(compact: Bool, contentWidth: Double = .screenW, _ data: Post
 //        return .post(id: postId, subreddit: subredditName)
       }
       let sub = Subreddit(id: subredditName)
-      Task(priority: .background) {
-        await sub.refreshSubreddit()
+      Task(priority: .utility) {
+        await sub.loadIfNeeded()
       }
       let entityExtracted = EntityExtracted(subredditID: subredditName, entity: sub)
       return .subreddit(entityExtracted)
@@ -227,13 +227,13 @@ func mediaExtractor(compact: Bool, contentWidth: Double = .screenW, _ data: Post
 
     default:
       if !data.is_self, let linkURL = URL(string: data.url) {
-        return .link(PreviewModel(linkURL, compact: compact))
+        return .link(PreviewModel.shared(linkURL, compact: compact))
       }
     }
   }
 
   if data.post_hint == "link" || !data.domain.isEmpty, let linkURL = URL(string: data.url) {
-    return .link(PreviewModel(linkURL, compact: compact))
+    return .link(PreviewModel.shared(linkURL, compact: compact))
   }
 
   return nil

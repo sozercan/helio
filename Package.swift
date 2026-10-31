@@ -77,6 +77,7 @@ let package = Package(
       name: "HelioKitTests",
       dependencies: [
         "HelioKit",
+        .product(name: "Alamofire", package: "Alamofire"),
         .product(name: "Defaults", package: "Defaults"),
         .product(name: "Zip", package: "Zip"),
       ],

@@ -126,18 +126,6 @@ class GenericRedditEntity<T: GenericRedditEntityDataType, B: Hashable>: Identifi
     copy.childrenHelio = childrenHelio
     return copy
   }
-
-  func fetchItself() {
-    Task(priority: .background) {
-      if let data = await RedditAPI.shared.fetchInfo(fullnames: ["\(self.selfPrefix)_\(id)"]) {
-        await MainActor.run { withAnimation {
-          if let data = data as? T {
-            self.data = data
-          }
-        } }
-      }
-    }
-  }
 }
 
 enum RedditEntityType: Hashable, Equatable, Identifiable {

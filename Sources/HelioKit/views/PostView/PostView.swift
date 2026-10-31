@@ -166,10 +166,8 @@ struct PostView: View, Equatable {
             }
           }
 
-          Task(priority: .background) {
-            if subreddit.data == nil, subreddit.id != "home" {
-              await subreddit.refreshSubreddit()
-            }
+          Task(priority: .utility) {
+            await subreddit.loadIfNeeded()
           }
         }
         .onPreferenceChange(CommentUtils.AnchorsKey.self) { anchors in

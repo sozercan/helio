@@ -51,7 +51,8 @@ extension RedditAPI {
       }
     case let .failure(error):
       print(error)
-      return accumulatedSubs
+      // A partial list would make the sync drop every subscription on the pages that failed.
+      return nil
     }
   }
 
@@ -105,10 +106,11 @@ extension RedditAPI {
     }
   }
 
-  func fetchSubsAndSyncCoreData() async {
-    if let fetchedSubs = await fetchAllSubs() {
-      await updateSubsInCoreData(with: fetchedSubs)
-    }
+  @discardableResult
+  func fetchSubsAndSyncCoreData() async -> Bool {
+    guard let fetchedSubs = await fetchAllSubs() else { return false }
+    await updateSubsInCoreData(with: fetchedSubs)
+    return true
   }
 
   //  func fetchSubs(after: String? = nil) async -> [ListingChild<SubredditData>]? {

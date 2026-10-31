@@ -10,6 +10,7 @@ import Defaults
 import Foundation
 import SwiftData
 import SwiftUI
+import Synchronization
 
 typealias Subreddit = GenericRedditEntity<SubredditData, AnyHashable>
 
@@ -137,26 +138,37 @@ extension Subreddit {
     }
   }
 
+  /// Loads the subreddit's data unless it has it, sharing `/api/info` requests and recent
+  /// results with other lookups. `refreshSubreddit` always asks Reddit.
+  func loadIfNeeded() async {
+    guard data == nil, !feedsAndSuch.contains(id) else { return }
+    if let data = await RedditInfoLoader.shared.subreddit(named: id) {
+      await MainActor.run {
+        self.data = data
+      }
+    }
+  }
+
+  /// Subreddits whose flairs were fetched this session: they rarely change, and every visit to
+  /// a feed asked again.
+  private static let flairsFetched = Mutex<Set<String>>([])
+
   static func fetchAndCacheFlairsFrom(_ subID: String) async {
+    // Home, Popular and the like are feeds, not subreddits: Reddit has no flairs for them.
+    guard !feedsAndSuch.contains(subID), flairsFetched.withLock({ $0.insert(subID.lowercased()).inserted }) else { return }
     if let flairs = await RedditAPI.shared.getFlairs(subID) {
       let context = PersistenceController.shared.container.viewContext
-      let fetchRequest = NSFetchRequest<CachedFilter>(entityName: "CachedFilter")
-      fetchRequest.predicate = NSPredicate(format: "subID == %@", subID)
-
-      let existentFlairs = await context.perform { try? context.fetch(fetchRequest) } ?? []
-
-      for flair in flairs {
-        context.performAndWait {
+      await context.perform {
+        let fetchRequest = NSFetchRequest<CachedFilter>(entityName: "CachedFilter")
+        fetchRequest.predicate = NSPredicate(format: "subID == %@", subID)
+        let existentFlairs = (try? context.fetch(fetchRequest)) ?? []
+        for flair in flairs {
           if let foundFlair = existentFlairs.first(where: { $0.text == flair.text }) {
             foundFlair.update(flair)
-            return
+          } else {
+            _ = CachedFilter(context: context, subID: subID, flair)
           }
-
-          _ = CachedFilter(context: context, subID: subID, flair)
         }
-      }
-
-      await context.perform {
         try? context.save()
       }
     }
