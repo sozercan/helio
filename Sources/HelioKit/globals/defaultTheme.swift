@@ -17,7 +17,8 @@ private func scheme(_ light: String, _ dark: String) -> ColorSchemes<ThemeColor>
 
 let themeFontPrimary = scheme("000000", "D0D1D6")
 let themeFontSecondary = scheme("666666", "94969D")
-let themeFontTertiary = scheme("858585", "61626A")
+// Lighter than Apollo's tertiary grey so small text meets 4.5:1 on the cell and flair backgrounds.
+let themeFontTertiary = scheme("6E6F75", "8A8C93")
 let themeCellBG = scheme("FFFFFF", "000000")
 let themeBandColor = scheme("F2F3F7", "1A1A1A")
 let themeAccentColor = scheme("007AFF", "2399FF")

@@ -76,6 +76,8 @@ struct BadgeView: View, Equatable {
   /// Makes the numbers line its own tap target. Without one, a tap on it goes to the nearest
   /// tappable view, the author's name, instead of the row.
   var onTapStats: (() -> Void)?
+  /// Shown next to the score when set, for the "Show upvote ratio" setting.
+  var upvoteRatio: Double?
 
   nonisolated func openUser() {
     Nav.to(.reddit(.user(User(id: author))))
@@ -85,6 +87,7 @@ struct BadgeView: View, Equatable {
     let showAvatar = theme.avatar.visible
     let defaultIconColor = theme.statsText.color()
     let showSubName = openSub != nil && subName != nil
+    let showsFirstLine = showAuthorOnPostLinks || (showSubName && !theme.forceSubsAsTags)
     HStack(spacing: theme.spacing) {
       if showAvatar {
         AvatarView(saved: saved, avatarImgRequest: avatarRequest, userID: author, fullname: fullname, theme: theme.avatar)
@@ -93,7 +96,7 @@ struct BadgeView: View, Equatable {
 
       // Apollo's two lines: who and where, then the numbers.
       VStack(alignment: .leading, spacing: BadgeView.authorStatsSpacing) {
-        if showAuthorOnPostLinks || (showSubName && !theme.forceSubsAsTags) {
+        if showsFirstLine {
           HStack(alignment: .center, spacing: 4) {
             if let openSub, let subName {
               if theme.forceSubsAsTags {
@@ -148,6 +151,10 @@ struct BadgeView: View, Equatable {
               .foregroundStyle(likes == nil ? defaultIconColor : likes == true ? Color.upvote : Color.downvote)
           }
 
+          if let upvoteRatio {
+            BadgeStat(icon: "face.smiling", text: "\(Int((upvoteRatio * 100).rounded()))%")
+          }
+
           if let commentsCount {
             BadgeStat(icon: "bubble.left", text: commentsCount)
           }
@@ -157,6 +164,11 @@ struct BadgeView: View, Equatable {
           }
 
           BadgeStat(icon: "clock", text: timeSince(Int(created)))
+
+          // The first line holds the saved mark; without it, show it here.
+          if saved, !showAvatar, !showsFirstLine {
+            Image(systemName: "bookmark.fill").foregroundStyle(.green)
+          }
         }
         .foregroundStyle(defaultIconColor)
         .font(.system(size: theme.statsText.size, weight: theme.statsText.weight.t))

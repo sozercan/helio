@@ -123,15 +123,17 @@ struct PostLinkNormal: View, Equatable, Identifiable {
 
         HStack(alignment: .center) {
           let newCommentsCount = helioData.seenCommentsCount == nil ? nil : data.num_comments - helioData.seenCommentsCount!
-          BadgeView(avatarRequest: helioData.avatarImageRequest, showAuthorOnPostLinks: defSettings.showAuthor, saved: data.badgeKit.saved, usernameColor: nil, author: data.badgeKit.author, fullname: data.badgeKit.authorFullname, userFlair: data.badgeKit.userFlair, created: data.badgeKit.created, avatarURL: nil, theme: theme.theme.badge, commentsCount: formatBigNumber(data.num_comments), newCommentsCount: newCommentsCount, votesCount: formatBigNumber(data.ups), likes: data.likes, openSub: showSub ? openSubreddit : nil, subName: data.subreddit, onTapStats: openPost)
+          BadgeView(avatarRequest: helioData.avatarImageRequest, showAuthorOnPostLinks: defSettings.showAuthor, saved: data.badgeKit.saved, usernameColor: nil, author: data.badgeKit.author, fullname: data.badgeKit.authorFullname, userFlair: data.badgeKit.userFlair, created: data.badgeKit.created, avatarURL: nil, theme: theme.theme.badge, commentsCount: formatBigNumber(data.num_comments), newCommentsCount: newCommentsCount, votesCount: formatBigNumber(data.ups), likes: data.likes, openSub: showSub ? openSubreddit : nil, subName: data.subreddit, onTapStats: openPost, upvoteRatio: defSettings.showUpVoteRatio ? data.upvote_ratio : nil)
 
           Spacer(minLength: 8)
 
           // A crosspost's embedded card leaves actions to the post around it.
-          if defSettings.showVotesCluster, !secondary {
-            HStack(spacing: 2) {
+          if !secondary {
+            HStack(spacing: 0) {
               PostLinkMoreMenu(post: post)
-              VotesCluster(votesKit: data.votesKit, voteAction: post.vote, showScore: false, showUpVoteRatio: false)
+              if defSettings.showVotesCluster {
+                VotesCluster(votesKit: data.votesKit, voteAction: post.vote, showScore: false, showUpVoteRatio: false)
+              }
             }
           }
         }
@@ -161,7 +163,7 @@ struct PostLinkMoreMenu: View {
       Image(systemName: "ellipsis")
         .font(.system(size: 17, weight: .medium))
         .foregroundStyle(.secondary)
-        .frame(width: VoteButton.size, height: VoteButton.size)
+        .frame(width: VoteButton.hitSize, height: VoteButton.hitSize)
         .contentShape(Rectangle())
     }
     .accessibilityLabel("More")

@@ -7,6 +7,7 @@
 
 import Defaults
 import MarkdownUI
+import NukeUI
 import SwiftUI
 
 struct CommentLinkContentPreview: View {
@@ -79,7 +80,9 @@ struct CommentLinkContent: View {
 
     if let data = comment.data {
       let collapsed = data.collapsed ?? false
-      let barDepth = bars ? (data.depth ?? 0) : nil
+      // `indentLines` overrides the depth, like the reply sheet's unindented preview.
+      let barDepth = bars ? (indentLines ?? data.depth ?? 0) : nil
+      let headerLineHeight = max(theme.theme.badge.authorText.size * 1.25, theme.theme.badge.avatar.visible ? theme.theme.badge.avatar.size : 0)
       let headerTopPad = max(0, theme.theme.innerPadding.vertical + (data.depth == 0 ? -theme.theme.cornerRadius : theme.theme.repliesSpacing))
       Group {
         HStack(spacing: CommentLinkContent.indentLineContentSpacing) {
@@ -96,7 +99,7 @@ struct CommentLinkContent: View {
           }
           HStack(spacing: 8) {
             if bars {
-              CommentHeaderLine(data: data, isOP: (post?.data?.author ?? "") == data.author, unseen: seenComments == nil ? false : !seenComments!.contains(data.id), theme: theme.theme)
+              CommentHeaderLine(data: data, avatarRequest: helioData.avatarImageRequest, isOP: (post?.data?.author ?? "") == data.author, unseen: seenComments == nil ? false : !seenComments!.contains(data.id), theme: theme.theme)
             } else if let author = data.author {
               BadgeView(avatarRequest: helioData.avatarImageRequest, saved: data.badgeKit.saved, unseen: seenComments == nil ? false : !seenComments!.contains(data.id), usernameColor: (post?.data?.author ?? "") == author ? Color.green : nil, author: data.badgeKit.author, fullname: data.badgeKit.authorFullname, userFlair: data.badgeKit.userFlair, created: data.badgeKit.created, theme: theme.theme.badge, commentTheme: theme.theme)
             }
@@ -203,10 +206,13 @@ struct CommentLinkContent: View {
           )
         }
         .padding(.horizontal, bars ? 0 : horPad)
-        .frame(height: (bars ? theme.theme.badge.authorText.size * 1.25 : max((theme.theme.badge.authorText.size * 1.2) + (theme.theme.badge.statsText.size * 1.2) + 2, theme.theme.badge.avatar.size)) + headerTopPad, alignment: .leading)
+        .frame(height: (bars ? headerLineHeight : max((theme.theme.badge.authorText.size * 1.2) + (theme.theme.badge.statsText.size * 1.2) + 2, theme.theme.badge.avatar.size)) + headerTopPad, alignment: .leading)
         .padding(.bottom, bars && collapsed ? theme.theme.innerPadding.vertical : 0)
         .commentDepthBar(barDepth, theme: theme.theme, top: max(0, headerTopPad - 2), bottom: collapsed ? 8 : 0, separator: true)
         .mask(Color.black)
+        // The header's vote arrows are gone in this style, so keep voting reachable for VoiceOver.
+        .accessibilityAction(named: "Upvote") { Task { _ = await comment.vote(action: .up) } }
+        .accessibilityAction(named: "Downvote") { Task { _ = await comment.vote(action: .down) } }
         .onAppear {
           if !commentViewLoaded, sectionDefSettings.collapseAutoModerator {
             if data.depth == 0, data.author == "AutoModerator", !(data.collapsed ?? false) {
@@ -348,6 +354,7 @@ struct CommentLinkContent: View {
 /// Apollo's comment header: author, flair and score on one line.
 struct CommentHeaderLine: View {
   var data: CommentData
+  var avatarRequest: ImageRequest?
   var isOP: Bool
   var unseen: Bool
   var theme: CommentTheme
@@ -355,6 +362,10 @@ struct CommentHeaderLine: View {
   var body: some View {
     let badge = theme.badge
     HStack(alignment: .center, spacing: 6) {
+      if badge.avatar.visible, let author = data.author {
+        AvatarView(saved: data.saved ?? false, avatarImgRequest: avatarRequest, userID: author, fullname: data.author_fullname, theme: badge.avatar)
+      }
+
       if let author = data.author {
         Text(author)
           .font(.system(size: badge.authorText.size, weight: badge.authorText.weight.t))
@@ -367,8 +378,10 @@ struct CommentHeaderLine: View {
         PostLinkGlowDot(unseenType: .dot(theme.unseenDot), seen: false, badge: true).equatable()
       }
 
-      if let flair = flairWithoutEmojis(str: data.author_flair_text)?.first {
-        UserFlair(flair: flair, flairText: badge.flairText, flairBackground: badge.flairBackground).equatable()
+      if let flairs = flairWithoutEmojis(str: data.author_flair_text) {
+        ForEach(flairs, id: \.self) {
+          UserFlair(flair: $0, flairText: badge.flairText, flairBackground: badge.flairBackground).equatable()
+        }
       }
 
       if let ups = data.ups {

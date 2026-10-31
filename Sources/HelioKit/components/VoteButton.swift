@@ -15,6 +15,8 @@ extension Color {
 /// An arrow that fills a rounded square with its vote color while active.
 struct VoteButton: View, Equatable {
   static let size: CGFloat = 30
+  /// The tap target around the drawn square, so adjacent buttons stay easy to hit.
+  static let hitSize: CGFloat = 44
 
   var active: Bool
   var color: Color
@@ -27,6 +29,7 @@ struct VoteButton: View, Equatable {
       .foregroundStyle(active ? Color.white : Color.secondary)
       .frame(width: VoteButton.size, height: VoteButton.size)
       .background(color.opacity(active ? 1 : 0), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+      .frame(width: VoteButton.hitSize, height: VoteButton.hitSize)
       .contentShape(Rectangle())
       .accessibilityAddTraits(active ? [.isButton, .isSelected] : .isButton)
   }

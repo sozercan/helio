@@ -18,7 +18,7 @@ struct VotesKit: Equatable, Identifiable {
 
 /// A cluster consisting of the upvote, downvote button and the amount of upvotes with an optional upvote ratio
 struct VotesCluster: View, Equatable {
-  static let verticalWidth: Double = VoteButton.size
+  static let verticalWidth: Double = VoteButton.hitSize
   static func == (lhs: VotesCluster, rhs: VotesCluster) -> Bool {
     lhs.votesKit == rhs.votesKit
   }
@@ -59,7 +59,7 @@ struct VotesCluster: View, Equatable {
     if vertical {
       VotesClusterVertical(id: votesKit.id, likes: votesKit.likes, upvote: upvote, downvote: downvote)
     } else if !showScore {
-      HStack(spacing: 2) {
+      HStack(spacing: 0) {
         VoteButton(active: votesKit.likes ?? false, color: .upvote, image: "arrow.up").highPriorityGesture(TapGesture().onEnded(upvote))
         VoteButton(active: !(votesKit.likes ?? true), color: .downvote, image: "arrow.down").highPriorityGesture(TapGesture().onEnded(downvote))
       }
@@ -104,7 +104,7 @@ struct VotesClusterVertical: View, Equatable {
   let upvote: () -> Void
   let downvote: () -> Void
   var body: some View {
-    VStack(spacing: 2) {
+    VStack(spacing: 0) {
       VoteButton(active: likes ?? false, color: .upvote, image: "arrow.up").highPriorityGesture(TapGesture().onEnded(upvote))
 
       VoteButton(active: !(likes ?? true), color: .downvote, image: "arrow.down").highPriorityGesture(TapGesture().onEnded(downvote))

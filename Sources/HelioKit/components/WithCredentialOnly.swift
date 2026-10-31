@@ -29,6 +29,12 @@ struct WithCredentialOnly<Content: View>: View {
         }
         .buttonStyle(.actionOutlined)
         .opacity(0.5)
+
+        // The Me tab's switcher sits behind this screen, so offer the other accounts here.
+        if !RedditCredentialsManager.shared.validCredentials.isEmpty {
+          AccountSwitcherMenu()
+            .buttonStyle(.actionOutlined)
+        }
       }
       .compositingGroup()
       .multilineTextAlignment(.center)

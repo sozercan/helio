@@ -18,11 +18,12 @@ extension MediaExtractedType {
     }
   }
 
-  var isRepost: Bool {
-    if case .repost = self {
-      true
-    } else {
-      false
+  /// Extraction differs between compact and large rows only for images (thumbnail requests)
+  /// and link previews. Others, like a Streamable video resolved after extraction, are kept.
+  var dependsOnCompact: Bool {
+    switch self {
+    case .imgs, .link: true
+    default: false
     }
   }
 
@@ -45,9 +46,9 @@ extension Post {
     let compact = Post.isCompact(data, sub: sub)
     let compactChanged = helioData.layoutCompact != compact
     guard helioData.layoutWidth != contentWidth || helioData.layoutWindowHeight != windowHeight || helioData.layoutSecondary != secondary || compactChanged else { return }
-    // Compact and large rows extract media differently (thumbnail vs. full size), so a
-    // compact change extracts it again, except a repost (laid out in place below).
-    if (compactChanged && !(helioData.extractedMedia?.isRepost ?? false)) || helioData.extractedMedia?.dependsOnWidth == true {
+    // Compact and large rows extract images and link previews differently, so a compact
+    // change extracts those again.
+    if (compactChanged && helioData.extractedMedia?.dependsOnCompact == true) || helioData.extractedMedia?.dependsOnWidth == true {
       helioData.extractedMedia = mediaExtractor(compact: compact, contentWidth: contentWidth, data, theme: theme)
     } else {
       helioData.extractedMedia = helioData.extractedMedia?.relayoutingParts(contentWidth: contentWidth, theme: theme)
