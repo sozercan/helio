@@ -374,7 +374,7 @@ struct CommentHeaderLine: View {
       if let ups = data.ups {
         BadgeStat(icon: data.likes == false ? "arrow.down" : "arrow.up", text: data.score_hidden == true ? "–" : formatBigNumber(ups))
           .font(.system(size: badge.statsText.size, weight: badge.statsText.weight.t))
-          .foregroundStyle(data.likes == nil ? badge.statsText.color() : data.likes == true ? .upvote : .downvote)
+          .foregroundStyle(data.likes == nil ? badge.statsText.color() : data.likes == true ? Color.upvote : Color.downvote)
           .accessibilityLabel(data.score_hidden == true ? "Score hidden" : "\(ups) points")
       }
     }

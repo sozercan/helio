@@ -145,7 +145,7 @@ struct BadgeView: View, Equatable {
 
           if let votesCount {
             BadgeStat(icon: likes == false ? "arrow.down" : "arrow.up", text: votesCount)
-              .foregroundStyle(likes == nil ? defaultIconColor : likes == true ? .upvote : .downvote)
+              .foregroundStyle(likes == nil ? defaultIconColor : likes == true ? Color.upvote : Color.downvote)
           }
 
           if let commentsCount {

@@ -144,7 +144,7 @@ struct VotesClusterInfo: View {
         .changeEffect(
           .rise(origin: UnitPoint(x: 0.75, y: 0.25)) {
             Text(flyingNumber.value > 0 ? "+\(flyingNumber.value)" : "\(flyingNumber.value)")
-              .foregroundStyle(flyingNumber.color == true ? .upvote : flyingNumber.color == nil ? .gray : .downvote)
+              .foregroundStyle(flyingNumber.color == true ? Color.upvote : flyingNumber.color == nil ? Color.gray : Color.downvote)
               .font(.system(size: 12, weight: .semibold))
           },
           value: flyingNumber,
