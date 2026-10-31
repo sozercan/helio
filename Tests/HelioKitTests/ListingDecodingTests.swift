@@ -27,6 +27,7 @@ struct ListingDecodingTests {
     let decoded = try JSONDecoder().decode(Listing<PostData>.self, from: data)
 
     #expect(decoded.data?.children?.compactMap(\.data?.id) == ["a", "c"])
+    #expect(decoded.data?.skippedChildren == 1)
     #expect(decoded.data?.after == "t3_next")
     #expect(decoded.data?.dist == 3)
   }
@@ -56,5 +57,7 @@ struct ListingDecodingTests {
     let roundTripped = try JSONDecoder().decode(Listing<PostData>.self, from: JSONEncoder().encode(decoded))
 
     #expect(roundTripped == decoded)
+    let encoded = try #require(try JSONSerialization.jsonObject(with: JSONEncoder().encode(decoded.data)) as? [String: Any])
+    #expect(encoded["skippedChildren"] == nil)
   }
 }

@@ -294,6 +294,13 @@ struct ListingData<T: Codable & Hashable>: Codable, Defaults.Serializable, Hasha
   let modhash: String?
   let geo_filter: String?
   var children: [ListingChild<T>]?
+  /// Items left out because they failed to decode. Not part of the JSON. Callers that treat the
+  /// listing as complete, like the subscription sync that deletes what's missing, must check it.
+  var skippedChildren = 0
+
+  private enum CodingKeys: String, CodingKey {
+    case after, dist, modhash, geo_filter, children
+  }
 }
 
 extension ListingData {
@@ -321,6 +328,7 @@ extension ListingData {
       listingLogger.error("Skipping a listing item that failed to decode: \(String(describing: error), privacy: .private)")
     }
     children = decoded
+    skippedChildren = errors.count
   }
 }
 
