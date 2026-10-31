@@ -16,7 +16,10 @@ class FeedItemsManager<S: Equatable> {
   /// `onlyReadPosts`: paging stopped after several pages in a row held only hidden read posts.
   enum DisplayMode: String { case loading, empty, items, endOfFeed, error, onlyReadPosts }
 
+  /// The load-more in flight, so rows appearing together start only one. Cleared only by the
+  /// load-more that owns it (matched by `currentTaskID`) or by a new first page taking over.
   private var currentTask: Task<Void, Never>?
+  @ObservationIgnored private var currentTaskID: UUID?
   /// Bumped on the main actor each time the first page is fetched again. A page fetched under an
   /// older generation is dropped, so a slow earlier response can't overwrite a newer one.
   @ObservationIgnored private var generation = 0
@@ -77,17 +80,16 @@ class FeedItemsManager<S: Equatable> {
         return (self.listGeneration, self.lastElementId)
       }
       self.generation += 1
+      // A new first page replaces the list the pending load-more continues.
+      self.currentTask?.cancel()
+      self.currentTask = nil
+      self.currentTaskID = nil
       return (self.generation, nil as String?)
     }
     await fetchPage(loadingMore: loadingMore, after: cursor, hiddenPagesInARow: 0, generation: generation)
-    await MainActor.run { self.currentTask = nil }
   }
 
   private func fetchPage(loadingMore: Bool, after lastElementId: String?, hiddenPagesInARow: Int, generation: Int) async {
-    if !loadingMore, let currentTask, !currentTask.isCancelled {
-      currentTask.cancel()
-    }
-
     let searchQuery = selectedFilter?.type == .custom ? selectedFilter?.text : searchQuery.debounced.isEmpty ? nil : searchQuery.debounced
     let filter = selectedFilter?.type != .custom ? selectedFilter?.text : nil
 
@@ -175,8 +177,19 @@ class FeedItemsManager<S: Equatable> {
   @MainActor
   func elementAppeared(entity: RedditEntityType) {
     let index = indexByID[entity.id] ?? 0
-    if displayMode != .endOfFeed, !entities.isEmpty, index >= entities.count - 7, currentTask == nil {
-      self.currentTask = Task { await fetchCaller(loadingMore: true) }
+    // While a new first page is pending, the next page of the old list would only be dropped.
+    if displayMode != .endOfFeed, !entities.isEmpty, index >= entities.count - 7, currentTask == nil, listGeneration == generation {
+      let id = UUID()
+      currentTaskID = id
+      currentTask = Task {
+        await fetchCaller(loadingMore: true)
+        await MainActor.run {
+          if currentTaskID == id {
+            currentTask = nil
+            currentTaskID = nil
+          }
+        }
+      }
     }
 
     let start = index - prefetchRange < 0 ? 0 : index - prefetchRange

@@ -28,6 +28,11 @@ struct FeedItemsManagerTests {
     }
   }
 
+  /// Long enough for a load-more that shouldn't exist to reach the fetch function.
+  private func letStrayRequestsStart() async {
+    try? await Task.sleep(for: .milliseconds(200))
+  }
+
   /// `fetchPage` appends later pages on the main queue; let those blocks run.
   private func drainMainQueue() async {
     await withCheckedContinuation { continuation in DispatchQueue.main.async { continuation.resume() } }
@@ -281,6 +286,77 @@ struct FeedItemsManagerTests {
       fail = false
       await manager.fetchCaller(loadingMore: true)
       #expect(ids(manager.entities) == ["a"])
+    }
+  }
+
+  @Test func aSupersededFirstPageDoesntFreeTheLoadMoreSlot() async {
+    await withHideOnRead(false) {
+      let slowFirstPage = Gate()
+      let nextPage = Gate()
+      var nextPageRequests = 0
+      let manager = FeedItemsManager<SubListingSortOption>(sorting: .hot) { after, sorting, _, _ in
+        if after == "p2" {
+          nextPageRequests += 1
+          if nextPageRequests == 1 {
+            await nextPage.wait()
+          }
+          return ([post("c", read: false)], "p3")
+        }
+        if sorting == .hot {
+          await slowFirstPage.wait()
+          return ([post("old", read: false)], "h2")
+        }
+        return ([post("a", read: false), post("b", read: false)], "p2")
+      }
+      manager.chunkSize = 2
+      let slow = Task { await manager.fetchCaller(loadingMore: false) }
+      await slowFirstPage.untilWaiting()
+      manager.sorting = .new
+      await manager.fetchCaller(loadingMore: false)
+
+      // A row appears and starts loading the next page, then the old first page lands.
+      manager.elementAppeared(entity: manager.entities[0])
+      await nextPage.untilWaiting()
+      await slowFirstPage.open()
+      await slow.value
+
+      // Another row appearing must not ask for the same page again.
+      manager.elementAppeared(entity: manager.entities[1])
+      await letStrayRequestsStart()
+      #expect(nextPageRequests == 1)
+      await nextPage.open()
+    }
+  }
+
+  @Test func doesntLoadMoreWhileANewFirstPageIsPending() async {
+    await withHideOnRead(false) {
+      let refreshGate = Gate()
+      var refreshing = false
+      var nextPageRequests = 0
+      let manager = FeedItemsManager<SubListingSortOption>(sorting: nil) { after, _, _, _ in
+        if after == "p2" {
+          nextPageRequests += 1
+          return ([post("stale", read: false)], "p3")
+        }
+        if refreshing {
+          await refreshGate.wait()
+          return ([post("b", read: false)], "q2")
+        }
+        return ([post("a", read: false)], "p2")
+      }
+      manager.chunkSize = 1
+      await manager.fetchCaller(loadingMore: false)
+
+      refreshing = true
+      let refresh = Task { await manager.fetchCaller(loadingMore: false) }
+      await refreshGate.untilWaiting()
+      manager.elementAppeared(entity: manager.entities[0])
+      await letStrayRequestsStart()
+      await refreshGate.open()
+      await refresh.value
+
+      #expect(nextPageRequests == 0)
+      #expect(ids(manager.entities) == ["b"])
     }
   }
 
