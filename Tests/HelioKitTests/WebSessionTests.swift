@@ -96,15 +96,34 @@ struct RateLimitTests {
     #expect(limit.limitedUntil(account: account) == nil)
     #expect(!limit.isLow(account: account))
 
+    clock.advance(100)
     try limit.record(response(200, ["x-ratelimit-remaining": "4.0", "x-ratelimit-reset": "200"]), account: account)
     #expect(limit.isLow(account: account))
 
+    clock.advance(80)
     try limit.record(response(429, ["x-ratelimit-reset": "120"]), account: account)
     #expect(limit.limitedUntil(account: account) == clock.now.addingTimeInterval(120))
     // Other accounts have their own budget.
     #expect(limit.limitedUntil(account: UUID()) == nil)
 
     clock.advance(121)
+    #expect(limit.limitedUntil(account: account) == nil)
+    #expect(!limit.isLow(account: account))
+  }
+
+  @Test func aSlowResponseDoesNotLiftALimitALaterOneHit() throws {
+    let clock = Clock()
+    let limit = RedditRateLimit(now: { clock.now })
+    let account = UUID()
+    try limit.record(response(429, ["x-ratelimit-remaining": "0", "x-ratelimit-reset": "200"]), account: account)
+    // Sent before the 429, answered after it.
+    clock.advance(1)
+    try limit.record(response(200, ["x-ratelimit-remaining": "3.0", "x-ratelimit-reset": "199"]), account: account)
+    #expect(limit.limitedUntil(account: account) != nil)
+
+    // The next window starts over.
+    clock.advance(200)
+    try limit.record(response(200, ["x-ratelimit-remaining": "99.0", "x-ratelimit-reset": "600"]), account: account)
     #expect(limit.limitedUntil(account: account) == nil)
     #expect(!limit.isLow(account: account))
   }

@@ -71,9 +71,11 @@ class RedditAPI {
     attempt: Int = 0,
     saveToken: Bool = true,
   ) async -> Result<D, AFError> {
-    // Taken before the request: the selected account can change while it's in flight.
-    let account = Self.accountID(altCredential)
-    return await self._doRequest(authenticated: authenticated, altCredential: altCredential, saveToken: saveToken) { headers in
+    // Resolved once: the request, its retries and its rate limit stay with this account even if
+    // the selection changes while it's in flight.
+    let credential = altCredential ?? RedditCredentialsManager.shared.selectedCredential
+    let account = credential?.id
+    return await self._doRequest(authenticated: authenticated, altCredential: credential, saveToken: saveToken) { headers in
       let req = AF.request(url, method: method, parameters: params, encoder: URLEncodedFormParameterEncoder(destination: paramsLocation), headers: headers, requestModifier: reqModifier).validate()
       return await RedditRateLimit.shared.recording(req.serializingDecodable(decodable).response, account: account)
     }
@@ -88,9 +90,11 @@ class RedditAPI {
     attempt: Int = 0,
     saveToken: Bool = true,
   ) async -> Result<D, AFError> {
-    // Taken before the request: the selected account can change while it's in flight.
-    let account = Self.accountID(altCredential)
-    return await self._doRequest(authenticated: authenticated, altCredential: altCredential, saveToken: saveToken) { headers in
+    // Resolved once: the request, its retries and its rate limit stay with this account even if
+    // the selection changes while it's in flight.
+    let credential = altCredential ?? RedditCredentialsManager.shared.selectedCredential
+    let account = credential?.id
+    return await self._doRequest(authenticated: authenticated, altCredential: credential, saveToken: saveToken) { headers in
       let req = AF.request(url, method: method, parameters: ["raw_json": 1], headers: headers, requestModifier: reqModifier).validate()
       return await RedditRateLimit.shared.recording(req.serializingDecodable(decodable).response, account: account)
     }
@@ -106,9 +110,11 @@ class RedditAPI {
     attempt: Int = 0,
     saveToken: Bool = true,
   ) async -> Result<String, AFError> {
-    // Taken before the request: the selected account can change while it's in flight.
-    let account = Self.accountID(altCredential)
-    return await self._doRequest(authenticated: authenticated, altCredential: altCredential, saveToken: saveToken) { headers in
+    // Resolved once: the request, its retries and its rate limit stay with this account even if
+    // the selection changes while it's in flight.
+    let credential = altCredential ?? RedditCredentialsManager.shared.selectedCredential
+    let account = credential?.id
+    return await self._doRequest(authenticated: authenticated, altCredential: credential, saveToken: saveToken) { headers in
       let req = AF.request(url, method: method, parameters: params, encoder: URLEncodedFormParameterEncoder(destination: paramsLocation), headers: headers, requestModifier: reqModifier).validate()
       return await RedditRateLimit.shared.recording(req.serializingString().response, account: account)
     }
@@ -123,9 +129,11 @@ class RedditAPI {
     attempt: Int = 0,
     saveToken: Bool = true,
   ) async -> Result<String, AFError> {
-    // Taken before the request: the selected account can change while it's in flight.
-    let account = Self.accountID(altCredential)
-    return await self._doRequest(authenticated: authenticated, altCredential: altCredential, saveToken: saveToken) { headers in
+    // Resolved once: the request, its retries and its rate limit stay with this account even if
+    // the selection changes while it's in flight.
+    let credential = altCredential ?? RedditCredentialsManager.shared.selectedCredential
+    let account = credential?.id
+    return await self._doRequest(authenticated: authenticated, altCredential: credential, saveToken: saveToken) { headers in
       let req = AF.request(url, method: method, parameters: ["raw_json": 1], headers: headers).validate()
       return await RedditRateLimit.shared.recording(req.serializingString().response, account: account)
     }

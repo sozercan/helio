@@ -78,7 +78,7 @@ struct CredentialEditView: View {
     .themedListBG(theme.lists.bg)
     .toolbar {
       ToolbarItem(placement: .topBarLeading) { Button("Cancel", role: .destructive) { dismiss() } }
-      ToolbarItem(placement: .topBarTrailing) { Button("Save") { draftCredential.save()
+      ToolbarItem(placement: .topBarTrailing) { Button("Save") { RedditCredentialsManager.shared.saveDraft(draftCredential, openedAs: credential)
         dismiss()
       }.disabled(!anyChanges) }
     }

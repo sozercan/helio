@@ -123,24 +123,61 @@ class RedditCredentialsManager {
     }
   }
 
-  func saveCred(_ cred: RedditCredential, forceCreate: Bool = true) {
-    DispatchQueue.main.async {
-      if Defaults[.GeneralDefSettings].onboardingState != .dismissed {
-        Defaults[.GeneralDefSettings].onboardingState = .dismissed
-        Nav.shared.presentingSheetsQueue = Nav.shared.presentingSheetsQueue.filter { $0 != .onboarding }
-      }
-      if let i = self.credentials.firstIndex(where: { $0.id == cred.id }) {
-        self.credentials[i] = cred
-      } else if forceCreate {
-        self.credentials.append(cred)
-      }
-      // Auto-select if no credential is currently selected
-      if Defaults[.GeneralDefSettings].redditCredentialSelectedID == nil {
-        Defaults[.GeneralDefSettings].redditCredentialSelectedID = cred.id
-      }
-      // Sync immediately on main queue to avoid XPC violations
+  /// Credential changes run on the main queue, in order, after any already queued.
+  private func enqueue(_ change: @escaping () -> Void) {
+    // A main-actor Task wouldn't be ordered with the other changes queued here (deleting, wiping).
+    // swiftlint:disable:next no_dispatch_queue
+    DispatchQueue.main.async(execute: change)
+  }
+
+  /// Changes the saved credential `id` in the same main-queue turn that saves it, so changes queued
+  /// before (such as a new sign-in) are what `change` sees. Returning false leaves it alone.
+  func updateCred(_ id: UUID, _ change: @escaping (inout RedditCredential) -> Bool) {
+    enqueue {
+      guard let i = self.credentials.firstIndex(where: { $0.id == id }) else { return }
+      var cred = self.credentials[i]
+      guard change(&cred) else { return }
+      self.credentials[i] = cred
       self.syncCredentialsWithKeychain()
     }
+  }
+
+  /// Saves a credential edited since `original` was opened. A web session the edit didn't touch
+  /// keeps its current cookies and token, which Reddit may have renewed meanwhile.
+  func saveDraft(_ draft: RedditCredential, openedAs original: RedditCredential) {
+    enqueue {
+      var draft = draft
+      if
+        let current = self.credentials.first(where: { $0.id == draft.id }),
+        current.isWebSession, draft.isWebSession, draft.webSessionCookies == original.webSessionCookies
+      {
+        draft.webSessionCookies = current.webSessionCookies
+        draft.accessToken = current.accessToken
+      }
+      self.applySave(draft, forceCreate: true)
+    }
+  }
+
+  func saveCred(_ cred: RedditCredential, forceCreate: Bool = true) {
+    enqueue { self.applySave(cred, forceCreate: forceCreate) }
+  }
+
+  private func applySave(_ cred: RedditCredential, forceCreate: Bool) {
+    if Defaults[.GeneralDefSettings].onboardingState != .dismissed {
+      Defaults[.GeneralDefSettings].onboardingState = .dismissed
+      Nav.shared.presentingSheetsQueue = Nav.shared.presentingSheetsQueue.filter { $0 != .onboarding }
+    }
+    if let i = self.credentials.firstIndex(where: { $0.id == cred.id }) {
+      self.credentials[i] = cred
+    } else if forceCreate {
+      self.credentials.append(cred)
+    }
+    // Auto-select if no credential is currently selected
+    if Defaults[.GeneralDefSettings].redditCredentialSelectedID == nil {
+      Defaults[.GeneralDefSettings].redditCredentialSelectedID = cred.id
+    }
+    // Sync immediately on main queue to avoid XPC violations
+    self.syncCredentialsWithKeychain()
   }
 
   func deleteCred(_ cred: RedditCredential) {

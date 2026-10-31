@@ -182,7 +182,7 @@ struct RedditCredential: Identifiable, Equatable, Hashable, Codable {
       switch await RedditWebSession.mintToken(cookies: cookies, userAgent: userAgent) {
       case let .token(newAccessToken, renewedCookies):
         if saveToken {
-          await updateSession(renewedFrom: cookies) { current in
+          updateSession(renewedFrom: cookies) { current in
             current.accessToken = newAccessToken
             current.webSessionCookies = renewedCookies
           }
@@ -191,7 +191,7 @@ struct RedditCredential: Identifiable, Equatable, Hashable, Codable {
       case .signedOut:
         // Keeps the account name, so the credential shows whom to sign in as again.
         if saveToken {
-          await updateSession(renewedFrom: cookies) { current in
+          updateSession(renewedFrom: cookies) { current in
             current.webSessionCookies = nil
             current.accessToken = nil
           }
@@ -204,11 +204,11 @@ struct RedditCredential: Identifiable, Equatable, Hashable, Codable {
 
     // Changes the saved credential, not this copy, and only while it still has the session the
     // token came from: a sign-in that finished meanwhile wins.
-    func updateSession(renewedFrom cookies: String, _ change: @escaping (inout RedditCredential) -> Void) async {
-      await MainActor.run {
-        guard var current = RedditCredentialsManager.getById(id), current.webSessionCookies == cookies else { return }
+    func updateSession(renewedFrom cookies: String, _ change: @escaping (inout RedditCredential) -> Void) {
+      RedditCredentialsManager.shared.updateCred(id) { current in
+        guard current.webSessionCookies == cookies else { return false }
         change(&current)
-        RedditCredentialsManager.shared.saveCred(current, forceCreate: false)
+        return true
       }
     }
 

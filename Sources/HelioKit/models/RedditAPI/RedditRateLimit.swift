@@ -37,9 +37,23 @@ final class RedditRateLimit: Sendable {
     let remaining = response.value(forHTTPHeaderField: "x-ratelimit-remaining").flatMap(Double.init)
     let reset = response.value(forHTTPHeaderField: "x-ratelimit-reset").flatMap(TimeInterval.init)
     guard limited || remaining != nil else { return }
-    let resetsAt = now().addingTimeInterval(reset ?? Self.defaultHold)
-    budgets.withLock { $0[account] = Budget(remaining: limited ? 0 : remaining ?? 0, resetsAt: resetsAt) }
+    let now = now()
+    var budget = Budget(remaining: limited ? 0 : remaining ?? 0, resetsAt: now.addingTimeInterval(reset ?? Self.defaultHold))
+    budgets.withLock { budgets in
+      // Responses can arrive out of order, and within a window the budget only goes down: a
+      // slow response mustn't lift a limit a later one hit. A reset well after the known one
+      // starts a new window.
+      if let known = budgets[account], known.resetsAt > now, budget.resetsAt <= known.resetsAt.addingTimeInterval(Self.sameWindowSlack) {
+        budget.remaining = min(budget.remaining, known.remaining)
+        budget.resetsAt = max(budget.resetsAt, known.resetsAt)
+      }
+      budgets[account] = budget
+    }
   }
+
+  /// How far apart two responses' reset times can be and still belong to the same window: the
+  /// header is in whole seconds and responses take a while to arrive.
+  static let sameWindowSlack: TimeInterval = 5
 
   func recording<T>(_ response: DataResponse<T, AFError>, account: UUID?) -> Result<T, AFError> {
     record(response.response, account: account)

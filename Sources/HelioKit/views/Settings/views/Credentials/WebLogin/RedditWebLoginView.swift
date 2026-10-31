@@ -73,6 +73,7 @@ struct RedditWebLoginView: View {
     .navigationBarTitleDisplayMode(.inline)
     // Signing in saves the credential and closes the sheet, so leaving midway isn't offered.
     .navigationBarBackButtonHidden(phase == .finishing)
+    .interactiveDismissDisabled(phase == .finishing)
     .toolbar {
       if showsCancel, phase != .finishing {
         ToolbarItem(placement: .topBarLeading) { Button("Cancel") { Nav.present(nil) } }
