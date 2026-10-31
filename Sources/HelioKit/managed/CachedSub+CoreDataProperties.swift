@@ -39,6 +39,7 @@ public extension CachedSub {
   @NSManaged var user_is_subscriber: Bool
   @NSManaged var uuid: String?
   @NSManaged var helioCredentialID: UUID?
+  @NSManaged var multis: Set<CachedMulti>?
 
   internal convenience init(data: SubredditData, context: NSManagedObjectContext, credentialID: UUID) {
     self.init(context: context)

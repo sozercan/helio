@@ -21,7 +21,7 @@ extension RedditAPI {
   }
 }
 
-struct Flair: GenericRedditEntityDataType, Identifiable, Defaults.Serializable {
+struct Flair: GenericRedditEntityDataType, Identifiable, Defaults.Serializable, Sendable {
   let type: String?
   let text_editable: Bool?
   let allowable_content: String?
