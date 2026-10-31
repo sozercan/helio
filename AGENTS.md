@@ -36,6 +36,7 @@ swiftformat . && swiftlint --strict
   - Swift 6.3's type checker gives up on some expressions newer compilers accept, such as a ternary of `.upvote`/`.downvote` passed to `foregroundStyle`. Spell out the type (`Color.upvote`) when it's ambiguous.
 - Existing SwiftLint violations are recorded in `.swiftlint.baseline.json`, so `--strict` fails only on new ones. After fixing old ones, regenerate it with `swiftlint lint --write-baseline .swiftlint.baseline.json`. Don't apply SwiftLint autocorrect to `let _ =` inside SwiftUI view or `ViewModifier` bodies; it's the only form a ViewBuilder accepts.
 - Formatting is 2-space indentation with implicit `self`; `.swiftformat` documents the disabled rules and why.
+- `perf.yml` runs `Tools/perf` on PRs that touch the app and fails when it makes more Reddit API requests than `Tools/perf/budget.json` allows. For changes to networking or feed and comment rendering, follow the `helio-perf` skill (`.agents/skills/helio-perf/SKILL.md`) and report before/after numbers; lower the budget when request counts drop.
 
 ## Privacy and Reddit API
 
@@ -58,7 +59,7 @@ Privacy is the app's main promise, so these hold unless the human explicitly cha
 
 ## Running the app
 
-- Without Reddit credentials, only Settings is reachable in the simulator; the other tabs show "No credential". Say so when a UI change couldn't be checked for that reason rather than implying it was.
+- Without Reddit credentials, only Settings is reachable in the simulator; the other tabs show "No credential". `Tools/perf` drives a scripted benchmark on seeded fixture data with a placeholder account (see its `README.md`); it isn't a way to try a UI change by hand. Say so when a UI change couldn't be checked for lack of an account rather than implying it was.
 - An unprovisioned Mac Catalyst build (ad-hoc or "Sign to Run Locally") gets `errSecMissingEntitlement` for every keychain call, so it forgets the Reddit login on each launch. To keep the login, build with automatic signing, `-allowProvisioningUpdates`, a development team, and an entitlements file outside the repo that contains only `keychain-access-groups` = `$(AppIdentifierPrefix)com.sertacozercan.helio`. Don't commit signing changes to the project.
 
 ## Review
