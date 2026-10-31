@@ -102,7 +102,7 @@ enum Metrics {
     out["peak_mb"] = log.value("peak", at: end)
     out["launch_main_ms"] = log.marks["home_open"].map { log.value("main", at: $0) }
     if let open = log.marks["post_open"] {
-      out["post_request_ms"] = log.requests.first { $0.url.contains("/comments/") && $0.time >= open && $0.time <= end }.map { $0.time - open } ?? -1
+      out["post_request_ms"] = log.requests.first { category(method: $0.method, url: $0.url) == "comments" && $0.time >= open && $0.time <= end }.map { $0.time - open } ?? -1
     }
     var counts: [String: Int] = [:]
     for request in log.requests where request.time <= end {

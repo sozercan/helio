@@ -66,6 +66,18 @@ struct MetricsTests {
     #expect(Metrics.metrics(of: RunLog(text: "M 0 cpu=1 main=1\nP 100 home_open\nP 110 open_failed\nP 200 end\n")) == nil)
   }
 
+  @Test func timesTheCommentsAPIRequestNotAPostPagePreview() throws {
+    let log = RunLog(text: """
+    M 0 cpu=1 main=1
+    P 100 home_open
+    P 200 post_open
+    R 210 GET https://reddit.com/r/apple/comments/abc
+    R 260 GET https://oauth.reddit.com/r/apple/comments/abc.json
+    P 300 end
+    """)
+    #expect(try #require(Metrics.metrics(of: log))["post_request_ms"] == 60)
+  }
+
   @Test func timesOnlyACommentsRequestBeforeTheEnd() throws {
     let log = RunLog(text: "M 0 cpu=1 main=1\nP 100 home_open\nP 200 post_open\nP 300 end\nR 400 GET https://oauth.reddit.com/r/a/comments/x.json\n")
     #expect(try #require(Metrics.metrics(of: log))["post_request_ms"] == -1)
