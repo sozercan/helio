@@ -10,7 +10,10 @@ import Combine
 import Defaults
 import Foundation
 import KeychainAccess
+import os
 import SwiftUI
+
+private let credentialLogger = Logger(subsystem: "com.sertacozercan.helio", category: "Credentials")
 
 struct RedditCredential: Identifiable, Equatable, Hashable, Codable {
   static func defaultUserAgent(userName: String? = nil) -> String {
@@ -231,25 +234,34 @@ struct RedditCredential: Identifiable, Equatable, Hashable, Codable {
       case let .success(data):
         let newAccessToken = RedditCredential.AccessToken(token: data.access_token, expiration: data.expires_in, lastRefresh: Date())
         if saveToken {
-          var newSelf = self
-          newSelf.accessToken = newAccessToken
-          RedditCredentialsManager.shared.saveCred(newSelf, forceCreate: false)
+          updateAPIKey(renewedFrom: refreshToken) { $0.accessToken = newAccessToken }
         }
         return newAccessToken
       case let .failure(error):
-        print("pipo", error, payload)
-        switch error.responseCode {
-        case 401:
-          var selfCopy = self
-          selfCopy.refreshToken = nil
-          selfCopy.accessToken = nil
-          selfCopy.userName = nil
-          selfCopy.profilePicture = nil
-          selfCopy.save(false)
-        default:
-          break
+        credentialLogger.error("Token refresh failed: \(error.localizedDescription, privacy: .public)")
+        if error.responseCode == 401 {
+          // Reddit revoked the refresh token: the account has to authorize again.
+          updateAPIKey(renewedFrom: refreshToken) { current in
+            current.refreshToken = nil
+            current.accessToken = nil
+            current.userName = nil
+            current.profilePicture = nil
+          }
         }
         return nil
+      }
+    }
+
+    // Changes the saved credential, not this copy, and only while it still has the key and
+    // refresh token the request used: an edit or a sign-in that finished meanwhile wins.
+    func updateAPIKey(renewedFrom refreshToken: String, _ change: @escaping (inout RedditCredential) -> Void) {
+      RedditCredentialsManager.shared.updateCred(id) { [apiAppID, apiAppSecret] current in
+        guard
+          current.signInMethod == .apiKey, current.refreshToken == refreshToken,
+          current.apiAppID == apiAppID, current.apiAppSecret == apiAppSecret
+        else { return false }
+        change(&current)
+        return true
       }
     }
   }
