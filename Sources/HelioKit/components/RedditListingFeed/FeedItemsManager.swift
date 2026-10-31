@@ -20,6 +20,9 @@ class FeedItemsManager<S> {
   /// load-more that owns it (matched by `currentTaskID`) or by a new first page taking over.
   private var currentTask: Task<Void, Never>?
   @ObservationIgnored private var currentTaskID: UUID?
+  /// A row asked for the next page while a new first page was pending. Rows still on screen won't
+  /// ask again when it lands, so the load-more starts then.
+  @ObservationIgnored private var loadMoreHeldBack = false
   /// Bumped on the main actor each time the first page is fetched again. A page fetched under an
   /// older generation is dropped, so a slow earlier response can't overwrite a newer one.
   @ObservationIgnored private var generation = 0
@@ -145,6 +148,13 @@ class FeedItemsManager<S> {
           self.lastElementId = after
           loadedEntitiesIds = newLoadedEntitiesIds
         }
+        if loadMoreHeldBack {
+          loadMoreHeldBack = false
+          // A skipped page already fetches on by itself.
+          if displayMode == .items, !skipPage, currentTask == nil {
+            startLoadingMore()
+          }
+        }
         return true
       }
     } else {
@@ -193,18 +203,12 @@ class FeedItemsManager<S> {
   @MainActor
   func elementAppeared(entity: RedditEntityType) {
     let index = indexByID[entity.id] ?? 0
-    // While a new first page is pending, the next page of the old list would only be dropped.
-    if displayMode != .endOfFeed, !entities.isEmpty, index >= entities.count - 7, currentTask == nil, listGeneration == generation {
-      let id = UUID()
-      currentTaskID = id
-      currentTask = Task {
-        await fetchCaller(loadingMore: true)
-        await MainActor.run {
-          if currentTaskID == id {
-            currentTask = nil
-            currentTaskID = nil
-          }
-        }
+    if displayMode != .endOfFeed, !entities.isEmpty, index >= entities.count - 7, currentTask == nil {
+      // While a new first page is pending, the next page of the old list would only be dropped.
+      if listGeneration == generation {
+        startLoadingMore()
+      } else {
+        loadMoreHeldBack = true
       }
     }
 
@@ -214,6 +218,21 @@ class FeedItemsManager<S> {
     let reqs = getImgReqsFrom(toPrefetch)
 
     Post.prefetcher.startPrefetching(with: reqs)
+  }
+
+  @MainActor
+  private func startLoadingMore() {
+    let id = UUID()
+    currentTaskID = id
+    currentTask = Task {
+      await fetchCaller(loadingMore: true)
+      await MainActor.run {
+        if currentTaskID == id {
+          currentTask = nil
+          currentTaskID = nil
+        }
+      }
+    }
   }
 
   @MainActor

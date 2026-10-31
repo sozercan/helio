@@ -377,19 +377,22 @@ struct FeedItemsManagerTests {
     }
   }
 
-  @Test func doesntLoadMoreWhileANewFirstPageIsPending() async {
+  @Test func holdsLoadMoreUntilTheNewFirstPageLands() async {
     await withHideOnRead(false) {
       let refreshGate = Gate()
       var refreshing = false
-      var nextPageRequests = 0
+      var requests: [String?] = []
       let manager = FeedItemsManager<SubListingSortOption>(sorting: nil) { after, _, _, _ in
-        if after == "p2" {
-          nextPageRequests += 1
-          return ([post("stale", read: false)], "p3")
+        requests.append(after)
+        switch after {
+        case "p2": return ([post("stale", read: false)], "p3")
+        case "q2": return ([post("c", read: false)], nil)
+        default: break
         }
         if refreshing {
           await refreshGate.wait()
-          return ([post("b", read: false)], "q2")
+          // The same post as before, so its row stays on screen and doesn't appear again.
+          return ([post("a", read: false)], "q2")
         }
         return ([post("a", read: false)], "p2")
       }
@@ -401,11 +404,16 @@ struct FeedItemsManagerTests {
       await refreshGate.untilWaiting()
       manager.elementAppeared(entity: manager.entities[0])
       await letStrayRequestsStart()
+      // Nothing continues the old list while the new first page is pending.
+      #expect(requests == [nil, nil])
+
       await refreshGate.open()
       await refresh.value
+      await letStrayRequestsStart()
 
-      #expect(nextPageRequests == 0)
-      #expect(ids(manager.entities) == ["b"])
+      // Once it lands, the held-back load-more continues the new list.
+      #expect(requests == [nil, nil, "q2"])
+      #expect(ids(manager.entities) == ["a", "c"])
     }
   }
 
