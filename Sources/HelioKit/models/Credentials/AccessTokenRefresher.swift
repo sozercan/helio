@@ -15,15 +15,15 @@ actor AccessTokenRefresher {
   private var inFlight: [String: Task<RedditCredential.AccessToken?, Never>] = [:]
   private var latest: [String: RedditCredential.AccessToken] = [:]
 
-  /// `forceRenew` with `rejected`, the token a request was just refused with: the latest token is
-  /// reused only when it's a different one, since the request then carried an older token.
+  /// `rejected`: a token a request was refused with, which is never reused. A forced renewal reuses
+  /// the latest token only when it knows the rejected one, so the latest is newer.
   func token(refreshToken: String, forceRenew: Bool, rejected: String? = nil,
              refresh: @escaping @Sendable () async -> RedditCredential.AccessToken?) async -> RedditCredential.AccessToken?
   {
     if let task = inFlight[refreshToken] {
       return await task.value
     }
-    if let token = latest[refreshToken], token.isFresh, !forceRenew || (rejected != nil && token.token != rejected) {
+    if let token = latest[refreshToken], token.isFresh, token.token != rejected, !forceRenew || rejected != nil {
       return token
     }
     let task = Task { await refresh() }

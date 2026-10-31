@@ -182,6 +182,40 @@ struct AccessTokenRefresherTests {
     #expect(calls.all.count == 2)
   }
 
+  /// A retry after a renewal (401, renewed, 503) gets the renewed token, not the rejected one a
+  /// credential snapshot still holds, and doesn't renew again.
+  @Test func retryAfterRenewalReusesTheRenewedToken() async {
+    let calls = Calls()
+    let refresher = AccessTokenRefresher()
+    _ = await refresher.token(refreshToken: "r", forceRenew: true, rejected: "revoked") {
+      calls.record(["renew"])
+      return self.token("renewed")
+    }
+    let retry = await refresher.token(refreshToken: "r", forceRenew: false, rejected: "revoked") {
+      calls.record(["again"])
+      return self.token("other")
+    }
+
+    #expect(retry?.token == "renewed")
+    #expect(calls.all.count == 1)
+  }
+
+  @Test func neverReusesTheRejectedToken() async {
+    let calls = Calls()
+    let refresher = AccessTokenRefresher()
+    _ = await refresher.token(refreshToken: "r", forceRenew: false) {
+      calls.record(["first"])
+      return self.token("revoked")
+    }
+    let next = await refresher.token(refreshToken: "r", forceRenew: false, rejected: "revoked") {
+      calls.record(["second"])
+      return self.token("new")
+    }
+
+    #expect(next?.token == "new")
+    #expect(calls.all.count == 2)
+  }
+
   @Test func forcedRenewalReusesATokenNewerThanTheRejectedOne() async {
     let calls = Calls()
     let refresher = AccessTokenRefresher()

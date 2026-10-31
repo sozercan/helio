@@ -125,11 +125,11 @@ struct RedditCredential: Identifiable, Equatable, Hashable, Codable {
     RedditCredentialsManager.shared.deleteCred(self)
   }
 
-  /// `rejectedToken`: the token a request was just refused with (401). A forced renewal reuses a
-  /// fresh token only if it's a different one.
+  /// `rejectedToken`: a token the request was refused with (401), which is never reused. A forced
+  /// renewal reuses a fresh token only when it knows the rejected one, so the fresh one is newer.
   func getUpToDateToken(forceRenew: Bool = false, saveToken: Bool = true, rejectedToken: String? = nil) async -> AccessToken? {
     guard let refreshToken = self.refreshToken, !apiAppID.isEmpty else { return nil }
-    if let accessToken = self.accessToken, accessToken.isFresh, !forceRenew || (rejectedToken != nil && accessToken.token != rejectedToken) {
+    if let accessToken = self.accessToken, accessToken.isFresh, accessToken.token != rejectedToken, !forceRenew || rejectedToken != nil {
       return accessToken
     }
     return await AccessTokenRefresher.shared.token(refreshToken: refreshToken, forceRenew: forceRenew, rejected: rejectedToken) { await fetchNewToken() }

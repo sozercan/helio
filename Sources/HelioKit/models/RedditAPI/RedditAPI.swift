@@ -145,8 +145,9 @@ class RedditAPI {
     }
     if attempt < Self.maxRetries, Self.isTransient(error) {
       try? await Task.sleep(for: .milliseconds(300 * (attempt + 1)))
+      // Keeps the rejected token: a credential snapshot (`altCredential`) still holds it.
       return await self._doRequest(attempt: attempt + 1, authenticated: authenticated, altCredential: altCredential, saveToken: saveToken,
-                                   renewedToken: renewedToken, req: req)
+                                   rejectedToken: rejectedToken, renewedToken: renewedToken, req: req)
     }
     return result
   }
