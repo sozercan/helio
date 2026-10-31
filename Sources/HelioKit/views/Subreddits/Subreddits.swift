@@ -209,10 +209,10 @@ struct Subreddits: View, Equatable {
         alignment: .trailing,
       )
       .refreshable {
-        Task(priority: .background) {
+        Task(priority: .utility) {
           await updatePostsInBox(RedditAPI.shared, force: true)
         }
-        Task(priority: .background) {
+        Task(priority: .utility) {
           _ = await RedditAPI.shared.fetchMyMultis()
         }
         _ = await RedditAPI.shared.fetchSubsAndSyncCoreData()

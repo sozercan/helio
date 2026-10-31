@@ -17,10 +17,17 @@ class FeedItemsManager<S> {
   enum DisplayMode: String { case loading, empty, items, endOfFeed, error, onlyReadPosts }
 
   private var currentTask: Task<Void, Never>?
+  /// Set once the feed starts loading its first page.
+  @ObservationIgnored var initialLoadStarted = false
   var displayMode: DisplayMode = .loading
   var loadingPinned = false
   var pinnedPosts: [Post] = []
-  var entities: [RedditEntityType] = []
+  var entities: [RedditEntityType] = [] {
+    didSet { indexByID = Dictionary(entities.enumerated().map { ($1.id, $0) }, uniquingKeysWith: { first, _ in first }) }
+  }
+
+  /// Rows look their position up as they appear; searching `entities` for each was quadratic.
+  @ObservationIgnored private var indexByID: [String: Int] = [:]
   var loadedEntitiesIds: Set<String> = []
   var lastElementId: String?
   var sorting: S? {
@@ -50,7 +57,7 @@ class FeedItemsManager<S> {
 
   func fetchCaller(loadingMore: Bool) async {
     await fetchPage(loadingMore: loadingMore, after: loadingMore ? lastElementId : nil, hiddenPagesInARow: 0)
-    self.currentTask = nil
+    await MainActor.run { self.currentTask = nil }
   }
 
   private func fetchPage(loadingMore: Bool, after lastElementId: String?, hiddenPagesInARow: Int) async {
@@ -80,11 +87,14 @@ class FeedItemsManager<S> {
       for ent in shownEntities {
         newLoadedEntitiesIds.insert(ent.fullname)
       }
-      withAnimation {
-        displayMode = skipPage ? .items : gaveUp ? .onlyReadPosts : shownEntities.isEmpty ? .empty : reachedEnd ? .endOfFeed : .items
-        entities = shownEntities
-        self.lastElementId = after
-        loadedEntitiesIds = newLoadedEntitiesIds
+      // On the main actor, which renders `entities` and reads the row index.
+      await MainActor.run { [newLoadedEntitiesIds] in
+        withAnimation {
+          displayMode = skipPage ? .items : gaveUp ? .onlyReadPosts : shownEntities.isEmpty ? .empty : reachedEnd ? .endOfFeed : .items
+          entities = shownEntities
+          self.lastElementId = after
+          loadedEntitiesIds = newLoadedEntitiesIds
+        }
       }
     } else {
       var newLoadedEntitiesIds = loadedEntitiesIds
@@ -115,7 +125,7 @@ class FeedItemsManager<S> {
   }
 
   private func withoutReadPosts(_ entities: [RedditEntityType]) -> [RedditEntityType] {
-    guard hideReadPosts, Defaults[.PostLinkDefSettings].hideOnRead else { return entities }
+    guard hideReadPosts, CachedDefaults[.PostLinkDefSettings].hideOnRead else { return entities }
     return entities.filter { entity in
       if case let .post(post) = entity {
         return !(post.data?.helioSeen ?? false)
@@ -124,7 +134,11 @@ class FeedItemsManager<S> {
     }
   }
 
-  func elementAppeared(entity: RedditEntityType, index: Int) async {
+  /// On the main actor, like the rows calling it: rows appearing together must not each start
+  /// loading the next page.
+  @MainActor
+  func elementAppeared(entity: RedditEntityType) {
+    let index = indexByID[entity.id] ?? 0
     if displayMode != .endOfFeed, !entities.isEmpty, index >= entities.count - 7, currentTask == nil {
       self.currentTask = Task { await fetchCaller(loadingMore: true) }
     }
@@ -137,7 +151,8 @@ class FeedItemsManager<S> {
     Post.prefetcher.startPrefetching(with: reqs)
   }
 
-  func elementDisappeared(entity: RedditEntityType, index: Int) async {
+  @MainActor
+  func elementDisappeared(entity: RedditEntityType) {
     let reqs = getImgReqsFrom([entity])
     Post.prefetcher.stopPrefetching(with: reqs)
   }

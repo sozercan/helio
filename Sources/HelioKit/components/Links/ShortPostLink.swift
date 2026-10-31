@@ -37,7 +37,10 @@ struct ShortPostLink: View {
       .frame(maxWidth: .infinity, alignment: .leading)
       .themedListRowLikeBG()
       .mask(RR(20, Color.black))
-      .onTapGesture { Nav.to(.reddit(.post(post))) }
+      .onTapGesture {
+        post.layoutIfNeeded()
+        Nav.to(.reddit(.post(post)))
+      }
     }
   }
 }

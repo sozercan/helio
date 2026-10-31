@@ -28,7 +28,7 @@ struct Me: View {
             .progressViewStyle(.circular)
             .frame(maxWidth: .infinity, minHeight: .screenH - 200)
             .onAppear {
-              Task(priority: .background) {
+              Task(priority: .userInitiated) {
                 await RedditAPI.shared.fetchMe(force: true)
               }
             }

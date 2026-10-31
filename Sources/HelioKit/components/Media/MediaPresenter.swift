@@ -12,7 +12,6 @@ import YouTubePlayerKit
 
 struct OnlyURL: View {
   static let height: Double = 22
-  @Default(.BehaviorDefSettings) private var behaviorDefSettings
   var url: URL
   @Environment(\.openURL) private var openURL
   var body: some View {
@@ -101,7 +100,7 @@ struct MediaPresenter: View, Equatable {
         if !showURLInstead {
           if compact, let sub = postExtractedEntity.subredditID, let postID = postExtractedEntity.postID {
             if let url = URL(string: "https://reddit.com/r/\(sub)/comments/\(postID)") {
-              PreviewLink(url: url, compact: compact, previewModel: PreviewModel(url, compact: compact))
+              PreviewLink(url: url, compact: compact, previewModel: .shared(url, compact: compact))
             }
           } else {
             RedditMediaPost(entity: .post(postExtractedEntity.entity))
@@ -115,7 +114,7 @@ struct MediaPresenter: View, Equatable {
         if !showURLInstead {
           if compact, let sub = commentExtractedEntity.subredditID, let postID = commentExtractedEntity.postID, let commentID = commentExtractedEntity.commentID {
             if let url = URL(string: "https://reddit.com/r/\(sub)/comments/\(postID)/comment/\(commentID)") {
-              PreviewLink(url: url, compact: compact, previewModel: PreviewModel(url, compact: compact))
+              PreviewLink(url: url, compact: compact, previewModel: .shared(url, compact: compact))
             }
           } else {
             RedditMediaPost(entity: .comment(commentExtractedEntity.entity))
@@ -129,7 +128,7 @@ struct MediaPresenter: View, Equatable {
         if !showURLInstead {
           if compact {
             if let url = URL(string: "https://reddit.com/r/\(subExtractedEntity.subredditID ?? "")") {
-              PreviewLink(url: url, compact: compact, previewModel: PreviewModel(url, compact: compact))
+              PreviewLink(url: url, compact: compact, previewModel: .shared(url, compact: compact))
             }
           } else {
             RedditMediaPost(entity: .subreddit(subExtractedEntity.entity))
@@ -143,7 +142,7 @@ struct MediaPresenter: View, Equatable {
         if !showURLInstead {
           if compact {
             if let url = URL(string: "https://reddit.com/u/\(userExtractedEntity.userID ?? "")") {
-              PreviewLink(url: url, compact: compact, previewModel: PreviewModel(url, compact: compact))
+              PreviewLink(url: url, compact: compact, previewModel: .shared(url, compact: compact))
             }
           } else {
             RedditMediaPost(entity: .user(userExtractedEntity.entity))

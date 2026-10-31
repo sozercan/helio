@@ -75,7 +75,7 @@ struct Search: View {
     switch searchType {
     case .subreddit:
       resultsSubs.removeAll()
-      Task(priority: .background) {
+      Task(priority: .userInitiated) {
         let subs = await RedditAPI.shared.searchSubreddits(searchQuery.value)?.map { Subreddit(data: $0) }
         await MainActor.run {
           withAnimation {
@@ -88,7 +88,7 @@ struct Search: View {
       }
     case .user:
       resultsUsers.removeAll()
-      Task(priority: .background) {
+      Task(priority: .userInitiated) {
         let users = await RedditAPI.shared.searchUsers(searchQuery.value)?.map { User(data: $0) }
         await MainActor.run {
           withAnimation {
@@ -101,7 +101,7 @@ struct Search: View {
       }
     case .post:
       resultPosts.removeAll()
-      Task(priority: .background) {
+      Task(priority: .userInitiated) {
         let newPosts = await dummyAllSub?.fetchPosts(searchText: searchQuery.value, contentWidth: contentWidth)?.0 ?? []
         let actualNewPosts = newPosts.compactMap {
           if case let .post(post) = $0 {

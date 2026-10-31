@@ -101,10 +101,26 @@ class RedditCredentialsManager {
 
   deinit { self.cancelables.forEach { obs in obs.invalidate() } }
 
+  /// Launch and account switches sync subscriptions and multis at most this often. Subscribing
+  /// in the app updates the local copy, and pulling the subreddit list syncs right away.
+  static let subsSyncInterval: TimeInterval = 60 * 60
+
   func updateMe(altCred: RedditCredential? = nil) {
-    Task(priority: .background) { await RedditAPI.shared.fetchMe(force: true, altCredential: altCred) }
-    Task(priority: .background) { await RedditAPI.shared.fetchSubsAndSyncCoreData() }
-    Task(priority: .background) { await RedditAPI.shared.fetchMyMultis() }
+    Task(priority: .utility) { await RedditAPI.shared.fetchMe(force: true, altCredential: altCred) }
+    guard let credential = altCred ?? selectedCredential else { return }
+    // A credential signed in to another account is synced again.
+    let syncKey = "\(credential.id.uuidString)|\(credential.userName ?? "")"
+    if let syncedAt = Defaults[.subsSyncedAt][syncKey], Date().timeIntervalSince(syncedAt) < Self.subsSyncInterval {
+      return
+    }
+    Task(priority: .utility) {
+      // As this account: the selection can change before the task runs.
+      async let subsSynced = RedditAPI.shared.fetchSubsAndSyncCoreData(account: credential)
+      async let multisSynced = RedditAPI.shared.fetchMyMultis(account: credential)
+      if await subsSynced, await multisSynced {
+        Defaults[.subsSyncedAt][syncKey] = Date()
+      }
+    }
   }
 
   func saveCred(_ cred: RedditCredential, forceCreate: Bool = true) {

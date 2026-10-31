@@ -42,8 +42,36 @@ extension Post {
     self.helioData = newHelioData
   }
 
+  /// Loads a post known only by id (a link to it inside another post) and gives it the subreddit
+  /// its post page needs. It's laid out when opened (`layoutIfNeeded`): laying it out now would
+  /// also load the posts it links to, and theirs.
+  func fetchItself() {
+    let fullname = fullname
+    Task(priority: .utility) {
+      if let data = await RedditInfoLoader.shared.post(fullname) {
+        await MainActor.run {
+          withAnimation {
+            self.data = data
+            if self.helioData == nil {
+              self.helioData = PostHelioData()
+            }
+            if self.helioData?.subreddit == nil {
+              self.helioData?._strongSubreddit = Subreddit(id: data.subreddit)
+            }
+          }
+        }
+      }
+    }
+  }
+
+  /// Lays out a post loaded but never laid out, such as one linked from another post.
+  func layoutIfNeeded(contentWidth: Double? = nil) {
+    guard let data, helioData?.layoutWidth ?? 0 == 0 else { return }
+    setupHelioData(data: data, contentWidth: contentWidth, theme: InMemoryTheme.shared.currentTheme, sub: helioData?.subreddit)
+  }
+
   static func isCompact(_ data: PostData, sub: Subreddit?) -> Bool {
-    Defaults[.SubredditFeedDefSettings].compactPerSubreddit[sub?.id ?? data.subreddit_id ?? ""] ?? Defaults[.PostLinkDefSettings].compactMode.enabled
+    CachedDefaults[.SubredditFeedDefSettings].compactPerSubreddit[sub?.id ?? data.subreddit_id ?? ""] ?? CachedDefaults[.PostLinkDefSettings].compactMode.enabled
   }
 
   /// Without a `contentWidth` (refreshing a post, changing theme), keeps the width the post
@@ -60,7 +88,8 @@ extension Post {
       self.helioData?.permaURL = URL(string: "https://reddit.com\(data.permalink.urlEncoded)")
 
       var extractedMedia = mediaExtractor(compact: compact, contentWidth: contentWidth, data, theme: theme)
-      var extractedMediaForcedNormal = mediaExtractor(compact: false, contentWidth: contentWidth, data, theme: theme)
+      // Extracting builds players, embedded posts and link previews, so a large row shares its media.
+      var extractedMediaForcedNormal = compact ? mediaExtractor(compact: false, contentWidth: contentWidth, data, theme: theme) : extractedMedia
 
       switch extractedMedia {
       case let .streamable(streamable):
@@ -70,7 +99,7 @@ extension Post {
           extractedMedia = .video(sharedVideo)
           extractedMediaForcedNormal = .video(sharedVideo)
         } else {
-          Task(priority: .background) {
+          Task(priority: .utility) {
             if let video = await self.loadStreamableMedia(streamable: streamable) {
               Caches.streamable.addKeyValue(key: streamable.shortCode, data: { StreamableCached(url: video.url, size: video.size) }, expires: Date().dateByAdding(1, .day).date)
 
@@ -111,7 +140,7 @@ extension Post {
       }
 
       if fetchAvatar {
-        Task(priority: .background) {
+        Task(priority: .utility) {
           await RedditAPI.shared.updatePostsWithAvatar(posts: [self], avatarSize: theme.postLinks.theme.badge.avatar.size)
         }
       }
@@ -176,7 +205,7 @@ extension Post {
         return newPost
       }
 
-      Task(priority: .background) {
+      Task(priority: .utility) {
         let repostsAvatars = posts.compactMap { post in
           if case let .repost(repost) = post.helioData?.extractedMedia {
             return repost
@@ -184,8 +213,8 @@ extension Post {
           return nil
         }
 
-        Task(priority: .background) { await RedditAPI.shared.updatePostsWithAvatar(posts: repostsAvatars, avatarSize: InMemoryTheme.shared.currentTheme.postLinks.theme.badge.avatar.size) }
-        Task(priority: .background) { await RedditAPI.shared.updatePostsWithAvatar(posts: posts, avatarSize: InMemoryTheme.shared.currentTheme.postLinks.theme.badge.avatar.size) }
+        Task(priority: .utility) { await RedditAPI.shared.updatePostsWithAvatar(posts: repostsAvatars, avatarSize: InMemoryTheme.shared.currentTheme.postLinks.theme.badge.avatar.size) }
+        Task(priority: .utility) { await RedditAPI.shared.updatePostsWithAvatar(posts: posts, avatarSize: InMemoryTheme.shared.currentTheme.postLinks.theme.badge.avatar.size) }
       }
 
       return posts

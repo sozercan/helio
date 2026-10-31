@@ -6,11 +6,37 @@
 //
 
 import Foundation
+import MarkdownUI
 
 class MarkdownUtil {
   static func containsSpoiler(_ text: String) -> Bool {
     text.contains("&gt;!") && text.contains("!&lt;") ||
       text.contains(">!") && text.contains("!<")
+  }
+
+  private final class ParsedMarkdown {
+    let content: MarkdownContent
+    init(_ content: MarkdownContent) {
+      self.content = content
+    }
+  }
+
+  private static let parsed: NSCache<NSString, ParsedMarkdown> = {
+    let cache = NSCache<NSString, ParsedMarkdown>()
+    cache.countLimit = 2000
+    return cache
+  }()
+
+  /// `text` rewritten by `formatForMarkdown` and parsed. Rows render it on every update and on
+  /// every scroll back into view, so each text is formatted and parsed once.
+  static func markdownContent(_ text: String, showSpoiler: Bool = false) -> MarkdownContent {
+    let key = "\(showSpoiler ? "s" : "h")\(text)" as NSString
+    if let cached = parsed.object(forKey: key) {
+      return cached.content
+    }
+    let content = MarkdownContent(formatForMarkdown(text, showSpoiler: showSpoiler))
+    parsed.setObject(ParsedMarkdown(content), forKey: key)
+    return content
   }
 
   static func formatForMarkdown(_ text: String, showSpoiler: Bool = false) -> String {

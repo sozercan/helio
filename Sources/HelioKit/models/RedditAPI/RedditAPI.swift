@@ -31,6 +31,7 @@ class RedditAPI {
     includeAuth: Bool = true,
     altCredential: RedditCredential? = nil,
     saveToken: Bool = true,
+    rejectedToken: String? = nil,
   ) async -> HTTPHeaders? {
     var headers: HTTPHeaders = [
       "User-Agent": RedditCredential.defaultUserAgent(),
@@ -38,7 +39,7 @@ class RedditAPI {
     if includeAuth {
       if
         let selectedCredential = altCredential ?? RedditCredentialsManager.shared.selectedCredential,
-        let accessToken = await selectedCredential.getUpToDateToken(forceRenew: force, saveToken: saveToken)
+        let accessToken = await selectedCredential.getUpToDateToken(forceRenew: force, saveToken: saveToken, rejectedToken: rejectedToken)
       {
         headers["Authorization"] = "Bearer \(accessToken.token)"
         headers["User-Agent"] = selectedCredential.userAgent
@@ -121,30 +122,52 @@ class RedditAPI {
     }
   }
 
+  /// `renewedToken`: this request already renewed its token after a 401, which it does once.
   func _doRequest<D: Decodable>(
     attempt: Int = 0,
     forceAuth: Bool = false,
     authenticated: Bool = true,
     altCredential: RedditCredential? = nil,
     saveToken: Bool = true,
+    rejectedToken: String? = nil,
+    renewedToken: Bool = false,
     req: (HTTPHeaders) async -> Result<D, AFError>,
   ) async -> Result<D, AFError> {
-    guard let headers = await fetchRequestHeaders(force: forceAuth, includeAuth: authenticated, altCredential: altCredential, saveToken: saveToken) else { return .failure(.serverTrustEvaluationFailed(reason: .noPublicKeysFound)) }
+    guard let headers = await fetchRequestHeaders(force: forceAuth, includeAuth: authenticated, altCredential: altCredential, saveToken: saveToken, rejectedToken: rejectedToken) else { return .failure(.serverTrustEvaluationFailed(reason: .noPublicKeysFound)) }
 
     let result = await req(headers)
-    if case let .failure(error) = result {
-      print(error)
-      if attempt < (authenticated ? 5 : 2) {
-        return await self._doRequest(attempt: attempt + 1, forceAuth: authenticated && attempt == 2, authenticated: authenticated, altCredential: altCredential, saveToken: saveToken, req: req)
-      }
-      switch error.responseCode {
-      case 401:
-        break
-      default:
-        break
-      }
+    guard case let .failure(error) = result else { return result }
+    // A 401 means the token expired or was revoked early: renew it once.
+    if authenticated, !renewedToken, error.responseCode == 401 {
+      let rejected = headers["Authorization"].map { String($0.dropFirst("Bearer ".count)) }
+      return await self._doRequest(attempt: attempt, forceAuth: true, authenticated: authenticated, altCredential: altCredential, saveToken: saveToken,
+                                   rejectedToken: rejected, renewedToken: true, req: req)
+    }
+    if attempt < Self.maxRetries, Self.isTransient(error) {
+      try? await Task.sleep(for: .milliseconds(300 * (attempt + 1)))
+      // Keeps the rejected token: a credential snapshot (`altCredential`) still holds it.
+      return await self._doRequest(attempt: attempt + 1, authenticated: authenticated, altCredential: altCredential, saveToken: saveToken,
+                                   rejectedToken: rejectedToken, renewedToken: renewedToken, req: req)
     }
     return result
+  }
+
+  static let maxRetries = 2
+
+  /// Whether sending the same request again can succeed: a dropped connection or one of
+  /// Reddit's intermittent 5xx. A 4xx (other than 401), a 429 or an undecodable body fails the
+  /// same way every time, and each retry still counts against the rate limit.
+  static func isTransient(_ error: AFError) -> Bool {
+    if let code = error.responseCode {
+      return (500 ... 599).contains(code)
+    }
+    guard case let .sessionTaskFailed(underlying) = error, let urlError = underlying as? URLError else { return false }
+    switch urlError.code {
+    case .timedOut, .networkConnectionLost, .notConnectedToInternet, .cannotConnectToHost, .cannotFindHost, .dnsLookupFailed:
+      return true
+    default:
+      return false
+    }
   }
 
   func injectFirstAccessTokenInto(_ credential: inout RedditCredential, authCode: String) async -> Bool {

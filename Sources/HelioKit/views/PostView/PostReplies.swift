@@ -9,7 +9,7 @@ import Defaults
 import SwiftUI
 
 struct PostReplies: View {
-  var update: Bool
+  var commentsLoad: CommentsLoad
   var post: Post
   var subreddit: Subreddit
   var ignoreSpecificComment: Bool
@@ -29,17 +29,30 @@ struct PostReplies: View {
   @State private var loading = true
   @Environment(\.globalLoaderDismiss) private var globalLoaderDismiss
 
-  func asyncFetch(_ full: Bool, _ altIgnoreSpecificComment: Bool? = nil) async {
-    if let result = await post.refreshPost(commentID: (altIgnoreSpecificComment ?? ignoreSpecificComment) ? nil : highlightID, sort: sort, after: nil, subreddit: subreddit.data?.display_name ?? subreddit.id, full: full), let newComments = result.0 {
-      Task(priority: .background) {
-        _ = await RedditAPI.shared.updateCommentsWithAvatar(comments: newComments, avatarSize: selectedTheme.comments.theme.badge.avatar.size)
-      }
+  /// `usePrefetch`: take the request `PostView` started when the post opened, if it asked for the
+  /// same comments.
+  func asyncFetch(_ full: Bool, _ altIgnoreSpecificComment: Bool? = nil, usePrefetch: Bool = false) async {
+    let commentID = (altIgnoreSpecificComment ?? ignoreSpecificComment) ? nil : highlightID
+    let (request, prefetched) = await MainActor.run {
+      (commentsLoad.begin(), usePrefetch ? commentsLoad.takePrefetch(sort: sort, commentID: commentID) : nil)
+    }
+    let result = if let prefetched {
+      await prefetched.value
+    } else {
+      await post.refreshPost(commentID: commentID, sort: sort, after: nil, subreddit: subreddit.data?.display_name ?? subreddit.id, full: full)
+    }
+    if let result, let newComments = result.0 {
       newComments.forEach { $0.parentHelio = comments }
       await MainActor.run {
-        withAnimation {
-          comments = newComments
-          loading = false
+        loading = false
+        // A later request (another sort) replaces these.
+        guard commentsLoad.isCurrent(request) else { return }
+        Task(priority: .utility) {
+          _ = await RedditAPI.shared.updateCommentsWithAvatar(comments: newComments, avatarSize: selectedTheme.comments.theme.badge.avatar.size)
         }
+        // Not animated: an animated insert makes the list build and measure every new row in
+        // one long frame.
+        comments = newComments
 
         if var specificID = highlightID {
           specificID = specificID.hasPrefix("t1_") ? String(specificID.dropFirst(3)) : specificID
@@ -76,13 +89,8 @@ struct PostReplies: View {
           Spacer()
             .frame(height: 1)
             .listRowBackground(Color.clear)
-            .onChange(of: update) {
-              Task(priority: .background) {
-                await asyncFetch(true)
-              }
-            }
             .onChange(of: ignoreSpecificComment) { _, val in
-              Task(priority: .background) {
+              Task(priority: .userInitiated) {
                 await asyncFetch(post.data == nil, val)
                 globalLoaderDismiss()
               }
@@ -105,8 +113,8 @@ struct PostReplies: View {
           .listRowBackground(Color.clear)
           .onAppear {
             if comments.isEmpty || post.data == nil {
-              Task(priority: .background) {
-                await asyncFetch(post.data == nil)
+              Task(priority: .userInitiated) {
+                await asyncFetch(post.data == nil, usePrefetch: true)
               }
             } else {
               // Only a fetch clears `loading`, so without one the spinner would stay forever.

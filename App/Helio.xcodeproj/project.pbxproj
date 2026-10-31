@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		9F5FCD9D8EEB68643794FF80 /* PerfSetupUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0EEFADE657BD4923C12507AA /* PerfSetupUITests.swift */; };
 		227FEB82D3B6BEA392ED71DA /* SmokeUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7448FB6DD4714375AB558491 /* SmokeUITests.swift */; };
 		256883DA54E7973CD390BFFA /* HelioKit in Frameworks */ = {isa = PBXBuildFile; productRef = AE09D6EA1040742F7D3B4153 /* HelioKit */; };
 		34B1B4917A1EF2A2F6C45FBD /* Pixelate.metal in Sources */ = {isa = PBXBuildFile; fileRef = 6098C07B080AC8AD13D1179B /* Pixelate.metal */; };
@@ -128,6 +129,7 @@
 		65DC42D62B12696000E78C27 /* Localizable.xcstrings */ = {isa = PBXFileReference; lastKnownFileType = text.json.xcstrings; path = Localizable.xcstrings; sourceTree = "<group>"; };
 		65E45A6D2AFD3C1D007DBBFC /* changelog.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = changelog.json; sourceTree = "<group>"; };
 		6D6A0F8510E59A6EE7607767 /* HelioApp.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = HelioApp.swift; sourceTree = "<group>"; };
+		0EEFADE657BD4923C12507AA /* PerfSetupUITests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = PerfSetupUITests.swift; sourceTree = "<group>"; };
 		7448FB6DD4714375AB558491 /* SmokeUITests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = SmokeUITests.swift; sourceTree = "<group>"; };
 		EC051C2A2ACAEFC500E9D9ED /* QuickLookThumbnailing.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = QuickLookThumbnailing.framework; path = System/Library/Frameworks/QuickLookThumbnailing.framework; sourceTree = SDKROOT; };
 		EC051C462ACAF2DC00E9D9ED /* themeFileIcon.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = themeFileIcon.png; sourceTree = "<group>"; };
@@ -239,6 +241,7 @@
 		689AE9C633233A09AF37EC94 /* HelioUITests */ = {
 			isa = PBXGroup;
 			children = (
+				0EEFADE657BD4923C12507AA /* PerfSetupUITests.swift */,
 				7448FB6DD4714375AB558491 /* SmokeUITests.swift */,
 			);
 			name = HelioUITests;
@@ -691,6 +694,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				9F5FCD9D8EEB68643794FF80 /* PerfSetupUITests.swift in Sources */,
 				227FEB82D3B6BEA392ED71DA /* SmokeUITests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;

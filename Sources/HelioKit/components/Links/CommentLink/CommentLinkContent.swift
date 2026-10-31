@@ -55,7 +55,7 @@ struct CommentLinkContent: View {
   @State private var offsetX: CGFloat = 0
   @State private var highlight = false
   @State private var showSpoiler = false
-  @State private var commentSwipeActions: SwipeActionsSet = Defaults[.CommentLinkDefSettings].swipeActions
+  @State private var commentSwipeActions: SwipeActionsSet = CachedDefaults[.CommentLinkDefSettings].swipeActions
 
   @Default(.CommentLinkDefSettings) private var defSettings
   @Default(.CommentsSectionDefSettings) private var sectionDefSettings
@@ -246,7 +246,7 @@ struct CommentLinkContent: View {
                       .lineLimit(lineLimit)
                   } else {
                     HStack {
-                      Markdown(MarkdownUtil.formatForMarkdown(body, showSpoiler: showSpoiler))
+                      Markdown(MarkdownUtil.markdownContent(body, showSpoiler: showSpoiler))
                         .markdownTheme(.helioMarkdown(fontSize: theme.theme.bodyText.size, lineSpacing: theme.theme.linespacing, textSelection: selectable))
                         .fixedSize(horizontal: false, vertical: true)
 

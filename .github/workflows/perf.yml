@@ -1,0 +1,78 @@
+name: Perf
+
+# Runs the perf benchmark once (Tools/perf) and fails when the app makes more Reddit API requests
+# than Tools/perf/budget.json allows. Request counts are deterministic on fixture data; timings
+# on shared runners aren't, so they're reported but not checked.
+on:
+  pull_request:
+    paths:
+      - "Sources/**"
+      - "App/**"
+      - "Package.swift"
+      - "Package.resolved"
+      - "Tools/perf/**"
+      - ".github/workflows/perf.yml"
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  # Same as build.yml. Bump on purpose.
+  XCODE_VERSION: "26.6"
+
+jobs:
+  requests:
+    name: Reddit request budget
+    runs-on: macos-26
+    timeout-minutes: 60
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Select Xcode
+        run: |
+          sudo xcode-select -s "/Applications/Xcode_${XCODE_VERSION}.app/Contents/Developer"
+          xcodebuild -version
+          echo "HELIO_PERF_DIR=$RUNNER_TEMP/helio-perf" >> "$GITHUB_ENV"
+
+      # Xcode 26 ships the Metal toolchain as a separate component; the app has shaders.
+      - name: Install Metal toolchain
+        run: xcodebuild -downloadComponent MetalToolchain
+
+      - name: Cache Swift packages
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: .spm
+          key: spm-perf-${{ env.XCODE_VERSION }}-${{ hashFiles('App/Helio.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved') }}
+          restore-keys: spm-perf-${{ env.XCODE_VERSION }}-
+
+      - name: Build and test the perf tool
+        run: |
+          swift build --package-path Tools/perf -c release
+          swift test --package-path Tools/perf
+
+      - name: Build the app
+        run: Tools/perf/.build/release/perf build ci --spm .spm
+
+      - name: Benchmark
+        run: Tools/perf/.build/release/perf bench ci --runs 1
+
+      - name: Check the request budget
+        run: Tools/perf/.build/release/perf check ci
+
+      - name: Upload logs
+        if: failure()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: perf-logs
+          path: |
+            ${{ env.HELIO_PERF_DIR }}/ci/*.log
+            ${{ env.HELIO_PERF_DIR }}/ci/*.setup
+            ${{ env.HELIO_PERF_DIR }}/ci/*.txt
+          if-no-files-found: ignore

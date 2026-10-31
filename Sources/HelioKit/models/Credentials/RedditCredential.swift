@@ -125,18 +125,14 @@ struct RedditCredential: Identifiable, Equatable, Hashable, Codable {
     RedditCredentialsManager.shared.deleteCred(self)
   }
 
-  func getUpToDateToken(forceRenew: Bool = false, saveToken: Bool = true) async -> AccessToken? {
+  /// `rejectedToken`: a token the request was refused with (401), which is never reused. A forced
+  /// renewal reuses a fresh token only when it knows the rejected one, so the fresh one is newer.
+  func getUpToDateToken(forceRenew: Bool = false, saveToken: Bool = true, rejectedToken: String? = nil) async -> AccessToken? {
     guard let refreshToken = self.refreshToken, !apiAppID.isEmpty else { return nil }
-    if !forceRenew, let accessToken = self.accessToken {
-      let lastRefresh = Double(accessToken.lastRefresh.timeIntervalSince1970)
-      let expiration = Double(max(0, accessToken.expiration - 100))
-      let now = Double(Date().timeIntervalSince1970)
-
-      if (now - lastRefresh) < expiration {
-        return accessToken
-      }
+    if let accessToken = self.accessToken, accessToken.isFresh, accessToken.token != rejectedToken, !forceRenew || rejectedToken != nil {
+      return accessToken
     }
-    return await fetchNewToken()
+    return await AccessTokenRefresher.shared.token(refreshToken: refreshToken, forceRenew: forceRenew, rejected: rejectedToken) { await fetchNewToken() }
 
     func fetchNewToken(count: Int = 0) async -> AccessToken? {
       let payload = RedditAPI.RefreshAccessTokenPayload(refresh_token: refreshToken)
@@ -184,6 +180,11 @@ struct RedditCredential: Identifiable, Equatable, Hashable, Codable {
     let token: String
     let expiration: Int
     let lastRefresh: Date
+
+    /// Still usable, with a 100 s margin for requests in flight.
+    var isFresh: Bool {
+      Date().timeIntervalSince(lastRefresh) < Double(max(0, expiration - 100))
+    }
   }
 
   enum CredentialValidationState: String {

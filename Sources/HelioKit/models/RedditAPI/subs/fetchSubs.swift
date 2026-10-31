@@ -25,17 +25,18 @@ func cleanSubs(_ subs: [ListingChild<SubredditData>]) -> [ListingChild<Subreddit
 }
 
 extension RedditAPI {
-  func fetchAllSubs(after: String? = nil, accumulatedSubs: [ListingChild<SubredditData>]? = nil) async -> [ListingChild<SubredditData>]? {
+  /// `account`: whose subscriptions; the selected account when nil.
+  func fetchAllSubs(after: String? = nil, accumulatedSubs: [ListingChild<SubredditData>]? = nil, account: RedditCredential? = nil) async -> [ListingChild<SubredditData>]? {
     // Base case: If 'after' is nil and some subs are already accumulated, simply return them.
     if let after, after.isEmpty, let accumulatedSubs {
       return accumulatedSubs
     }
 
-    guard let _ = Defaults[.GeneralDefSettings].redditCredentialSelectedID else { return [] }
+    guard account != nil || Defaults[.GeneralDefSettings].redditCredentialSelectedID != nil else { return [] }
 
     let params = FetchSubsPayload(limit: 100, after: after)
 
-    switch await self.doRequest("\(RedditAPI.redditApiURLBase)/subreddits/mine/subscriber.json", method: .get, params: params, paramsLocation: .queryString, decodable: Listing<SubredditData>.self) {
+    switch await self.doRequest("\(RedditAPI.redditApiURLBase)/subreddits/mine/subscriber.json", method: .get, params: params, paramsLocation: .queryString, decodable: Listing<SubredditData>.self, altCredential: account) {
     case let .success(data):
       var newAccumulatedSubs = accumulatedSubs ?? []
       if let fetchedSubs = data.data?.children {
@@ -44,22 +45,25 @@ extension RedditAPI {
 
       if let dataAfter = data.data?.after, !dataAfter.isEmpty {
         // Recursive call with the new 'after' value and the updated accumulated subs.
-        return await fetchAllSubs(after: dataAfter, accumulatedSubs: newAccumulatedSubs)
+        return await fetchAllSubs(after: dataAfter, accumulatedSubs: newAccumulatedSubs, account: account)
       } else {
         // All subs fetched, return the accumulated result
         return newAccumulatedSubs
       }
     case let .failure(error):
       print(error)
-      return accumulatedSubs
+      // A partial list would make the sync drop every subscription on the pages that failed.
+      return nil
     }
   }
 
-  func updateSubsInCoreData(with subs: [ListingChild<SubredditData>]) async {
-    guard let credentialID = Defaults[.GeneralDefSettings].redditCredentialSelectedID else { return }
+  /// Whether the subscriptions were saved.
+  @discardableResult
+  func updateSubsInCoreData(with subs: [ListingChild<SubredditData>], account: RedditCredential? = nil) async -> Bool {
+    guard let credentialID = account?.id ?? Defaults[.GeneralDefSettings].redditCredentialSelectedID else { return false }
     let context = PersistenceController.shared.container.newBackgroundContext()
 
-    await context.perform(schedule: .enqueued) {
+    return await context.perform(schedule: .enqueued) {
       let fetchRequest = NSFetchRequest<CachedSub>(entityName: "CachedSub")
       fetchRequest.predicate = NSPredicate(format: "helioCredentialID == %@", credentialID as CVarArg)
       do {
@@ -99,16 +103,18 @@ extension RedditAPI {
         try withAnimation {
           try context.save()
         }
+        return true
       } catch {
         print("Failed to fetch or save CachedSubs: \(error)")
+        return false
       }
     }
   }
 
-  func fetchSubsAndSyncCoreData() async {
-    if let fetchedSubs = await fetchAllSubs() {
-      await updateSubsInCoreData(with: fetchedSubs)
-    }
+  @discardableResult
+  func fetchSubsAndSyncCoreData(account: RedditCredential? = nil) async -> Bool {
+    guard let fetchedSubs = await fetchAllSubs(account: account) else { return false }
+    return await updateSubsInCoreData(with: fetchedSubs, account: account)
   }
 
   //  func fetchSubs(after: String? = nil) async -> [ListingChild<SubredditData>]? {
