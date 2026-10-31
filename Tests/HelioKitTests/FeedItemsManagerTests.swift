@@ -30,7 +30,7 @@ struct FeedItemsManagerTests {
 
   private func makeManager(hideReadPosts: Bool, pages: [String: ([RedditEntityType], String?)]) -> (FeedItemsManager<SubListingSortOption>, () -> [String?]) {
     var requested: [String?] = []
-    let manager = FeedItemsManager<SubListingSortOption>(sorting: nil, hideReadPosts: hideReadPosts) { after, _, _, _ in
+    let manager = FeedItemsManager<SubListingSortOption>(sorting: nil, hideReadPosts: hideReadPosts) { after, _, _, _, _ in
       requested.append(after)
       let page = pages[after ?? "first"] ?? ([], nil)
       return (page.0, page.1)
@@ -133,15 +133,16 @@ struct FeedItemsManagerTests {
     struct Request {
       let after: String?
       let query: String?
+      let limit: Int
       let continuation: CheckedContinuation<Page, Never>
     }
 
     var requests: [Request] = []
     private var waiters: [(count: Int, continuation: CheckedContinuation<Void, Never>)] = []
 
-    func fetch(_ after: String?, _ sorting: SubListingSortOption?, _ query: String?, _ flair: String?) async -> Page {
+    func fetch(_ after: String?, _ sorting: SubListingSortOption?, _ query: String?, _ flair: String?, _ limit: Int) async -> Page {
       await withCheckedContinuation { continuation in
-        requests.append(Request(after: after, query: query, continuation: continuation))
+        requests.append(Request(after: after, query: query, limit: limit, continuation: continuation))
         let ready = waiters.filter { requests.count >= $0.count }
         waiters.removeAll { requests.count >= $0.count }
         ready.forEach { $0.continuation.resume() }
@@ -249,6 +250,34 @@ struct FeedItemsManagerTests {
     }
   }
 
+  @Test func hiddenPagesKeepTheirLimitUntilTheNextRequestChain() async {
+    await withHideOnRead(true) {
+      let fetch = ControlledFetch()
+      let manager = FeedItemsManager<SubListingSortOption>(sorting: nil, hideReadPosts: true, fetchFn: fetch.fetch)
+      manager.chunkSize = 2
+      let task = Task { await manager.reload() }
+      await fetch.waitForRequests(1)
+      manager.chunkSize = 1
+      fetch.complete(0, with: ([post("a", read: true), post("b", read: true)], "p2"))
+      await fetch.waitForRequests(2)
+      #expect(fetch.requests.map(\.limit) == [2, 2])
+      fetch.complete(1, with: ([post("c", read: true), post("d", read: true)], "p3"))
+      await fetch.waitForRequests(3)
+      #expect(fetch.requests.map(\.limit) == [2, 2, 2])
+      fetch.complete(2, with: ([post("visible", read: false), post("also-visible", read: false)], "p4"))
+      await task.value
+      #expect(manager.displayMode == .items)
+
+      let next = Task { await manager.loadMore() }
+      await fetch.waitForRequests(4)
+      #expect(fetch.requests[3].limit == 1)
+      #expect(fetch.requests[3].after == "p4")
+      fetch.complete(3, with: ([post("last", read: false)], nil))
+      await next.value
+      #expect(manager.displayMode == .endOfFeed)
+    }
+  }
+
   @Test func repeatedAppearanceLoadsOnlyOnce() async {
     let fetch = ControlledFetch()
     let manager = FeedItemsManager<SubListingSortOption>(sorting: nil, fetchFn: fetch.fetch)
@@ -265,7 +294,7 @@ struct FeedItemsManagerTests {
 
   @Test func retryRestartsTheFailedFirstPage() async {
     var cursors: [String?] = []
-    let manager = FeedItemsManager<SubListingSortOption>(sorting: nil) { after, _, _, _ in
+    let manager = FeedItemsManager<SubListingSortOption>(sorting: nil) { after, _, _, _, _ in
       cursors.append(after)
       return cursors.count == 1 ? nil : ([self.post("a", read: false)], nil)
     }
@@ -279,7 +308,7 @@ struct FeedItemsManagerTests {
 
   @Test func retryResumesTheFailedPageWithoutLosingExistingItems() async {
     var cursors: [String?] = []
-    let manager = FeedItemsManager<SubListingSortOption>(sorting: nil) { after, _, _, _ in
+    let manager = FeedItemsManager<SubListingSortOption>(sorting: nil) { after, _, _, _, _ in
       cursors.append(after)
       if after == nil {
         return ([self.post("a", read: false), self.post("b", read: false)], "p2")

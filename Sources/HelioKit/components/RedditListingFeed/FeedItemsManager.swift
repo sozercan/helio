@@ -12,7 +12,7 @@ import SwiftUI
 @MainActor
 @Observable
 class FeedItemsManager<S> {
-  typealias ItemsFetchFn = @MainActor (_ lastElementId: String?, _ sorting: S?, _ searchQuery: String?, _ flair: String?) async -> (entities: [RedditEntityType]?, after: String?)?
+  typealias ItemsFetchFn = @MainActor (_ lastElementId: String?, _ sorting: S?, _ searchQuery: String?, _ flair: String?, _ limit: Int) async -> (entities: [RedditEntityType]?, after: String?)?
 
   /// `onlyReadPosts`: paging stopped after several pages in a row held only hidden read posts.
   enum DisplayMode: String { case loading, empty, items, endOfFeed, error, onlyReadPosts }
@@ -130,7 +130,7 @@ class FeedItemsManager<S> {
 
   private func fetchPage(loadingMore: Bool, after lastElementId: String?, hiddenPagesInARow: Int, request: Request, requestID: UUID) async {
     guard currentRequestID == requestID, !Task.isCancelled else { return }
-    let result = await fetchFn(lastElementId, request.sorting, request.searchQuery, request.flair)
+    let result = await fetchFn(lastElementId, request.sorting, request.searchQuery, request.flair, request.chunkSize)
     // Cancellation is cooperative: a network callback may still return data or an error.
     guard currentRequestID == requestID, !Task.isCancelled else { return }
     guard let (fetchedEntities, after) = result, let fetchedEntities else {

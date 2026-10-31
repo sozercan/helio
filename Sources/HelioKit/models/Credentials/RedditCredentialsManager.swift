@@ -58,6 +58,25 @@ class RedditCredentialsManager {
     }
   }
 
+  /// An in-memory credential set, without importing or writing the keychain.
+  init(credentials: [RedditCredential]) {
+    self.credentials = credentials
+  }
+
+  @MainActor
+  func containsAuthorization(_ authorization: RedditCredential.AuthorizationID) -> Bool {
+    credentials.contains { $0.authorizationID == authorization }
+  }
+
+  @MainActor
+  @discardableResult
+  func markSubscriptionsSynced(for credential: RedditCredential, at date: Date = Date()) -> Bool {
+    guard let authorization = credential.authorizationID, containsAuthorization(authorization) else { return false }
+    let syncKey = "\(credential.id.uuidString)|\(credential.userName ?? "")"
+    Defaults[.subsSyncedAt][syncKey] = date
+    return true
+  }
+
   init() {
     let okc = Keychain(service: Self.oldKeychainServiceString)
     let kc = Self.keychain
@@ -124,7 +143,7 @@ class RedditCredentialsManager {
       async let subsSynced = RedditAPI.shared.fetchSubsAndSyncCoreData(account: credential)
       async let multisSynced = RedditAPI.shared.fetchMyMultis(account: credential)
       if await subsSynced, await multisSynced {
-        Defaults[.subsSyncedAt][syncKey] = Date()
+        self.markSubscriptionsSynced(for: credential)
       }
     }
   }
