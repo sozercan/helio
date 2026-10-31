@@ -23,7 +23,15 @@ struct CredentialEditView: View {
 
   func showBtns() -> some View {
     VStack(spacing: creating ? 16 : 14) {
-      BigCredBtn(nav: $navPath, img: { AppMark(size: 52) }, title: !creating ? "Guided replace" : "Guided mode", description: "A guided walkthrough to \(!creating ? "replace this credential by another" : "generate or select a credential").", page: .assistant, recommended: true)
+      BigCredBtn(nav: $navPath, img: { AppMark(size: 52) }, title: draftCredential.isWebSession ? "Sign in again" : "Sign in with Reddit", description: "Sign in on Reddit's website. No API key needed.", page: .webLogin, recommended: true)
+
+      Text("Or use your own API key")
+        .fontSize(15, .semibold)
+        .opacity(0.6)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.top, 8)
+
+      BigCredBtn(nav: $navPath, img: { Image(systemName: "key.fill").fontSize(40, .semibold).foregroundStyle(Color.accentColor) }, title: !creating ? "Guided replace" : "Guided mode", description: "A guided walkthrough to \(!creating ? "replace this credential by another" : "generate or select a credential").", page: .assistant)
       BigCredBtn(nav: $navPath, img: { Image(systemName: "gear").fontSize(44, .semibold).foregroundStyle(Color.accentColor) }, title: !creating ? "Advanced settings" : "Advanced mode", description: "Manually \(creating ? "enter" : "edit") your credentials and get nerd info.", page: .advanced)
     }
     .frame(maxWidth: .infinity)
@@ -41,7 +49,7 @@ struct CredentialEditView: View {
 
             VStack(spacing: 4) {
               Text("Create Credential").fontSize(32, .bold)
-              Text("There are two ways for doing that:")
+              Text("Sign in with your Reddit account, or bring your own API key.")
             }
           }
 
@@ -70,7 +78,7 @@ struct CredentialEditView: View {
     .themedListBG(theme.lists.bg)
     .toolbar {
       ToolbarItem(placement: .topBarLeading) { Button("Cancel", role: .destructive) { dismiss() } }
-      ToolbarItem(placement: .topBarTrailing) { Button("Save") { draftCredential.save()
+      ToolbarItem(placement: .topBarTrailing) { Button("Save") { RedditCredentialsManager.shared.saveDraft(draftCredential, openedAs: credential)
         dismiss()
       }.disabled(!anyChanges) }
     }
