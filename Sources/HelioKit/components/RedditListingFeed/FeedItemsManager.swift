@@ -26,6 +26,8 @@ class FeedItemsManager<S: Equatable> {
   /// The generation of the first page the shown list and its cursor came from. It lags behind
   /// `generation` while a new first page is pending, so a load-more continuing the old list is dropped.
   @ObservationIgnored private var listGeneration = 0
+  /// Whether the last failure was a first page, so `retry()` fetches the first page again.
+  @ObservationIgnored private var firstPageFailed = false
   /// Set once the feed starts loading its first page.
   @ObservationIgnored var initialLoadStarted = false
   var displayMode: DisplayMode = .loading
@@ -89,6 +91,12 @@ class FeedItemsManager<S: Equatable> {
     await fetchPage(loadingMore: loadingMore, after: cursor, hiddenPagesInARow: 0, generation: generation)
   }
 
+  /// Retries what failed: the first page, or the next page of the list shown.
+  func retry() async {
+    let fromFirstPage = await MainActor.run { firstPageFailed }
+    await fetchCaller(loadingMore: !fromFirstPage)
+  }
+
   private func fetchPage(loadingMore: Bool, after lastElementId: String?, hiddenPagesInARow: Int, generation: Int) async {
     let searchQuery = selectedFilter?.type == .custom ? selectedFilter?.text : searchQuery.debounced.isEmpty ? nil : searchQuery.debounced
     let filter = selectedFilter?.type != .custom ? selectedFilter?.text : nil
@@ -96,8 +104,9 @@ class FeedItemsManager<S: Equatable> {
     guard let (fetchedEntities, after) = await fetchFn(lastElementId, sorting, searchQuery, filter), let fetchedEntities else {
       await MainActor.run {
         guard generation == self.generation else { return }
-        // The list still shown, and its cursor, are what paging continues from.
-        listGeneration = generation
+        // A failed first page leaves the old list under its own generation: it may be for another
+        // sort, search or filter, so neither paging nor a retry may continue it.
+        firstPageFailed = !loadingMore
         withAnimation { displayMode = .error }
       }
       return

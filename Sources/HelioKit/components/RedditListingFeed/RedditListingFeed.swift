@@ -246,7 +246,7 @@ struct RedditListingFeed<Header: View, Footer: View, S: Sorting>: View {
                     withAnimation {
                       itemsManager.displayMode = .items
                     }
-                    Task { await itemsManager.fetchCaller(loadingMore: true) }
+                    Task { await itemsManager.retry() }
                   }
                   .buttonStyle(.actionSecondary)
                 }

@@ -282,10 +282,59 @@ struct FeedItemsManagerTests {
       await manager.fetchCaller(loadingMore: false)
       #expect(manager.displayMode == .error)
 
-      // The error row's reload button asks for more from the (empty) list.
+      // The error row's reload button.
       fail = false
-      await manager.fetchCaller(loadingMore: true)
+      await manager.retry()
       #expect(ids(manager.entities) == ["a"])
+    }
+  }
+
+  @Test func retryingAFailedQueryChangeStartsFromTheFirstPage() async {
+    await withHideOnRead(false) {
+      var newSortFails = true
+      var requests: [String] = []
+      let manager = FeedItemsManager<SubListingSortOption>(sorting: .hot) { after, sorting, _, _ in
+        let sort = sorting == .hot ? "hot" : "new"
+        requests.append("\(sort)/\(after ?? "first")")
+        if sorting == .hot {
+          return ([post("hot1", read: false)], "h2")
+        }
+        return newSortFails ? nil : ([post("new1", read: false)], "n2")
+      }
+      await manager.fetchCaller(loadingMore: false)
+
+      // The sort changes and its first page fails; the old sort's rows stay under the error row.
+      manager.sorting = .new
+      await manager.fetchCaller(loadingMore: false)
+      #expect(manager.displayMode == .error)
+
+      newSortFails = false
+      await manager.retry()
+      #expect(requests == ["hot/first", "new/first", "new/first"])
+      #expect(ids(manager.entities) == ["new1"])
+      #expect(manager.lastElementId == "n2")
+    }
+  }
+
+  @Test func retryingAFailedLoadMoreContinuesTheList() async {
+    await withHideOnRead(false) {
+      var nextPageFails = true
+      var requests: [String?] = []
+      let manager = FeedItemsManager<SubListingSortOption>(sorting: nil) { after, _, _, _ in
+        requests.append(after)
+        if after == "p2" {
+          return nextPageFails ? nil : ([post("b", read: false)], nil)
+        }
+        return ([post("a", read: false)], "p2")
+      }
+      await manager.fetchCaller(loadingMore: false)
+      await manager.fetchCaller(loadingMore: true)
+      #expect(manager.displayMode == .error)
+
+      nextPageFails = false
+      await manager.retry()
+      #expect(requests == [nil, "p2", "p2"])
+      #expect(ids(manager.entities) == ["a", "b"])
     }
   }
 
