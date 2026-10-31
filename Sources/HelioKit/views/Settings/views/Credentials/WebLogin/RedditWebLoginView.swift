@@ -22,6 +22,8 @@ struct RedditWebLoginView: View {
   var body: some View {
     RedditWebLoginWebView { cookies, userAgent in
       Task { await finish(cookies: cookies, userAgent: userAgent) }
+    } onLoadFailed: {
+      phase = .failed
     }
     .id(attempt)
     .overlay {
@@ -32,7 +34,7 @@ struct RedditWebLoginView: View {
             Text("Signing in…").fontSize(17, .semibold)
           } else {
             Image(systemName: "exclamationmark.triangle.fill").fontSize(40).foregroundStyle(.orange)
-            Text("Reddit didn't let Helio sign in").fontSize(17, .semibold)
+            Text("Couldn't sign in to Reddit").fontSize(17, .semibold)
             Button("Try again", systemImage: "arrow.clockwise") {
               attempt += 1
               phase = .browsing
@@ -48,8 +50,10 @@ struct RedditWebLoginView: View {
     }
     .navigationTitle("Sign in to Reddit")
     .navigationBarTitleDisplayMode(.inline)
+    // Signing in saves the credential and closes the sheet, so leaving midway isn't offered.
+    .navigationBarBackButtonHidden(phase == .finishing)
     .toolbar {
-      if showsCancel {
+      if showsCancel, phase != .finishing {
         ToolbarItem(placement: .topBarLeading) { Button("Cancel") { Nav.present(nil) } }
       }
     }
@@ -78,9 +82,10 @@ struct RedditWebLoginView: View {
 /// starts signed out. It reports the session once Reddit says someone is signed in.
 private struct RedditWebLoginWebView: UIViewRepresentable {
   var onSignedIn: @MainActor (_ cookies: String, _ userAgent: String) -> Void
+  var onLoadFailed: @MainActor () -> Void
 
   func makeCoordinator() -> Coordinator {
-    Coordinator(onSignedIn: onSignedIn)
+    Coordinator(onSignedIn: onSignedIn, onLoadFailed: onLoadFailed)
   }
 
   func makeUIView(context: Context) -> WKWebView {
@@ -89,6 +94,7 @@ private struct RedditWebLoginWebView: UIViewRepresentable {
     let webView = WKWebView(frame: .zero, configuration: configuration)
     webView.navigationDelegate = context.coordinator
     webView.uiDelegate = context.coordinator
+    webView.allowsBackForwardNavigationGestures = true
     webView.load(URLRequest(url: RedditWebSession.loginURL))
     context.coordinator.startPolling(webView)
     return webView
@@ -104,6 +110,9 @@ private struct RedditWebLoginWebView: UIViewRepresentable {
   @MainActor
   final class Coordinator: NSObject, WKNavigationDelegate, WKUIDelegate {
     private let onSignedIn: @MainActor (String, String) -> Void
+    private let onLoadFailed: @MainActor () -> Void
+    /// A sign-in popup, such as "Continue with Apple", shown over the page that opened it.
+    private var popup: WKWebView?
     private var poll: Task<Void, Never>?
     private var pageLoaded = false
     private var checking = false
@@ -119,8 +128,9 @@ private struct RedditWebLoginWebView: UIViewRepresentable {
     } catch (e) { return ''; }
     """
 
-    init(onSignedIn: @escaping @MainActor (String, String) -> Void) {
+    init(onSignedIn: @escaping @MainActor (String, String) -> Void, onLoadFailed: @escaping @MainActor () -> Void) {
       self.onSignedIn = onSignedIn
+      self.onLoadFailed = onLoadFailed
     }
 
     /// Reddit's sign-in form submits without navigating, so page loads alone can miss it.
@@ -137,19 +147,50 @@ private struct RedditWebLoginWebView: UIViewRepresentable {
     func stop() {
       done = true
       poll?.cancel()
+      closePopup()
     }
 
     func webView(_ webView: WKWebView, didFinish _: WKNavigation!) {
+      guard webView !== popup else { return }
       pageLoaded = true
       Task { await checkSignedIn(webView) }
     }
 
-    /// Opens sign-in popups (such as "Continue with Apple") in the same browser.
-    func webView(_ webView: WKWebView, createWebViewWith _: WKWebViewConfiguration, for navigationAction: WKNavigationAction, windowFeatures _: WKWindowFeatures) -> WKWebView? {
-      if navigationAction.targetFrame == nil {
+    func webView(_ webView: WKWebView, didFailProvisionalNavigation _: WKNavigation!, withError error: Error) {
+      // Only the sign-in page failing to load at all leaves nothing to tap.
+      guard webView !== popup, !pageLoaded, (error as? URLError)?.code != .cancelled else { return }
+      onLoadFailed()
+    }
+
+    /// Hosts whose sign-in popups report back to the page that opened them.
+    private static let signInPopupHosts = ["appleid.apple.com", "accounts.google.com"]
+
+    /// Sign-in popups keep their opener and cover it until they close. Other new-window links,
+    /// such as the privacy policy, open in place, where swiping back returns to the sign-in.
+    func webView(_ webView: WKWebView, createWebViewWith configuration: WKWebViewConfiguration, for navigationAction: WKNavigationAction, windowFeatures _: WKWindowFeatures) -> WKWebView? {
+      guard let host = navigationAction.request.url?.host?.lowercased(), Self.signInPopupHosts.contains(host), popup == nil else {
         webView.load(navigationAction.request)
+        return nil
       }
-      return nil
+      let popup = WKWebView(frame: webView.bounds, configuration: configuration)
+      popup.autoresizingMask = [.flexibleWidth, .flexibleHeight]
+      popup.navigationDelegate = self
+      popup.uiDelegate = self
+      webView.addSubview(popup)
+      self.popup = popup
+      return popup
+    }
+
+    func webViewDidClose(_ webView: WKWebView) {
+      if webView === popup {
+        closePopup()
+      }
+    }
+
+    private func closePopup() {
+      popup?.stopLoading()
+      popup?.removeFromSuperview()
+      popup = nil
     }
 
     private func checkSignedIn(_ webView: WKWebView) async {

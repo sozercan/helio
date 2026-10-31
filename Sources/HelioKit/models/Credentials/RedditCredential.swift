@@ -180,24 +180,35 @@ struct RedditCredential: Identifiable, Equatable, Hashable, Codable {
 
     func mintWebSessionToken(cookies: String) async -> AccessToken? {
       switch await RedditWebSession.mintToken(cookies: cookies, userAgent: userAgent) {
-      case let .token(newAccessToken):
+      case let .token(newAccessToken, renewedCookies):
         if saveToken {
-          var newSelf = self
-          newSelf.accessToken = newAccessToken
-          RedditCredentialsManager.shared.saveCred(newSelf, forceCreate: false)
+          await updateSession(renewedFrom: cookies) { current in
+            current.accessToken = newAccessToken
+            current.webSessionCookies = renewedCookies
+          }
         }
         return newAccessToken
       case .signedOut:
         // Keeps the account name, so the credential shows whom to sign in as again.
-        var selfCopy = self
-        selfCopy.webSessionCookies = nil
-        selfCopy.accessToken = nil
         if saveToken {
-          selfCopy.save(false)
+          await updateSession(renewedFrom: cookies) { current in
+            current.webSessionCookies = nil
+            current.accessToken = nil
+          }
         }
         return nil
       case .failed:
         return nil
+      }
+    }
+
+    // Changes the saved credential, not this copy, and only while it still has the session the
+    // token came from: a sign-in that finished meanwhile wins.
+    func updateSession(renewedFrom cookies: String, _ change: @escaping (inout RedditCredential) -> Void) async {
+      await MainActor.run {
+        guard var current = RedditCredentialsManager.getById(id), current.webSessionCookies == cookies else { return }
+        change(&current)
+        RedditCredentialsManager.shared.saveCred(current, forceCreate: false)
       }
     }
 

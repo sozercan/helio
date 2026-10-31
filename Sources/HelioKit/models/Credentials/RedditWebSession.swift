@@ -24,7 +24,8 @@ enum RedditWebSession {
   private static let logger = Logger(subsystem: "com.sertacozercan.helio", category: "WebSession")
 
   enum MintResult: Equatable {
-    case token(RedditCredential.AccessToken)
+    /// `cookies`: the session's cookies with any Reddit renewed in the response.
+    case token(RedditCredential.AccessToken, cookies: String)
     /// Reddit no longer recognizes the session: the user has to sign in again.
     case signedOut
     /// Anything else, such as a dropped connection. The session may still be good.
@@ -37,10 +38,11 @@ enum RedditWebSession {
   }
 
   static func mintToken(cookies: String, userAgent: String) async -> MintResult {
+    var setCookies: [HTTPCookie] = []
     let result = await RedditAPI.shared._doRequest(authenticated: false) { _ in
       var headers: HTTPHeaders = ["User-Agent": userAgent, "Cookie": cookies]
       headers.add(.authorization(username: clientID, password: ""))
-      return await AF.request(
+      let response = await AF.request(
         tokenURL,
         method: .post,
         parameters: ["scopes": ["*"]],
@@ -53,17 +55,28 @@ enum RedditWebSession {
         },
       )
       .validate()
-      .serializingDecodable(TokenResponse.self).response.result
+      .serializingDecodable(TokenResponse.self).response
+      if let fields = response.response?.headers.dictionary, let url = response.request?.url {
+        setCookies = HTTPCookie.cookies(withResponseHeaderFields: fields, for: url)
+      }
+      return response.result
     }
 
     switch result {
     case let .success(data):
-      // A signed-out session still gets a token, for an anonymous visitor.
-      guard !isSignedOutToken(data.access_token) else {
+      switch tokenSubject(data.access_token) {
+      case .signedOut:
+        // A signed-out session still gets a token, for an anonymous visitor.
         logger.notice("Token service returned a signed-out token; the web session ended")
         return .signedOut
+      case .unknown:
+        // Keeps the session: a token Helio can't read says nothing about it.
+        logger.error("Token service returned a token Helio can't read")
+        return .failed
+      case .account:
+        return .token(.init(token: data.access_token, expiration: data.expires_in, lastRefresh: Date()),
+                      cookies: merging(cookies, with: setCookies))
       }
-      return .token(.init(token: data.access_token, expiration: data.expires_in, lastRefresh: Date()))
     case let .failure(error):
       if error.responseCode == 401 {
         logger.notice("Token service refused the web session (401)")
@@ -74,19 +87,39 @@ enum RedditWebSession {
     }
   }
 
-  /// Whether a bearer belongs to a signed-out visitor: its JWT subject is a logged-out id
+  enum TokenSubject { case account, signedOut, unknown }
+
+  /// Whom a bearer acts for, from its JWT subject: a signed-out visitor's is a logged-out id
   /// (`loid`) instead of an account.
-  static func isSignedOutToken(_ token: String) -> Bool {
+  static func tokenSubject(_ token: String) -> TokenSubject {
     let parts = token.split(separator: ".")
-    guard parts.count >= 2 else { return true }
+    guard parts.count >= 2 else { return .unknown }
     var payload = parts[1].replacingOccurrences(of: "-", with: "+").replacingOccurrences(of: "_", with: "/")
     payload += String(repeating: "=", count: (4 - payload.count % 4) % 4)
     guard
       let data = Data(base64Encoded: payload),
       let claims = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
       let subject = claims["sub"] as? String
-    else { return true }
-    return subject.hasPrefix("loid")
+    else { return .unknown }
+    return subject.hasPrefix("loid") ? .signedOut : .account
+  }
+
+  /// `header` with the cookies a response set: new values replace old ones, and cookies the
+  /// response expired are dropped.
+  static func merging(_ header: String, with setCookies: [HTTPCookie]) -> String {
+    var pairs: [(name: String, value: String)] = header.split(separator: ";").compactMap { pair in
+      let parts = pair.trimmingCharacters(in: .whitespaces).split(separator: "=", maxSplits: 1)
+      guard parts.count == 2 else { return nil }
+      return (String(parts[0]), String(parts[1]))
+    }
+    for cookie in setCookies {
+      pairs.removeAll { $0.name == cookie.name }
+      let expired = cookie.expiresDate.map { $0 <= Date() } ?? false
+      if !expired, !cookie.value.isEmpty {
+        pairs.append((cookie.name, cookie.value))
+      }
+    }
+    return pairs.map { "\($0.name)=\($0.value)" }.joined(separator: "; ")
   }
 
   /// The reddit.com cookies as a `Cookie` header, or `nil` when the session cookie isn't among them.
@@ -111,8 +144,9 @@ enum RedditWebSession {
     signedIn.webSessionCookies = cookies
     signedIn.userAgent = userAgent
 
-    guard let token = await signedIn.getUpToDateToken(forceRenew: true, saveToken: false) else { return nil }
+    guard case let .token(token, renewedCookies) = await mintToken(cookies: cookies, userAgent: userAgent) else { return nil }
     signedIn.accessToken = token
+    signedIn.webSessionCookies = renewedCookies
     guard let me = await RedditAPI.shared.fetchMe(force: true, altCredential: signedIn, saveToken: false) else { return nil }
     signedIn.setProfile(from: me)
     return signedIn

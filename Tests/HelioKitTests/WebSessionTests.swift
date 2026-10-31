@@ -14,10 +14,23 @@ struct WebSessionTests {
     try #require(HTTPCookie(properties: [.name: name, .value: value, .domain: domain, .path: "/"]))
   }
 
-  @Test func signedOutTokensAreRecognized() throws {
-    #expect(try RedditWebSession.isSignedOutToken(jwt(["sub": "loid", "exp": 1])))
-    #expect(try !RedditWebSession.isSignedOutToken(jwt(["sub": "t2_placeholder", "exp": 1])))
-    #expect(RedditWebSession.isSignedOutToken("not-a-jwt"))
+  @Test func tokenSubjectTellsSignedOutFromUnreadable() throws {
+    #expect(try RedditWebSession.tokenSubject(jwt(["sub": "loid", "exp": 1])) == .signedOut)
+    #expect(try RedditWebSession.tokenSubject(jwt(["sub": "t2_placeholder", "exp": 1])) == .account)
+    // A token Helio can't read mustn't sign the user out.
+    #expect(try RedditWebSession.tokenSubject(jwt(["exp": 1])) == .unknown)
+    #expect(RedditWebSession.tokenSubject("not-a-jwt") == .unknown)
+  }
+
+  @Test func renewedCookiesReplaceAndExpireStoredOnes() throws {
+    let renewed = try cookie("reddit_session", "renewed-session")
+    let expired = try #require(HTTPCookie(properties: [
+      .name: "token_v2", .value: "gone", .domain: ".reddit.com", .path: "/", .expires: Date(timeIntervalSince1970: 0),
+    ]))
+    let added = try cookie("edgebucket", "placeholder-bucket")
+    let merged = RedditWebSession.merging("reddit_session=old; token_v2=stale; loid=placeholder", with: [renewed, expired, added])
+    #expect(merged == "loid=placeholder; reddit_session=renewed-session; edgebucket=placeholder-bucket")
+    #expect(RedditWebSession.merging("reddit_session=a=b", with: []) == "reddit_session=a=b")
   }
 
   @Test func cookieHeaderKeepsOnlyRedditCookies() throws {
