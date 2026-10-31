@@ -61,6 +61,22 @@ Privacy is the app's main promise, so these hold unless the human explicitly cha
 - Without Reddit credentials, only Settings is reachable in the simulator; the other tabs show "No credential". Say so when a UI change couldn't be checked for that reason rather than implying it was.
 - An unprovisioned Mac Catalyst build (ad-hoc or "Sign to Run Locally") gets `errSecMissingEntitlement` for every keychain call, so it forgets the Reddit login on each launch. To keep the login, build with automatic signing, `-allowProvisioningUpdates`, a development team, and an entitlements file outside the repo that contains only `keychain-access-groups` = `$(AppIdentifierPrefix)com.sertacozercan.helio`. Don't commit signing changes to the project.
 
+## Review
+
+For non-trivial code changes, run the vendored autoreview skill (`.agents/skills/autoreview/SKILL.md`) before you commit, push or report the work as done. Run it without being asked, and repeat it until it has no accepted findings. Skip it for docs-only or trivial changes, when an equivalent review already ran on the same diff, or when the human opts out.
+
+```bash
+AUTOREVIEW=.agents/skills/autoreview/scripts/autoreview
+python3 "$AUTOREVIEW" --mode local                         # uncommitted work
+python3 "$AUTOREVIEW" --mode branch --base <PR base ref>   # committed branch
+```
+
+- Read the skill and its `references/diagnostics-and-results.md` before the first run; they cover targets, engines and how to read the result.
+- PRs here are often stacked, so pass the PR's actual base branch, not `main`, or the review covers the lower PRs' commits too.
+- Findings are advice. Check each against the real code path before changing anything, and say which ones you rejected and why.
+- Format before reviewing, since formatting moves line numbers. If review fixes change code, rerun the focused tests and the review.
+- The copy here is vendored from `sozercan/skills` (`skills/autoreview`). Change shared behavior there and re-copy `SKILL.md`, `references/` and `scripts/`; keep Helio-specific review rules in this file.
+
 ## Git and releases
 
 - The repository is `sozercan/helio`, a standalone repo with no upstream. Open PRs against its `main`.
