@@ -23,6 +23,14 @@ class RedditAPI {
   /// forwards the query to `helioapp://auth-success`, where `authorize` picks it up.
   static let appRedirectURI: String = "https://sozercan.github.io/helio/auth-success"
 
+  private let currentAccount: @Sendable () async -> RedditCredential?
+
+  init(currentAccount: @escaping @Sendable () async -> RedditCredential? = {
+    await MainActor.run { RedditCredentialsManager.shared.selectedCredential }
+  }) {
+    self.currentAccount = currentAccount
+  }
+
   /// Compatibility read-through; the API layer no longer owns or publishes account state.
   @MainActor var me: User? {
     RedditCredentialsManager.profile.user
@@ -40,8 +48,12 @@ class RedditAPI {
       "User-Agent": RedditCredential.defaultUserAgent(),
     ]
     if includeAuth {
+      var credential = altCredential
+      if credential == nil {
+        credential = await currentAccount()
+      }
       if
-        let selectedCredential = altCredential ?? RedditCredentialsManager.shared.selectedCredential,
+        let selectedCredential = credential,
         let accessToken = await selectedCredential.getUpToDateToken(forceRenew: force, saveToken: saveToken, rejectedToken: rejectedToken)
       {
         headers["Authorization"] = "Bearer \(accessToken.token)"
@@ -136,20 +148,29 @@ class RedditAPI {
     renewedToken: Bool = false,
     req: (HTTPHeaders) async -> Result<D, AFError>,
   ) async -> Result<D, AFError> {
-    guard let headers = await fetchRequestHeaders(force: forceAuth, includeAuth: authenticated, altCredential: altCredential, saveToken: saveToken, rejectedToken: rejectedToken) else { return .failure(.serverTrustEvaluationFailed(reason: .noPublicKeysFound)) }
+    guard !Task.isCancelled else { return .failure(.explicitlyCancelled) }
+    // Resolve selection exactly once. Retries and token renewal must remain on this account,
+    // and an absent account must not become a deferred "use whoever is selected later".
+    var credential = altCredential
+    if authenticated, credential == nil {
+      credential = await currentAccount()
+    }
+    guard !Task.isCancelled else { return .failure(.explicitlyCancelled) }
+    guard !authenticated || credential != nil, let headers = await fetchRequestHeaders(force: forceAuth, includeAuth: authenticated, altCredential: credential, saveToken: saveToken, rejectedToken: rejectedToken) else { return .failure(.serverTrustEvaluationFailed(reason: .noPublicKeysFound)) }
+    guard !Task.isCancelled else { return .failure(.explicitlyCancelled) }
 
     let result = await req(headers)
-    guard case let .failure(error) = result else { return result }
+    guard case let .failure(error) = result, !Task.isCancelled else { return result }
     // A 401 means the token expired or was revoked early: renew it once.
     if authenticated, !renewedToken, error.responseCode == 401 {
       let rejected = headers["Authorization"].map { String($0.dropFirst("Bearer ".count)) }
-      return await self._doRequest(attempt: attempt, forceAuth: true, authenticated: authenticated, altCredential: altCredential, saveToken: saveToken,
+      return await self._doRequest(attempt: attempt, forceAuth: true, authenticated: authenticated, altCredential: credential, saveToken: saveToken,
                                    rejectedToken: rejected, renewedToken: true, req: req)
     }
     if attempt < Self.maxRetries, Self.isTransient(error) {
       try? await Task.sleep(for: .milliseconds(300 * (attempt + 1)))
       // Keeps the rejected token: a credential snapshot (`altCredential`) still holds it.
-      return await self._doRequest(attempt: attempt + 1, authenticated: authenticated, altCredential: altCredential, saveToken: saveToken,
+      return await self._doRequest(attempt: attempt + 1, authenticated: authenticated, altCredential: credential, saveToken: saveToken,
                                    rejectedToken: rejectedToken, renewedToken: renewedToken, req: req)
     }
     return result

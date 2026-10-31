@@ -14,7 +14,7 @@ import KeychainAccess
 import os
 import SwiftUI
 
-struct RedditCredential: Identifiable, Equatable, Hashable, Codable {
+struct RedditCredential: Identifiable, Equatable, Hashable, Codable, Sendable {
   static func defaultUserAgent(userName: String? = nil) -> String {
     "ios:com.sertacozercan.helio:v1.6.0 (by /u/\(userName ?? "UnknownUser"))"
   }
@@ -23,7 +23,7 @@ struct RedditCredential: Identifiable, Equatable, Hashable, Codable {
   /// Cache/request identity must not retain the raw client secret or refresh token.
   struct AuthorizationID: Hashable, Sendable {
     let credentialID: UUID
-    private let digest: Data
+    let grantID: Data
 
     fileprivate init(_ credential: RedditCredential, refreshToken: String) {
       credentialID = credential.id
@@ -32,7 +32,7 @@ struct RedditCredential: Identifiable, Equatable, Hashable, Codable {
         bytes.append(contentsOf: "\(value.utf8.count):".utf8)
         bytes.append(contentsOf: value.utf8)
       }
-      digest = Data(SHA256.hash(data: bytes))
+      grantID = Data(SHA256.hash(data: bytes))
     }
   }
 
@@ -164,13 +164,23 @@ struct RedditCredential: Identifiable, Equatable, Hashable, Codable {
   /// `rejectedToken`: a token the request was refused with (401), which is never reused. A forced
   /// renewal reuses a fresh token only when it knows the rejected one, so the fresh one is newer.
   func getUpToDateToken(forceRenew: Bool = false, saveToken: Bool = true, rejectedToken: String? = nil) async -> AccessToken? {
-    guard let refreshToken = self.refreshToken, !apiAppID.isEmpty else { return nil }
+    guard let refreshToken = self.refreshToken, !apiAppID.isEmpty, let authorization = authorizationID else { return nil }
     if let accessToken = self.accessToken, accessToken.isFresh, accessToken.token != rejectedToken, !forceRenew || rejectedToken != nil {
       return accessToken
     }
-    return await AccessTokenRefresher.shared.token(refreshToken: refreshToken, forceRenew: forceRenew, rejected: rejectedToken) { await fetchNewToken() }
+    let outcome = await AccessTokenRefresher.shared.refresh(for: authorization, forceRenew: forceRenew, rejected: rejectedToken) { await fetchNewToken() }
+    // Each waiter owns its persistence policy and record, even when sharing a refresh with a
+    // draft or another saved record for the same OAuth grant.
+    if saveToken {
+      switch outcome {
+      case let .token(token): await RedditCredentialsManager.shared.updateAccessToken(token, for: authorization)
+      case .rejected: await RedditCredentialsManager.shared.updateAccessToken(nil, for: authorization)
+      case .failed: break
+      }
+    }
+    return outcome.accessToken
 
-    func fetchNewToken(count: Int = 0) async -> AccessToken? {
+    func fetchNewToken() async -> AccessTokenRefresher.Outcome {
       let payload = RedditAPI.RefreshAccessTokenPayload(refresh_token: refreshToken)
       let result = await RedditAPI.shared._doRequest(authenticated: false) { headers in
         await AF.request(
@@ -188,22 +198,16 @@ struct RedditCredential: Identifiable, Equatable, Hashable, Codable {
       switch result {
       case let .success(data):
         let newAccessToken = RedditCredential.AccessToken(token: data.access_token, expiration: data.expires_in, lastRefresh: Date())
-        if saveToken, let authorization = authorizationID {
-          await RedditCredentialsManager.shared.updateAccessToken(newAccessToken, for: authorization)
-        }
-        return newAccessToken
+        return .token(newAccessToken)
       case let .failure(error):
         Logger(subsystem: "com.sertacozercan.helio", category: "Authentication")
           .error("Access-token refresh failed (status \(error.responseCode ?? 0))")
-        if saveToken, error.responseCode == 401, let authorization = authorizationID {
-          await RedditCredentialsManager.shared.updateAccessToken(nil, for: authorization)
-        }
-        return nil
+        return error.responseCode == 401 ? .rejected : .failed
       }
     }
   }
 
-  struct AccessToken: Equatable, Hashable, Codable {
+  struct AccessToken: Equatable, Hashable, Codable, Sendable {
     let token: String
     let expiration: Int
     let lastRefresh: Date

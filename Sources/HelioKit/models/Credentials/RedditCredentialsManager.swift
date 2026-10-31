@@ -34,7 +34,8 @@ class RedditCredentialsManager {
 
   var selectedCredential: RedditCredential? {
     if !credentials.isEmpty {
-      return credentials.first { $0.id == Defaults[.GeneralDefSettings].redditCredentialSelectedID } ?? credentials[0]
+      let selectedID = Defaults[.GeneralDefSettings].redditCredentialSelectedID
+      return credentials.first { $0.id == selectedID } ?? credentials[0]
     }
     return nil
   }
@@ -157,7 +158,7 @@ class RedditCredentialsManager {
   func updateAccessToken(_ token: RedditCredential.AccessToken?, for authorization: RedditCredential.AuthorizationID) {
     guard let index = credentials.firstIndex(where: { $0.id == authorization.credentialID }) else { return }
     var current = credentials[index]
-    guard current.updateAccessToken(token, for: authorization) else { return }
+    guard current.updateAccessToken(token, for: authorization), current != credentials[index] else { return }
     credentials[index] = current
     syncCredentialsWithKeychain()
     if token == nil, selectedCredential?.id == authorization.credentialID {
