@@ -52,6 +52,7 @@ class Nav: Identifiable, Equatable {
 
   enum PresentingSheet: Codable, Hashable, Identifiable, Equatable {
     case onboarding
+    case redditSignIn
     case editingCredential(RedditCredential)
     case editingTheme(HelioTheme)
     case selectText(String)
@@ -61,6 +62,7 @@ class Nav: Identifiable, Equatable {
       switch self {
       case let .editingCredential(cred): newID = cred.id.uuidString
       case .onboarding: newID = "onboarding"
+      case .redditSignIn: newID = "reddit-sign-in"
       case let .editingTheme(theme): newID = theme.id
       case let .selectText(text): newID = "select-text-\(text.hashValue)"
       }

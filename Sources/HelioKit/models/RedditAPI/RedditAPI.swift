@@ -194,10 +194,7 @@ class RedditAPI {
         credential.refreshToken = data.refresh_token
         credential.accessToken = newAcessToken
         if let meData = await self.fetchMe(force: true, altCredential: credential, saveToken: false) {
-          credential.userName = meData.name
-          if let avatar = (meData.subreddit?.icon_img ?? meData.icon_img ?? meData.snoovatar_img), let rootAvatar = rootURL(avatar)?.absoluteString {
-            credential.profilePicture = rootAvatar
-          }
+          credential.setProfile(from: meData)
           return true
         }
         return true

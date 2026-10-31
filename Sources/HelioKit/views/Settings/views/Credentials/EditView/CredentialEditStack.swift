@@ -25,7 +25,7 @@ struct CredentialEditStack: View {
     draftCredential.validationStatus != .invalid
   }
 
-  enum Mode: Int, Hashable { case assistant, advanced }
+  enum Mode: Int, Hashable { case assistant, advanced, webLogin }
 
   var body: some View {
     NavigationStack(path: $navPath) {
@@ -34,6 +34,7 @@ struct CredentialEditStack: View {
           switch mode {
           case .assistant: CredentialEditAssistantMode(player: player, draftCredential: $draftCredential, nav: $navPath)
           case .advanced: CredentialEditAdvancedMode(credential: credential, draftCredential: $draftCredential)
+          case .webLogin: RedditWebLoginView(credential: draftCredential)
           }
         }
     }
