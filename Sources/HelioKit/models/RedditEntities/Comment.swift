@@ -208,7 +208,7 @@ extension Comment {
 
         let loadedComments: [Comment] = nestComments(children, parentID: parentID)
 
-        Task(priority: .background) { [loadedComments] in
+        Task(priority: .utility) { [loadedComments] in
           await RedditAPI.shared.updateCommentsWithAvatar(comments: loadedComments, avatarSize: avatarSize)
           await post?.saveMoreComments(comments: loadedComments)
         }

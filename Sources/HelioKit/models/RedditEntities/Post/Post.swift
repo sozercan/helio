@@ -81,7 +81,7 @@ extension Post {
           extractedMedia = .video(sharedVideo)
           extractedMediaForcedNormal = .video(sharedVideo)
         } else {
-          Task(priority: .background) {
+          Task(priority: .utility) {
             if let video = await self.loadStreamableMedia(streamable: streamable) {
               Caches.streamable.addKeyValue(key: streamable.shortCode, data: { StreamableCached(url: video.url, size: video.size) }, expires: Date().dateByAdding(1, .day).date)
 
@@ -122,7 +122,7 @@ extension Post {
       }
 
       if fetchAvatar {
-        Task(priority: .background) {
+        Task(priority: .utility) {
           await RedditAPI.shared.updatePostsWithAvatar(posts: [self], avatarSize: theme.postLinks.theme.badge.avatar.size)
         }
       }
@@ -187,7 +187,7 @@ extension Post {
         return newPost
       }
 
-      Task(priority: .background) {
+      Task(priority: .utility) {
         let repostsAvatars = posts.compactMap { post in
           if case let .repost(repost) = post.helioData?.extractedMedia {
             return repost
@@ -195,8 +195,8 @@ extension Post {
           return nil
         }
 
-        Task(priority: .background) { await RedditAPI.shared.updatePostsWithAvatar(posts: repostsAvatars, avatarSize: InMemoryTheme.shared.currentTheme.postLinks.theme.badge.avatar.size) }
-        Task(priority: .background) { await RedditAPI.shared.updatePostsWithAvatar(posts: posts, avatarSize: InMemoryTheme.shared.currentTheme.postLinks.theme.badge.avatar.size) }
+        Task(priority: .utility) { await RedditAPI.shared.updatePostsWithAvatar(posts: repostsAvatars, avatarSize: InMemoryTheme.shared.currentTheme.postLinks.theme.badge.avatar.size) }
+        Task(priority: .utility) { await RedditAPI.shared.updatePostsWithAvatar(posts: posts, avatarSize: InMemoryTheme.shared.currentTheme.postLinks.theme.badge.avatar.size) }
       }
 
       return posts

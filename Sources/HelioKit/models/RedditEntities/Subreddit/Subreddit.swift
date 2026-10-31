@@ -276,7 +276,7 @@ extension Subreddit {
         }
       }
 
-      Task(priority: .background) { [comments] in
+      Task(priority: .utility) { [comments] in
         _ = await RedditAPI.shared.updateCommentsWithAvatar(comments: comments, avatarSize: selectedTheme.comments.theme.badge.avatar.size)
       }
 

@@ -100,7 +100,7 @@ struct Tabber: View {
       checkForOnboardingStatus()
       if RedditCredentialsManager.shared.selectedCredential != nil {
         RedditCredentialsManager.shared.updateMe()
-        Task(priority: .background) { await updatePostsInBox(RedditAPI.shared) }
+        Task(priority: .utility) { await updatePostsInBox(RedditAPI.shared) }
       }
     }
     .accentColor(currentTheme.general.accentColor())

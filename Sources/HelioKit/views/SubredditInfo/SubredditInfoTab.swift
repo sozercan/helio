@@ -20,7 +20,7 @@ struct SubredditInfoTab: View {
       .fixedSize(horizontal: false, vertical: true)
       .onAppear {
         if loading {
-          Task(priority: .background) {
+          Task(priority: .userInitiated) {
             await subreddit.refreshSubreddit()
             loading = false
           }

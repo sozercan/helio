@@ -12,7 +12,7 @@ import SwiftUI
 
 struct PostView: View, Equatable {
   static func == (lhs: PostView, rhs: PostView) -> Bool {
-    lhs.post == rhs.post && lhs.subreddit.id == rhs.subreddit.id && lhs.hideElements == rhs.hideElements && lhs.ignoreSpecificComment == rhs.ignoreSpecificComment && lhs.sort == rhs.sort && lhs.update == rhs.update && lhs.comments.count == rhs.comments.count
+    lhs.post == rhs.post && lhs.subreddit.id == rhs.subreddit.id && lhs.hideElements == rhs.hideElements && lhs.ignoreSpecificComment == rhs.ignoreSpecificComment && lhs.sort == rhs.sort && lhs.comments.count == rhs.comments.count
   }
 
   var post: Post
@@ -30,7 +30,7 @@ struct PostView: View, Equatable {
   @State private var ignoreSpecificComment = false
   @State private var hideElements = true
   @State private var sort: CommentSortOption
-  @State private var update = false
+  @State private var commentsPrefetch = CommentsPrefetch()
 
   @SilentState private var topVisibleCommentId: String? = nil
   @SilentState private var previousScrollTarget: String? = nil
@@ -43,18 +43,22 @@ struct PostView: View, Equatable {
     self.isPreview = isPreview
     self.highlightID = highlightID
 
-    let defSettings = Defaults[.PostPageDefSettings]
-    let commentsDefSettings = Defaults[.CommentsSectionDefSettings]
+    let defSettings = CachedDefaults[.PostPageDefSettings]
+    let commentsDefSettings = CachedDefaults[.CommentsSectionDefSettings]
 
     _sort = State(initialValue: defSettings.perPostSort ? (defSettings.postSorts[post.id] ?? commentsDefSettings.preferredSort) : commentsDefSettings.preferredSort)
   }
 
-  func asyncFetch(_ full: Bool = true) async {
-    if full {
-      update.toggle()
-    }
-    if let result = await post.refreshPost(commentID: ignoreSpecificComment ? nil : highlightID, sort: sort, after: nil, subreddit: subreddit.data?.display_name ?? subreddit.id, full: full), let newComments = result.0 {
-      Task(priority: .background) {
+  /// Reloads the post and its comments (pull to refresh, another sort).
+  func asyncFetch() async {
+    if let result = await post.refreshPost(commentID: ignoreSpecificComment ? nil : highlightID, sort: sort, after: nil, subreddit: subreddit.data?.display_name ?? subreddit.id, full: true), let newComments = result.0 {
+      newComments.forEach { $0.parentHelio = comments }
+      await MainActor.run {
+        withAnimation {
+          comments = newComments
+        }
+      }
+      Task(priority: .utility) {
         await RedditAPI.shared.updateCommentsWithAvatar(comments: newComments, avatarSize: selectedTheme.comments.theme.badge.avatar.size)
       }
 
@@ -67,7 +71,7 @@ struct PostView: View, Equatable {
   }
 
   func updatePost() {
-    Task(priority: .background) { await asyncFetch(true) }
+    Task(priority: .userInitiated) { await asyncFetch() }
   }
 
   var body: some View {
@@ -98,7 +102,7 @@ struct PostView: View, Equatable {
             .listRowBackground(Color.clear)
 
             if !hideElements {
-              PostReplies(update: update, post: post, subreddit: subreddit, ignoreSpecificComment: ignoreSpecificComment, highlightID: highlightID, sort: sort, proxy: proxy, geometryReader: geometryReader, topVisibleCommentId: $topVisibleCommentId, previousScrollTarget: $previousScrollTarget, comments: $comments)
+              PostReplies(prefetch: commentsPrefetch, post: post, subreddit: subreddit, ignoreSpecificComment: ignoreSpecificComment, highlightID: highlightID, sort: sort, proxy: proxy, geometryReader: geometryReader, topVisibleCommentId: $topVisibleCommentId, previousScrollTarget: $previousScrollTarget, comments: $comments)
             }
 
             if !ignoreSpecificComment, highlightID != nil {
@@ -133,8 +137,7 @@ struct PostView: View, Equatable {
         .environment(\.defaultMinListRowHeight, 1)
         .listStyle(.plain)
         .refreshable {
-          withAnimation { update.toggle() }
-          await asyncFetch(true)
+          await asyncFetch()
         }
         .overlay(alignment: .bottomTrailing) {
           if !selectedTheme.posts.inlineFloatingPill, !isPreview {
@@ -156,8 +159,13 @@ struct PostView: View, Equatable {
               }
             }
           }
-          if post.data == nil {
-            updatePost()
+          // Comments start loading now; they're shown once the push animation is over.
+          if !commentsPrefetch.started {
+            commentsPrefetch.started = true
+            let full = post.data == nil
+            commentsPrefetch.task = Task(priority: .userInitiated) {
+              await post.refreshPost(commentID: highlightID, sort: sort, after: nil, subreddit: subreddit.data?.display_name ?? subreddit.id, full: full)
+            }
           }
 
           Task(priority: .background) {
@@ -184,6 +192,17 @@ struct PostView: View, Equatable {
         )
       }
     }
+  }
+}
+
+/// The first comments request, started when the post opens and picked up by `PostReplies`.
+final class CommentsPrefetch {
+  var started = false
+  var task: Task<([Comment]?, String?)?, Never>?
+
+  func take() -> Task<([Comment]?, String?)?, Never>? {
+    defer { task = nil }
+    return task
   }
 }
 
