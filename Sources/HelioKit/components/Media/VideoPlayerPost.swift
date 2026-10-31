@@ -115,7 +115,8 @@ final class VideoObserverBag {
 
 struct VideoPlayerPost: View, Equatable {
   static func == (lhs: VideoPlayerPost, rhs: VideoPlayerPost) -> Bool {
-    lhs.url == rhs.url && lhs.sharedVideo == rhs.sharedVideo
+    // The size inputs too: a rotation or column resize only changes `contentWidth`.
+    lhs.url == rhs.url && lhs.sharedVideo == rhs.sharedVideo && lhs.contentWidth == rhs.contentWidth && lhs.compact == rhs.compact && lhs.cornerRadius == rhs.cornerRadius && lhs.maxMediaHeightScreenPercentage == rhs.maxMediaHeightScreenPercentage
   }
 
   weak var controller: UIViewController?
@@ -126,6 +127,7 @@ struct VideoPlayerPost: View, Equatable {
   var url: URL
   var size: CGSize
   var maxMediaHeightScreenPercentage: CGFloat
+  var cornerRadius: CGFloat = 12
   @State private var firstFullscreen = false
   @State private var fullscreen = false
   @Default(.VideoDefSettings) private var videoDefSettings
@@ -150,7 +152,7 @@ struct VideoPlayerPost: View, Equatable {
     videoDefSettings.pauseBGAudioOnFullscreen
   }
 
-  init(controller: UIViewController?, cachedVideo: SharedVideo?, markAsSeen: (() async -> Void)?, compact: Bool = false, contentWidth: CGFloat, url: URL, maxMediaHeightScreenPercentage: CGFloat) {
+  init(controller: UIViewController?, cachedVideo: SharedVideo?, markAsSeen: (() async -> Void)?, compact: Bool = false, contentWidth: CGFloat, url: URL, maxMediaHeightScreenPercentage: CGFloat, cornerRadius: CGFloat = 12) {
     self.controller = controller
     self.sharedVideo = cachedVideo
     self.markAsSeen = markAsSeen
@@ -159,6 +161,7 @@ struct VideoPlayerPost: View, Equatable {
     self.url = url
     self.size = cachedVideo?.size ?? .zero
     self.maxMediaHeightScreenPercentage = maxMediaHeightScreenPercentage
+    self.cornerRadius = cornerRadius
     _holder = StateObject(wrappedValue: VideoPlayerHolder(url: cachedVideo != nil ? url : nil))
   }
 
@@ -180,7 +183,7 @@ struct VideoPlayerPost: View, Equatable {
       if let controller {
         AVPlayerRepresentable(fullscreen: $fullscreen, autoPlayVideos: autoPlayVideos, player: player, aspect: .resizeAspectFill, controller: controller)
           .frame(width: compact ? scaledCompactModeThumbSize() : contentWidth, height: compact ? scaledCompactModeThumbSize() : CGFloat(finalHeight))
-          .mask(RR(12, Color.black))
+          .mask(RR(cornerRadius, Color.black))
           .allowsHitTesting(false)
           .contentShape(Rectangle())
           .onTapGesture {
@@ -213,7 +216,7 @@ struct VideoPlayerPost: View, Equatable {
           }
           .clipped()
           .fixedSize()
-          .mask(RR(12, Color.black))
+          .mask(RR(cornerRadius, Color.black))
           .allowsHitTesting(false)
           .contentShape(Rectangle())
           .highPriorityGesture(TapGesture().onEnded { _ in
@@ -225,7 +228,7 @@ struct VideoPlayerPost: View, Equatable {
             }
           })
           .allowsHitTesting(false)
-          .mask(RR(12, Color.black))
+          .mask(RR(cornerRadius, Color.black))
           .overlay(
             Color.clear
               .contentShape(Rectangle())

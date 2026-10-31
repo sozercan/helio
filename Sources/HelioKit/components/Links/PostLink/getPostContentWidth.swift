@@ -15,6 +15,15 @@ func getPostContentWidth(contentWidth: Double = .screenW, secondary: Bool = fals
   return contentWidth - (((theme.innerPadding.horizontal * (secondary ? 2 : 1)) + theme.outerHPadding) * 2)
 }
 
+/// Flat, edge-to-edge cells run images and videos to the cell edges, like Apollo. Cards keep them inset.
+func isFullBleedMedia(_ media: MediaExtractedType?, theme: PostLinkTheme, secondary: Bool, compact: Bool) -> Bool {
+  guard !compact, !secondary, theme.outerHPadding == 0 else { return false }
+  switch media {
+  case .imgs, .video: return true
+  default: return false
+  }
+}
+
 struct PostDimensions: Hashable, Equatable {
   static var zero: PostDimensions {
     PostDimensions(contentWidth: 0, titleSize: .zero, dividerSize: .zero, badgeSize: .zero, spacingHeight: 0)
@@ -78,6 +87,8 @@ func getPostDimensions(post: Post, helioData: PostHelioData? = nil, columnWidth:
 
     let contentWidth: CGFloat = columnWidth - (((theme.innerPadding.horizontal * (secondary ? 2 : 1)) + theme.outerHPadding) * 2)
 
+    let mediaWidth = contentWidth + (isFullBleedMedia(extractedMedia, theme: theme, secondary: secondary, compact: compact) ? theme.innerPadding.horizontal * 2 : 0)
+
     var ACC_mediaSize: CGSize = .zero
     let compactMediaSize = CGSize(width: compactImgSize, height: compactImgSize)
 
@@ -86,28 +97,28 @@ func getPostDimensions(post: Post, helioData: PostHelioData? = nil, columnWidth:
       ACC_mediaSize = extractedMedia != nil || showSelfPostThumbnails ? compactMediaSize : .zero
     } else {
       if let extractedMedia {
-        func defaultMediaSize(_ size: CGSize) -> CGSize {
+        func defaultMediaSize(_ size: CGSize, width: CGFloat) -> CGSize {
           // Square when Reddit gives no dimensions, like the media views, so the row doesn't
           // start empty and jump once the media loads. Not the cached layout's size: it was
           // capped to the window height, so it isn't the media's shape.
-          let knownSize = size.width > 0 && size.height > 0 ? size : CGSize(width: contentWidth, height: contentWidth)
+          let knownSize = size.width > 0 && size.height > 0 ? size : CGSize(width: width, height: width)
           let sourceHeight = knownSize.height
           let sourceWidth = knownSize.width
-          let propHeight = (contentWidth * sourceHeight) / (sourceWidth == 0 ? 1 : sourceWidth)
+          let propHeight = (width * sourceHeight) / (sourceWidth == 0 ? 1 : sourceWidth)
           let finalHeight = maxDefaultHeight != 110 ? Double(min(maxHeight, propHeight)) : Double(propHeight)
-          return CGSize(width: contentWidth, height: finalHeight)
+          return CGSize(width: width, height: finalHeight)
         }
 
         switch extractedMedia {
         case let .imgs(mediaExtracted):
           if mediaExtracted.count == 1 {
-            ACC_mediaSize = defaultMediaSize(mediaExtracted[0].size)
+            ACC_mediaSize = defaultMediaSize(mediaExtracted[0].size, width: mediaWidth)
           } else if mediaExtracted.count > 1 {
-            let size = ((contentWidth - 8) / 2)
-            ACC_mediaSize = mediaExtracted.count == 2 ? CGSize(width: contentWidth, height: size) : CGSize(width: contentWidth, height: (size * 2) + ImageMediaPost.gallerySpacing)
+            let size = ((mediaWidth - 8) / 2)
+            ACC_mediaSize = mediaExtracted.count == 2 ? CGSize(width: mediaWidth, height: size) : CGSize(width: mediaWidth, height: (size * 2) + ImageMediaPost.gallerySpacing)
           }
         case let .video(video):
-          ACC_mediaSize = defaultMediaSize(video.size)
+          ACC_mediaSize = defaultMediaSize(video.size, width: mediaWidth)
         case .streamable:
           ACC_mediaSize = CGSize(width: contentWidth, height: 100)
         case let .yt(ytMediaExtracted):
@@ -141,7 +152,8 @@ func getPostDimensions(post: Post, helioData: PostHelioData? = nil, columnWidth:
       }
     }
 
-    let compactTitleWidth = postGeneralSpacing + VotesCluster.verticalWidth + postGeneralSpacing + compactMediaSize.width
+    // Text posts without a placeholder thumbnail get no thumbnail column.
+    let compactTitleWidth = postGeneralSpacing + VotesCluster.verticalWidth + (ACC_mediaSize.width > 0 ? postGeneralSpacing + ACC_mediaSize.width : 0)
 
     let titleContentWidth = contentWidth - (compact ? compactTitleWidth : 0)
 
@@ -198,7 +210,7 @@ func getPostDimensions(post: Post, helioData: PostHelioData? = nil, columnWidth:
       titleSize: CGSize(width: titleContentWidth, height: ACC_titleHeight + 1),
       bodySize: !theresSelftext || compact ? nil : CGSize(width: contentWidth, height: ACC_bodyHeight),
       urlTagHeight: urlTagHeight,
-      mediaSize: !theresMedia ? nil : compact ? compactMediaSize : CGSize(width: contentWidth, height: ACC_mediaSize.height),
+      mediaSize: !theresMedia ? nil : compact ? compactMediaSize : CGSize(width: mediaWidth, height: ACC_mediaSize.height),
       dividerSize: compact ? nil : CGSize(width: contentWidth, height: ACC_SubDividerHeight),
       badgeSize: CGSize(width: contentWidth, height: ACC_badgeHeight),
       spacingHeight: ACC_allSpacingsHeight,

@@ -138,9 +138,20 @@ struct RedditListingFeed<Header: View, Footer: View, S: Sorting>: View {
                         .listRowInsets(EdgeInsets(top: paddingV, leading: paddingH, bottom: paddingV, trailing: paddingH))
 
                       if isThereDivider {
-                        NiceDivider(divider: selectedTheme.postLinks.divider)
-                          .id("\(post.id)-divider")
-                          .listRowInsets(EdgeInsets(top: 0, leading: 0, bottom: 0, trailing: 0))
+                        // Compact rows get Apollo's inset hairline instead of the thick band.
+                        let compact = feedDefSettings.compactPerSubreddit[sub.id] ?? postLinkDefSettings.compactMode.enabled
+                        Group {
+                          if compact, paddingH == 0 {
+                            selectedTheme.lists.dividersColors()
+                              .frame(height: 0.5)
+                              .padding(.leading, selectedTheme.postLinks.theme.innerPadding.horizontal)
+                              .background(selectedTheme.postLinks.theme.bg.color())
+                          } else {
+                            NiceDivider(divider: selectedTheme.postLinks.divider)
+                          }
+                        }
+                        .id("\(post.id)-divider")
+                        .listRowInsets(EdgeInsets(top: 0, leading: 0, bottom: 0, trailing: 0))
                       }
                     }
                   case let .subreddit(sub): SubredditLink(sub: sub)

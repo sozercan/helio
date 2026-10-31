@@ -71,7 +71,7 @@ struct MediaPresenter: View, Equatable {
       }
     case let .video(sharedVideo):
       if !showURLInstead {
-        VideoPlayerPost(controller: controller, cachedVideo: sharedVideo, markAsSeen: markAsSeen, compact: compact, contentWidth: contentWidth, url: sharedVideo.url, maxMediaHeightScreenPercentage: maxMediaHeightScreenPercentage)
+        VideoPlayerPost(controller: controller, cachedVideo: sharedVideo, markAsSeen: markAsSeen, compact: compact, contentWidth: contentWidth, url: sharedVideo.url, maxMediaHeightScreenPercentage: maxMediaHeightScreenPercentage, cornerRadius: cornerRadius)
           .nsfw(over18 && blurPostLinkNSFW, smallIcon: compact, size: mediaSize)
       }
     case .streamable:

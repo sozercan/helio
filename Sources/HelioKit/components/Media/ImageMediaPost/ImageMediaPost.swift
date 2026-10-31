@@ -58,8 +58,15 @@ struct ImageMediaPost: View, Equatable {
         let propHeight = (contentWidth * sourceHeight) / sourceWidth
         let finalHeight = maxMediaHeightScreenPercentage != 110 ? Double(min(maxHeight, propHeight)) : Double(propHeight)
 
-        GalleryThumb(cornerRadius: cornerRadius, width: compact ? scaledCompactModeThumbSize() : contentWidth, height: compact ? scaledCompactModeThumbSize() : finalHeight, url: img.url, imgRequest: !images.isEmpty ? images[0].request : nil, posterURL: img.posterURL)
+        // Taller than the cap (often in landscape, where the window is short): show all of it,
+        // narrower and centered on a band, instead of cropping its top and bottom.
+        let capped = !compact && knownSize && finalHeight < propHeight - 1
+        let thumbWidth = compact ? scaledCompactModeThumbSize() : capped ? (finalHeight * sourceWidth) / sourceHeight : contentWidth
+        GalleryThumb(cornerRadius: capped ? 0 : cornerRadius, width: thumbWidth, height: compact ? scaledCompactModeThumbSize() : finalHeight, url: img.url, imgRequest: !images.isEmpty ? images[0].request : nil, posterURL: img.posterURL)
           .equatable()
+          .frame(width: capped ? contentWidth : nil)
+          .background(capped ? Color.primary.opacity(0.06) : .clear)
+          .mask(RR(capped ? cornerRadius : 0, Color.black))
 //          .background(sourceHeight > 0 || compact ? nil : GeometryReader { geo in Color.clear.onAppear { helioData.postDimensions.mediaSize = geo.size }.onChange(of: geo.size) { helioData.postDimensions.mediaSize = $0 } })
           .onTapGesture { withAnimation(spring) { fullscreenIndex = 0 } }
           .overlay(

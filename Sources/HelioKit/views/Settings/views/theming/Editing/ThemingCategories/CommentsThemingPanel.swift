@@ -45,10 +45,28 @@ struct CommentsGeneralSettings: View {
     }
 
     FakeSection("Indentation lines") {
-      LabeledSlider(label: "Corner curvature", value: $theme.comments.theme.indentCurve, range: 3 ... 32)
+      // Colored bars: one straight bar per reply, colored by depth. Off: curved guides in one color.
+      Toggle("Colored depth bars", isOn: Binding(
+        get: { !theme.comments.theme.indentColors.isEmpty },
+        set: { theme.comments.theme.indentColors = $0 ? rainbowIndentColors : [] },
+      ))
+      .padding(.horizontal, 16)
+
+      let bars = !theme.comments.theme.indentColors.isEmpty
+      LabeledSlider(label: bars ? "Indent per depth" : "Corner curvature", value: $theme.comments.theme.indentCurve, range: 3 ... 32)
         .resetter($theme.comments.theme.indentCurve, defaultTheme.comments.theme.indentCurve)
 
+      // With bars, this color draws the separators between comments.
       SchemesColorPicker(theme: $theme.comments.theme.indentColor, defaultVal: defaultTheme.comments.theme.indentColor)
+
+      if bars {
+        ForEach(theme.comments.theme.indentColors.indices, id: \.self) { i in
+          VStack(alignment: .leading, spacing: 4) {
+            Text("Depth \(i + 1)").font(.footnote).foregroundStyle(.secondary).padding(.horizontal, 16)
+            SchemesColorPicker(theme: $theme.comments.theme.indentColors[i], defaultVal: rainbowIndentColors[i % rainbowIndentColors.count])
+          }
+        }
+      }
     }
 
     FakeSection("Background") {

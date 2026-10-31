@@ -33,6 +33,8 @@ class PostHelioData: Hashable {
   var layoutWidth: Double = 0
   var layoutWindowHeight: Double = 0
   var layoutSecondary = false
+  /// Whether the row was laid out as compact.
+  var layoutCompact: Bool?
   var titleAttr: NSAttributedString?
   var linkMedia: PreviewModel?
   var videoMedia: SharedVideo?

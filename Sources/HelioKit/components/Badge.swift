@@ -50,7 +50,7 @@ func flairWithoutEmojis(str: String?) -> [String]? {
 }
 
 struct BadgeView: View, Equatable {
-  static let authorStatsSpacing: Double = 2
+  static let authorStatsSpacing: Double = 6
   static func == (lhs: BadgeView, rhs: BadgeView) -> Bool {
     lhs.avatarURL == rhs.avatarURL && lhs.saved == rhs.saved && lhs.avatarRequest?.url == rhs.avatarRequest?.url && lhs.theme == rhs.theme && lhs.commentsCount == rhs.commentsCount && lhs.newCommentsCount == rhs.newCommentsCount && lhs.votesCount == rhs.votesCount && lhs.likes == rhs.likes
   }
@@ -73,6 +73,11 @@ struct BadgeView: View, Equatable {
   var likes: Bool?
   var openSub: (() -> Void)?
   var subName: String?
+  /// Makes the numbers line its own tap target. Without one, a tap on it goes to the nearest
+  /// tappable view, the author's name, instead of the row.
+  var onTapStats: (() -> Void)?
+  /// Shown next to the score when set, for the "Show upvote ratio" setting.
+  var upvoteRatio: Double?
 
   nonisolated func openUser() {
     Nav.to(.reddit(.user(User(id: author))))
@@ -81,91 +86,112 @@ struct BadgeView: View, Equatable {
   var body: some View {
     let showAvatar = theme.avatar.visible
     let defaultIconColor = theme.statsText.color()
+    let showSubName = openSub != nil && subName != nil
+    let showsFirstLine = showAuthorOnPostLinks || (showSubName && !theme.forceSubsAsTags)
     HStack(spacing: theme.spacing) {
-      if saved, !showAvatar {
-        Image(systemName: "bookmark.fill")
-          .fontSize(16)
-          .foregroundColor(.green)
-          .transition(.scale.combined(with: .opacity))
-          .drawingGroup()
-      }
-
       if showAvatar {
         AvatarView(saved: saved, avatarImgRequest: avatarRequest, userID: author, fullname: fullname, theme: theme.avatar)
           .highPriorityGesture(TapGesture().onEnded(openUser))
       }
 
+      // Apollo's two lines: who and where, then the numbers.
       VStack(alignment: .leading, spacing: BadgeView.authorStatsSpacing) {
-        if showAuthorOnPostLinks {
+        if showsFirstLine {
           HStack(alignment: .center, spacing: 4) {
-            Text(author).font(.system(size: theme.authorText.size, weight: theme.authorText.weight.t)).foregroundStyle(author == "[deleted]" ? .red : usernameColor ?? theme.authorText.color()).lineLimit(1)
-              .onTapGesture(perform: openUser)
-
-            if unseen {
-              PostLinkGlowDot(unseenType: .dot(commentTheme?.unseenDot ?? ColorSchemes<ThemeColor>(light: .init(hex: "FF0000"), dark: .init(hex: "FF0000"))), seen: false, badge: true).equatable()
-            }
-
-            if let flairs = flairWithoutEmojis(str: userFlair) {
-              // TODO: Load flair emojis via GET /api/v1/{subreddit}/emojis/{emoji_name}
-              ForEach(flairs, id: \.self) {
-                UserFlair(flair: $0, flairText: theme.flairText, flairBackground: theme.flairBackground).equatable()
-              }
-            }
-
             if let openSub, let subName {
               if theme.forceSubsAsTags {
                 Tag(subredditIconKit: nil, text: "r/\(subName)", color: theme.subColor(), fontSize: theme.authorText.size, backgroundColor: theme.subColor())
                   .onTapGesture(perform: openSub)
               } else {
-                Image(systemName: "arrowshape.right.fill")
-                  .fontSize(theme.authorText.size * 0.75)
-                  .foregroundStyle(theme.authorText.color().opacity(0.5))
                 Text(subName).foregroundStyle(theme.subColor())
-                  .fontSize(theme.authorText.size, .semibold).lineLimit(1)
+                  .font(.system(size: theme.authorText.size, weight: theme.authorText.weight.t)).lineLimit(1)
                   .highPriorityGesture(TapGesture().onEnded(openSub))
               }
             }
+
+            if showAuthorOnPostLinks {
+              if showSubName {
+                Text("·").foregroundStyle(theme.authorText.color().opacity(0.6))
+              }
+              Text(author)
+                .font(.system(size: theme.authorText.size, weight: showSubName ? .regular : theme.authorText.weight.t))
+                .foregroundStyle(author == "[deleted]" ? .red : usernameColor ?? theme.authorText.color())
+                .lineLimit(1)
+                .onTapGesture(perform: openUser)
+
+              if unseen {
+                PostLinkGlowDot(unseenType: .dot(commentTheme?.unseenDot ?? ColorSchemes<ThemeColor>(light: .init(hex: "FF0000"), dark: .init(hex: "FF0000"))), seen: false, badge: true).equatable()
+              }
+
+              if let flairs = flairWithoutEmojis(str: userFlair) {
+                // TODO: Load flair emojis via GET /api/v1/{subreddit}/emojis/{emoji_name}
+                ForEach(flairs, id: \.self) {
+                  UserFlair(flair: $0, flairText: theme.flairText, flairBackground: theme.flairBackground).equatable()
+                }
+              }
+            }
+
+            if saved, !showAvatar {
+              Image(systemName: "bookmark.fill")
+                .foregroundStyle(.green)
+                .transition(.scale.combined(with: .opacity))
+            }
           }
+          .font(.system(size: theme.authorText.size))
         }
 
-        HStack(alignment: .center, spacing: theme.statsText.size * 0.41) {
-          if let openSub, let subName, !showAuthorOnPostLinks {
+        HStack(alignment: .center, spacing: theme.statsText.size * 0.62) {
+          if let openSub, let subName, theme.forceSubsAsTags, !showAuthorOnPostLinks {
             Tag(subredditIconKit: nil, text: "r/\(subName)", color: theme.subColor(), fontSize: theme.statsText.size, backgroundColor: theme.subColor())
               .highPriorityGesture(TapGesture().onEnded(openSub))
           }
 
-          if let commentsCount {
-            HStack(alignment: .center, spacing: 2) {
-              Image(systemName: "message.fill")
-              Text(commentsCount).contentTransition(.numericText())
-            }
-          }
-
-          if let newComments = newCommentsCount {
-            if newComments > 0 {
-              Text("(\(newComments))").foregroundColor(.accentColor)
-            }
-          }
-
           if let votesCount {
-            HStack(alignment: .center, spacing: 2) {
-              Image(systemName: "arrow.up")
-              Text(votesCount).contentTransition(.numericText())
-            }
-            .foregroundStyle(likes == nil ? defaultIconColor : likes == true ? .orange : .blue)
+            BadgeStat(icon: likes == false ? "arrow.down" : "arrow.up", text: votesCount)
+              .foregroundStyle(likes == nil ? defaultIconColor : likes == true ? Color.upvote : Color.downvote)
           }
 
-          HStack(alignment: .center, spacing: 2) {
-            Image(systemName: "hourglass.bottomhalf.filled")
-            Text(timeSince(Int(created)))
+          if let upvoteRatio {
+            BadgeStat(icon: "face.smiling", text: "\(Int((upvoteRatio * 100).rounded()))%")
+          }
+
+          if let commentsCount {
+            BadgeStat(icon: "bubble.left", text: commentsCount)
+          }
+
+          if let newComments = newCommentsCount, newComments > 0 {
+            Text("+\(newComments)").foregroundStyle(Color.accentColor)
+          }
+
+          BadgeStat(icon: "clock", text: timeSince(Int(created)))
+
+          // The first line holds the saved mark; without it, show it here.
+          if saved, !showAvatar, !showsFirstLine {
+            Image(systemName: "bookmark.fill").foregroundStyle(.green)
           }
         }
         .foregroundStyle(defaultIconColor)
         .font(.system(size: theme.statsText.size, weight: theme.statsText.weight.t))
+        .contentShape(Rectangle())
+        .onTapGesture { onTapStats?() }
+        .allowsHitTesting(onTapStats != nil)
       }
     }
     .geometryGroup()
     .animation(showAvatar ? nil : spring.delay(0.4), value: saved)
+  }
+}
+
+/// An outline SF Symbol and its number, like Apollo's meta line.
+struct BadgeStat: View {
+  var icon: String
+  var text: String
+
+  var body: some View {
+    HStack(alignment: .center, spacing: 3) {
+      Image(systemName: icon).imageScale(.small)
+      Text(text).contentTransition(.numericText())
+    }
   }
 }
 

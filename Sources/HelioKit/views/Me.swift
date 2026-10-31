@@ -5,6 +5,7 @@
 //  Created by Igor Marcossi on 24/06/23.
 //
 
+import Defaults
 import SwiftUI
 
 struct Me: View {
@@ -33,10 +34,38 @@ struct Me: View {
             }
         }
       }
+      .toolbar {
+        if RedditCredentialsManager.shared.validCredentials.count > 1 {
+          ToolbarItem(placement: .topBarLeading) { AccountSwitcherMenu() }
+        }
+      }
       .attachViewControllerToRouter(tabID: .me)
       .injectInTabDestinations()
     }
 //    .swipeAnywhere()
+  }
+}
+
+/// Switches between the signed-in Reddit accounts.
+struct AccountSwitcherMenu: View {
+  var body: some View {
+    let manager = RedditCredentialsManager.shared
+    Menu {
+      Picker("Account", selection: Binding(
+        get: { manager.selectedCredential?.id },
+        set: {
+          if let id = $0 {
+            Defaults[.GeneralDefSettings].redditCredentialSelectedID = id
+          }
+        },
+      )) {
+        ForEach(manager.validCredentials) { cred in
+          Text(cred.userName ?? "Account").tag(Optional(cred.id))
+        }
+      }
+    } label: {
+      Label("Switch Account", systemImage: "person.2.circle")
+    }
   }
 }
 

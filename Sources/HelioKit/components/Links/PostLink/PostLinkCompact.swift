@@ -75,8 +75,7 @@ struct PostLinkCompact: View, Equatable, Identifiable {
   @ViewBuilder
   func votesPiece() -> some View {
     if let data = post.data, defSettings.showVotesCluster {
-      VotesCluster(votesKit: data.votesKit, voteAction: post.vote, vertical: true, showUpVoteRatio: defSettings.showUpVoteRatio).fontSize(22, .medium)
-        .fontSize(22, .medium)
+      VotesCluster(votesKit: data.votesKit, voteAction: post.vote, vertical: true, showUpVoteRatio: defSettings.showUpVoteRatio)
     }
   }
 
@@ -107,7 +106,7 @@ struct PostLinkCompact: View, Equatable, Identifiable {
 
           VStack(alignment: .leading, spacing: theme.theme.verticalElementsSpacing) {
             VStack(alignment: .leading, spacing: theme.theme.verticalElementsSpacing / 2) {
-              PostLinkTitle(attrString: helioData.titleAttr, label: data.title, theme: theme.theme.titleText, size: helioData.postDimensions.titleSize)
+              PostLinkTitle(attrString: helioData.titleAttr, label: data.title, theme: theme.theme.titleText, size: helioData.postDimensions.titleSize, dimmed: theme.theme.unseenType == .fade && (data.helioSeen ?? false), dimmedColor: theme.theme.badge.statsText.color)
 
               if let extractedMedia = post.helioData?.extractedMedia {
                 if case let .repost(repost) = extractedMedia, let repostData = repost.data, let url = URL(string: "https://reddit.com/r/\(repostData.subreddit)/comments/\(repost.id)") {
@@ -118,7 +117,7 @@ struct PostLinkCompact: View, Equatable, Identifiable {
             }
 
             let newCommentsCount = helioData.seenCommentsCount == nil ? nil : data.num_comments - helioData.seenCommentsCount!
-            BadgeView(avatarRequest: helioData.avatarImageRequest, showAuthorOnPostLinks: defSettings.showAuthor, saved: data.badgeKit.saved, usernameColor: nil, author: data.badgeKit.author, fullname: data.badgeKit.authorFullname, userFlair: data.badgeKit.userFlair, created: data.badgeKit.created, avatarURL: nil, theme: theme.theme.badge, commentsCount: formatBigNumber(data.badgeKit.numComments), newCommentsCount: newCommentsCount, votesCount: formatBigNumber(data.badgeKit.ups), likes: data.likes, openSub: !theme.theme.badge.avatar.visible && showSub ? openSubreddit : nil, subName: data.subreddit)
+            BadgeView(avatarRequest: helioData.avatarImageRequest, showAuthorOnPostLinks: defSettings.showAuthor, saved: data.badgeKit.saved, usernameColor: nil, author: data.badgeKit.author, fullname: data.badgeKit.authorFullname, userFlair: data.badgeKit.userFlair, created: data.badgeKit.created, avatarURL: nil, theme: theme.theme.badge, commentsCount: formatBigNumber(data.badgeKit.numComments), newCommentsCount: newCommentsCount, votesCount: formatBigNumber(data.badgeKit.ups), likes: data.likes, openSub: !theme.theme.badge.avatar.visible && showSub ? openSubreddit : nil, subName: data.subreddit, onTapStats: openPost)
 
             if showSub, theme.theme.badge.avatar.visible {
               let subName = data.subreddit

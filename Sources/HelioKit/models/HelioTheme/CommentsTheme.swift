@@ -40,7 +40,7 @@ struct CommentsSectionTheme: Codable, Hashable, Equatable {
 
 struct CommentTheme: Codable, Hashable, Equatable {
   enum CodingKeys: String, CodingKey {
-    case innerPadding, outerHPadding, repliesSpacing, indentCurve, indentColor, cornerRadius, badge, bodyText, bodyAuthorSpacing, linespacing, bg, loadMoreInnerPadding, loadMoreText, loadMoreBackground, unseenDot
+    case innerPadding, outerHPadding, repliesSpacing, indentCurve, indentColor, indentColors, cornerRadius, badge, bodyText, bodyAuthorSpacing, linespacing, bg, loadMoreInnerPadding, loadMoreText, loadMoreBackground, unseenDot
   }
 
   var innerPadding: ThemePadding
@@ -48,6 +48,9 @@ struct CommentTheme: Codable, Hashable, Equatable {
   var repliesSpacing: CGFloat
   var indentCurve: CGFloat
   var indentColor: ColorSchemes<ThemeColor>
+  /// One color per reply depth, cycled. When set, replies get a straight colored bar per
+  /// depth instead of the curved `indentColor` guides. `indentCurve` is then the indent step.
+  var indentColors: [ColorSchemes<ThemeColor>]
   var cornerRadius: CGFloat
   var badge: BadgeTheme
   var bodyText: ThemeText
@@ -61,12 +64,13 @@ struct CommentTheme: Codable, Hashable, Equatable {
 
   var unseenDot: ColorSchemes<ThemeColor>
 
-  init(innerPadding: ThemePadding, outerHPadding: CGFloat, repliesSpacing: CGFloat, indentCurve: CGFloat, indentColor: ColorSchemes<ThemeColor>, cornerRadius: CGFloat, badge: BadgeTheme, bodyText: ThemeText, bodyAuthorSpacing: CGFloat, linespacing: CGFloat, bg: ColorSchemes<ThemeColor>, loadMoreInnerPadding: ThemePadding, loadMoreText: ThemeText, loadMoreBackground: ColorSchemes<ThemeColor>, unseenDot: ColorSchemes<ThemeColor>) {
+  init(innerPadding: ThemePadding, outerHPadding: CGFloat, repliesSpacing: CGFloat, indentCurve: CGFloat, indentColor: ColorSchemes<ThemeColor>, indentColors: [ColorSchemes<ThemeColor>] = [], cornerRadius: CGFloat, badge: BadgeTheme, bodyText: ThemeText, bodyAuthorSpacing: CGFloat, linespacing: CGFloat, bg: ColorSchemes<ThemeColor>, loadMoreInnerPadding: ThemePadding, loadMoreText: ThemeText, loadMoreBackground: ColorSchemes<ThemeColor>, unseenDot: ColorSchemes<ThemeColor>) {
     self.innerPadding = innerPadding
     self.outerHPadding = outerHPadding
     self.repliesSpacing = repliesSpacing
     self.indentCurve = indentCurve
     self.indentColor = indentColor
+    self.indentColors = indentColors
     self.cornerRadius = cornerRadius
     self.badge = badge
     self.bodyText = bodyText
@@ -86,6 +90,7 @@ struct CommentTheme: Codable, Hashable, Equatable {
     try container.encodeIfPresent(repliesSpacing, forKey: .repliesSpacing)
     try container.encodeIfPresent(indentCurve, forKey: .indentCurve)
     try container.encodeIfPresent(indentColor, forKey: .indentColor)
+    try container.encodeIfPresent(indentColors, forKey: .indentColors)
     try container.encodeIfPresent(cornerRadius, forKey: .cornerRadius)
     try container.encodeIfPresent(badge, forKey: .badge)
     try container.encodeIfPresent(bodyText, forKey: .bodyText)
@@ -106,6 +111,7 @@ struct CommentTheme: Codable, Hashable, Equatable {
     self.repliesSpacing = try container.decodeIfPresent(CGFloat.self, forKey: .repliesSpacing) ?? t.repliesSpacing
     self.indentCurve = try container.decodeIfPresent(CGFloat.self, forKey: .indentCurve) ?? t.indentCurve
     self.indentColor = try container.decodeIfPresent(ColorSchemes<ThemeColor>.self, forKey: .indentColor) ?? t.indentColor
+    self.indentColors = try container.decodeIfPresent([ColorSchemes<ThemeColor>].self, forKey: .indentColors) ?? t.indentColors
     self.cornerRadius = try container.decodeIfPresent(CGFloat.self, forKey: .cornerRadius) ?? t.cornerRadius
     self.badge = try container.decodeIfPresent(BadgeTheme.self, forKey: .badge) ?? t.badge
     self.bodyText = try container.decodeIfPresent(ThemeText.self, forKey: .bodyText) ?? t.bodyText

@@ -64,8 +64,10 @@ struct PostLinkNormal: View, Equatable, Identifiable {
   func mediaComponentCall() -> some View {
     if let data = post.data {
       if let extractedMedia = helioData.extractedMedia {
-        MediaPresenter(helioData: helioData, controller: controller, postTitle: data.title, badgeKit: data.badgeKit, avatarImageRequest: helioData.avatarImageRequest, markAsSeen: !defSettings.lightboxReadsPost ? nil : markAsRead, cornerRadius: theme.theme.mediaCornerRadius, blurPostLinkNSFW: defSettings.blurNSFW, media: extractedMedia, over18: over18, compact: false, contentWidth: helioData.postDimensions.mediaSize?.width ?? 0, maxMediaHeightScreenPercentage: defSettings.maxMediaHeightScreenPercentage)
+        let fullBleed = isFullBleedMedia(extractedMedia, theme: theme.theme, secondary: secondary, compact: false)
+        MediaPresenter(helioData: helioData, controller: controller, postTitle: data.title, badgeKit: data.badgeKit, avatarImageRequest: helioData.avatarImageRequest, markAsSeen: !defSettings.lightboxReadsPost ? nil : markAsRead, cornerRadius: fullBleed ? 0 : theme.theme.mediaCornerRadius, blurPostLinkNSFW: defSettings.blurNSFW, media: extractedMedia, over18: over18, compact: false, contentWidth: helioData.postDimensions.mediaSize?.width ?? 0, maxMediaHeightScreenPercentage: defSettings.maxMediaHeightScreenPercentage)
           .allowsHitTesting(defSettings.isMediaTappable)
+          .padding(.horizontal, fullBleed ? -theme.theme.innerPadding.horizontal : 0)
 
         if case let .repost(repost) = extractedMedia {
           if let repostHelioData = repost.helioData, let repostSub = repostHelioData.subreddit {
@@ -103,7 +105,7 @@ struct PostLinkNormal: View, Equatable, Identifiable {
         }
 
         VStack(alignment: .leading, spacing: theme.theme.verticalElementsSpacing / 2.5) {
-          PostLinkTitle(attrString: helioData.titleAttr, label: data.title, theme: theme.theme.titleText, size: helioData.postDimensions.titleSize)
+          PostLinkTitle(attrString: helioData.titleAttr, label: data.title, theme: theme.theme.titleText, size: helioData.postDimensions.titleSize, dimmed: theme.theme.unseenType == .fade && (data.helioSeen ?? false), dimmedColor: theme.theme.badge.statsText.color)
 
           if !(data.selftext?.isEmpty ?? true), defSettings.showSelfText, let selftext = data.selftext {
             PostLinkNormalSelftext(selftext: selftext, theme: theme.theme.bodyText)
@@ -119,14 +121,20 @@ struct PostLinkNormal: View, Equatable, Identifiable {
           SubsNStuffLine()
         }
 
-        HStack {
+        HStack(alignment: .center) {
           let newCommentsCount = helioData.seenCommentsCount == nil ? nil : data.num_comments - helioData.seenCommentsCount!
-          BadgeView(avatarRequest: helioData.avatarImageRequest, showAuthorOnPostLinks: defSettings.showAuthor, saved: data.badgeKit.saved, usernameColor: nil, author: data.badgeKit.author, fullname: data.badgeKit.authorFullname, userFlair: data.badgeKit.userFlair, created: data.badgeKit.created, avatarURL: nil, theme: theme.theme.badge, commentsCount: formatBigNumber(data.num_comments), newCommentsCount: newCommentsCount, votesCount: defSettings.showVotesCluster ? nil : formatBigNumber(data.ups), likes: data.likes, openSub: showSub ? openSubreddit : nil, subName: data.subreddit)
+          BadgeView(avatarRequest: helioData.avatarImageRequest, showAuthorOnPostLinks: defSettings.showAuthor, saved: data.badgeKit.saved, usernameColor: nil, author: data.badgeKit.author, fullname: data.badgeKit.authorFullname, userFlair: data.badgeKit.userFlair, created: data.badgeKit.created, avatarURL: nil, theme: theme.theme.badge, commentsCount: formatBigNumber(data.num_comments), newCommentsCount: newCommentsCount, votesCount: formatBigNumber(data.ups), likes: data.likes, openSub: showSub ? openSubreddit : nil, subName: data.subreddit, onTapStats: openPost, upvoteRatio: defSettings.showUpVoteRatio ? data.upvote_ratio : nil)
 
-          Spacer()
+          Spacer(minLength: 8)
 
-          if defSettings.showVotesCluster {
-            VotesCluster(votesKit: data.votesKit, voteAction: post.vote, showUpVoteRatio: defSettings.showUpVoteRatio).fontSize(22, .medium)
+          // A crosspost's embedded card leaves actions to the post around it.
+          if !secondary {
+            HStack(spacing: 0) {
+              PostLinkMoreMenu(post: post)
+              if defSettings.showVotesCluster {
+                VotesCluster(votesKit: data.votesKit, voteAction: post.vote, showScore: false, showUpVoteRatio: false)
+              }
+            }
           }
         }
       }
@@ -138,3 +146,26 @@ struct PostLinkNormal: View, Equatable, Identifiable {
 
 // let atr = NSTextAttachment()
 // atr.
+
+/// Apollo's "•••" button: the post's actions, the same ones as its context menu.
+struct PostLinkMoreMenu: View {
+  var post: Post
+
+  var body: some View {
+    Menu {
+      PostLinkContext(post: post)
+      if let permalink = post.data?.permalink {
+        Button {
+          ShareUtils.shareItem(item: "https://reddit.com\(permalink.escape.urlEncoded)")
+        } label: { Label("Share", systemImage: "square.and.arrow.up") }
+      }
+    } label: {
+      Image(systemName: "ellipsis")
+        .font(.system(size: 17, weight: .medium))
+        .foregroundStyle(.secondary)
+        .frame(width: VoteButton.hitSize, height: VoteButton.hitSize)
+        .contentShape(Rectangle())
+    }
+    .accessibilityLabel("More")
+  }
+}

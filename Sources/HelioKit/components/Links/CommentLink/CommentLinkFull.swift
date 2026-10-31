@@ -20,9 +20,11 @@ struct CommentLinkFull: View {
   var body: some View {
     let curveColor = selectedTheme.comments.theme.indentColor()
     let horPad = selectedTheme.comments.theme.innerPadding.horizontal
+    let theme = selectedTheme.comments.theme
+    let bars = !theme.indentColors.isEmpty
     if let data = comment.data {
       HStack {
-        if data.depth != 0, indentLines != 0 {
+        if !bars, data.depth != 0, indentLines != 0 {
           HStack(alignment: .bottom, spacing: 6) {
             let shapes = Array(1 ... Int(indentLines ?? data.depth ?? 1))
             ForEach(shapes, id: \.self) { i in
@@ -43,9 +45,11 @@ struct CommentLinkFull: View {
         }
         .contentShape(Rectangle())
       }
-      .padding(.horizontal, horPad)
+      .padding(.horizontal, bars ? 0 : horPad)
       .frame(maxWidth: .infinity, alignment: .leading)
-      .background(curveColor)
+      .foregroundStyle(bars ? Color.accentColor : Color.primary)
+      .commentDepthBar(bars ? data.depth ?? 0 : nil, theme: theme, top: 8, bottom: 8, separator: true)
+      .background(bars ? theme.bg() : curveColor)
       .contentShape(Rectangle())
       .onTapGesture {
         // Reddit cut the thread off below this stub's parent: open the thread from there.

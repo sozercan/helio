@@ -23,9 +23,10 @@ struct CommentLinkMore: View {
     let theme = selectedTheme.comments
 //    let curveColor = selectedTheme.comments.theme.indentColor()
     let horPad = selectedTheme.comments.theme.innerPadding.horizontal
+    let bars = !theme.theme.indentColors.isEmpty
     if let data = comment.data, let count = data.count, let parentElement, count > 0 {
       HStack(spacing: 0) {
-        if data.depth != 0, indentLines != 0 {
+        if !bars, data.depth != 0, indentLines != 0 {
           HStack(alignment: .bottom, spacing: 6) {
             let shapes = Array(1 ... Int(indentLines ?? data.depth ?? 1))
             ForEach(shapes, id: \.self) { i in
@@ -67,8 +68,9 @@ struct CommentLinkMore: View {
         .fontSize(selectedTheme.comments.theme.loadMoreText.size, selectedTheme.comments.theme.loadMoreText.weight.t)
         .foregroundColor(selectedTheme.comments.theme.loadMoreText.color())
       }
-      .padding(.horizontal, horPad)
+      .padding(.horizontal, bars ? 0 : horPad)
       .frame(maxWidth: .infinity, alignment: .leading)
+      .commentDepthBar(bars ? data.depth ?? 0 : nil, theme: theme.theme, top: 8, bottom: 8, separator: true)
       .background(selectedTheme.comments.theme.bg())
       .contentShape(Rectangle())
       .onTapGesture {
