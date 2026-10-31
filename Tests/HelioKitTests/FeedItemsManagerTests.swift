@@ -409,6 +409,24 @@ struct FeedItemsManagerTests {
     }
   }
 
+  @Test func loadingMoreUsesTheQueryTheListWasFetchedWith() async {
+    await withHideOnRead(false) {
+      var requests: [String] = []
+      let manager = FeedItemsManager<SubListingSortOption>(sorting: .hot) { after, sorting, _, _ in
+        requests.append("\(sorting == .hot ? "hot" : "new")/\(after ?? "first")")
+        return after == nil ? ([post("a", read: false)], "h2") : ([post("b", read: false)], "h3")
+      }
+      await manager.fetchCaller(loadingMore: false)
+
+      // The sort changed, but the feed hasn't reloaded yet when the shown list asks for more.
+      manager.sorting = .new
+      await manager.fetchCaller(loadingMore: true)
+
+      #expect(requests == ["hot/first", "hot/h2"])
+      #expect(ids(manager.entities) == ["a", "b"])
+    }
+  }
+
   @Test func changingTheQueryLeavesTheSpinnerToTheReload() async {
     await withHideOnRead(false) {
       let manager = FeedItemsManager<SubListingSortOption>(sorting: .hot) { _, _, _, _ in ([post("a", read: false)], "p2") }

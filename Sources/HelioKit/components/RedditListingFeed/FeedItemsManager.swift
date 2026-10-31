@@ -64,20 +64,40 @@ class FeedItemsManager<S> {
     self.chunkSize = Defaults[.SubredditFeedDefSettings].chunkLoadSize
   }
 
+  /// The sort, search and filter one list is fetched with.
+  private struct Query {
+    let sorting: S?
+    let searchQuery: String?
+    let filter: String?
+  }
+
+  /// The query the shown list was fetched with. Its later pages use it too, not the live settings,
+  /// which may already have changed for a reload that hasn't started yet.
+  @ObservationIgnored private var listQuery: Query?
+
   func fetchCaller(loadingMore: Bool) async {
     // Read with the cursor: a load-more belongs to the list its cursor continues.
-    let (generation, cursor) = await MainActor.run {
+    let (generation, cursor, query) = await MainActor.run {
       if loadingMore {
-        return (self.listGeneration, self.lastElementId)
+        return (self.listGeneration, self.lastElementId, self.listQuery ?? self.currentQuery())
       }
       self.generation += 1
       // A new first page replaces the list the pending load-more continues.
       self.currentTask?.cancel()
       self.currentTask = nil
       self.currentTaskID = nil
-      return (self.generation, nil as String?)
+      return (self.generation, nil as String?, self.currentQuery())
     }
-    await fetchPage(loadingMore: loadingMore, after: cursor, hiddenPagesInARow: 0, generation: generation)
+    await fetchPage(loadingMore: loadingMore, after: cursor, query: query, hiddenPagesInARow: 0, generation: generation)
+  }
+
+  private func currentQuery() -> Query {
+    let custom = selectedFilter?.type == .custom
+    return Query(
+      sorting: sorting,
+      searchQuery: custom ? selectedFilter?.text : searchQuery.debounced.isEmpty ? nil : searchQuery.debounced,
+      filter: custom ? nil : selectedFilter?.text,
+    )
   }
 
   /// Retries what failed: the first page, or the next page of the list shown.
@@ -86,11 +106,8 @@ class FeedItemsManager<S> {
     await fetchCaller(loadingMore: !fromFirstPage)
   }
 
-  private func fetchPage(loadingMore: Bool, after lastElementId: String?, hiddenPagesInARow: Int, generation: Int) async {
-    let searchQuery = selectedFilter?.type == .custom ? selectedFilter?.text : searchQuery.debounced.isEmpty ? nil : searchQuery.debounced
-    let filter = selectedFilter?.type != .custom ? selectedFilter?.text : nil
-
-    guard let (fetchedEntities, after) = await fetchFn(lastElementId, sorting, searchQuery, filter), let fetchedEntities else {
+  private func fetchPage(loadingMore: Bool, after lastElementId: String?, query: Query, hiddenPagesInARow: Int, generation: Int) async {
+    guard let (fetchedEntities, after) = await fetchFn(lastElementId, query.sorting, query.searchQuery, query.filter), let fetchedEntities else {
       await MainActor.run {
         guard generation == self.generation else { return }
         // A failed first page leaves the old list under its own generation: it may be for another
@@ -121,6 +138,7 @@ class FeedItemsManager<S> {
       applied = await MainActor.run { [newLoadedEntitiesIds] in
         guard generation == self.generation else { return false }
         listGeneration = generation
+        listQuery = query
         withAnimation {
           displayMode = skipPage ? .items : gaveUp ? .onlyReadPosts : shownEntities.isEmpty ? .empty : reachedEnd ? .endOfFeed : .items
           entities = shownEntities
@@ -156,7 +174,7 @@ class FeedItemsManager<S> {
     }
 
     if skipPage, applied {
-      await fetchPage(loadingMore: true, after: after, hiddenPagesInARow: hiddenPagesInARow + 1, generation: generation)
+      await fetchPage(loadingMore: true, after: after, query: query, hiddenPagesInARow: hiddenPagesInARow + 1, generation: generation)
     }
   }
 
