@@ -11,7 +11,7 @@ import Foundation
 
 extension RedditAPI {
   func fetchSubPosts(_ id: String, limit: Int = Defaults[.SubredditFeedDefSettings].chunkLoadSize, sort: SubListingSortOption = .best, after: String? = nil) async -> ([ListingChild<Either<PostData, CommentData>>]?, String?)? {
-    let subID = buildSubID(id, sort, after)
+    let subID = await buildSubID(id, sort, after)
     let params = FetchSubPostsPayload(limit: limit, after: after)
 
     let urlString = "\(RedditAPI.redditApiURLBase)\(subID)".replacingOccurrences(of: " ", with: "%20")
@@ -26,7 +26,7 @@ extension RedditAPI {
   }
 
   func fetchSavedPosts(_ id: String, after: String? = nil, searchText: String? = nil) async -> [Either<PostData, CommentData>]? {
-    let subID = buildSubID(id, nil, after, searchText)
+    let subID = await buildSubID(id, nil, after, searchText)
     let limit = Defaults[.SubredditFeedDefSettings].chunkLoadSize
     let params = FetchSubsPayload(limit: limit, after: after)
 
@@ -41,6 +41,7 @@ extension RedditAPI {
     }
   }
 
+  @MainActor
   private func buildSubID(_ id: String, _ sort: SubListingSortOption?, _ after: String?, _ searchText: String? = nil) -> String {
     let appendedFileType = ".json"
     var subID = ""

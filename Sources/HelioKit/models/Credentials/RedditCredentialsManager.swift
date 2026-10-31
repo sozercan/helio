@@ -15,6 +15,8 @@ import SwiftUI
 @Observable
 class RedditCredentialsManager {
   static let shared = RedditCredentialsManager()
+  @MainActor static let profile = SelectedAccountProfile()
+  @ObservationIgnored private var syncingAccounts: Set<RedditCredential.AuthorizationID> = []
   static func getById(_ credID: UUID) -> RedditCredential? {
     RedditCredentialsManager.shared.credentials.first(where: { $0.id == credID })
   }
@@ -32,7 +34,8 @@ class RedditCredentialsManager {
 
   var selectedCredential: RedditCredential? {
     if !credentials.isEmpty {
-      return credentials.first { $0.id == Defaults[.GeneralDefSettings].redditCredentialSelectedID } ?? credentials[0]
+      let selectedID = Defaults[.GeneralDefSettings].redditCredentialSelectedID
+      return credentials.first { $0.id == selectedID } ?? credentials[0]
     }
     return nil
   }
@@ -105,15 +108,18 @@ class RedditCredentialsManager {
   /// in the app updates the local copy, and pulling the subreddit list syncs right away.
   static let subsSyncInterval: TimeInterval = 60 * 60
 
-  func updateMe(altCred: RedditCredential? = nil) {
-    Task(priority: .utility) { await RedditAPI.shared.fetchMe(force: true, altCredential: altCred) }
-    guard let credential = altCred ?? selectedCredential else { return }
+  @MainActor
+  func updateMe() {
+    Self.profile.reload()
+    guard let credential = selectedCredential, let authorization = credential.authorizationID else { return }
     // A credential signed in to another account is synced again.
     let syncKey = "\(credential.id.uuidString)|\(credential.userName ?? "")"
     if let syncedAt = Defaults[.subsSyncedAt][syncKey], Date().timeIntervalSince(syncedAt) < Self.subsSyncInterval {
       return
     }
+    guard syncingAccounts.insert(authorization).inserted else { return }
     Task(priority: .utility) {
+      defer { self.syncingAccounts.remove(authorization) }
       // As this account: the selection can change before the task runs.
       async let subsSynced = RedditAPI.shared.fetchSubsAndSyncCoreData(account: credential)
       async let multisSynced = RedditAPI.shared.fetchMyMultis(account: credential)
@@ -125,6 +131,7 @@ class RedditCredentialsManager {
 
   func saveCred(_ cred: RedditCredential, forceCreate: Bool = true) {
     DispatchQueue.main.async {
+      let previousAuthorization = self.selectedCredential?.authorizationID
       if Defaults[.GeneralDefSettings].onboardingState != .dismissed {
         Defaults[.GeneralDefSettings].onboardingState = .dismissed
         Nav.shared.presentingSheetsQueue = Nav.shared.presentingSheetsQueue.filter { $0 != .onboarding }
@@ -140,22 +147,43 @@ class RedditCredentialsManager {
       }
       // Sync immediately on main queue to avoid XPC violations
       self.syncCredentialsWithKeychain()
+      if previousAuthorization != self.selectedCredential?.authorizationID {
+        self.updateMe()
+      }
+    }
+  }
+
+  /// A refresh only updates the authorization that requested it, preserving newer edits.
+  @MainActor
+  func updateAccessToken(_ token: RedditCredential.AccessToken?, for authorization: RedditCredential.AuthorizationID) {
+    guard let index = credentials.firstIndex(where: { $0.id == authorization.credentialID }) else { return }
+    var current = credentials[index]
+    guard current.updateAccessToken(token, for: authorization), current != credentials[index] else { return }
+    credentials[index] = current
+    syncCredentialsWithKeychain()
+    if token == nil, selectedCredential?.id == authorization.credentialID {
+      Self.profile.reload()
     }
   }
 
   func deleteCred(_ cred: RedditCredential) {
     DispatchQueue.main.async {
+      let previousAuthorization = self.selectedCredential?.authorizationID
       withAnimation {
         self.credentials = self.credentials.filter { $0.id != cred.id }
       }
       // Sync immediately on main queue to avoid XPC violations
       self.syncCredentialsWithKeychain()
+      if previousAuthorization != self.selectedCredential?.authorizationID {
+        self.updateMe()
+      }
     }
   }
 
   func wipeAllCredentials() {
     DispatchQueue.main.async {
       withAnimation { self.credentials.removeAll() }
+      Self.profile.reload()
       // Remove keychain items immediately to avoid XPC violations
       do {
         try Self.keychain.removeAll()
