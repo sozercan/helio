@@ -84,7 +84,7 @@ struct PostContent: View, Equatable {
 
                 if !(data.selftext?.isEmpty ?? true) {
                   HStack {
-                    Markdown(MarkdownUtil.formatForMarkdown(data.selftext ?? "", showSpoiler: showSpoiler))
+                    Markdown(MarkdownUtil.markdownContent(data.selftext ?? "", showSpoiler: showSpoiler))
                       .markdownTheme(.helioMarkdown(fontSize: selectedTheme.posts.bodyText.size, lineSpacing: selectedTheme.posts.linespacing, textSelection: true))
                       .fixedSize(horizontal: false, vertical: true)
 

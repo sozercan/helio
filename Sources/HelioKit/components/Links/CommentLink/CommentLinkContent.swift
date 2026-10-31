@@ -246,7 +246,7 @@ struct CommentLinkContent: View {
                       .lineLimit(lineLimit)
                   } else {
                     HStack {
-                      Markdown(MarkdownUtil.formatForMarkdown(body, showSpoiler: showSpoiler))
+                      Markdown(MarkdownUtil.markdownContent(body, showSpoiler: showSpoiler))
                         .markdownTheme(.helioMarkdown(fontSize: theme.theme.bodyText.size, lineSpacing: theme.theme.linespacing, textSelection: selectable))
                         .fixedSize(horizontal: false, vertical: true)
 

@@ -12,7 +12,6 @@ import YouTubePlayerKit
 
 struct OnlyURL: View {
   static let height: Double = 22
-  @Default(.BehaviorDefSettings) private var behaviorDefSettings
   var url: URL
   @Environment(\.openURL) private var openURL
   var body: some View {

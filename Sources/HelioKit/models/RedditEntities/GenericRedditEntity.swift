@@ -29,7 +29,7 @@ class GenericRedditEntity<T: GenericRedditEntityDataType, B: Hashable>: Identifi
   }
 
   static func == (lhs: GenericRedditEntity<T, B>, rhs: GenericRedditEntity<T, B>) -> Bool {
-    lhs.id == rhs.id && lhs.kind == rhs.kind && lhs.data?.id == rhs.data?.id
+    lhs === rhs || (lhs.id == rhs.id && lhs.kind == rhs.kind && lhs.data?.id == rhs.data?.id)
   }
 
   var data: T? {
@@ -45,11 +45,19 @@ class GenericRedditEntity<T: GenericRedditEntityDataType, B: Hashable>: Identifi
   }
 
   var helioData: B? = nil
-  var _id: String
+  /// Identity isn't observed: views don't follow it, and each read of an observed property of
+  /// this generic class builds a key path at runtime, which rows, `ForEach` and `==` paid for
+  /// on every `id`.
+  @ObservationIgnored var _id: String {
+    didSet { joinedID = _id + kind }
+  }
+
+  /// `_id` and `kind` joined, kept current instead of concatenated on every read.
+  @ObservationIgnored private var joinedID = ""
 
   var id: String {
     get {
-      self._id + self.kind
+      joinedID
     }
     set {
       self._id = newValue
@@ -71,8 +79,10 @@ class GenericRedditEntity<T: GenericRedditEntityDataType, B: Hashable>: Identifi
   }
 
   var loading = false
-  var typePrefix: String?
-  var kind: String?
+  @ObservationIgnored var typePrefix: String?
+  @ObservationIgnored var kind: String? {
+    didSet { joinedID = _id + kind }
+  }
 
   enum CodingKeys: CodingKey {
     case _id, loading, typePrefix, kind, data, childrenHelioData
@@ -85,6 +95,7 @@ class GenericRedditEntity<T: GenericRedditEntityDataType, B: Hashable>: Identifi
     typePrefix = try container.decodeIfPresent(String.self, forKey: .typePrefix)
     kind = try container.decodeIfPresent(String.self, forKey: .kind)
     data = try container.decodeIfPresent(T.self, forKey: .data)
+    joinedID = _id + kind
   }
 
   func encode(to encoder: Encoder) throws {
@@ -104,12 +115,14 @@ class GenericRedditEntity<T: GenericRedditEntityDataType, B: Hashable>: Identifi
   required init(id: String, typePrefix: String?) {
     self._id = id
     self.typePrefix = typePrefix
+    self.joinedID = id
   }
 
   required init(data: T, typePrefix: String?) {
     self.data = data
     self._id = data.id
     self.typePrefix = typePrefix
+    self.joinedID = data.id
   }
 
   init(data: T, typePrefix: String?, kind: String? = nil) {
@@ -117,6 +130,7 @@ class GenericRedditEntity<T: GenericRedditEntityDataType, B: Hashable>: Identifi
     self.kind = kind
     self._id = data.id
     self.typePrefix = typePrefix
+    self.joinedID = data.id + kind
   }
 
   func duplicate() -> GenericRedditEntity<T, B> {

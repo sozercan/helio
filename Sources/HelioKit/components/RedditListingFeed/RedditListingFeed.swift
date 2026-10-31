@@ -103,6 +103,9 @@ struct RedditListingFeed<Header: View, Footer: View, S: Sorting>: View {
 
   var body: some View {
     let shallowCachedFilters = filters.map { $0.getShallow() }
+    // Read once per update: each read of a setting decodes it, and rows are built as they scroll in.
+    let compactPerSubreddit = feedDefSettings.compactPerSubreddit
+    let postLinkSettings = postLinkDefSettings
     let isThereDivider = selectedTheme.postLinks.divider.style != .no
     let paddingH = selectedTheme.postLinks.theme.outerHPadding
     let paddingV = selectedTheme.postLinks.spacing / (isThereDivider ? 4 : 2)
@@ -131,7 +134,7 @@ struct RedditListingFeed<Header: View, Footer: View, S: Sorting>: View {
                   switch el {
                   case let .post(post):
                     if let helioData = post.helioData, let sub = helioData.subreddit ?? subreddit {
-                      PostLink(id: post.id, theme: selectedTheme.postLinks, showSub: showSubInPosts, compactPerSubreddit: feedDefSettings.compactPerSubreddit[sub.id], contentWidth: contentWidth, defSettings: postLinkDefSettings)
+                      PostLink(id: post.id, theme: selectedTheme.postLinks, showSub: showSubInPosts, compactPerSubreddit: compactPerSubreddit[sub.id], contentWidth: contentWidth, defSettings: postLinkSettings)
                         .environment(\.contextPost, post)
                         .environment(\.contextSubreddit, sub)
                         .environment(\.contextPostHelioData, helioData)
@@ -139,7 +142,7 @@ struct RedditListingFeed<Header: View, Footer: View, S: Sorting>: View {
 
                       if isThereDivider {
                         // Compact rows get Apollo's inset hairline instead of the thick band.
-                        let compact = feedDefSettings.compactPerSubreddit[sub.id] ?? postLinkDefSettings.compactMode.enabled
+                        let compact = compactPerSubreddit[sub.id] ?? postLinkSettings.compactMode.enabled
                         Group {
                           if compact, paddingH == 0 {
                             selectedTheme.lists.dividersColors()
@@ -190,8 +193,8 @@ struct RedditListingFeed<Header: View, Footer: View, S: Sorting>: View {
                     }
                   }
                 }
-                .onAppear { Task { await itemsManager.elementAppeared(entity: el, index: itemsManager.entities.firstIndex(of: el) ?? 0) } }
-                .onDisappear { Task { await itemsManager.elementDisappeared(entity: el, index: itemsManager.entities.firstIndex(of: el) ?? 0) } }
+                .onAppear { itemsManager.elementAppeared(entity: el) }
+                .onDisappear { itemsManager.elementDisappeared(entity: el) }
               }
             }
 
@@ -336,8 +339,10 @@ struct RedditListingFeed<Header: View, Footer: View, S: Sorting>: View {
       }
       .onAppear {
         // Use unstructured Task for initial load to avoid NavigationSplitView
-        // transition cancelling the structured .task's in-flight network request
-        guard itemsManager.displayMode == .loading else { return }
+        // transition cancelling the structured .task's in-flight network request.
+        // onAppear can fire again before the first page lands; that fetch is already on its way.
+        guard itemsManager.displayMode == .loading, !itemsManager.initialLoadStarted else { return }
+        itemsManager.initialLoadStarted = true
         Task {
           await refetch()
           initialLoadDone = true

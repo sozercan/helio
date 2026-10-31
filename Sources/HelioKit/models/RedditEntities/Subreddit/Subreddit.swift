@@ -185,28 +185,33 @@ extension Subreddit {
     return nil
   }
 
-  func cacheFlairsFromPosts(_ entities: [RedditEntityType]) {
-    let context = PersistenceController.shared.container.viewContext
-    let bgContext = PersistenceController.shared.primaryBGContext
-
-    let fetchRequest = CachedFilter.fetchRequest()
-    fetchRequest.predicate = NSPredicate(format: "subID == %@", self.id)
-
-    if let existentFilters = bgContext.performAndWait({ try? bgContext.fetch(fetchRequest) }) {
-      for entity in entities {
-        if case let .post(post) = entity, let postData = post.data, let flairText = postData.link_flair_text {
-          guard !bgContext.performAndWait({ (existentFilters.contains { $0.text == flairText }) }) else { continue }
-          context.performAndWait {
-            let newFilter = CachedFilter(context: context)
-            newFilter.subID = self.id
-            newFilter.type = .modFlair
-            newFilter.text = flairText
-            newFilter.textColor = postData.link_flair_text_color
-            newFilter.bgColor = postData.link_flair_background_color
-          }
-        }
+  /// Keeps the flairs seen on the feed's posts as filters. One background save per page: the
+  /// main queue is busy laying the page out.
+  func cacheFlairsFromPosts(_ entities: [RedditEntityType]) async {
+    var flairs: [String: (textColor: String?, bgColor: String?)] = [:]
+    for entity in entities {
+      if case let .post(post) = entity, let postData = post.data, let flairText = postData.link_flair_text, flairs[flairText] == nil {
+        flairs[flairText] = (postData.link_flair_text_color, postData.link_flair_background_color)
       }
-      context.performAndWait { try? context.save() }
+    }
+    guard !flairs.isEmpty else { return }
+    let subID = id
+    let context = PersistenceController.shared.container.newBackgroundContext()
+    await context.perform {
+      let fetchRequest = CachedFilter.fetchRequest()
+      fetchRequest.predicate = NSPredicate(format: "subID == %@", subID)
+      let existing = Set(((try? context.fetch(fetchRequest)) ?? []).compactMap(\.text))
+      let new = flairs.filter { !existing.contains($0.key) }
+      guard !new.isEmpty else { return }
+      for (text, colors) in new {
+        let newFilter = CachedFilter(context: context)
+        newFilter.subID = subID
+        newFilter.type = .modFlair
+        newFilter.text = text
+        newFilter.textColor = colors.textColor
+        newFilter.bgColor = colors.bgColor
+      }
+      try? context.save()
     }
   }
 
@@ -241,7 +246,7 @@ extension Subreddit {
         }, sub: self, contentWidth: contentWidth).map { .post($0) }
       }
 
-      Task { [entities] in cacheFlairsFromPosts(entities) }
+      Task(priority: .utility) { [entities] in await cacheFlairsFromPosts(entities) }
       return (entities, response.1)
     }
     return nil

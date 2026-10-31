@@ -22,7 +22,6 @@ struct PreviewLinkContent: View {
   var viewModel: PreviewModel
   var url: URL
   static let height: CGFloat = 88
-  @Default(.BehaviorDefSettings) private var behaviorDefSettings
   var body: some View {
     PreviewLinkContentRaw(compact: compact, imageReq: viewModel.imageReq, title: viewModel.title, description: viewModel.description, loading: viewModel.loading, url: url)
   }
