@@ -162,6 +162,7 @@ struct PostView: View, Equatable {
               }
             }
           }
+          post.layoutIfNeeded(contentWidth: contentWidth)
           // Comments start loading now; they're shown once the push animation is over.
           if !commentsLoad.started {
             let full = post.data == nil

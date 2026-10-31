@@ -58,7 +58,10 @@ enum Metrics {
   static func category(method: String, url: String) -> String {
     let parts = URLComponents(string: url)
     let host = parts?.host?.lowercased() ?? "", path = parts?.path ?? ""
-    if !host.hasSuffix("reddit.com") || host.hasPrefix("i.") || host.contains("preview") {
+    // Reddit's web pages (link previews of a post or subreddit) aren't API requests: those go to
+    // oauth.reddit.com, `/api/` or `.json`.
+    let webPage = host != "oauth.reddit.com" && !path.hasPrefix("/api/") && !path.hasSuffix(".json")
+    if !host.hasSuffix("reddit.com") || host.hasPrefix("i.") || host.contains("preview") || webPage {
       let media = path.range(of: #"\.(jpg|jpeg|png|gif|webp|mp4)$"#, options: .regularExpression) != nil
       return host == "fixture.local" || media || host.hasSuffix("redd.it") || host.contains("ytimg") ? "image" : "link_preview"
     }

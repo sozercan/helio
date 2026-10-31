@@ -42,8 +42,9 @@ extension Post {
     self.helioData = newHelioData
   }
 
-  /// Loads a post known only by id (a link to it inside another post), and lays it out like a
-  /// feed post, which also gives it the subreddit its post page needs.
+  /// Loads a post known only by id (a link to it inside another post) and gives it the subreddit
+  /// its post page needs. It's laid out when opened (`layoutIfNeeded`): laying it out now would
+  /// also load the posts it links to, and theirs.
   func fetchItself() {
     let fullname = fullname
     Task(priority: .utility) {
@@ -51,11 +52,22 @@ extension Post {
         await MainActor.run {
           withAnimation {
             self.data = data
-            self.setupHelioData(data: data, theme: InMemoryTheme.shared.currentTheme)
+            if self.helioData == nil {
+              self.helioData = PostHelioData()
+            }
+            if self.helioData?.subreddit == nil {
+              self.helioData?._strongSubreddit = Subreddit(id: data.subreddit)
+            }
           }
         }
       }
     }
+  }
+
+  /// Lays out a post loaded but never laid out, such as one linked from another post.
+  func layoutIfNeeded(contentWidth: Double? = nil) {
+    guard let data, helioData?.layoutWidth ?? 0 == 0 else { return }
+    setupHelioData(data: data, contentWidth: contentWidth, theme: InMemoryTheme.shared.currentTheme, sub: helioData?.subreddit)
   }
 
   static func isCompact(_ data: PostData, sub: Subreddit?) -> Bool {

@@ -12,12 +12,13 @@ import Foundation
 import SwiftUI
 
 extension RedditAPI {
-  func fetchMyMultis() async -> Bool {
-    guard let currentCredentialID = RedditCredentialsManager.shared.selectedCredential?.id else { return false }
+  /// `account`: whose multis; the selected account when nil.
+  func fetchMyMultis(account: RedditCredential? = nil) async -> Bool {
+    guard let currentCredentialID = (account ?? RedditCredentialsManager.shared.selectedCredential)?.id else { return false }
 
     let params = FetchMyMultisPayload()
 
-    switch await self.doRequest("\(RedditAPI.redditApiURLBase)/api/multi/mine", method: .get, params: params, paramsLocation: .queryString, decodable: [MultiContainerResponse].self) {
+    switch await self.doRequest("\(RedditAPI.redditApiURLBase)/api/multi/mine", method: .get, params: params, paramsLocation: .queryString, decodable: [MultiContainerResponse].self, altCredential: account) {
     case let .success(data):
       let context = PersistenceController.shared.container.newBackgroundContext()
 

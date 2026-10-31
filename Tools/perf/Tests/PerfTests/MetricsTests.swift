@@ -18,6 +18,9 @@ struct MetricsTests {
       ("GET", "https://fixture.local/img/p1.jpg", "image"),
       ("GET", "https://external-preview.redd.it/p1.jpg?auto=webp", "image"),
       ("GET", "https://www.theverge.com/article/1", "link_preview"),
+      ("GET", "https://reddit.com/r/apple/comments/abc", "link_preview"),
+      ("GET", "https://reddit.com/r/apple", "link_preview"),
+      ("GET", "https://www.reddit.com/user/someone/about.json", "user"),
     ]
     for (method, url, expected) in cases {
       #expect(Metrics.category(method: method, url: url) == expected, "\(url)")

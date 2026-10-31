@@ -202,7 +202,9 @@ final class FixtureProtocol: URLProtocol {
   static func response(url: URL, method: String) -> (Int, String, Data) {
     let host = url.host?.lowercased() ?? "", path = url.path, ext = url.pathExtension.lowercased()
     let parts = url.pathComponents.filter { $0 != "/" }
-    let reddit = host.hasSuffix("reddit.com") && !host.hasPrefix("i.") && !host.contains("preview")
+    // Reddit's web pages (link previews of a post or subreddit), not its API: OAuth, `/api/` or `.json`.
+    let webPage = host != "oauth.reddit.com" && !path.hasPrefix("/api/") && !path.hasSuffix(".json")
+    let reddit = host.hasSuffix("reddit.com") && !host.hasPrefix("i.") && !host.contains("preview") && !webPage
     var type = "application/json"
     let body: Data?
 

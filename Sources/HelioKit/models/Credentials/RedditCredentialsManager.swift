@@ -114,8 +114,9 @@ class RedditCredentialsManager {
       return
     }
     Task(priority: .utility) {
-      async let subsSynced = RedditAPI.shared.fetchSubsAndSyncCoreData()
-      async let multisSynced = RedditAPI.shared.fetchMyMultis()
+      // As this account: the selection can change before the task runs.
+      async let subsSynced = RedditAPI.shared.fetchSubsAndSyncCoreData(account: credential)
+      async let multisSynced = RedditAPI.shared.fetchMyMultis(account: credential)
       if await subsSynced, await multisSynced {
         Defaults[.subsSyncedAt][syncKey] = Date()
       }
