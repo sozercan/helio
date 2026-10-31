@@ -75,7 +75,7 @@ python3 "$AUTOREVIEW" --mode branch --base <PR base ref>   # committed branch
 - PRs here are often stacked, so pass the PR's actual base branch, not `main`, or the review covers the lower PRs' commits too.
 - Findings are advice. Check each against the real code path before changing anything, and say which ones you rejected and why.
 - Format before reviewing, since formatting moves line numbers. If review fixes change code, rerun the focused tests and the review.
-- The copy here is vendored from `sozercan/skills` (`skills/autoreview`). Change shared behavior there and re-copy `SKILL.md`, `references/` and `scripts/`; keep Helio-specific review rules in this file.
+- The copy here is vendored from `sozercan/skills` (`skills/autoreview`). Change shared behavior there and re-copy `SKILL.md`, `references/` and `scripts/`, keeping the `LICENSE` beside them; keep Helio-specific review rules in this file.
 
 ## Git and releases
 
