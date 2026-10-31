@@ -128,7 +128,7 @@ struct ImageMediaPost: View, Equatable {
 }
 
 /// Either returns the content width or, if compact mode is enabled, the modified content width depending on what setting the user chose
-func scaledCompactModeThumbSize(compact: Bool = Defaults[.PostLinkDefSettings].compactMode.enabled, thumbnailSize: ThumbnailSizeModifier = Defaults[.PostLinkDefSettings].compactMode.thumbnailSize) -> CGFloat {
+func scaledCompactModeThumbSize(compact: Bool = CachedDefaults[.PostLinkDefSettings].compactMode.enabled, thumbnailSize: ThumbnailSizeModifier = CachedDefaults[.PostLinkDefSettings].compactMode.thumbnailSize) -> CGFloat {
   if compact {
     compactModeThumbSize * thumbnailSize.rawVal
   } else {

@@ -115,7 +115,7 @@ class FeedItemsManager<S> {
   }
 
   private func withoutReadPosts(_ entities: [RedditEntityType]) -> [RedditEntityType] {
-    guard hideReadPosts, Defaults[.PostLinkDefSettings].hideOnRead else { return entities }
+    guard hideReadPosts, CachedDefaults[.PostLinkDefSettings].hideOnRead else { return entities }
     return entities.filter { entity in
       if case let .post(post) = entity {
         return !(post.data?.helioSeen ?? false)

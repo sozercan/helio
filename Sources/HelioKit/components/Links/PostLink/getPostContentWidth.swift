@@ -55,7 +55,7 @@ struct PostDimensions: Hashable, Equatable {
 
   init(contentWidth: Double, compact: Bool? = nil, theme: PostLinkTheme? = nil, titleSize: CGSize, bodySize: CGSize? = nil, urlTagHeight: Double? = nil, mediaSize: CGSize? = nil, dividerSize: CGSize? = nil, badgeSize: CGSize, spacingHeight: Double) {
     self.contentWidth = contentWidth
-    self.compact = compact ?? Defaults[.PostLinkDefSettings].compactMode.enabled
+    self.compact = compact ?? CachedDefaults[.PostLinkDefSettings].compactMode.enabled
     self.theme = theme ?? InMemoryTheme.shared.currentTheme.postLinks.theme
     self.titleSize = titleSize
     self.bodySize = bodySize
@@ -70,10 +70,10 @@ struct PostDimensions: Hashable, Equatable {
 func getPostDimensions(post: Post, helioData: PostHelioData? = nil, columnWidth: Double = .screenW, secondary: Bool = false, rawTheme: HelioTheme? = nil, compact: Bool? = nil, subId: String? = nil) -> PostDimensions {
   if let data = post.data {
     let selectedTheme = rawTheme ?? InMemoryTheme.shared.currentTheme
-    let showSelfPostThumbnails = Defaults[.PostLinkDefSettings].compactMode.showPlaceholderThumbnail
-    let compact = compact ?? Defaults[.SubredditFeedDefSettings].compactPerSubreddit[subId ?? data.subreddit_id ?? ""] ?? Defaults[.PostLinkDefSettings].compactMode.enabled
-    let showAuthorOnPostLinks = Defaults[.PostLinkDefSettings].showAuthor
-    let maxDefaultHeight: CGFloat = Defaults[.PostLinkDefSettings].maxMediaHeightScreenPercentage
+    let showSelfPostThumbnails = CachedDefaults[.PostLinkDefSettings].compactMode.showPlaceholderThumbnail
+    let compact = compact ?? CachedDefaults[.SubredditFeedDefSettings].compactPerSubreddit[subId ?? data.subreddit_id ?? ""] ?? CachedDefaults[.PostLinkDefSettings].compactMode.enabled
+    let showAuthorOnPostLinks = CachedDefaults[.PostLinkDefSettings].showAuthor
+    let maxDefaultHeight: CGFloat = CachedDefaults[.PostLinkDefSettings].maxMediaHeightScreenPercentage
     let maxHeight: CGFloat = (maxDefaultHeight / 100) * .screenH
     let extractedMedia = compact ? helioData?.extractedMedia : helioData?.extractedMediaForcedNormal
     let compactImgSize = scaledCompactModeThumbSize()
