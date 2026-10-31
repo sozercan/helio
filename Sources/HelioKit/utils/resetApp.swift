@@ -10,6 +10,7 @@ import Defaults
 import Foundation
 import KeychainAccess
 
+@MainActor
 func resetApp() {
   resetCaches()
   resetCoreData()
@@ -17,8 +18,9 @@ func resetApp() {
   resetCredentials()
 }
 
+@MainActor
 func resetCredentials() {
-  RedditCredentialsManager.shared.credentials.forEach { $0.delete() }
+  RedditCredentialsManager.shared.wipeAllCredentials()
 
   let credentialsKeychain = Keychain(service: "com.sertacozercan.helio.reddit-credentials").synchronizable(Defaults[.BehaviorDefSettings].iCloudSyncCredentials)
 

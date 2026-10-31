@@ -8,6 +8,7 @@
 import Defaults
 import Foundation
 
+@MainActor
 func checkForOnboardingStatus() {
   var open = false
   open = switch Defaults[.GeneralDefSettings].onboardingState {

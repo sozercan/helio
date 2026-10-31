@@ -57,6 +57,14 @@ struct RedditCredential: Identifiable, Equatable, Hashable, Codable, Sendable {
     return true
   }
 
+  /// Legacy imports can lack a username. Never overwrite an edit or another grant.
+  @discardableResult
+  mutating func backfillUserName(_ name: String, for authorization: AuthorizationID) -> Bool {
+    guard authorizationID == authorization, userName?.isEmpty ?? true, !name.isEmpty else { return false }
+    userName = name
+    return true
+  }
+
   enum CodingKeys: String, CodingKey { case id, apiAppID, apiAppSecret, accessToken, refreshToken, userName, profilePicture, _userAgent }
 
   var id: UUID
@@ -90,6 +98,7 @@ struct RedditCredential: Identifiable, Equatable, Hashable, Codable, Sendable {
   }
 
   var profilePicture: String? = nil
+  @MainActor
   func isInKeychain() -> Bool {
     RedditCredentialsManager.shared.credentials.contains { $0.id == self.id }
   }
@@ -157,10 +166,12 @@ struct RedditCredential: Identifiable, Equatable, Hashable, Codable, Sendable {
     _userAgent = nil
   }
 
+  @MainActor
   func save(_ forceCreate: Bool = true) {
     RedditCredentialsManager.shared.saveCred(self, forceCreate: forceCreate)
   }
 
+  @MainActor
   func delete() {
     RedditCredentialsManager.shared.deleteCred(self)
   }

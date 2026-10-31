@@ -78,6 +78,7 @@ extension Subreddit {
     }
   }
 
+  @MainActor
   func subscribeToggle(optimistic: Bool = false, _ cb: (() -> Void)? = nil) {
     guard let currentCredentialID = RedditCredentialsManager.shared.selectedCredential?.id else { return }
 

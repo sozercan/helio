@@ -10,12 +10,15 @@ import Combine
 import Defaults
 import Foundation
 import KeychainAccess
+import os
 import SwiftUI
+import Synchronization
 
+@MainActor
 @Observable
-class RedditCredentialsManager {
+final class RedditCredentialsManager {
   static let shared = RedditCredentialsManager()
-  @MainActor static let profile = SelectedAccountProfile()
+  static let profile = SelectedAccountProfile()
   @ObservationIgnored private var syncingAccounts: Set<RedditCredential.AuthorizationID> = []
   static func getById(_ credID: UUID) -> RedditCredential? {
     RedditCredentialsManager.shared.credentials.first(where: { $0.id == credID })
@@ -25,12 +28,13 @@ class RedditCredentialsManager {
   static let oldKeychainServiceString = "com.sertacozercan.helio.reddit-credentials"
   static let keychainServiceString = "com.sertacozercan.helio.reddit-multi-credentials"
   static let keychain = Keychain(service: RedditCredentialsManager.keychainServiceString).synchronizable(Defaults[.BehaviorDefSettings].iCloudSyncCredentials)
+  private let persistence: Keychain?
+  private let reloadSelectedProfile: @MainActor () -> Void
+  @ObservationIgnored private let authorizations = Mutex<Set<RedditCredential.AuthorizationID>>([])
   private(set) var credentials: [RedditCredential] = []
   var validCredentials: [RedditCredential] {
     credentials.filter { $0.validationStatus == .authorized }
   }
-
-  var cancelables: [Defaults.Observation] = []
 
   var selectedCredential: RedditCredential? {
     selectedCredential(id: Defaults[.GeneralDefSettings].redditCredentialSelectedID)
@@ -42,34 +46,66 @@ class RedditCredentialsManager {
   }
 
   func syncCredentialsWithKeychain() {
+    guard let persistence else { return }
     do {
-      let allKeys = try Self.keychain.allKeys()
+      let allKeys = try persistence.allKeys()
       for keychainCredID in allKeys {
         if self.credentials.first(where: { $0.id.uuidString == keychainCredID }) == nil {
-          try Self.keychain.remove(keychainCredID)
+          try persistence.remove(keychainCredID)
         }
       }
       for cred in self.credentials {
         if let encoded = cred.toStr() {
-          try Self.keychain.set(encoded, key: cred.id.uuidString)
+          try persistence.set(encoded, key: cred.id.uuidString)
         }
       }
     } catch {
-      print("Keychain sync error: \(error.localizedDescription)")
+      Logger(subsystem: "com.sertacozercan.helio", category: "Credentials").error("Keychain sync failed: \(error.localizedDescription)")
     }
   }
 
-  /// An in-memory credential set, without importing or writing the keychain.
-  init(credentials: [RedditCredential]) {
+  /// An in-memory store: no keychain, onboarding or account-list network side effects.
+  /// The callback lets a local profile owner observe the same synchronous lifecycle boundary.
+  init(credentials: [RedditCredential], reloadSelectedProfile: @escaping @MainActor () -> Void = {}) {
+    persistence = nil
+    self.reloadSelectedProfile = reloadSelectedProfile
     self.credentials = credentials
+    authorizations.withLock { $0 = Set(credentials.compactMap(\.authorizationID)) }
   }
 
-  @MainActor
-  func containsAuthorization(_ authorization: RedditCredential.AuthorizationID) -> Bool {
-    credentials.contains { $0.authorizationID == authorization }
+  nonisolated func containsAuthorization(_ authorization: RedditCredential.AuthorizationID) -> Bool {
+    authorizations.withLock { $0.contains(authorization) }
   }
 
-  @MainActor
+  /// Background persistence may commit while the grant remains installed. Grant
+  /// invalidation uses this same lease; main-actor selection reads never take it.
+  nonisolated func withCurrentAuthorization<Result>(_ authorization: RedditCredential.AuthorizationID, _ commit: () throws -> Result) rethrows -> Result? {
+    try authorizations.withLock { current in
+      guard current.contains(authorization) else { return nil }
+      return try commit()
+    }
+  }
+
+  private func publishCredentials(_ updated: [RedditCredential]) {
+    let ids = Set(updated.compactMap(\.authorizationID))
+    if ids != Set(credentials.compactMap(\.authorizationID)) {
+      // Invalidate before publishing the replacement. An already leased commit
+      // finishes before this mutation, never after a replacement account's write.
+      authorizations.withLock { $0 = ids }
+    }
+    credentials = updated
+  }
+
+  func backfillUserName(_ name: String, for authorization: RedditCredential.AuthorizationID) {
+    guard let index = credentials.firstIndex(where: { $0.id == authorization.credentialID }) else { return }
+    var current = credentials[index]
+    guard current.backfillUserName(name, for: authorization) else { return }
+    var updated = credentials
+    updated[index] = current
+    publishCredentials(updated)
+    syncCredentialsWithKeychain()
+  }
+
   @discardableResult
   func markSubscriptionsSynced(for credential: RedditCredential, at date: Date = Date()) -> Bool {
     guard let authorization = credential.authorizationID, containsAuthorization(authorization) else { return false }
@@ -79,6 +115,8 @@ class RedditCredentialsManager {
   }
 
   init() {
+    persistence = Self.keychain
+    reloadSelectedProfile = { Self.profile.reload() }
     let okc = Keychain(service: Self.oldKeychainServiceString)
     let kc = Self.keychain
 
@@ -109,29 +147,16 @@ class RedditCredentialsManager {
       }
     }
 
-//    self.cancelables.append(Defaults.observe(.redditCredentialSelectedID) { change in
-//      if change.oldValue == change.newValue { return }
-//      if let cred = self.credentials.first(where: { $0.id == change.newValue }) {
-//        self.updateMe(altCred: cred)
-//      }
-//      doThisAfter(0) { self.objectWillChange.send() }
-//    })
-
-//    if let currCredID = Defaults[.redditCredentialSelectedID], let currCred = self.credentials.first(where: { $0.id == currCredID })  {
-//      doThisAfter(0.5) { self.updateMe(altCred: currCred) }
-//    }
+    authorizations.withLock { $0 = Set(credentials.compactMap(\.authorizationID)) }
   }
-
-  deinit { self.cancelables.forEach { obs in obs.invalidate() } }
 
   /// Launch and account switches sync subscriptions and multis at most this often. Subscribing
   /// in the app updates the local copy, and pulling the subreddit list syncs right away.
   static let subsSyncInterval: TimeInterval = 60 * 60
 
-  @MainActor
   func updateMe() {
-    Self.profile.reload()
-    guard let credential = selectedCredential, let authorization = credential.authorizationID else { return }
+    reloadSelectedProfile()
+    guard persistence != nil, let credential = selectedCredential, let authorization = credential.authorizationID else { return }
     // A credential signed in to another account is synced again.
     let syncKey = "\(credential.id.uuidString)|\(credential.userName ?? "")"
     if let syncedAt = Defaults[.subsSyncedAt][syncKey], Date().timeIntervalSince(syncedAt) < Self.subsSyncInterval {
@@ -149,67 +174,65 @@ class RedditCredentialsManager {
     }
   }
 
+  /// Mutations and their persistence/profile effects finish in the same main-actor turn.
   func saveCred(_ cred: RedditCredential, forceCreate: Bool = true) {
-    DispatchQueue.main.async {
-      let previousAuthorization = self.selectedCredential?.authorizationID
-      if Defaults[.GeneralDefSettings].onboardingState != .dismissed {
-        Defaults[.GeneralDefSettings].onboardingState = .dismissed
-        Nav.shared.presentingSheetsQueue = Nav.shared.presentingSheetsQueue.filter { $0 != .onboarding }
-      }
-      if let i = self.credentials.firstIndex(where: { $0.id == cred.id }) {
-        self.credentials[i] = cred
-      } else if forceCreate {
-        self.credentials.append(cred)
-      }
-      // Auto-select if no credential is currently selected
-      if Defaults[.GeneralDefSettings].redditCredentialSelectedID == nil {
-        Defaults[.GeneralDefSettings].redditCredentialSelectedID = cred.id
-      }
-      // Sync immediately on main queue to avoid XPC violations
-      self.syncCredentialsWithKeychain()
-      if previousAuthorization != self.selectedCredential?.authorizationID {
-        self.updateMe()
-      }
+    let index = credentials.firstIndex { $0.id == cred.id }
+    guard index != nil || forceCreate else { return }
+    let previousAuthorization = selectedCredential?.authorizationID
+    if persistence != nil, Defaults[.GeneralDefSettings].onboardingState != .dismissed {
+      Defaults[.GeneralDefSettings].onboardingState = .dismissed
+      Nav.shared.presentingSheetsQueue = Nav.shared.presentingSheetsQueue.filter { $0 != .onboarding }
+    }
+    var updated = credentials
+    if let index {
+      updated[index] = cred
+    } else {
+      updated.append(cred)
+    }
+    publishCredentials(updated)
+    // Auto-select if no credential is currently selected.
+    if Defaults[.GeneralDefSettings].redditCredentialSelectedID == nil {
+      Defaults[.GeneralDefSettings].redditCredentialSelectedID = cred.id
+    }
+    syncCredentialsWithKeychain()
+    if previousAuthorization != selectedCredential?.authorizationID {
+      updateMe()
     }
   }
 
   /// A refresh only updates the authorization that requested it, preserving newer edits.
-  @MainActor
   func updateAccessToken(_ token: RedditCredential.AccessToken?, for authorization: RedditCredential.AuthorizationID) {
     guard let index = credentials.firstIndex(where: { $0.id == authorization.credentialID }) else { return }
     var current = credentials[index]
     guard current.updateAccessToken(token, for: authorization), current != credentials[index] else { return }
-    credentials[index] = current
+    var updated = credentials
+    updated[index] = current
+    publishCredentials(updated)
     syncCredentialsWithKeychain()
     if token == nil, selectedCredential?.id == authorization.credentialID {
-      Self.profile.reload()
+      reloadSelectedProfile()
     }
   }
 
   func deleteCred(_ cred: RedditCredential) {
-    DispatchQueue.main.async {
-      let previousAuthorization = self.selectedCredential?.authorizationID
-      withAnimation {
-        self.credentials = self.credentials.filter { $0.id != cred.id }
-      }
-      // Sync immediately on main queue to avoid XPC violations
-      self.syncCredentialsWithKeychain()
-      if previousAuthorization != self.selectedCredential?.authorizationID {
-        self.updateMe()
-      }
+    let previousAuthorization = selectedCredential?.authorizationID
+    withAnimation {
+      publishCredentials(credentials.filter { $0.id != cred.id })
+    }
+    syncCredentialsWithKeychain()
+    if previousAuthorization != selectedCredential?.authorizationID {
+      updateMe()
     }
   }
 
   func wipeAllCredentials() {
-    DispatchQueue.main.async {
-      withAnimation { self.credentials.removeAll() }
-      Self.profile.reload()
-      // Remove keychain items immediately to avoid XPC violations
-      do {
-        try Self.keychain.removeAll()
-      } catch {
-        print("Error wiping keychain: \(error.localizedDescription)")
-      }
+    withAnimation { publishCredentials([]) }
+    reloadSelectedProfile()
+    guard let persistence else { return }
+    do {
+      try persistence.removeAll()
+    } catch {
+      Logger(subsystem: "com.sertacozercan.helio", category: "Credentials").error("Keychain wipe failed: \(error.localizedDescription)")
     }
   }
 }

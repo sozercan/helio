@@ -9,17 +9,21 @@ final class SelectedAccountProfile {
   private(set) var user: User?
   private(set) var state: State = .signedOut
   @ObservationIgnored private var requestID: UUID?
-  @ObservationIgnored private var authorizationID: RedditCredential.AuthorizationID?
+  /// Observable selection identity, including switches while both profiles are loading.
+  private(set) var authorizationID: RedditCredential.AuthorizationID?
   @ObservationIgnored private var task: Task<Void, Never>?
   private let currentAccount: @MainActor () -> RedditCredential?
   private let fetch: @MainActor (RedditCredential) async -> UserData?
+  private let persistUserName: @MainActor (String, RedditCredential.AuthorizationID) -> Void
 
   init(
     currentAccount: @escaping @MainActor () -> RedditCredential? = { RedditCredentialsManager.shared.selectedCredential },
     fetch: @escaping @MainActor (RedditCredential) async -> UserData? = { await RedditAPI.shared.fetchMe(altCredential: $0) },
+    persistUserName: @escaping @MainActor (String, RedditCredential.AuthorizationID) -> Void = { RedditCredentialsManager.shared.backfillUserName($0, for: $1) },
   ) {
     self.currentAccount = currentAccount
     self.fetch = fetch
+    self.persistUserName = persistUserName
   }
 
   @MainActor
@@ -63,6 +67,9 @@ final class SelectedAccountProfile {
       let data = await self.fetch(account)
       guard self.requestID == id, !Task.isCancelled,
             self.currentAccount()?.authorizationID == authorization else { return }
+      if let name = data?.name {
+        self.persistUserName(name, authorization)
+      }
       self.user = data.map { User(data: $0) }
       self.state = data == nil ? .error : .ready
     }

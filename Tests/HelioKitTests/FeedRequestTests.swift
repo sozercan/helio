@@ -78,6 +78,23 @@ struct FeedRequestTests {
     #expect(requests.isEmpty)
   }
 
+  @MainActor
+  @Test func aMigratedAccountCanLoadSavedAfterItsProfileBackfillsTheName() async throws {
+    let credential = account(nil)
+    let manager = RedditCredentialsManager(credentials: [credential])
+    let data = try JSONDecoder().decode(UserData.self, from: Data(#"{"id":"placeholder_migrated","name":"placeholder_migrated"}"#.utf8))
+    let profile = SelectedAccountProfile(currentAccount: { manager.selectedCredential }, fetch: { _ in data }, persistUserName: { manager.backfillUserName($0, for: $1) })
+    await profile.refresh()
+    let api = RedditAPI(session: session(), currentAccount: { await manager.selectedCredential })
+    let result = await api.fetchSubPosts(savedKeyword)
+    #expect(result != nil)
+    let requests = FeedRequestProtocol.requests.withLock { $0 }
+    let request = try #require(requests.first)
+    #expect(request.url?.path == "/user/placeholder_migrated/saved/best.json")
+    #expect(request.value(forHTTPHeaderField: "Authorization") == "Bearer placeholder-unknown-access-token")
+    #expect(manager.selectedCredential?.authorizationID == credential.authorizationID)
+  }
+
   @Test func everyFeedEndpointUsesItsExplicitLimit() async throws {
     let credential = account(nil)
     let api = RedditAPI(session: session(), currentAccount: { credential })
