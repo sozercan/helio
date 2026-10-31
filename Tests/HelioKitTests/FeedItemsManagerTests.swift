@@ -134,4 +134,134 @@ struct FeedItemsManagerTests {
       #expect(manager.displayMode == .empty)
     }
   }
+
+  /// First-page fetches sorted by `.hot` wait on `gate`; `.new` returns `newPage` right away.
+  private func makeGatedManager(gate: Gate, hotPage: ([RedditEntityType], String?)?, newPage: ([RedditEntityType], String?)?) -> FeedItemsManager<SubListingSortOption> {
+    let manager = FeedItemsManager<SubListingSortOption>(sorting: nil) { _, sorting, _, _ in
+      if sorting == .hot {
+        await gate.wait()
+        return hotPage
+      }
+      return newPage
+    }
+    manager.chunkSize = 1
+    return manager
+  }
+
+  @Test func dropsAFirstPageThatLandsAfterANewerOne() async {
+    await withHideOnRead(false) {
+      let gate = Gate()
+      let manager = makeGatedManager(gate: gate, hotPage: ([post("old", read: false)], "h2"), newPage: ([post("new", read: false)], "n2"))
+      manager.sorting = .hot
+      let slow = Task { await manager.fetchCaller(loadingMore: false) }
+      await gate.untilWaiting()
+
+      // The sort changes while the first page is still loading.
+      manager.sorting = .new
+      await manager.fetchCaller(loadingMore: false)
+      #expect(ids(manager.entities) == ["new"])
+
+      await gate.open()
+      await slow.value
+      #expect(ids(manager.entities) == ["new"])
+      #expect(manager.lastElementId == "n2")
+      #expect(manager.displayMode == .items)
+    }
+  }
+
+  @Test func dropsAnErrorFromASupersededFetch() async {
+    await withHideOnRead(false) {
+      let gate = Gate()
+      let manager = makeGatedManager(gate: gate, hotPage: nil, newPage: ([post("new", read: false)], "n2"))
+      manager.sorting = .hot
+      let slow = Task { await manager.fetchCaller(loadingMore: false) }
+      await gate.untilWaiting()
+
+      manager.sorting = .new
+      await manager.fetchCaller(loadingMore: false)
+      await gate.open()
+      await slow.value
+
+      #expect(manager.displayMode == .items)
+      #expect(ids(manager.entities) == ["new"])
+    }
+  }
+
+  @Test func dropsALoadMorePageAfterTheFeedWasRefreshed() async {
+    await withHideOnRead(false) {
+      let gate = Gate()
+      var refreshed = false
+      let manager = FeedItemsManager<SubListingSortOption>(sorting: nil) { after, _, _, _ in
+        if after == "p2" {
+          await gate.wait()
+          return ([post("stale", read: false)], "p3")
+        }
+        return refreshed ? ([post("b", read: false)], "q2") : ([post("a", read: false)], "p2")
+      }
+      manager.chunkSize = 1
+      await manager.fetchCaller(loadingMore: false)
+      #expect(ids(manager.entities) == ["a"])
+
+      let loadMore = Task { await manager.fetchCaller(loadingMore: true) }
+      await gate.untilWaiting()
+
+      refreshed = true
+      await manager.fetchCaller(loadingMore: false)
+      await gate.open()
+      await loadMore.value
+
+      #expect(ids(manager.entities) == ["b"])
+      #expect(manager.lastElementId == "q2")
+    }
+  }
+
+  @Test func pickingTheCurrentSortAgainKeepsTheFeed() async {
+    await withHideOnRead(false) {
+      let manager = FeedItemsManager<SubListingSortOption>(sorting: .hot) { _, _, _, _ in ([post("a", read: false)], "p2") }
+      manager.chunkSize = 1
+      await manager.fetchCaller(loadingMore: false)
+      #expect(manager.displayMode == .items)
+
+      // No reload follows an unchanged sort, so a spinner here would never go away.
+      manager.sorting = .hot
+      #expect(manager.displayMode == .items)
+
+      manager.sorting = .new
+      #expect(manager.displayMode == .loading)
+    }
+  }
+
+  @Test func showsAnErrorWhenTheFirstPageFails() async {
+    let manager = FeedItemsManager<SubListingSortOption>(sorting: nil) { _, _, _, _ in nil }
+    await manager.fetchCaller(loadingMore: false)
+
+    #expect(manager.displayMode == .error)
+  }
+}
+
+/// Holds one fetch until the test opens it.
+private actor Gate {
+  private var held: CheckedContinuation<Void, Never>?
+  private var waitingForHold: [CheckedContinuation<Void, Never>] = []
+
+  func wait() async {
+    await withCheckedContinuation { continuation in
+      held = continuation
+      waitingForHold.forEach { $0.resume() }
+      waitingForHold = []
+    }
+  }
+
+  /// Returns once a fetch is held at the gate.
+  func untilWaiting() async {
+    if held != nil {
+      return
+    }
+    await withCheckedContinuation { waitingForHold.append($0) }
+  }
+
+  func open() {
+    held?.resume()
+    held = nil
+  }
 }

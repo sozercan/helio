@@ -10,13 +10,16 @@ import Nuke
 import SwiftUI
 
 @Observable
-class FeedItemsManager<S> {
+class FeedItemsManager<S: Equatable> {
   typealias ItemsFetchFn = (_ lastElementId: String?, _ sorting: S?, _ searchQuery: String?, _ flair: String?) async -> (entities: [RedditEntityType]?, after: String?)?
 
   /// `onlyReadPosts`: paging stopped after several pages in a row held only hidden read posts.
   enum DisplayMode: String { case loading, empty, items, endOfFeed, error, onlyReadPosts }
 
   private var currentTask: Task<Void, Never>?
+  /// Bumped on the main actor each time the first page is fetched again. A page fetched under an
+  /// older generation is dropped, so a slow earlier response can't overwrite a newer one.
+  @ObservationIgnored private var generation = 0
   /// Set once the feed starts loading its first page.
   @ObservationIgnored var initialLoadStarted = false
   var displayMode: DisplayMode = .loading
@@ -31,12 +34,21 @@ class FeedItemsManager<S> {
   var loadedEntitiesIds: Set<String> = []
   var lastElementId: String?
   var sorting: S? {
-    willSet { withAnimation { displayMode = .loading } }
+    // Picking the current value again starts no reload, so it mustn't show the spinner.
+    willSet {
+      if newValue != sorting {
+        withAnimation { displayMode = .loading }
+      }
+    }
   }
 
   var searchQuery = Debouncer("")
   var selectedFilter: ShallowCachedFilter? {
-    willSet { withAnimation { displayMode = .loading } }
+    willSet {
+      if newValue != selectedFilter {
+        withAnimation { displayMode = .loading }
+      }
+    }
   }
 
   var chunkSize: Int
@@ -56,11 +68,17 @@ class FeedItemsManager<S> {
   }
 
   func fetchCaller(loadingMore: Bool) async {
-    await fetchPage(loadingMore: loadingMore, after: loadingMore ? lastElementId : nil, hiddenPagesInARow: 0)
+    let generation = await MainActor.run {
+      if !loadingMore {
+        self.generation += 1
+      }
+      return self.generation
+    }
+    await fetchPage(loadingMore: loadingMore, after: loadingMore ? lastElementId : nil, hiddenPagesInARow: 0, generation: generation)
     await MainActor.run { self.currentTask = nil }
   }
 
-  private func fetchPage(loadingMore: Bool, after lastElementId: String?, hiddenPagesInARow: Int) async {
+  private func fetchPage(loadingMore: Bool, after lastElementId: String?, hiddenPagesInARow: Int, generation: Int) async {
     if !loadingMore, let currentTask, !currentTask.isCancelled {
       currentTask.cancel()
     }
@@ -69,7 +87,10 @@ class FeedItemsManager<S> {
     let filter = selectedFilter?.type != .custom ? selectedFilter?.text : nil
 
     guard let (fetchedEntities, after) = await fetchFn(lastElementId, sorting, searchQuery, filter), let fetchedEntities else {
-      await MainActor.run { withAnimation { displayMode = .error } }
+      await MainActor.run {
+        guard generation == self.generation else { return }
+        withAnimation { displayMode = .error }
+      }
       return
     }
 
@@ -82,19 +103,22 @@ class FeedItemsManager<S> {
     // Stop paging, but offer to continue: no new row will appear to trigger the next page.
     let gaveUp = onlyReadPosts && !skipPage
 
+    let applied: Bool
     if !loadingMore {
       var newLoadedEntitiesIds = Set<String>()
       for ent in shownEntities {
         newLoadedEntitiesIds.insert(ent.fullname)
       }
       // On the main actor, which renders `entities` and reads the row index.
-      await MainActor.run { [newLoadedEntitiesIds] in
+      applied = await MainActor.run { [newLoadedEntitiesIds] in
+        guard generation == self.generation else { return false }
         withAnimation {
           displayMode = skipPage ? .items : gaveUp ? .onlyReadPosts : shownEntities.isEmpty ? .empty : reachedEnd ? .endOfFeed : .items
           entities = shownEntities
           self.lastElementId = after
           loadedEntitiesIds = newLoadedEntitiesIds
         }
+        return true
       }
     } else {
       var newLoadedEntitiesIds = loadedEntitiesIds
@@ -110,17 +134,20 @@ class FeedItemsManager<S> {
 
       // Awaited, so it lands before the next page's (a skipped page fetches on right away)
       // and can't overwrite that page's error.
-      await MainActor.run { [newEntities, newLoadedEntitiesIds] in
+      applied = await MainActor.run { [newEntities, newLoadedEntitiesIds] in
+        // A newer first page replaced the list this page continues.
+        guard generation == self.generation else { return false }
         // Don't animate appending — it causes scroll position jumps
         self.displayMode = reachedEnd ? .endOfFeed : gaveUp ? .onlyReadPosts : .items
         self.entities = newEntities
         self.lastElementId = after
         self.loadedEntitiesIds = newLoadedEntitiesIds
+        return true
       }
     }
 
-    if skipPage {
-      await fetchPage(loadingMore: true, after: after, hiddenPagesInARow: hiddenPagesInARow + 1)
+    if skipPage, applied {
+      await fetchPage(loadingMore: true, after: after, hiddenPagesInARow: hiddenPagesInARow + 1, generation: generation)
     }
   }
 

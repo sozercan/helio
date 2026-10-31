@@ -11,6 +11,7 @@ import Combine
 import Defaults
 import Foundation
 import KeychainAccess
+import os
 import SwiftUI
 
 @Observable
@@ -293,6 +294,52 @@ struct ListingData<T: Codable & Hashable>: Codable, Defaults.Serializable, Hasha
   let modhash: String?
   let geo_filter: String?
   var children: [ListingChild<T>]?
+}
+
+extension ListingData {
+  /// Decodes children one by one: an item Reddit sends in an unexpected shape is skipped
+  /// instead of failing the whole page (a mixed feed like Home hits odd posts often).
+  init(from decoder: Decoder) throws {
+    let container = try decoder.container(keyedBy: CodingKeys.self)
+    after = try container.decodeIfPresent(String.self, forKey: .after)
+    dist = try container.decodeIfPresent(Int.self, forKey: .dist)
+    modhash = try container.decodeIfPresent(String.self, forKey: .modhash)
+    geo_filter = try container.decodeIfPresent(String.self, forKey: .geo_filter)
+    guard let lossyChildren = try container.decodeIfPresent([LossyListingChild<T>].self, forKey: .children) else {
+      children = nil
+      return
+    }
+    let decoded = lossyChildren.compactMap(\.value)
+    let errors = lossyChildren.compactMap(\.error)
+    // When no item decodes, this is the wrong listing type, not a page with a bad item: callers
+    // like the comments response (`Either<Listing<PostData>, Listing<CommentData>>`) rely on
+    // the failure to try the other type.
+    if decoded.isEmpty, let error = errors.first {
+      throw error
+    }
+    for error in errors {
+      listingLogger.error("Skipping a listing item that failed to decode: \(String(describing: error), privacy: .private)")
+    }
+    children = decoded
+  }
+}
+
+private let listingLogger = Logger(subsystem: "com.sertacozercan.helio", category: "Listing")
+
+/// Never throws, so one bad child doesn't stop the array decoding the rest.
+private struct LossyListingChild<T: Codable & Hashable>: Decodable {
+  let value: ListingChild<T>?
+  let error: Error?
+
+  init(from decoder: Decoder) throws {
+    do {
+      value = try ListingChild<T>(from: decoder)
+      error = nil
+    } catch {
+      value = nil
+      self.error = error
+    }
+  }
 }
 
 enum Either<A: Codable & Hashable, B: Codable & Hashable>: Codable, Hashable {

@@ -42,6 +42,8 @@ struct RedditListingFeed<Header: View, Footer: View, S: Sorting>: View {
 
   @State private var searchEnabled: Bool
   @State private var initialLoadDone: Bool = false
+  /// The sort, search and filter the shown items were loaded for.
+  @State private var loadedQueryKey: [String?]?
   @SilentState private var fetchedFilters: Bool = false
 
   @State private var itemsManager: FeedItemsManager<S>
@@ -68,6 +70,17 @@ struct RedditListingFeed<Header: View, Footer: View, S: Sorting>: View {
       await subreddit.fetchAndCacheFlairs()
       fetchedFilters = true
     }
+  }
+
+  private var queryKey: [String?] {
+    [itemsManager.searchQuery.debounced, itemsManager.selectedFilter?.text, itemsManager.sorting?.meta.apiValue]
+  }
+
+  /// Reloads from the first page after the sort, search or filter changed.
+  func reloadForQueryChange() async {
+    loadedQueryKey = queryKey
+    withAnimation { itemsManager.displayMode = .loading }
+    await refetch()
   }
 
   @ViewBuilder
@@ -327,7 +340,6 @@ struct RedditListingFeed<Header: View, Footer: View, S: Sorting>: View {
 
         Task { await refetch() }
       }
-      .onChange(of: itemsManager.searchQuery.value) { itemsManager.displayMode = .loading }
       .onChange(of: subredditFeedDefSettings.chunkLoadSize) { itemsManager.chunkSize = $1 }
       .onChange(of: forceRefresh?.wrappedValue) { newValue in
         if newValue == true {
@@ -344,17 +356,21 @@ struct RedditListingFeed<Header: View, Footer: View, S: Sorting>: View {
         guard itemsManager.displayMode == .loading, !itemsManager.initialLoadStarted else { return }
         itemsManager.initialLoadStarted = true
         Task {
+          loadedQueryKey = queryKey
           await refetch()
           initialLoadDone = true
+          // The sort, search or filter changed while the first page was loading.
+          if queryKey != loadedQueryKey {
+            await reloadForQueryChange()
+          }
         }
       }
-      .task(id: [itemsManager.searchQuery.debounced, itemsManager.selectedFilter?.text, itemsManager.sorting?.meta.apiValue]) {
-        // Only handle sort/search/filter changes, not the initial load
-        guard initialLoadDone else { return }
-        if itemsManager.displayMode != .loading {
-          return
-        }
-        await refetch()
+      .task(id: queryKey) {
+        // Only handle sort/search/filter changes, not the initial load. Comparing with the loaded
+        // query, not the display mode, keeps re-appearing from reloading and a search typed and
+        // cleared within the debounce from leaving the spinner up.
+        guard initialLoadDone, queryKey != loadedQueryKey else { return }
+        await reloadForQueryChange()
       }
     }
   }
