@@ -74,15 +74,23 @@ class FeedItemsManager<S> {
     let filter: String?
   }
 
+  private struct PageRequest {
+    let generation: Int
+    let cursor: String?
+    let query: Query
+  }
+
   /// The query the shown list was fetched with. Its later pages use it too, not the live settings,
   /// which may already have changed for a reload that hasn't started yet.
   @ObservationIgnored private var listQuery: Query?
 
   func fetchCaller(loadingMore: Bool) async {
     // Read with the cursor: a load-more belongs to the list its cursor continues.
-    let (generation, cursor, query) = await MainActor.run {
+    let request: PageRequest? = await MainActor.run {
       if loadingMore {
-        return (self.listGeneration, self.lastElementId, self.listQuery ?? self.currentQuery())
+        // A refresh cancelled this load-more before it got here: the refresh starts its own.
+        guard !Task.isCancelled else { return nil }
+        return PageRequest(generation: self.listGeneration, cursor: self.lastElementId, query: self.listQuery ?? self.currentQuery())
       }
       self.generation += 1
       // A new first page replaces the list the pending load-more continues. That load-more's rows
@@ -93,9 +101,10 @@ class FeedItemsManager<S> {
       self.currentTask?.cancel()
       self.currentTask = nil
       self.currentTaskID = nil
-      return (self.generation, nil as String?, self.currentQuery())
+      return PageRequest(generation: self.generation, cursor: nil, query: self.currentQuery())
     }
-    await fetchPage(loadingMore: loadingMore, after: cursor, query: query, hiddenPagesInARow: 0, generation: generation)
+    guard let request else { return }
+    await fetchPage(loadingMore: loadingMore, after: request.cursor, query: request.query, hiddenPagesInARow: 0, generation: request.generation)
   }
 
   private func currentQuery() -> Query {

@@ -451,6 +451,25 @@ struct FeedItemsManagerTests {
     }
   }
 
+  @Test func aLoadMoreCancelledBeforeItStartsFetchesNothing() async {
+    await withHideOnRead(false) {
+      var requests: [String?] = []
+      let manager = FeedItemsManager<SubListingSortOption>(sorting: nil) { after, _, _, _ in
+        requests.append(after)
+        return ([post(after ?? "a", read: false)], after == nil ? "p2" : nil)
+      }
+      await manager.fetchCaller(loadingMore: false)
+
+      // As when a refresh cancels a row's load-more before the task gets to run: it would
+      // otherwise read whatever list is current by then.
+      let loadMore = Task { await manager.fetchCaller(loadingMore: true) }
+      loadMore.cancel()
+      await loadMore.value
+
+      #expect(requests == [nil])
+    }
+  }
+
   @Test func loadingMoreUsesTheQueryTheListWasFetchedWith() async {
     await withHideOnRead(false) {
       var requests: [String] = []
