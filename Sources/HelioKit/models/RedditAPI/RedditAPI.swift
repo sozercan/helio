@@ -23,7 +23,10 @@ class RedditAPI {
   /// forwards the query to `helioapp://auth-success`, where `authorize` picks it up.
   static let appRedirectURI: String = "https://sozercan.github.io/helio/auth-success"
 
-  var me: User?
+  /// Compatibility read-through; the API layer no longer owns or publishes account state.
+  @MainActor var me: User? {
+    RedditCredentialsManager.profile.user
+  }
 
   /// This is a replacement for getRequestHeader. We need to replace every instance of the former by this one
   func fetchRequestHeaders(
@@ -192,7 +195,7 @@ class RedditAPI {
         let newAcessToken = RedditCredential.AccessToken(token: data.access_token, expiration: data.expires_in, lastRefresh: Date())
         credential.refreshToken = data.refresh_token
         credential.accessToken = newAcessToken
-        if let meData = await self.fetchMe(force: true, altCredential: credential, saveToken: false) {
+        if let meData = await self.fetchMe(altCredential: credential, saveToken: false) {
           credential.userName = meData.name
           if let avatar = (meData.subreddit?.icon_img ?? meData.icon_img ?? meData.snoovatar_img), let rootAvatar = rootURL(avatar)?.absoluteString {
             credential.profilePicture = rootAvatar

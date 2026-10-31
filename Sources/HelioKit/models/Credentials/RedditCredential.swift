@@ -7,14 +7,50 @@
 
 import Alamofire
 import Combine
+import CryptoKit
 import Defaults
 import Foundation
 import KeychainAccess
+import os
 import SwiftUI
 
 struct RedditCredential: Identifiable, Equatable, Hashable, Codable {
   static func defaultUserAgent(userName: String? = nil) -> String {
     "ios:com.sertacozercan.helio:v1.6.0 (by /u/\(userName ?? "UnknownUser"))"
+  }
+
+  /// Stable across access-token renewal, different after replacing the OAuth grant or client.
+  /// Cache/request identity must not retain the raw client secret or refresh token.
+  struct AuthorizationID: Hashable, Sendable {
+    let credentialID: UUID
+    private let digest: Data
+
+    fileprivate init(_ credential: RedditCredential, refreshToken: String) {
+      credentialID = credential.id
+      var bytes = Data()
+      for value in [credential.apiAppID, credential.apiAppSecret, refreshToken] {
+        bytes.append(contentsOf: "\(value.utf8.count):".utf8)
+        bytes.append(contentsOf: value.utf8)
+      }
+      digest = Data(SHA256.hash(data: bytes))
+    }
+  }
+
+  var authorizationID: AuthorizationID? {
+    guard let refreshToken, !apiAppID.isEmpty else { return nil }
+    return AuthorizationID(self, refreshToken: refreshToken)
+  }
+
+  /// Merge only the token field into the current record, never a captured credential snapshot.
+  @discardableResult
+  mutating func updateAccessToken(_ token: AccessToken?, for authorization: AuthorizationID) -> Bool {
+    guard authorizationID == authorization else { return false }
+    if let token {
+      accessToken = token
+    } else {
+      clearIdentity()
+    }
+    return true
   }
 
   enum CodingKeys: String, CodingKey { case id, apiAppID, apiAppSecret, accessToken, refreshToken, userName, profilePicture, _userAgent }
@@ -152,24 +188,15 @@ struct RedditCredential: Identifiable, Equatable, Hashable, Codable {
       switch result {
       case let .success(data):
         let newAccessToken = RedditCredential.AccessToken(token: data.access_token, expiration: data.expires_in, lastRefresh: Date())
-        if saveToken {
-          var newSelf = self
-          newSelf.accessToken = newAccessToken
-          RedditCredentialsManager.shared.saveCred(newSelf, forceCreate: false)
+        if saveToken, let authorization = authorizationID {
+          await RedditCredentialsManager.shared.updateAccessToken(newAccessToken, for: authorization)
         }
         return newAccessToken
       case let .failure(error):
-        print("pipo", error, payload)
-        switch error.responseCode {
-        case 401:
-          var selfCopy = self
-          selfCopy.refreshToken = nil
-          selfCopy.accessToken = nil
-          selfCopy.userName = nil
-          selfCopy.profilePicture = nil
-          selfCopy.save(false)
-        default:
-          break
+        Logger(subsystem: "com.sertacozercan.helio", category: "Authentication")
+          .error("Access-token refresh failed (status \(error.responseCode ?? 0))")
+        if saveToken, error.responseCode == 401, let authorization = authorizationID {
+          await RedditCredentialsManager.shared.updateAccessToken(nil, for: authorization)
         }
         return nil
       }
