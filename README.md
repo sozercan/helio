@@ -6,7 +6,7 @@
 ![GitHub issues](https://img.shields.io/github/issues-raw/sozercan/helio)
 ![GitHub release](https://img.shields.io/github/v/release/sozercan/helio)
 
-Helio is a privacy-focused, open-source Reddit client for iOS and Mac. No analytics, no tracking, no ads, no third-party data collection — your data stays on your device and your account talks only to Reddit. It builds on [Winston](https://github.com/lo-cafe/winston) by the lo.cafe team and its community.
+Helio is a privacy-focused, open-source Reddit client for iOS and Mac. No analytics, no tracking, no ads, no third-party data collection — your data stays on your device and your account talks only to Reddit. It builds on the [Winston](https://github.com/lo-cafe/winston) app and its community.
 
 ## Privacy
 
@@ -40,7 +40,7 @@ Then follow the in-app credential setup to connect your Reddit account. Your Red
 
 ## Credits
 
-Helio is free and open source software. It builds on [Winston](https://github.com/lo-cafe/winston) by the lo.cafe team and its community.
+Helio is free and open source software. It builds on the [Winston](https://github.com/lo-cafe/winston) app and its community.
 
 ## License
 

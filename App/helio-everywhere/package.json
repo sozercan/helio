@@ -12,7 +12,7 @@
     "type": "git",
     "url": "git+https://github.com/sozercan/helio.git"
   },
-  "author": "lo.cafe",
+  "author": "Sertac Ozercan",
   "license": "ISC",
   "bugs": {
     "url": "https://github.com/sozercan/helio/issues"
