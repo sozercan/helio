@@ -122,6 +122,7 @@ class RedditAPI {
     }
   }
 
+  /// `renewedToken`: this request already renewed its token after a 401, which it does once.
   func _doRequest<D: Decodable>(
     attempt: Int = 0,
     forceAuth: Bool = false,
@@ -129,6 +130,7 @@ class RedditAPI {
     altCredential: RedditCredential? = nil,
     saveToken: Bool = true,
     rejectedToken: String? = nil,
+    renewedToken: Bool = false,
     req: (HTTPHeaders) async -> Result<D, AFError>,
   ) async -> Result<D, AFError> {
     guard let headers = await fetchRequestHeaders(force: forceAuth, includeAuth: authenticated, altCredential: altCredential, saveToken: saveToken, rejectedToken: rejectedToken) else { return .failure(.serverTrustEvaluationFailed(reason: .noPublicKeysFound)) }
@@ -136,13 +138,15 @@ class RedditAPI {
     let result = await req(headers)
     guard case let .failure(error) = result else { return result }
     // A 401 means the token expired or was revoked early: renew it once.
-    if authenticated, !forceAuth, error.responseCode == 401 {
+    if authenticated, !renewedToken, error.responseCode == 401 {
       let rejected = headers["Authorization"].map { String($0.dropFirst("Bearer ".count)) }
-      return await self._doRequest(attempt: attempt, forceAuth: true, authenticated: authenticated, altCredential: altCredential, saveToken: saveToken, rejectedToken: rejected, req: req)
+      return await self._doRequest(attempt: attempt, forceAuth: true, authenticated: authenticated, altCredential: altCredential, saveToken: saveToken,
+                                   rejectedToken: rejected, renewedToken: true, req: req)
     }
     if attempt < Self.maxRetries, Self.isTransient(error) {
       try? await Task.sleep(for: .milliseconds(300 * (attempt + 1)))
-      return await self._doRequest(attempt: attempt + 1, authenticated: authenticated, altCredential: altCredential, saveToken: saveToken, req: req)
+      return await self._doRequest(attempt: attempt + 1, authenticated: authenticated, altCredential: altCredential, saveToken: saveToken,
+                                   renewedToken: renewedToken, req: req)
     }
     return result
   }

@@ -51,7 +51,13 @@ enum Bench {
       command += ["-clonedSourcePackagesDirPath", URL(fileURLWithPath: spm).path]
     }
     print("building \(repo.path) as \(label) (log: \(dir.path)/build.log)")
-    shell(command, log: dir.appendingPathComponent("build.log"))
+    // Not `check`: failing exits without running `defer`, which restores the smoke tests.
+    if shell(command, log: dir.appendingPathComponent("build.log"), check: false).status != 0 {
+      if let original {
+        try? original.write(to: smoke, atomically: true, encoding: .utf8)
+      }
+      fail("build failed, see \(dir.path)/build.log")
+    }
     print("built")
   }
 
@@ -84,13 +90,14 @@ enum Bench {
       fail("no build for \(label); run: perf build \(label)")
     }
     let udid = Simulator.boot(), shim = shim().path, fixtures = Fixtures.ensure().path
+    // Results of an earlier batch with more runs would otherwise count in this one's medians.
+    for stale in (try? FileManager.default.contentsOfDirectory(atPath: dir.path)) ?? [] where stale.hasPrefix("run") {
+      try? FileManager.default.removeItem(at: dir.appendingPathComponent(stale))
+    }
     var complete = 0
     for i in 1 ... runs {
       let log = dir.appendingPathComponent("run\(i).log"), commands = dir.appendingPathComponent("run\(i).cmd")
       let trace = dir.appendingPathComponent("run\(i).trace")
-      for stale in (try? FileManager.default.contentsOfDirectory(atPath: dir.path)) ?? [] where stale.hasPrefix("run\(i).") {
-        try? FileManager.default.removeItem(at: dir.appendingPathComponent(stale))
-      }
       FileManager.default.createFile(atPath: commands.path, contents: nil)
       shell(["xcrun", "simctl", "terminate", udid, bundleID], check: false)
       shell(["xcrun", "simctl", "uninstall", udid, bundleID], check: false)
@@ -136,8 +143,9 @@ enum Bench {
         print("run \(i): didn't finish, see \(log.path)")
         continue
       }
-      if text.contains(" open_failed") {
-        print("run \(i): a deep link didn't open")
+      guard !text.contains(" open_failed") else {
+        print("run \(i): a deep link didn't open, see \(log.path)")
+        continue
       }
       if text.contains(" no_scroll_view") {
         print("run \(i): nothing to scroll when asked (comments not loaded 5 s after opening the post?)")

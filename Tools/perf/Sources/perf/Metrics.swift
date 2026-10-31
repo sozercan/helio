@@ -85,9 +85,10 @@ enum Metrics {
     }
   }
 
-  /// A run's metrics, or nil when it didn't reach the end of the scenario.
+  /// A run's metrics, or nil when it didn't reach the end of the scenario or a deep link didn't
+  /// open: its screens weren't shown, so neither their requests nor their timings count.
   static func metrics(of log: RunLog) -> [String: Double]? {
-    guard let end = log.marks["end"], !log.samples.isEmpty else { return nil }
+    guard let end = log.marks["end"], log.marks["open_failed"] == nil, !log.samples.isEmpty else { return nil }
     var out: [String: Double] = [:]
     for (name, start, stop) in windows {
       guard let a = log.marks[start], let b = log.marks[stop] else { continue }
@@ -98,7 +99,7 @@ enum Metrics {
     out["peak_mb"] = log.value("peak", at: end)
     out["launch_main_ms"] = log.marks["home_open"].map { log.value("main", at: $0) }
     if let open = log.marks["post_open"] {
-      out["post_request_ms"] = log.requests.first { $0.url.contains("/comments/") && $0.time >= open }.map { $0.time - open } ?? -1
+      out["post_request_ms"] = log.requests.first { $0.url.contains("/comments/") && $0.time >= open && $0.time <= end }.map { $0.time - open } ?? -1
     }
     var counts: [String: Int] = [:]
     for request in log.requests where request.time <= end {
@@ -189,7 +190,12 @@ enum Metrics {
     guard let data = try? Data(contentsOf: budgetFile),
           let object = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else { fail("can't read \(budgetFile.path)") }
     let budget = object.compactMapValues { ($0 as? NSNumber)?.doubleValue }
-    let rows = budgetRows(median: summarize(label).median, budget: budget)
+    let median = summarize(label).median
+    // Fewer requests pass, so make sure the scenario ran: Home loaded and the post asked for comments.
+    guard (median["requests.feed"] ?? 0) > 0, (median["post_request_ms"] ?? -1) >= 0 else {
+      fail("the benchmark didn't load Home and a post's comments; see the run logs")
+    }
+    let rows = budgetRows(median: median, budget: budget)
     for row in rows {
       print(pad(row.key, 24) + String(format: "%4.0f / %-4.0f  ", row.value, row.limit) + (row.over ? "over" : row.under ? "under" : "ok"))
     }
