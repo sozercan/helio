@@ -45,7 +45,7 @@ struct AboutPanel: View {
         }
 
         Section {
-          Text("Helio is free and open source software. It builds on Winston by the lo.cafe team and its community forks.")
+          Text("Helio is free and open source software. It builds on the open-source Winston app and its community.")
         }
       }
       .themedListSection()

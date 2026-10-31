@@ -62,7 +62,7 @@ let defaultTheme = HelioTheme(
     description: "The default Helio theme. Apollo's layout with iOS's Liquid Glass.",
     color: .init(hex: "007AFF"),
     icon: "paintbrush.fill",
-    author: "lo.cafe",
+    author: "Helio",
   ),
   id: "default",
   postLinks: .init(

@@ -30,7 +30,7 @@ struct Onboarding3FillingInfo: View {
           .frame(maxWidth: 300)
 
         VStack {
-          CopiableValue(value: "https://lo.cafe")
+          CopiableValue(value: "https://github.com/sozercan/helio")
           CopiableValue(value: RedditAPI.appRedirectURI)
         }
       }
