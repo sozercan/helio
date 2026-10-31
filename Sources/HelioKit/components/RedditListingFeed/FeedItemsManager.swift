@@ -85,7 +85,11 @@ class FeedItemsManager<S> {
         return (self.listGeneration, self.lastElementId, self.listQuery ?? self.currentQuery())
       }
       self.generation += 1
-      // A new first page replaces the list the pending load-more continues.
+      // A new first page replaces the list the pending load-more continues. That load-more's rows
+      // won't appear again to ask for the next page, so ask on their behalf once the page lands.
+      if self.currentTask != nil {
+        self.loadMoreHeldBack = true
+      }
       self.currentTask?.cancel()
       self.currentTask = nil
       self.currentTaskID = nil

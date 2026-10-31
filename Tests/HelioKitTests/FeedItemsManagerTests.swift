@@ -417,6 +417,40 @@ struct FeedItemsManagerTests {
     }
   }
 
+  @Test func aRefreshCarriesOverTheLoadMoreItReplaces() async {
+    await withHideOnRead(false) {
+      let oldNextPage = Gate()
+      var refreshing = false
+      var requests: [String?] = []
+      let manager = FeedItemsManager<SubListingSortOption>(sorting: nil) { after, _, _, _ in
+        requests.append(after)
+        switch after {
+        case "p2":
+          await oldNextPage.wait()
+          return ([post("stale", read: false)], "p3")
+        case "q2": return ([post("c", read: false)], nil)
+        default: break
+        }
+        // The refresh returns the same post, so its row doesn't appear again.
+        return ([post("a", read: false)], refreshing ? "q2" : "p2")
+      }
+      manager.chunkSize = 1
+      await manager.fetchCaller(loadingMore: false)
+
+      // A row asks for the next page, then a refresh starts before that page arrives.
+      manager.elementAppeared(entity: manager.entities[0])
+      await oldNextPage.untilWaiting()
+      refreshing = true
+      await manager.fetchCaller(loadingMore: false)
+      await letStrayRequestsStart()
+      await oldNextPage.open()
+      await letStrayRequestsStart()
+
+      #expect(requests == [nil, "p2", nil, "q2"])
+      #expect(ids(manager.entities) == ["a", "c"])
+    }
+  }
+
   @Test func loadingMoreUsesTheQueryTheListWasFetchedWith() async {
     await withHideOnRead(false) {
       var requests: [String] = []
