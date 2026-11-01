@@ -99,19 +99,24 @@ struct CredentialAuthorizationLeaseTests {
     let manager = RedditCredentialsManager(credentials: [account])
     let gate = Gate()
     let commit = Task.detached {
-      manager.withCurrentAuthorization(authorization) {
-        gate.holdCommit()
-        return true
+      await withCheckedContinuation { (continuation: CheckedContinuation<Bool?, Never>) in
+        // Deliberate lock contention must not occupy Swift executor workers:
+        // a small CI pool could otherwise have no worker left to release the gate.
+        Thread {
+          continuation.resume(returning: manager.withCurrentAuthorization(authorization) {
+            gate.holdCommit()
+            return true
+          })
+        }.start()
       }
     }
     await gate.waitForLease()
-    let releaser = Task.detached { gate.releaseAfterContention() }
+    Thread { gate.releaseAfterContention() }.start()
     // No suspension between this event and the synchronous UI-owned mutation.
     gate.attemptMutation()
     invalidate(operation, manager: manager, account: account)
     gate.completeMutation()
     let saved = await commit.value
-    await releaser.value
     #expect(saved == true)
     #expect(!gate.invalidatedBeforeCommit)
     #expect(!manager.containsAuthorization(authorization))
