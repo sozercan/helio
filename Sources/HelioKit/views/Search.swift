@@ -9,31 +9,10 @@ import Defaults
 import NukeUI
 import SwiftUI
 
-enum SearchType: String, Codable {
+enum SearchType: String, Codable, CaseIterable {
   case subreddit = "Subreddit"
   case user = "User"
   case post = "Post"
-}
-
-struct SearchOption: View {
-  var activateSearchType: () -> Void
-  var active: Bool
-  var searchType: SearchType
-  var body: some View {
-    Text(searchType.rawValue)
-      .padding(.horizontal, 16)
-      .padding(.vertical, 12)
-      .background(Capsule(style: .continuous).fill(active ? Color.accentColor : .secondary.opacity(0.15)))
-      .foregroundColor(active ? .white : .primary)
-      .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous).stroke((active ? Color.white : .primary).opacity(0.01), lineWidth: 1))
-      .contentShape(Capsule())
-      .onTapGesture {
-        withAnimation(.interactiveSpring()) {
-          activateSearchType()
-        }
-      }
-      .shrinkOnTap()
-  }
 }
 
 struct Search: View {
@@ -48,6 +27,7 @@ struct Search: View {
 
   @State private var dummyAllSub: Subreddit? = nil
   @State private var searchViewLoaded: Bool = false
+  @State private var searchPresented = false
 
   @Default(.PostLinkDefSettings) private var postLinkDefSettings
   @Default(.searchHistory) private var searchHistory
@@ -164,11 +144,13 @@ struct Search: View {
       List {
         Group {
           Section {
-            HStack {
-              SearchOption(activateSearchType: { searchType = .subreddit }, active: searchType == SearchType.subreddit, searchType: .subreddit)
-              SearchOption(activateSearchType: { searchType = .user }, active: searchType == SearchType.user, searchType: .user)
-              SearchOption(activateSearchType: { searchType = .post }, active: searchType == SearchType.post, searchType: .post)
+            Picker("Search for", selection: $searchType.animation(.interactiveSpring())) {
+              ForEach(SearchType.allCases, id: \.self) { type in
+                Text(type.rawValue).tag(type)
+              }
             }
+            .pickerStyle(.segmented)
+            .labelsHidden()
             .id("options")
           }
 
@@ -245,7 +227,8 @@ struct Search: View {
       .attachViewControllerToRouter(tabID: .search)
       .injectInTabDestinations()
       .scrollDismissesKeyboard(.automatic)
-      .searchable(text: $searchQuery.value, placement: .toolbar)
+      // Always shown: inside the tab view, the toolbar placement left iPhone without a field.
+      .searchable(text: $searchQuery.value, isPresented: $searchPresented, placement: .navigationBarDrawer(displayMode: .always), prompt: "Search Reddit")
       .autocorrectionDisabled(true)
       .textInputAutocapitalization(.none)
       .refreshable { fetch() }
@@ -268,6 +251,13 @@ struct Search: View {
         if !searchViewLoaded {
           dummyAllSub = Subreddit(id: "all")
           searchViewLoaded = true
+          searchPresented = true
+        }
+      }
+      // Opening the tab starts a search, like the system's search tabs, unless one is showing.
+      .onChange(of: Nav.shared.activeTab) { _, tab in
+        if tab == .search, searchQuery.value.isEmpty, router.fullPath.isEmpty {
+          searchPresented = true
         }
       }
     }
