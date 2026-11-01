@@ -362,3 +362,85 @@ extension CredentialStoreMutationTests {
     #expect(RedditCredentialsManager(credentials: []).selectedCredential(id: nil) == nil)
   }
 }
+
+extension CredentialStoreMutationTests {
+  private func webCredential() -> RedditCredential {
+    var account = RedditCredential(userName: "placeholder-web-user")
+    account.signInMethod = .webSession
+    account.webSessionCookies = "reddit_session=placeholder-original-session"
+    return account
+  }
+
+  @Test func conditionalWebReplacementInvalidatesTheOldGrantBeforeReturning() throws {
+    let account = webCredential()
+    let original = try #require(account.authorizationID)
+    var reloads = 0
+    let manager = RedditCredentialsManager(credentials: [account], reloadSelectedProfile: { reloads += 1 })
+    withSelection(account.id) {
+      expectObservableMutation(manager) {
+        manager.updateCred(account.id) {
+          $0.webSessionCookies = "reddit_session=placeholder-replacement-session"
+          return true
+        }
+      }
+      #expect(!manager.containsAuthorization(original))
+      #expect(manager.selectedCredential?.authorizationID != original)
+      #expect(reloads == 1)
+      manager.updateWebAccessToken(token(), cookies: account.webSessionCookies, renewedFrom: account.webSessionCookies!, for: original)
+      #expect(manager.selectedCredential?.accessToken == nil)
+    }
+  }
+
+  @Test func savingAnUntouchedWebDraftKeepsTheRotatedSession() throws {
+    let account = webCredential()
+    let authorization = try #require(account.authorizationID)
+    let manager = RedditCredentialsManager(credentials: [account])
+    var draft = account
+    draft.userAgent = "placeholder-edited-agent"
+    withSelection(account.id) {
+      manager.updateWebAccessToken(token(), cookies: "reddit_session=placeholder-renewed-session", renewedFrom: account.webSessionCookies!, for: authorization)
+      manager.saveDraft(draft, openedAs: account)
+      #expect(manager.selectedCredential?.webSessionCookies == "reddit_session=placeholder-renewed-session")
+      #expect(manager.selectedCredential?.accessToken == token())
+      #expect(manager.selectedCredential?.authorizationID == authorization)
+      #expect(manager.selectedCredential?.userAgent == draft.userAgent)
+      #expect(manager.containsAuthorization(authorization))
+    }
+  }
+
+  @Test func webSignOutInvalidatesItsLeaseAndKeepsAccountMetadata() throws {
+    let account = webCredential()
+    let authorization = try #require(account.authorizationID)
+    var reloads = 0
+    let manager = RedditCredentialsManager(credentials: [account], reloadSelectedProfile: { reloads += 1 })
+    withSelection(account.id) {
+      manager.updateWebAccessToken(nil, cookies: nil, renewedFrom: account.webSessionCookies!, for: authorization)
+      #expect(!manager.containsAuthorization(authorization))
+      #expect(manager.selectedCredential?.signInMethod == .webSession)
+      #expect(manager.selectedCredential?.userName == account.userName)
+      #expect(reloads == 1)
+      manager.updateWebAccessToken(token(), cookies: account.webSessionCookies, renewedFrom: account.webSessionCookies!, for: authorization)
+      #expect(manager.selectedCredential?.authorizationID == nil)
+    }
+  }
+
+  @Test(arguments: [false, true]) func deletedWebAccountsCannotBeRestoredByDelayedConditionalWrites(wipe: Bool) throws {
+    let account = webCredential()
+    let authorization = try #require(account.authorizationID)
+    let manager = RedditCredentialsManager(credentials: [account])
+    withSelection(account.id) {
+      manager.saveDraft(account, openedAs: account)
+      if wipe {
+        manager.wipeAllCredentials()
+      } else {
+        manager.deleteCred(account)
+      }
+      manager.updateCred(account.id) { $0.userAgent = "placeholder-stale-agent"
+        return true
+      }
+      manager.updateWebAccessToken(token(), cookies: account.webSessionCookies, renewedFrom: account.webSessionCookies!, for: authorization)
+      #expect(manager.credentials.isEmpty)
+      #expect(!manager.containsAuthorization(authorization))
+    }
+  }
+}

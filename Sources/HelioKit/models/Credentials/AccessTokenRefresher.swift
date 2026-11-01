@@ -7,19 +7,20 @@ actor AccessTokenRefresher {
 
   enum Outcome: Sendable {
     case token(RedditCredential.AccessToken)
+    case webSessionToken(RedditCredential.AccessToken, cookies: String)
     case rejected
     case failed
 
     var accessToken: RedditCredential.AccessToken? {
-      if case let .token(token) = self {
-        return token
+      switch self {
+      case let .token(token), let .webSessionToken(token, _): token
+      case .rejected, .failed: nil
       }
-      return nil
     }
   }
 
   private var inFlight: [Data: Task<Outcome, Never>] = [:]
-  private var latest: [Data: RedditCredential.AccessToken] = [:]
+  private var latest: [Data: Outcome] = [:]
 
   /// A known rejected token is never reused. A forced renewal can share a newer token.
   func refresh(for authorization: RedditCredential.AuthorizationID, forceRenew: Bool, rejected: String? = nil,
@@ -33,8 +34,8 @@ actor AccessTokenRefresher {
       }
       return outcome
     }
-    if let token = latest[grant], token.isFresh, token.token != rejected, !forceRenew || rejected != nil {
-      return .token(token)
+    if let cached = latest[grant], let token = cached.accessToken, token.isFresh, token.token != rejected, !forceRenew || rejected != nil {
+      return cached
     }
     let task = Task { await refresh() }
     inFlight[grant] = task
@@ -44,7 +45,7 @@ actor AccessTokenRefresher {
       latest[grant] = nil
       return .failed
     }
-    latest[grant] = outcome.accessToken
+    latest[grant] = outcome.accessToken == nil ? nil : outcome
     return outcome
   }
 }

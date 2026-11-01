@@ -92,7 +92,7 @@ struct CredentialEditAdvancedMode: View {
     .toolbar {
       ToolbarItem(placement: .topBarTrailing) {
         Button("Save") {
-          draftCredential.save()
+          RedditCredentialsManager.shared.saveDraft(draftCredential, openedAs: credential)
           dismiss()
         }
         .disabled(!anyChanges)

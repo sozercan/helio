@@ -42,23 +42,29 @@ struct OnboardingAPIIntro: View {
     ScrollView {
       VStack(spacing: 24) {
         VStack {
-          Text("First, I need an API key")
+          Text("First, sign in to Reddit")
             .fontSize(24, .semibold)
-          Text("To use Reddit, Helio uses a special key you can generate yourself in Reddit's site.")
+          Text("You sign in on Reddit's own website, right inside Helio.")
             .opacity(0.75)
         }
         .multilineTextAlignment(.center)
 
         VStack(spacing: 6) {
-          Feature(icon: "arrow.up", title: "Huge limit", description: "Reddit API limit is 100 requests per second, it's impossible to reach.")
-          Feature(icon: "dollarsign", title: "No costs at all", description: "Even if you pass the limit, there will be no charges, you only get an error.")
-          Feature(icon: "point.topleft.down.curvedto.point.bottomright.up.fill", title: "Easy to setup", description: "It's really easy to get set Helio up. We'll guide all the way!")
-          Feature(icon: "eye.slash.fill", title: "Safe and private", description: "The key is **only** stored in your iCloud keychain, we can't read it.")
+          Feature(icon: "person.crop.circle.badge.checkmark", title: "No API key needed", description: "Just your Reddit account, nothing to set up.")
+          Feature(icon: "eye.slash.fill", title: "Safe and private", description: "Your sign-in is **only** stored in your keychain and only ever sent to Reddit.")
+          Feature(icon: "key.fill", title: "Prefer your own key?", description: "You can still use an API key you made on Reddit's site.")
         }
 
-        MasterButton(label: "Ok then, guide me", colorHoverEffect: .animated, textSize: 18, height: 48, fullWidth: true, cornerRadius: 16, action: {
-          Nav.present(.editingCredential(.init()))
-        })
+        VStack(spacing: 12) {
+          MasterButton(label: "Sign in with Reddit", colorHoverEffect: .animated, textSize: 18, height: 48, fullWidth: true, cornerRadius: 16, action: {
+            Nav.present(.redditSignIn(nil))
+          })
+
+          Button("Use my own API key") {
+            Nav.present(.editingCredential(.init()))
+          }
+          .fontSize(16, .medium)
+        }
         .padding(.top, 32)
       }
       .padding(.top, 64)
