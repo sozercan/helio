@@ -103,8 +103,7 @@ extension Subreddit {
       defer { persistence.finish(ticket)
         cb?()
       }
-      let previous = await persistence.isSubscribed(fullname: data.name)
-      guard persistence.isCurrent(ticket) else { return }
+      guard let previous = await persistence.isSubscribed(fullname: data.name), persistence.isCurrent(ticket) else { return }
       let requested = !previous
       if optimistic {
         guard await persistence.setSubscription(requested, subreddit: data, expecting: previous), persistence.isCurrent(ticket) else { return }
@@ -123,7 +122,7 @@ extension Subreddit {
       let saved: Bool
       switch result {
       case .success:
-        guard !optimistic else { return }
+        // Persist the acknowledged state even when the initial write was optimistic.
         state = requested
         saved = await persistence.setSubscription(requested, subreddit: data)
       case .failure:

@@ -7,7 +7,7 @@ import Testing
 
 @MainActor
 struct AccountListSyncAuthorizationTests {
-  private func credential(_ grant: String = "placeholder-current-grant") -> RedditCredential {
+  func credential(_ grant: String = "placeholder-current-grant") -> RedditCredential {
     RedditCredential(apiAppID: "placeholder-client-id", refreshToken: grant, userName: "placeholder-user")
   }
 
@@ -18,7 +18,7 @@ struct AccountListSyncAuthorizationTests {
     }
   }
 
-  private func multis(_ entries: [(String, String)]) throws -> [RedditAPI.MultiContainerResponse] {
+  func multis(_ entries: [(String, String)]) throws -> [RedditAPI.MultiContainerResponse] {
     try entries.map { id, title in
       let json: [String: Any] = ["kind": "LabeledMulti", "data": ["name": id, "path": "/user/placeholder-user/m/\(id)", "display_name": title, "subreddits": []]]
       return try JSONDecoder().decode(RedditAPI.MultiContainerResponse.self, from: JSONSerialization.data(withJSONObject: json))
@@ -71,7 +71,7 @@ struct AccountListSyncAuthorizationTests {
     return model
   }()
 
-  private func context() throws -> NSManagedObjectContext {
+  func context() throws -> NSManagedObjectContext {
     let coordinator = NSPersistentStoreCoordinator(managedObjectModel: Self.model)
     try coordinator.addPersistentStore(ofType: NSInMemoryStoreType, configurationName: nil, at: nil)
     let context = NSManagedObjectContext(concurrencyType: .privateQueueConcurrencyType)
@@ -79,7 +79,7 @@ struct AccountListSyncAuthorizationTests {
     return context
   }
 
-  private func savedLists(in context: NSManagedObjectContext, account: RedditCredential) throws -> (subs: [String: String], multis: [String: String]) {
+  func savedLists(in context: NSManagedObjectContext, account: RedditCredential) throws -> (subs: [String: String], multis: [String: String]) {
     let reader = NSManagedObjectContext(concurrencyType: .privateQueueConcurrencyType)
     reader.persistentStoreCoordinator = context.persistentStoreCoordinator
     return try reader.performAndWait {
@@ -206,7 +206,7 @@ struct AccountListSyncAuthorizationTests {
     #expect(Defaults[.subsSyncedAt][key] == current)
   }
 
-  private func subreddit(_ id: String, subscribed: Bool = true, favorited: Bool = false) throws -> SubredditData {
+  func subreddit(_ id: String, subscribed: Bool = true, favorited: Bool = false) throws -> SubredditData {
     var data = try #require(subscriptions([(id, id)]).first?.data)
     data.display_name = id
     data.user_is_subscriber = subscribed
@@ -214,7 +214,7 @@ struct AccountListSyncAuthorizationTests {
     return data
   }
 
-  private func savedSubscription(in context: NSManagedObjectContext, account: RedditCredential, fullname: String) throws -> SubredditData? {
+  func savedSubscription(in context: NSManagedObjectContext, account: RedditCredential, fullname: String) throws -> SubredditData? {
     let reader = NSManagedObjectContext(concurrencyType: .privateQueueConcurrencyType)
     reader.persistentStoreCoordinator = context.persistentStoreCoordinator
     return try reader.performAndWait {
@@ -526,8 +526,8 @@ extension AccountListSyncAuthorizationTests {
     #expect(multiSaved)
     let emptied = await lists.replaceSubscriptions(with: [])
     #expect(emptied)
-    #expect(await !(lists.isSubscribed(fullname: shared.name)))
-    #expect(await otherLists.isSubscribed(fullname: shared.name))
+    #expect(await lists.isSubscribed(fullname: shared.name) == false)
+    #expect(await otherLists.isSubscribed(fullname: shared.name) == true)
     let subscribed = await lists.setSubscription(true, subreddit: shared)
     let unsubscribed = await lists.setSubscription(false, subreddit: shared)
     #expect(subscribed && unsubscribed)
@@ -577,7 +577,7 @@ extension AccountListSyncAuthorizationTests {
     lists.finish(first)
     let next = try #require(lists.beginMutation(fullname: data.name))
     defer { lists.finish(next) }
-    #expect(await lists.isSubscribed(fullname: data.name))
+    #expect(await lists.isSubscribed(fullname: data.name) == true)
     // A failed nonoptimistic unsubscribe makes no local write.
     #expect(try savedSubscription(in: context, account: captured, fullname: data.name)?.user_is_subscriber == true)
   }
@@ -671,7 +671,7 @@ extension AccountListSyncAuthorizationTests {
     }
     let saved = await owner.setFavorite(true, fullname: data.name)
     #expect(saved)
-    #expect(await owner.isSubscribed(fullname: data.name))
+    #expect(await owner.isSubscribed(fullname: data.name) == true)
     #expect(try savedSubscription(in: source, account: account, fullname: data.name)?.user_has_favorited == true)
     #expect(source.performAndWait {
       pending.target.title == "Pending metadata on the changed row" && pending.unrelated.title == "Unrelated pending edit" && source.hasChanges

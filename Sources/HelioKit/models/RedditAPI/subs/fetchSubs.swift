@@ -82,8 +82,10 @@ extension RedditAPI {
     let persistence = await MainActor.run {
       (account ?? RedditCredentialsManager.shared.selectedCredential).flatMap { AccountListPersistence(account: $0) }
     }
-    guard let persistence, let fetchedSubs = await fetchAllSubs(account: persistence.credential) else { return false }
-    return await persistence.replaceSubscriptions(with: fetchedSubs.compactMap(\.data))
+    guard let persistence else { return false }
+    let snapshot = await persistence.captureSnapshot()
+    guard let fetchedSubs = await fetchAllSubs(account: persistence.credential) else { return false }
+    return await persistence.replaceSubscriptions(with: fetchedSubs.compactMap(\.data), snapshot: snapshot)
   }
 
   struct FetchSubsPayload: Codable {
