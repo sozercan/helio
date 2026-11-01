@@ -20,7 +20,7 @@ struct CredentialPanelItem: View {
     } label: {
       HStack {
         Label {
-          Text(cred.userName ?? (cred.apiAppID.isEmpty ? "Empty credential" : cred.apiAppID))
+          Text(cred.userName ?? (cred.isWebSession ? "Reddit account" : cred.apiAppID.isEmpty ? "Empty credential" : cred.apiAppID))
             .lineLimit(1)
             .fontSize(cred.userName == nil && !cred.apiAppID.isEmpty ? 15 : 17, .regular, design: cred.userName == nil && !cred.apiAppID.isEmpty ? .monospaced : .default)
             .opacity(cred.userName == nil ? 0.75 : 1)
@@ -60,7 +60,7 @@ struct CredentialPanelItem: View {
           UIPasteboard.general.string = accessToken
         }
       }
-      if cred.refreshToken != nil {
+      if cred.renewalKey != nil {
         Button("Refresh access token", systemImage: "arrow.clockwise") {
           Task(priority: .background) { _ = await cred.getUpToDateToken(forceRenew: true) }
         }

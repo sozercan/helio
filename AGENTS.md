@@ -44,9 +44,10 @@ Privacy is the app's main promise, so these hold unless the human explicitly cha
 
 - The app's own services are Reddit's OAuth and API endpoints and nothing else. Don't add analytics, crash reporting, ad SDKs, or any app-level backend.
 - Loading the content a post points to is expected: images and video from their hosts, link-preview metadata from the linked page (`PreviewModel`), and hosts such as Streamable or YouTube to resolve and play embeds. Keep those requests limited to content the user is viewing, and don't send them account data or identifiers.
-- Use Reddit's OAuth REST API. Don't use Reddit's private GraphQL API or capture web session cookies; both risk Reddit's terms.
-- Never put real Reddit client IDs, secrets, refresh tokens or usernames in code, tests, fixtures, logs, commits or PR text. Use obvious placeholders.
-- The OAuth redirect is `https://sozercan.github.io/helio/auth-success`, a static page on the `gh-pages` branch that forwards to `helioapp://auth-success`. Reddit requires an https redirect for web-app keys, so a bare `helioapp://` redirect breaks login.
+- Use Reddit's OAuth REST API (`oauth.reddit.com`). Don't use Reddit's private GraphQL API.
+- The default sign-in needs no API key (`RedditWebSession`, `RedditWebLoginView`): the user signs in on reddit.com in an in-app browser with its own empty cookie store, Helio keeps that session's reddit.com cookies in the keychain, and it trades them for bearer tokens at `accounts.reddit.com/api/access_token` with the public client id of Reddit's mobile site. That id is the only real Reddit client id allowed in code. Session cookies go only to reddit.com, never into the shared cookie store or logs. This is outside Reddit's published API terms, so a user's own API key stays available as the opt-in alternative.
+- Never put real Reddit secrets, refresh tokens, session cookies, usernames or other client IDs in code, tests, fixtures, logs, commits or PR text. Use obvious placeholders.
+- The OAuth redirect for API-key credentials is `https://sozercan.github.io/helio/auth-success`, a static page on the `gh-pages` branch that forwards to `helioapp://auth-success`. Reddit requires an https redirect for web-app keys, so a bare `helioapp://` redirect breaks login.
 - Reddit entity ids in the models have the kind appended (`"abc"` + `"t1"`). Compare `data.id` when matching Reddit ids.
 
 ## Code conventions

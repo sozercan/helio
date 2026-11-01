@@ -149,27 +149,62 @@ class RedditCredentialsManager {
     }
   }
 
-  func saveCred(_ cred: RedditCredential, forceCreate: Bool = true) {
-    DispatchQueue.main.async {
-      let previousAuthorization = self.selectedCredential?.authorizationID
-      if Defaults[.GeneralDefSettings].onboardingState != .dismissed {
-        Defaults[.GeneralDefSettings].onboardingState = .dismissed
-        Nav.shared.presentingSheetsQueue = Nav.shared.presentingSheetsQueue.filter { $0 != .onboarding }
-      }
-      if let i = self.credentials.firstIndex(where: { $0.id == cred.id }) {
-        self.credentials[i] = cred
-      } else if forceCreate {
-        self.credentials.append(cred)
-      }
-      // Auto-select if no credential is currently selected
-      if Defaults[.GeneralDefSettings].redditCredentialSelectedID == nil {
-        Defaults[.GeneralDefSettings].redditCredentialSelectedID = cred.id
-      }
-      // Sync immediately on main queue to avoid XPC violations
+  private func enqueue(_ change: @escaping @MainActor () -> Void) {
+    // A main-actor Task wouldn't be ordered with the other changes queued here (deleting, wiping).
+    // swiftlint:disable:next no_dispatch_queue
+    DispatchQueue.main.async { change() }
+  }
+
+  func updateCred(_ id: UUID, _ change: @escaping (inout RedditCredential) -> Bool) {
+    enqueue {
+      guard let i = self.credentials.firstIndex(where: { $0.id == id }) else { return }
+      var cred = self.credentials[i]
+      guard change(&cred) else { return }
+      self.credentials[i] = cred
       self.syncCredentialsWithKeychain()
-      if previousAuthorization != self.selectedCredential?.authorizationID {
-        self.updateMe()
+    }
+  }
+
+  func saveDraft(_ draft: RedditCredential, openedAs original: RedditCredential) {
+    enqueue {
+      var draft = draft
+      if
+        let current = self.credentials.first(where: { $0.id == draft.id }),
+        current.isWebSession, draft.isWebSession, draft.webSessionCookies == original.webSessionCookies
+      {
+        draft.webSessionCookies = current.webSessionCookies
+        draft.accessToken = current.accessToken
+        draft.webSessionID = current.webSessionID
       }
+      self.applySave(draft, forceCreate: true)
+    }
+  }
+
+  func saveCred(_ cred: RedditCredential, forceCreate: Bool = true) {
+    enqueue { self.applySave(cred, forceCreate: forceCreate) }
+  }
+
+  /// Called inside the already-reserved queue turn, never re-enqueues a draft.
+  @MainActor
+  private func applySave(_ cred: RedditCredential, forceCreate: Bool) {
+    let previousAuthorization = self.selectedCredential?.authorizationID
+    if Defaults[.GeneralDefSettings].onboardingState != .dismissed {
+      Defaults[.GeneralDefSettings].onboardingState = .dismissed
+      Nav.shared.presentingSheetsQueue = Nav.shared.presentingSheetsQueue.filter { $0 != .onboarding }
+    }
+    if let i = self.credentials.firstIndex(where: { $0.id == cred.id }) {
+      self.credentials[i] = cred
+    } else if forceCreate {
+      self.credentials.append(cred)
+    }
+    // Auto-select if no credential is currently selected
+    if Defaults[.GeneralDefSettings].redditCredentialSelectedID == nil {
+      Defaults[.GeneralDefSettings].redditCredentialSelectedID = cred.id
+    }
+    // Sync immediately on main queue to avoid XPC violations
+    self.syncCredentialsWithKeychain()
+    if previousAuthorization != self.selectedCredential?.authorizationID {
+      self.updateMe()
     }
   }
 
@@ -182,6 +217,19 @@ class RedditCredentialsManager {
     credentials[index] = current
     syncCredentialsWithKeychain()
     if token == nil, selectedCredential?.id == authorization.credentialID {
+      Self.profile.reload()
+    }
+  }
+
+  /// Merge cookie renewal/sign-out into the matching web grant in one actor turn.
+  @MainActor
+  func updateWebAccessToken(_ token: RedditCredential.AccessToken?, cookies: String?, renewedFrom: String, for authorization: RedditCredential.AuthorizationID) {
+    guard let index = credentials.firstIndex(where: { $0.id == authorization.credentialID }) else { return }
+    var current = credentials[index]
+    guard current.updateWebAccessToken(token, cookies: cookies, renewedFrom: renewedFrom, for: authorization), current != credentials[index] else { return }
+    credentials[index] = current
+    syncCredentialsWithKeychain()
+    if cookies == nil, selectedCredential?.id == authorization.credentialID {
       Self.profile.reload()
     }
   }
