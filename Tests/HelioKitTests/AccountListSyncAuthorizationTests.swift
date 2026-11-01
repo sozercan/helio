@@ -768,3 +768,92 @@ extension AccountListSyncAuthorizationTests {
     #expect(!gate.timedOut)
   }
 }
+
+extension AccountListSyncAuthorizationTests {
+  @Test(arguments: [false, true]) func initialOptimisticWritesRejectBaselinesSupersededBySync(favorite: Bool) async throws {
+    let account = credential()
+    let manager = RedditCredentialsManager(credentials: [account])
+    let context = try context()
+    let owner = try #require(AccountListPersistence(account: account, credentialsManager: manager, context: context))
+    let original = try subreddit("shared", subscribed: favorite, favorited: false)
+    let seeded = await owner.replaceSubscriptions(with: favorite ? [original] : [])
+    #expect(seeded)
+    // The UI captured false, then an authoritative sync confirmed true.
+    let previous = false
+    let confirmed = try subreddit("shared", subscribed: true, favorited: favorite)
+    let synced = await owner.replaceSubscriptions(with: [confirmed])
+    #expect(synced)
+    let started = if favorite {
+      await owner.setFavorite(!previous, fullname: original.name, expecting: previous)
+    } else {
+      await owner.setSubscription(!previous, subreddit: original, expecting: previous)
+    }
+    #expect(!started)
+    let snapshot = try savedSubscription(in: context, account: account, fullname: original.name)
+    let stored = try #require(snapshot)
+    #expect(stored.user_is_subscriber == true)
+    #expect(stored.user_has_favorited == favorite)
+  }
+
+  @Test(arguments: [false, true]) func ticketChecksDoNotWaitForAnyAccountsCommitLease(unrelated: Bool) async throws {
+    let account = credential()
+    let other = credential("placeholder-other-grant")
+    let manager = RedditCredentialsManager(credentials: [account, other])
+    let authorization = try #require(account.authorizationID)
+    let owner = try #require(AccountListPersistence(account: unrelated ? other : account, credentialsManager: manager))
+    let gate = CommitGate()
+    let commit = Task.detached {
+      await withCheckedContinuation { (continuation: CheckedContinuation<Bool?, Never>) in
+        Thread {
+          continuation.resume(returning: manager.withCurrentAuthorization(authorization) {
+            gate.pause()
+            return true
+          })
+        }.start()
+      }
+    }
+    await gate.waitUntilPaused()
+    defer { gate.release() }
+    let ticket = try #require(owner.beginMutation(fullname: "t5_placeholder-subreddit"))
+    defer { owner.finish(ticket) }
+    #expect(owner.isCurrent(ticket))
+    #expect(!gate.timedOut)
+    gate.release()
+    let committed = await commit.value
+    #expect(committed == true)
+    manager.deleteCred(unrelated ? other : account)
+    #expect(!owner.isCurrent(ticket))
+  }
+
+  @Test(arguments: [false, true]) func multiRemovalPrunesOnlyUnsubscribedUnreferencedRows(removeEntireMulti: Bool) async throws {
+    let account = credential()
+    let other = credential("placeholder-other-grant")
+    let manager = RedditCredentialsManager(credentials: [account, other])
+    let context = try context()
+    let owner = try #require(AccountListPersistence(account: account, credentialsManager: manager, context: context))
+    let orphan = try subreddit("orphan", subscribed: false)
+    let retained = try subreddit("retained", subscribed: false)
+    let subscribed = try subreddit("subscribed")
+    let otherOrphan = try subreddit("other_orphan", subscribed: false)
+    try context.performAndWait {
+      _ = CachedSub(data: otherOrphan, context: context, credentialID: other.id)
+      try context.save()
+    }
+    var removed = try #require(multis([("removed", "Removed")]).first?.data)
+    removed.subreddits = [MultiSub(name: "orphan", data: orphan), MultiSub(name: "retained", data: retained)]
+    var remaining = try #require(multis([("remaining", "Remaining")]).first?.data)
+    remaining.subreddits = [MultiSub(name: "retained", data: retained)]
+    let multisSaved = await owner.replaceMultis(with: [removed, remaining])
+    #expect(multisSaved)
+    let subsSaved = await owner.replaceSubscriptions(with: [subscribed])
+    #expect(subsSaved)
+    #expect(try savedSubscription(in: context, account: account, fullname: orphan.name) != nil)
+    removed.subreddits = []
+    let updated = await owner.replaceMultis(with: removeEntireMulti ? [remaining] : [removed, remaining])
+    #expect(updated)
+    #expect(try savedSubscription(in: context, account: account, fullname: orphan.name) == nil)
+    #expect(try savedSubscription(in: context, account: account, fullname: retained.name)?.user_is_subscriber == false)
+    #expect(try savedSubscription(in: context, account: account, fullname: subscribed.name)?.user_is_subscriber == true)
+    #expect(try savedSubscription(in: context, account: other, fullname: otherOrphan.name) != nil)
+  }
+}

@@ -67,7 +67,7 @@ extension Subreddit {
     guard let ticket = persistence.beginMutation(fullname: fullname) else { return }
     Task(priority: .userInitiated) {
       defer { persistence.finish(ticket) }
-      guard await persistence.setFavorite(requested, fullname: fullname), persistence.isCurrent(ticket) else { return }
+      guard await persistence.setFavorite(requested, fullname: fullname, expecting: previous), persistence.isCurrent(ticket) else { return }
       if RedditCredentialsManager.shared.selectedCredential?.authorizationID == credential.authorizationID {
         withAnimation { self.data?.user_has_favorited = requested }
       }
@@ -107,7 +107,7 @@ extension Subreddit {
       guard persistence.isCurrent(ticket) else { return }
       let requested = !previous
       if optimistic {
-        guard await persistence.setSubscription(requested, subreddit: data), persistence.isCurrent(ticket) else { return }
+        guard await persistence.setSubscription(requested, subreddit: data, expecting: previous), persistence.isCurrent(ticket) else { return }
         if RedditCredentialsManager.shared.selectedCredential?.authorizationID == credential.authorizationID {
           withAnimation { self.data?.user_is_subscriber = requested }
         }

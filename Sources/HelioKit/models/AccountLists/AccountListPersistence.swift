@@ -39,8 +39,13 @@ struct AccountListPersistence {
     self.beforeBulkCommit = beforeBulkCommit
   }
 
+  private var authorizationIsInstalled: Bool {
+    // UI-owned checks must not wait for the lease held by a background disk save.
+    credentialsManager.credentials.contains { $0.authorizationID == authorization }
+  }
+
   func beginMutation(fullname: String) -> MutationTicket? {
-    guard credentialsManager.containsAuthorization(authorization) else { return nil }
+    guard authorizationIsInstalled else { return nil }
     let key = MutationKey(authorization: authorization, fullname: fullname)
     // An optimistic value is not a confirmed baseline for another operation.
     // Subscription and favorite gestures share this reservation because removing
@@ -52,7 +57,7 @@ struct AccountListPersistence {
   }
 
   func isCurrent(_ ticket: MutationTicket) -> Bool {
-    ticket.key.authorization == authorization && Self.mutations[ticket.key] == ticket.id && credentialsManager.containsAuthorization(authorization)
+    ticket.key.authorization == authorization && Self.mutations[ticket.key] == ticket.id && authorizationIsInstalled
   }
 
   func finish(_ ticket: MutationTicket) {
@@ -129,6 +134,15 @@ struct AccountListPersistence {
       let fetchedIDs = Set(multis.map(\.id))
       for multi in existing where !fetchedIDs.contains(multi.uuid ?? "") {
         context.delete(multi)
+      }
+      context.processPendingChanges()
+      let subRequest = CachedSub.fetchRequest()
+      subRequest.predicate = predicateForAccount(credentialID)
+      for sub in try context.fetch(subRequest) where !sub.user_is_subscriber {
+        // Removing a multi/member may orphan a row retained by subscription sync.
+        if sub.multis?.contains(where: { !$0.isDeleted }) != true {
+          context.delete(sub)
+        }
       }
       return true
     }
