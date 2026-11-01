@@ -638,3 +638,22 @@ extension FeedItemsManagerTests {
     #expect(ids(manager.entities) == ["first", "second"])
   }
 }
+
+extension FeedItemsManagerTests {
+  @Test(arguments: [false, true]) func nonClearingRefreshKeepsRowsVisibleUntilItFinishes(fails: Bool) async {
+    let fetch = ControlledFetch()
+    let manager = FeedItemsManager<SubListingSortOption>(sorting: nil, currentCredential: { Self.testCredential }, fetchFn: fetch.fetch)
+    let first = Task { await manager.reload() }
+    await fetch.waitForRequests(1)
+    fetch.complete(0, with: ([post("visible", read: false)], nil))
+    await first.value
+    let refresh = Task { await manager.reload(clearItems: false) }
+    await fetch.waitForRequests(2)
+    #expect(ids(manager.entities) == ["visible"])
+    #expect(manager.displayMode == .items)
+    fetch.complete(1, with: fails ? nil : ([post("replacement", read: false)], nil))
+    await refresh.value
+    #expect(ids(manager.entities) == (fails ? ["visible"] : ["replacement"]))
+    #expect(manager.displayMode == (fails ? .error : .endOfFeed))
+  }
+}
