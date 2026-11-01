@@ -218,6 +218,15 @@ final class RedditCredentialsManager {
   /// Untouched web-session edits keep the current rotated cookies, token and grant.
   func saveDraft(_ draft: RedditCredential, openedAs original: RedditCredential) {
     var draft = draft
+    if let authorization = original.authorizationID,
+       draft.authorizationID == authorization,
+       let current = credentials.first(where: { $0.id == draft.id }),
+       current.authorizationID == authorization,
+       draft.userName == original.userName
+    {
+      // /me may have backfilled a migrated record while this editor was open.
+      draft.userName = current.userName
+    }
     if let current = credentials.first(where: { $0.id == draft.id }),
        current.isWebSession, draft.isWebSession, draft.webSessionCookies == original.webSessionCookies
     {

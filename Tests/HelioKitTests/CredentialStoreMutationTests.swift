@@ -444,3 +444,38 @@ extension CredentialStoreMutationTests {
     }
   }
 }
+
+extension CredentialStoreMutationTests {
+  @Test(arguments: [false, true]) func savingAMigratedDraftKeepsBackfilledNameUnlessExplicitlyEdited(editsName: Bool) throws {
+    let original = credential()
+    let authorization = try #require(original.authorizationID)
+    let manager = RedditCredentialsManager(credentials: [original])
+    var draft = original
+    draft.userAgent = "placeholder-edited-agent"
+    if editsName {
+      draft.userName = "placeholder-explicit-name"
+    }
+    withSelection(original.id) {
+      manager.backfillUserName("placeholder-profile-name", for: authorization)
+      manager.saveDraft(draft, openedAs: original)
+      #expect(manager.selectedCredential?.userName == (editsName ? "placeholder-explicit-name" : "placeholder-profile-name"))
+      #expect(manager.selectedCredential?.authorizationID == authorization)
+      #expect(manager.selectedCredential?.userAgent == draft.userAgent)
+    }
+  }
+
+  @Test func draftNameMergeDoesNotCrossAnAuthorizationReplacement() {
+    let original = credential()
+    var replacement = original
+    replacement.refreshToken = "placeholder-replacement-grant"
+    replacement.userName = "placeholder-replacement-name"
+    let manager = RedditCredentialsManager(credentials: [replacement])
+    var draft = original
+    draft.userAgent = "placeholder-edited-agent"
+    withSelection(original.id) {
+      manager.saveDraft(draft, openedAs: original)
+      #expect(manager.selectedCredential?.userName == nil)
+      #expect(manager.selectedCredential?.authorizationID == original.authorizationID)
+    }
+  }
+}
