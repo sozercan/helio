@@ -144,9 +144,6 @@ struct Subreddits: View, Equatable {
                   let sub = Subreddit(data: SubredditData(entity: cachedSub))
                   SubItem(isActive: Router.NavDest.reddit(.subFeed(sub)) == firstDestination, sub: sub, cachedSub: cachedSub, action: selectSub)
                     .id("\(cachedSub.uuid ?? "")-fav")
-                    .onAppear {
-                      UIApplication.shared.shortcutItems?.append(UIApplicationShortcutItem(type: "subFav", localizedTitle: cachedSub.display_name ?? "Test", localizedSubtitle: "", icon: UIApplicationShortcutIcon(type: .love), userInfo: ["name": "sub" as NSSecureCoding]))
-                    }
                 }
                 .onDelete(perform: deleteFromFavorites)
               }

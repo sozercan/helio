@@ -31,7 +31,7 @@ public class AppDelegate: UIResponder, UIApplicationDelegate {
 
   public func application(_ application: UIApplication, configurationForConnecting connectingSceneSession: UISceneSession, options: UIScene.ConnectionOptions) -> UISceneConfiguration {
     if let shortcutItem = options.shortcutItem {
-      shortcutItemToProcess = shortcutItem
+      pendingQuickAction = QuickAction(shortcutItem)
     }
 
     let sceneConfiguration = UISceneConfiguration(name: "Custom Configuration", sessionRole: connectingSceneSession.role)
@@ -42,8 +42,14 @@ public class AppDelegate: UIResponder, UIApplicationDelegate {
 }
 
 class CustomSceneDelegate: UIResponder, UIWindowSceneDelegate {
+  /// A quick action chosen while the app is running in the background.
   func windowScene(_ windowScene: UIWindowScene, performActionFor shortcutItem: UIApplicationShortcutItem, completionHandler: @escaping (Bool) -> Void) {
-    shortcutItemToProcess = shortcutItem
+    guard let action = QuickAction(shortcutItem) else {
+      completionHandler(false)
+      return
+    }
+    action.perform()
+    completionHandler(true)
   }
 }
 

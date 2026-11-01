@@ -10,7 +10,6 @@ import Nuke
 import SwiftUI
 import WhatsNewKit
 
-var shortcutItemToProcess: UIApplicationShortcutItem?
 /// The folder in the caches directory that holds downloaded images.
 let imageDataCacheName = "com.sertacozercan.helio.datacache"
 
