@@ -7,13 +7,15 @@ set -euo pipefail
 
 min_major=26
 
-# Newest available iOS runtime at or above min_major, as JSON. For equal versions prefer the
-# general runtime over device-specific ones, which have longer identifiers.
+# Newest available iOS runtime at or above min_major, as JSON. General runtimes win over
+# device-specific ones (such as iOS-27-1-iPhone19-4, which only runs iPhone Duo) even when
+# those are newer, so tests run on a regular iPhone.
 latest_runtime() {
   xcrun simctl list runtimes available --json | jq -c --argjson min "$min_major" '
     [.runtimes[] | select(.platform == "iOS")
       | select((.version | split(".")[0] | tonumber) >= $min)]
-    | sort_by([(.version | split(".") | map(tonumber)), -(.identifier | length)]) | last // empty'
+    | sort_by([(if (.identifier | test("SimRuntime\\.iOS-[0-9-]+$")) then 1 else 0 end),
+        (.version | split(".") | map(tonumber))]) | last // empty'
 }
 
 runtime=$(latest_runtime)

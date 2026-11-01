@@ -33,14 +33,15 @@ enum Simulator {
     func version(_ runtime: [String: Any]) -> [Int] {
       ((runtime["version"] as? String) ?? "0").split(separator: ".").compactMap { Int($0) }
     }
-    func identifierLength(_ runtime: [String: Any]) -> Int {
-      (runtime["identifier"] as? String)?.count ?? 0
+    // Device-specific runtimes (such as iOS-27-1-iPhone19-4, which only runs iPhone Duo) lose to
+    // general ones even when newer, so the benchmark runs on a regular iPhone.
+    func isGeneral(_ runtime: [String: Any]) -> Bool {
+      ((runtime["identifier"] as? String) ?? "").range(of: #"SimRuntime\.iOS-[0-9-]+$"#, options: .regularExpression) != nil
     }
     let ios = runtimes
       .filter { $0["platform"] as? String == "iOS" && (version($0).first ?? 0) >= 26 }
       .sorted { a, b in
-        // Equal versions: prefer the general runtime over device-specific ones (longer identifiers).
-        version(a) == version(b) ? identifierLength(a) > identifierLength(b) : version(a).lexicographicallyPrecedes(version(b))
+        isGeneral(a) == isGeneral(b) ? version(a).lexicographicallyPrecedes(version(b)) : !isGeneral(a)
       }
     guard let runtime = ios.last, let runtimeID = runtime["identifier"] as? String else {
       return nil
