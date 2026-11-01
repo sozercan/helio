@@ -6,6 +6,7 @@ import Testing
 @MainActor
 struct CredentialAuthorizationLeaseTests {
   enum Invalidation: CaseIterable, Sendable { case replace, delete, wipe }
+  private enum CommitFailure: Error { case expected }
 
   /// Explicit events hold the commit open while the UI actor invalidates its grant.
   /// The bounded contention window is a test deadlock guard, not a latency budget.
@@ -92,8 +93,8 @@ struct CredentialAuthorizationLeaseTests {
     }
   }
 
-  @Test(arguments: Invalidation.allCases)
-  func aHeldCommitFinishesBeforeGrantInvalidation(operation: Invalidation) async throws {
+  @Test(arguments: Invalidation.allCases, [false, true])
+  func aHeldCommitFinishesBeforeGrantInvalidation(operation: Invalidation, throwingCommit: Bool) async throws {
     let account = RedditCredential(apiAppID: "placeholder-client-id", refreshToken: "placeholder-original-grant")
     let authorization = try #require(account.authorizationID)
     let manager = RedditCredentialsManager(credentials: [account])
@@ -103,10 +104,19 @@ struct CredentialAuthorizationLeaseTests {
         // Deliberate lock contention must not occupy Swift executor workers:
         // a small CI pool could otherwise have no worker left to release the gate.
         Thread {
-          continuation.resume(returning: manager.withCurrentAuthorization(authorization) {
-            gate.holdCommit()
-            return true
-          })
+          do {
+            try continuation.resume(returning: manager.withCurrentAuthorization(authorization) {
+              gate.holdCommit()
+              if throwingCommit {
+                throw CommitFailure.expected
+              }
+              return true
+            })
+          } catch CommitFailure.expected {
+            continuation.resume(returning: false)
+          } catch {
+            continuation.resume(returning: nil)
+          }
         }.start()
       }
     }
@@ -117,7 +127,7 @@ struct CredentialAuthorizationLeaseTests {
     invalidate(operation, manager: manager, account: account)
     gate.completeMutation()
     let saved = await commit.value
-    #expect(saved == true)
+    #expect(saved == !throwingCommit)
     #expect(!gate.invalidatedBeforeCommit)
     #expect(!manager.containsAuthorization(authorization))
   }
