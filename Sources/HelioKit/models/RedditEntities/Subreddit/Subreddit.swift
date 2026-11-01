@@ -105,8 +105,10 @@ extension Subreddit {
       }
       guard let previous = await persistence.isSubscribed(fullname: data.name), persistence.isCurrent(ticket) else { return }
       let requested = !previous
+      var rollback: AccountListPersistence.SubscriptionRollback?
       if optimistic {
-        guard await persistence.setSubscription(requested, subreddit: data, expecting: previous), persistence.isCurrent(ticket) else { return }
+        guard let change = await persistence.optimisticallySetSubscription(requested, subreddit: data, expecting: previous), persistence.isCurrent(ticket) else { return }
+        rollback = change
         if RedditCredentialsManager.shared.selectedCredential?.authorizationID == credential.authorizationID {
           withAnimation { self.data?.user_is_subscriber = requested }
         }
@@ -126,15 +128,18 @@ extension Subreddit {
         state = requested
         saved = await persistence.setSubscription(requested, subreddit: data)
       case .failure:
-        guard optimistic else { return }
+        guard let rollback else { return }
         state = previous
-        saved = await persistence.setSubscription(previous, subreddit: data, expecting: requested)
+        saved = await persistence.rollbackSubscription(rollback)
       }
       guard saved, persistence.isCurrent(ticket),
             RedditCredentialsManager.shared.selectedCredential?.authorizationID == credential.authorizationID
       else { return }
       withAnimation {
         self.data?.user_is_subscriber = state
+        if case .failure = result, let rollback {
+          self.data?.user_has_favorited = rollback.previousFavorite
+        }
       }
     }
   }

@@ -17,6 +17,17 @@ struct AccountListPersistence {
     fileprivate let id: UUID
   }
 
+  struct SubscriptionRollback: Sendable {
+    fileprivate let authorization: RedditCredential.AuthorizationID
+    fileprivate let previous: SubredditData
+    fileprivate let requested: Bool
+    fileprivate let revision: UInt64
+
+    var previousFavorite: Bool {
+      previous.user_has_favorited == true
+    }
+  }
+
   struct Snapshot: Sendable {
     fileprivate let authorization: RedditCredential.AuthorizationID
     fileprivate let revision: UInt64
@@ -203,7 +214,7 @@ struct AccountListPersistence {
       context.processPendingChanges()
       let subRequest = CachedSub.fetchRequest()
       subRequest.predicate = predicateForAccount(credentialID)
-      for sub in try context.fetch(subRequest) where !sub.user_is_subscriber && !protected.contains(sub.uuid ?? "") {
+      for sub in try context.fetch(subRequest) where !sub.user_is_subscriber {
         // Removing a multi/member may orphan a row retained by subscription sync.
         if sub.multis?.contains(where: { !$0.isDeleted }) != true {
           context.delete(sub)
@@ -218,50 +229,69 @@ struct AccountListPersistence {
   /// metadata (including a newer favorite) is not replaced by the caller's snapshot.
   @discardableResult
   func setSubscription(_ subscribed: Bool, subreddit: SubredditData, expecting expected: Bool? = nil) async -> Bool {
-    await transaction(fullname: subreddit.name) { context in
-      let request = requestForSubreddit(credential.id, fullname: subreddit.name)
-      let existing = try context.fetch(request)
+    let credentialID = credential.id
+    let result = await transaction(fullname: subreddit.name) { context -> Bool? in
+      let existing = try context.fetch(requestForSubreddit(credentialID, fullname: subreddit.name))
       if let expected, existing.contains(where: \.user_is_subscriber) != expected {
-        return false
+        return nil
       }
-      if subscribed {
-        var data = subreddit
-        data.user_is_subscriber = true
-        if existing.isEmpty {
-          _ = CachedSub(data: data, context: context, credentialID: credential.id)
-        } else {
-          for sub in existing {
-            sub.user_is_subscriber = true
-          }
-        }
-      } else {
-        for sub in existing {
-          if sub.multis?.isEmpty == false {
-            sub.user_is_subscriber = false
-          } else {
-            context.delete(sub)
-          }
-        }
+      updateSubscription(subscribed, subreddit: subreddit, existing: existing, context: context, credentialID: credentialID)
+      return true
+    }
+    return result != nil
+  }
+
+  /// Capture the persisted favorite and the write's revision in the same transaction
+  /// as the optimistic change, not from a potentially stale subreddit view model.
+  func optimisticallySetSubscription(_ subscribed: Bool, subreddit: SubredditData, expecting expected: Bool) async -> SubscriptionRollback? {
+    let credentialID = credential.id
+    let result = await transaction(fullname: subreddit.name) { context -> SubredditData? in
+      let existing = try context.fetch(requestForSubreddit(credentialID, fullname: subreddit.name))
+      guard existing.contains(where: \.user_is_subscriber) == expected else { return nil }
+      var previous = subreddit
+      previous.user_is_subscriber = expected
+      previous.user_has_favorited = existing.contains(where: \.user_has_favorited)
+      updateSubscription(subscribed, subreddit: subreddit, existing: existing, context: context, credentialID: credentialID)
+      return previous
+    }
+    guard let result else { return nil }
+    return SubscriptionRollback(authorization: authorization, previous: result.value, requested: subscribed, revision: result.revision)
+  }
+
+  /// A multi may recreate an optimistically deleted row with default flags. Restore
+  /// its confirmed favorite too, but never replace a subsequent local row write.
+  @discardableResult
+  func rollbackSubscription(_ rollback: SubscriptionRollback) async -> Bool {
+    guard rollback.authorization == authorization else { return false }
+    let credentialID = credential.id
+    let result = await transaction(fullname: rollback.previous.name, expectingRevision: rollback.revision) { context -> Bool? in
+      let existing = try context.fetch(requestForSubreddit(credentialID, fullname: rollback.previous.name))
+      guard existing.contains(where: \.user_is_subscriber) == rollback.requested else { return nil }
+      updateSubscription(rollback.previous.user_is_subscriber == true, subreddit: rollback.previous, existing: existing, context: context, credentialID: credentialID)
+      for sub in existing where !sub.isDeleted {
+        sub.user_has_favorited = rollback.previousFavorite
       }
       return true
     }
+    return result != nil
   }
 
   /// Only existing rows are favorited. Failure rollback is conditional so it does
   /// not blindly overwrite a newer local toggle or recreate an unsubscribed row.
   @discardableResult
   func setFavorite(_ favorited: Bool, fullname: String, expecting expected: Bool? = nil) async -> Bool {
-    await transaction(fullname: fullname) { context in
+    let result = await transaction(fullname: fullname) { context -> Bool? in
       let existing = try context.fetch(requestForSubreddit(credential.id, fullname: fullname))
-      guard !existing.isEmpty else { return false }
+      guard !existing.isEmpty else { return nil }
       if let expected, !existing.allSatisfy({ $0.user_has_favorited == expected }) {
-        return false
+        return nil
       }
       for sub in existing {
         sub.user_has_favorited = favorited
       }
       return true
     }
+    return result != nil
   }
 
   /// All bulk snapshots share one private queue, including their reads and updates.
@@ -296,12 +326,13 @@ struct AccountListPersistence {
   }
 
   /// The save notification is consumed only by Core Data's cross-context merge API.
-  private struct LocalWriteResult: @unchecked Sendable {
-    let succeeded: Bool
+  private struct LocalWriteResult<Value: Sendable>: @unchecked Sendable {
+    let value: Value?
+    let revision: UInt64?
     let notification: Notification?
   }
 
-  private func transaction(fullname: String, _ update: @escaping @Sendable (NSManagedObjectContext) throws -> Bool) async -> Bool {
+  private func transaction<Value: Sendable>(fullname: String, expectingRevision: UInt64? = nil, _ update: @escaping @Sendable (NSManagedObjectContext) throws -> Value?) async -> (value: Value, revision: UInt64)? {
     let source = context ?? PersistenceController.shared.accountListsContext
     let manager = credentialsManager
     let authorization = authorization
@@ -310,7 +341,10 @@ struct AccountListPersistence {
     // The isolated writer protects unrelated pending edits in an injected/shared context.
     let result = await source.perform {
       guard manager.containsAuthorization(authorization), let coordinator = source.persistentStoreCoordinator else {
-        return LocalWriteResult(succeeded: false, notification: nil)
+        return LocalWriteResult<Value>(value: nil, revision: nil, notification: nil)
+      }
+      if let expectingRevision, revisions.value.withLock({ $0.rows[authorization]?[fullname] }) != expectingRevision {
+        return LocalWriteResult<Value>(value: nil, revision: nil, notification: nil)
       }
       let writer = NSManagedObjectContext(concurrencyType: .privateQueueConcurrencyType)
       writer.persistentStoreCoordinator = coordinator
@@ -322,25 +356,25 @@ struct AccountListPersistence {
         }
         defer { NotificationCenter.default.removeObserver(observer) }
         do {
-          guard try update(writer) else { return LocalWriteResult(succeeded: false, notification: nil) }
+          guard let value = try update(writer) else { return LocalWriteResult<Value>(value: nil, revision: nil, notification: nil) }
           let accepted = try manager.withCurrentAuthorization(authorization) {
             try writer.save()
-            revisions.value.withLock { state in
+            return revisions.value.withLock { state in
               state.revision += 1
               state.rows[authorization, default: [:]][fullname] = state.revision
+              return state.revision
             }
-            return true
           }
-          guard accepted == true else {
+          guard let revision = accepted else {
             writer.rollback()
-            return LocalWriteResult(succeeded: false, notification: nil)
+            return LocalWriteResult<Value>(value: nil, revision: nil, notification: nil)
           }
-          return LocalWriteResult(succeeded: true, notification: saved.withLock { $0 })
+          return LocalWriteResult(value: value, revision: revision, notification: saved.withLock { $0 })
         } catch {
           writer.rollback()
           Logger(subsystem: "com.sertacozercan.helio", category: "AccountListPersistence")
             .error("Failed to persist account lists: \(error.localizedDescription)")
-          return LocalWriteResult(succeeded: false, notification: nil)
+          return LocalWriteResult<Value>(value: nil, revision: nil, notification: nil)
         }
       }
       if let notification = result.notification {
@@ -352,7 +386,30 @@ struct AccountListPersistence {
       let view = PersistenceController.shared.container.viewContext
       await view.perform { view.mergeChanges(fromContextDidSave: notification) }
     }
-    return result.succeeded
+    guard let value = result.value, let revision = result.revision else { return nil }
+    return (value, revision)
+  }
+}
+
+private func updateSubscription(_ subscribed: Bool, subreddit: SubredditData, existing: [CachedSub], context: NSManagedObjectContext, credentialID: UUID) {
+  if subscribed {
+    var data = subreddit
+    data.user_is_subscriber = true
+    if existing.isEmpty {
+      _ = CachedSub(data: data, context: context, credentialID: credentialID)
+    } else {
+      for sub in existing {
+        sub.user_is_subscriber = true
+      }
+    }
+  } else {
+    for sub in existing {
+      if sub.multis?.isEmpty == false {
+        sub.user_is_subscriber = false
+      } else {
+        context.delete(sub)
+      }
+    }
   }
 }
 
