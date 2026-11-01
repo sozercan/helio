@@ -74,9 +74,20 @@ extension Post {
     CachedDefaults[.SubredditFeedDefSettings].compactPerSubreddit[sub?.id ?? data.subreddit_id ?? ""] ?? CachedDefaults[.PostLinkDefSettings].compactMode.enabled
   }
 
+  func shouldUpdateAvatarFamily(fetchAvatar: Bool) -> Bool {
+    if fetchAvatar {
+      return true
+    }
+    guard helioData != nil else { return false }
+    // Relayout rebuilds embedded Post objects. Rebind their cached avatars, while
+    // a fresh page with no avatars still waits for its one page-owned lookup.
+    return Self.avatarSubjects(for: [self]).contains { $0.helioData?.avatarImageRequest != nil }
+  }
+
   /// Without a `contentWidth` (refreshing a post, changing theme), keeps the width the post
   /// was last laid out for: the full window would be wrong in a split view's column.
   func setupHelioData(data: PostData? = nil, helioData: PostHelioData? = nil, contentWidth: Double? = nil, secondary: Bool = false, theme: HelioTheme, sub: Subreddit? = nil, fetchAvatar: Bool = true) {
+    let updateAvatarFamily = shouldUpdateAvatarFamily(fetchAvatar: fetchAvatar)
     let lastWidth = self.helioData?.layoutWidth ?? 0
     let contentWidth = contentWidth ?? (lastWidth > 0 ? lastWidth : .screenW)
     if let data = data ?? self.data {
@@ -139,7 +150,7 @@ extension Post {
         self.helioData?._strongSubreddit = Subreddit(id: data.subreddit)
       }
 
-      if fetchAvatar {
+      if updateAvatarFamily {
         Task(priority: .utility) {
           await RedditAPI.shared.updatePostsWithAvatar(posts: Self.avatarSubjects(for: [self]), avatarSize: theme.postLinks.theme.badge.avatar.size)
         }
