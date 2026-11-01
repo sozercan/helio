@@ -28,6 +28,7 @@ struct NavCommands: Commands {
 
       Button("Back") { Nav.back() }
         .keyboardShortcut("[")
+        .disabled(!Nav.shared.activeRouter.canGoBack)
     }
   }
 }

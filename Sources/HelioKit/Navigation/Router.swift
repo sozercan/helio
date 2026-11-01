@@ -52,19 +52,30 @@ class ViewControllerHolder: Identifiable, Equatable {
 class Router: Hashable, Equatable, Identifiable {
   let id: String
 
+  /// The posts tab's sidebar selection: the feed at the root of the detail column. Choosing a
+  /// different one replaces the whole detail path, so screens opened from the previous feed don't
+  /// stay stacked on the new one.
   var firstSelected: NavDest? {
-    get { fullPath.isEmpty ? nil : fullPath[0] }
+    get { fullPath.first }
     set {
       if let newValue {
-        if fullPath.isEmpty {
-          fullPath.append(newValue)
-        } else {
-          fullPath[0] = newValue
+        if fullPath.first != newValue {
+          fullPath = [newValue]
         }
       } else {
         fullPath = []
       }
     }
+  }
+
+  /// True while the posts split view shows the sidebar beside the detail column. Then the path's
+  /// first element is the sidebar's selection, not a screen Back can leave: removing it would
+  /// blank the detail column. When the split view collapses into one stack, it pops like any
+  /// other screen and Back returns to the subs list.
+  var firstIsSidebarSelection = false
+
+  var canGoBack: Bool {
+    fullPath.count > (firstIsSidebarSelection ? 1 : 0)
   }
 
   var fullPath: [NavDest] = [] {
@@ -98,7 +109,7 @@ class Router: Hashable, Equatable, Identifiable {
   }
 
   func goBack() {
-    if !self.fullPath.isEmpty {
+    if canGoBack {
       _ = withAnimation { self.fullPath.removeLast() }
     }
   }
