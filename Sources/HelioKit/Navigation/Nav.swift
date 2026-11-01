@@ -28,6 +28,12 @@ class Nav: Identifiable, Equatable {
     Nav.shared.navigateTo(tab, dest, reset)
   }
 
+  /// Shows `dest` as the posts tab's feed, as if chosen in the sidebar, replacing the screens
+  /// stacked on the previous feed.
+  static func selectFeed(_ dest: Router.NavDest) {
+    Nav.shared.selectFeed(dest)
+  }
+
   static func present(_ content: PresentingSheet?) {
     Nav.shared.presentingSheet = content
   }
@@ -117,6 +123,14 @@ class Nav: Identifiable, Equatable {
       activeTab = tab
     }
     routers[tab]?.navigateTo(dest, reset)
+  }
+
+  func selectFeed(_ dest: Router.NavDest) {
+    if activeTab != .posts {
+      _suppressNextSameTabReset = true
+      activeTab = .posts
+    }
+    self[.posts].firstSelected = dest
   }
 
   subscript(tab: TabIdentifier) -> Router {

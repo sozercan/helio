@@ -16,7 +16,7 @@ struct MultiLink: View {
     Menu {
       ForEach(subs) { sub in
         if let data = sub.data {
-          SubItemButton(data: data, action: { Nav.to(.reddit(.subFeed(sub))) })
+          SubItemButton(data: data, action: { Nav.selectFeed(.reddit(.subFeed(sub))) })
         }
       }
     } label: {
@@ -34,7 +34,7 @@ struct MultiLink: View {
       .multilineTextAlignment(.center)
       .contentShape(Rectangle())
     } primaryAction: {
-      Nav.to(.reddit(.multiFeed(multi)))
+      Nav.selectFeed(.reddit(.multiFeed(multi)))
     }
     .onAppear {
       if subs.isEmpty {

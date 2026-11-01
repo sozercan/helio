@@ -13,6 +13,8 @@ struct SubredditsStack: View {
   @Default(.BehaviorDefSettings) private var behaviorDefSettings // handle default feed selection routing
   @Default(.GeneralDefSettings) private var generalDefSettings // handle default feed selection routing
   @State private var columnVisibility: NavigationSplitViewVisibility = .automatic
+  /// The split view collapses into one stack in compact width.
+  @Environment(\.horizontalSizeClass) private var horizontalSizeClass
   /// The posts column's measured frame. Follows window resizes, unlike a screen-size calculation.
   @State private var detailFrame: CGRect = .zero
 
@@ -75,9 +77,10 @@ struct SubredditsStack: View {
           if !loaded {
             // MARK: Route to default feed
 
-            if behaviorDefSettings.preferenceDefaultFeed != "subList", router.path.isEmpty { // we are in subList, can ignore
+            // Skipped when a feed is already chosen, such as by a Home Screen quick action.
+            if behaviorDefSettings.preferenceDefaultFeed != "subList", router.firstSelected == nil { // we are in subList, can ignore
               let tempSubreddit = Subreddit(id: behaviorDefSettings.preferenceDefaultFeed)
-              router.navigateTo(.reddit(.subFeed(tempSubreddit)))
+              router.firstSelected = .reddit(.subFeed(tempSubreddit))
             }
 
             withAnimation {
@@ -96,5 +99,8 @@ struct SubredditsStack: View {
     // Duo) the automatic style overlays the sidebar on the posts instead.
     .navigationSplitViewStyle(.balanced)
     .environment(\.contentWidth, postContentWidth)
+    .onChange(of: horizontalSizeClass, initial: true) { _, sizeClass in
+      router.firstIsSidebarSelection = sizeClass != .compact
+    }
   }
 }
