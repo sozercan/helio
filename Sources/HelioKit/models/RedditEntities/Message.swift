@@ -67,8 +67,25 @@ struct MessageData: GenericRedditEntityDataType {
 //    let distinguished: String?
 }
 
+extension MessageData {
+  /// The comment a reply or mention is about, opened in its post. Nil for private messages,
+  /// which aren't about a post, and when the message's link has no post id.
+  var commentDestination: Router.NavDest? {
+    guard let subreddit, let context, let postID = getPostId(from: context) else { return nil }
+    let post = Post(id: postID, subID: subreddit)
+    // Replies to a post highlight the reply itself; replies to a comment, the comment.
+    let parentComment = parent_id.flatMap { $0.hasPrefix("t3_") ? nil : $0 }
+    if let highlightID = parentComment ?? name {
+      return .reddit(.postHighlighted(post, highlightID))
+    }
+    return .reddit(.post(post))
+  }
+}
+
+/// The post id in a comment's permalink, such as `/r/apple/comments/abc123/title/def456/?context=3`.
 func getPostId(from urlString: String) -> String? {
-  let pathComponents = urlString.components(separatedBy: "/")
-  guard pathComponents.count > 2 else { return nil }
-  return pathComponents[4]
+  let path = urlString.split(separator: "?", maxSplits: 1, omittingEmptySubsequences: false).first ?? ""
+  let parts = path.split(separator: "/")
+  guard let comments = parts.firstIndex(of: "comments"), comments + 1 < parts.count else { return nil }
+  return String(parts[comments + 1])
 }
