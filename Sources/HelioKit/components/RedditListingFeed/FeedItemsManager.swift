@@ -135,7 +135,8 @@ class FeedItemsManager<S> {
       loadedEntitiesIds = []
       lastElementId = nil
     }
-    withAnimation { displayMode = paging ? .items : .loading }
+    // A non-clearing refresh keeps the displayed rows mounted until replacement.
+    withAnimation { displayMode = paging || !entities.isEmpty ? .items : .loading }
     let requestID = UUID()
     currentRequestID = requestID
     let request = if paging, let listRequest {

@@ -200,6 +200,56 @@ final class RedditCredentialsManager {
     }
   }
 
+  /// Main's conditional edit/renewal API shares the synchronous mutation owner.
+  func updateCred(_ id: UUID, _ change: (inout RedditCredential) -> Bool) {
+    guard let index = credentials.firstIndex(where: { $0.id == id }) else { return }
+    var current = credentials[index]
+    guard change(&current), current != credentials[index] else { return }
+    let previousAuthorization = selectedCredential?.authorizationID
+    var updated = credentials
+    updated[index] = current
+    publishCredentials(updated)
+    syncCredentialsWithKeychain()
+    if previousAuthorization != selectedCredential?.authorizationID {
+      updateMe()
+    }
+  }
+
+  /// Untouched web-session edits keep the current rotated cookies, token and grant.
+  func saveDraft(_ draft: RedditCredential, openedAs original: RedditCredential) {
+    var draft = draft
+    if let authorization = original.authorizationID,
+       draft.authorizationID == authorization,
+       let current = credentials.first(where: { $0.id == draft.id }),
+       current.authorizationID == authorization,
+       draft.userName == original.userName
+    {
+      // /me may have backfilled a migrated record while this editor was open.
+      draft.userName = current.userName
+    }
+    if let current = credentials.first(where: { $0.id == draft.id }),
+       current.isWebSession, draft.isWebSession, draft.webSessionCookies == original.webSessionCookies
+    {
+      draft.webSessionCookies = current.webSessionCookies
+      draft.accessToken = current.accessToken
+      draft.webSessionID = current.webSessionID
+    }
+    saveCred(draft, forceCreate: true)
+  }
+
+  func updateWebAccessToken(_ token: RedditCredential.AccessToken?, cookies: String?, renewedFrom: String, for authorization: RedditCredential.AuthorizationID) {
+    guard let index = credentials.firstIndex(where: { $0.id == authorization.credentialID }) else { return }
+    var current = credentials[index]
+    guard current.updateWebAccessToken(token, cookies: cookies, renewedFrom: renewedFrom, for: authorization), current != credentials[index] else { return }
+    var updated = credentials
+    updated[index] = current
+    publishCredentials(updated)
+    syncCredentialsWithKeychain()
+    if token == nil, selectedCredential?.id == authorization.credentialID {
+      reloadSelectedProfile()
+    }
+  }
+
   /// A refresh only updates the authorization that requested it, preserving newer edits.
   func updateAccessToken(_ token: RedditCredential.AccessToken?, for authorization: RedditCredential.AuthorizationID) {
     guard let index = credentials.firstIndex(where: { $0.id == authorization.credentialID }) else { return }

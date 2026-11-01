@@ -18,15 +18,20 @@ struct CredentialsPanelEmptyView: View {
         VStack(spacing: 4) {
           Text("Omg, no credentials!")
             .fontSize(24, .bold)
-          Text("Well, you got 2 options:").fontSize(16, .medium).opacity(0.75)
+          Text("Sign in to start using Helio.").fontSize(16, .medium).opacity(0.75)
         }
       }
 
       VStack(spacing: 16) {
-        Button("Add a new credential", systemImage: "person.fill.badge.plus") {
-          Nav.present(.editingCredential(.init()))
+        Button("Sign in with Reddit", systemImage: "person.fill.badge.plus") {
+          Nav.present(.redditSignIn(nil))
         }
         .buttonStyle(.action)
+
+        Button("Use your own API key", systemImage: "key.fill") {
+          Nav.present(.editingCredential(.init()))
+        }
+        .buttonStyle(.actionOutlined)
 
         Button(action: {
           Defaults[.GeneralDefSettings].onboardingState = .active

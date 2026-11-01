@@ -182,10 +182,12 @@ struct AccountListPersistence {
     }
   }
 
-  /// Bulk reconciliation runs on a private queue. Only the final validation/save
+  /// All bulk snapshots share one private queue, including their reads and updates.
+  /// Parallel network fetches cannot reconcile the same missing row concurrently.
+  /// Only the final validation/save
   /// takes the credential owner's lease, which serializes grant invalidation.
   private func bulkTransaction(_ update: @escaping @Sendable (NSManagedObjectContext) throws -> Bool) async -> Bool {
-    let context = context ?? PersistenceController.shared.container.newBackgroundContext()
+    let context = context ?? PersistenceController.shared.accountListsContext
     let manager = credentialsManager
     let authorization = authorization
     let beforeCommit = beforeBulkCommit

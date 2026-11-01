@@ -436,7 +436,9 @@ extension AccountListSyncAuthorizationTests {
       }
       waiters.forEach { $0.resume() }
       condition.lock()
-      let deadline = Date().addingTimeInterval(10)
+      // Other suites can initialize keychain/Core Data on the UI actor on CI.
+      // Allow that unrelated startup work; this remains a deadlock guard only.
+      let deadline = Date().addingTimeInterval(60)
       while !released {
         if !condition.wait(until: deadline) {
           state.withLock { $0.timedOut = true }
@@ -677,5 +679,55 @@ extension AccountListSyncAuthorizationTests {
     let stored = try savedLists(in: source, account: account).subs
     #expect(stored["t5_shared"] == "shared")
     #expect(stored["t5_unrelated"] == "unrelated")
+  }
+}
+
+extension AccountListSyncAuthorizationTests {
+  @Test(arguments: [false, true]) func overlappingSubscriptionAndMultiSnapshotsShareOneRow(multiFirst: Bool) async throws {
+    let account = credential()
+    let manager = RedditCredentialsManager(credentials: [account])
+    // Both snapshot owners use the same private writer, as production does.
+    let writer = try context()
+    let gate = CommitGate()
+    let first = try #require(AccountListPersistence(account: account, credentialsManager: manager, context: writer, beforeBulkCommit: { gate.pause() }))
+    let second = try #require(AccountListPersistence(account: account, credentialsManager: manager, context: writer))
+    let sub = try subreddit("shared")
+    var multi = try #require(multis([("shared-list", "Shared list")]).first?.data)
+    multi.subreddits = [MultiSub(name: "shared", data: sub)]
+    let firstTask = Task {
+      if multiFirst {
+        return await first.replaceMultis(with: [multi])
+      }
+      return await first.replaceSubscriptions(with: [sub])
+    }
+    await gate.waitUntilPaused()
+    defer { gate.release() }
+    let secondTask = Task {
+      if multiFirst {
+        return await second.replaceSubscriptions(with: [sub])
+      }
+      return await second.replaceMultis(with: [multi])
+    }
+    // The second task starts while the first snapshot's transaction is in flight.
+    // The writer queues it behind the first complete read/update/save operation.
+    await Task.yield()
+    gate.release()
+    let firstSaved = await firstTask.value
+    let secondSaved = await secondTask.value
+    #expect(firstSaved && secondSaved)
+    let reader = NSManagedObjectContext(concurrencyType: .privateQueueConcurrencyType)
+    reader.persistentStoreCoordinator = writer.persistentStoreCoordinator
+    let result = try reader.performAndWait {
+      let request = CachedSub.fetchRequest()
+      request.predicate = NSPredicate(format: "helioCredentialID == %@", account.id as CVarArg)
+      let rows = try reader.fetch(request)
+      let multis = try reader.fetch(CachedMulti.fetchRequest())
+      return (rows.count, rows.first?.user_is_subscriber, rows.first?.multis?.count, multis.first?.subreddits?.first?.objectID == rows.first?.objectID)
+    }
+    #expect(result.0 == 1)
+    #expect(result.1 == true)
+    #expect(result.2 == 1)
+    #expect(result.3)
+    #expect(!gate.timedOut)
   }
 }

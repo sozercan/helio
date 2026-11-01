@@ -76,6 +76,16 @@ class RedditAPI {
     return headers
   }
 
+  @MainActor
+  static func accountID(_ altCredential: RedditCredential? = nil) -> UUID? {
+    (altCredential ?? RedditCredentialsManager.shared.selectedCredential)?.id
+  }
+
+  @MainActor
+  static func accountAuthorization(_ altCredential: RedditCredential? = nil) -> RedditCredential.AuthorizationID? {
+    (altCredential ?? RedditCredentialsManager.shared.selectedCredential)?.authorizationID
+  }
+
   private let reqAttempts = 2
 
   private let reqModifier: Session.RequestModifier = { urlReq in
@@ -93,9 +103,16 @@ class RedditAPI {
     attempt: Int = 0,
     saveToken: Bool = true,
   ) async -> Result<D, AFError> {
-    await self._doRequest(authenticated: authenticated, altCredential: altCredential, saveToken: saveToken) { headers in
+    var credential = altCredential
+    if authenticated, credential == nil {
+      credential = await currentAccount()
+    }
+    guard !authenticated || credential != nil else { return .failure(.serverTrustEvaluationFailed(reason: .noPublicKeysFound)) }
+    let account = credential?.id
+    let authorization = credential?.authorizationID
+    return await self._doRequest(authenticated: authenticated, altCredential: credential, saveToken: saveToken) { headers in
       let req = session.request(url, method: method, parameters: params, encoder: URLEncodedFormParameterEncoder(destination: paramsLocation), headers: headers, requestModifier: reqModifier).validate()
-      return await req.serializingDecodable(decodable).response.result
+      return await RedditRateLimit.shared.recording(req.serializingDecodable(decodable).response, account: account, authorization: authorization)
     }
   }
 
@@ -108,9 +125,16 @@ class RedditAPI {
     attempt: Int = 0,
     saveToken: Bool = true,
   ) async -> Result<D, AFError> {
-    await self._doRequest(authenticated: authenticated, altCredential: altCredential, saveToken: saveToken) { headers in
+    var credential = altCredential
+    if authenticated, credential == nil {
+      credential = await currentAccount()
+    }
+    guard !authenticated || credential != nil else { return .failure(.serverTrustEvaluationFailed(reason: .noPublicKeysFound)) }
+    let account = credential?.id
+    let authorization = credential?.authorizationID
+    return await self._doRequest(authenticated: authenticated, altCredential: credential, saveToken: saveToken) { headers in
       let req = session.request(url, method: method, parameters: ["raw_json": 1], headers: headers, requestModifier: reqModifier).validate()
-      return await req.serializingDecodable(decodable).response.result
+      return await RedditRateLimit.shared.recording(req.serializingDecodable(decodable).response, account: account, authorization: authorization)
     }
   }
 
@@ -124,9 +148,16 @@ class RedditAPI {
     attempt: Int = 0,
     saveToken: Bool = true,
   ) async -> Result<String, AFError> {
-    await self._doRequest(authenticated: authenticated, altCredential: altCredential, saveToken: saveToken) { headers in
+    var credential = altCredential
+    if authenticated, credential == nil {
+      credential = await currentAccount()
+    }
+    guard !authenticated || credential != nil else { return .failure(.serverTrustEvaluationFailed(reason: .noPublicKeysFound)) }
+    let account = credential?.id
+    let authorization = credential?.authorizationID
+    return await self._doRequest(authenticated: authenticated, altCredential: credential, saveToken: saveToken) { headers in
       let req = session.request(url, method: method, parameters: params, encoder: URLEncodedFormParameterEncoder(destination: paramsLocation), headers: headers, requestModifier: reqModifier).validate()
-      return await req.serializingString().result
+      return await RedditRateLimit.shared.recording(req.serializingString().response, account: account, authorization: authorization)
     }
   }
 
@@ -139,9 +170,16 @@ class RedditAPI {
     attempt: Int = 0,
     saveToken: Bool = true,
   ) async -> Result<String, AFError> {
-    await self._doRequest(authenticated: authenticated, altCredential: altCredential, saveToken: saveToken) { headers in
+    var credential = altCredential
+    if authenticated, credential == nil {
+      credential = await currentAccount()
+    }
+    guard !authenticated || credential != nil else { return .failure(.serverTrustEvaluationFailed(reason: .noPublicKeysFound)) }
+    let account = credential?.id
+    let authorization = credential?.authorizationID
+    return await self._doRequest(authenticated: authenticated, altCredential: credential, saveToken: saveToken) { headers in
       let req = session.request(url, method: method, parameters: ["raw_json": 1], headers: headers).validate()
-      return await req.serializingString().result
+      return await RedditRateLimit.shared.recording(req.serializingString().response, account: account, authorization: authorization)
     }
   }
 
@@ -164,6 +202,9 @@ class RedditAPI {
       credential = await currentAccount()
     }
     guard !Task.isCancelled else { return .failure(.explicitlyCancelled) }
+    if authenticated, RedditRateLimit.shared.limitedUntil(account: credential?.id, authorization: credential?.authorizationID) != nil {
+      return .failure(RedditRateLimit.limitedError)
+    }
     guard !authenticated || credential != nil, let headers = await fetchRequestHeaders(force: forceAuth, includeAuth: authenticated, altCredential: credential, saveToken: saveToken, rejectedToken: rejectedToken) else { return .failure(.serverTrustEvaluationFailed(reason: .noPublicKeysFound)) }
     guard !Task.isCancelled else { return .failure(.explicitlyCancelled) }
 

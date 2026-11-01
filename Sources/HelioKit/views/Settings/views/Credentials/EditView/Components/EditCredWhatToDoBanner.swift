@@ -10,11 +10,12 @@ import SwiftUI
 
 struct EditCredWhatToDoBannerBody: View, Equatable {
   static func == (lhs: EditCredWhatToDoBannerBody, rhs: EditCredWhatToDoBannerBody) -> Bool {
-    lhs.status == rhs.status && lhs.completionStatus == rhs.completionStatus
+    lhs.status == rhs.status && lhs.completionStatus == rhs.completionStatus && lhs.webSession == rhs.webSession
   }
 
   var status: RedditCredential.CredentialValidationState
   var advanced: Bool
+  var webSession = false
   var authorize: () -> Void
   @Binding var completionStatus: EditCredWhatToDoBanner.BannerStatus
   @Environment(\.colorScheme) private var cs
@@ -31,6 +32,8 @@ struct EditCredWhatToDoBannerBody: View, Equatable {
             Text("We recommend you to use another key using the \"**Guided replace**\" button below, but you can do it manually by tapping the \"**Advanced settings**\" if you want.")
           }
         }.opacity(0.8)
+      case .maybeValid where webSession, .valid where webSession:
+        Text("Reddit signed this account out. Tap \"**Sign in again**\" below to keep using it.").opacity(0.8)
       case .maybeValid, .valid:
         VStack(alignment: .leading, spacing: 12) {
           Text("The credentials seem to be valid, but we need you to authorize the credentials to access your account *(yeah, it sounds redundand, sorry)*.").opacity(0.8)
@@ -144,7 +147,7 @@ struct EditCredWhatToDoBanner: View, Equatable {
 
         Divider()
 
-        EditCredWhatToDoBannerBody(status: status, advanced: advanced, authorize: authorize, completionStatus: $completionStatus).equatable()
+        EditCredWhatToDoBannerBody(status: status, advanced: advanced, webSession: draftCredential.isWebSession, authorize: authorize, completionStatus: $completionStatus).equatable()
           .transition(.identity)
           .id(statusMeta.label)
           .padding(EdgeInsets(top: 0, leading: padding.leading, bottom: padding.bottom, trailing: padding.trailing))
