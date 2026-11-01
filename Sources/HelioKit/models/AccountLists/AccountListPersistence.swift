@@ -1,7 +1,7 @@
 import CoreData
 import Foundation
 import os
-import SwiftUI
+import Synchronization
 
 /// A captured account's subscription and multi lists. Selection is not ownership: a
 /// still-installed grant may finish syncing even after another account is selected.
@@ -61,11 +61,14 @@ struct AccountListPersistence {
     }
   }
 
-  func isSubscribed(fullname: String) -> Bool {
-    guard credentialsManager.containsAuthorization(authorization) else { return false }
-    let context = context ?? PersistenceController.shared.container.viewContext
-    return context.performAndWait {
-      ((try? context.fetch(requestForSubreddit(credential.id, fullname: fullname))) ?? []).contains(where: \.user_is_subscriber)
+  func isSubscribed(fullname: String) async -> Bool {
+    let source = context ?? PersistenceController.shared.accountListsContext
+    let manager = credentialsManager
+    let authorization = authorization
+    let credentialID = credential.id
+    return await source.perform {
+      guard manager.containsAuthorization(authorization) else { return false }
+      return ((try? source.fetch(requestForSubreddit(credentialID, fullname: fullname))) ?? []).contains(where: \.user_is_subscriber)
     }
   }
 
@@ -135,8 +138,8 @@ struct AccountListPersistence {
   /// cached this subreddit without the account being subscribed to it. Existing
   /// metadata (including a newer favorite) is not replaced by the caller's snapshot.
   @discardableResult
-  func setSubscription(_ subscribed: Bool, subreddit: SubredditData, expecting expected: Bool? = nil) -> Bool {
-    transaction { context in
+  func setSubscription(_ subscribed: Bool, subreddit: SubredditData, expecting expected: Bool? = nil) async -> Bool {
+    await transaction { context in
       let request = requestForSubreddit(credential.id, fullname: subreddit.name)
       let existing = try context.fetch(request)
       if let expected, existing.contains(where: \.user_is_subscriber) != expected {
@@ -168,8 +171,8 @@ struct AccountListPersistence {
   /// Only existing rows are favorited. Failure rollback is conditional so it does
   /// not blindly overwrite a newer local toggle or recreate an unsubscribed row.
   @discardableResult
-  func setFavorite(_ favorited: Bool, fullname: String, expecting expected: Bool? = nil) -> Bool {
-    transaction { context in
+  func setFavorite(_ favorited: Bool, fullname: String, expecting expected: Bool? = nil) async -> Bool {
+    await transaction { context in
       let existing = try context.fetch(requestForSubreddit(credential.id, fullname: fullname))
       guard !existing.isEmpty else { return false }
       if let expected, !existing.allSatisfy({ $0.user_has_favorited == expected }) {
@@ -213,36 +216,59 @@ struct AccountListPersistence {
     }
   }
 
-  private func transaction(_ update: (NSManagedObjectContext) throws -> Bool) -> Bool {
-    guard credentialsManager.containsAuthorization(authorization) else { return false }
-    let source = context ?? PersistenceController.shared.container.viewContext
-    guard let coordinator = source.performAndWait({ source.persistentStoreCoordinator }) else { return false }
-    // Local writes are small and synchronous. An isolated main-queue writer keeps
-    // an unsuccessful action out of the shared context without rolling back its edits.
-    let writer = NSManagedObjectContext(concurrencyType: .mainQueueConcurrencyType)
-    writer.persistentStoreCoordinator = coordinator
-    writer.mergePolicy = NSMergePolicy.mergeByPropertyObjectTrump
-    var saved: Notification?
-    let observer = NotificationCenter.default.addObserver(forName: .NSManagedObjectContextDidSave, object: writer, queue: nil) { notification in
-      // The writer can only save in this main-actor turn.
-      MainActor.assumeIsolated { saved = notification }
-    }
-    defer { NotificationCenter.default.removeObserver(observer) }
-    do {
-      guard try update(writer) else { return false }
-      try withAnimation { try writer.save() }
-      if let saved {
-        // Merge the successful save before returning, so another local intent sees
-        // the new state. Core Data's merge API consumes the saving context's notice.
-        source.performAndWait { source.mergeChanges(fromContextDidSave: saved) }
+  /// The save notification is consumed only by Core Data's cross-context merge API.
+  private struct LocalWriteResult: @unchecked Sendable {
+    let succeeded: Bool
+    let notification: Notification?
+  }
+
+  private func transaction(_ update: @escaping @Sendable (NSManagedObjectContext) throws -> Bool) async -> Bool {
+    let source = context ?? PersistenceController.shared.accountListsContext
+    let manager = credentialsManager
+    let authorization = authorization
+    // Queue the entire local transaction behind bulk reconciliation, not only its save.
+    // The isolated writer protects unrelated pending edits in an injected/shared context.
+    let result = await source.perform {
+      guard manager.containsAuthorization(authorization), let coordinator = source.persistentStoreCoordinator else {
+        return LocalWriteResult(succeeded: false, notification: nil)
       }
-      return true
-    } catch {
-      writer.rollback()
-      Logger(subsystem: "com.sertacozercan.helio", category: "AccountListPersistence")
-        .error("Failed to persist account lists: \(error.localizedDescription)")
-      return false
+      let writer = NSManagedObjectContext(concurrencyType: .privateQueueConcurrencyType)
+      writer.persistentStoreCoordinator = coordinator
+      writer.mergePolicy = NSMergePolicy.mergeByPropertyObjectTrump
+      let result = writer.performAndWait {
+        let saved = Mutex<Notification?>(nil)
+        let observer = NotificationCenter.default.addObserver(forName: .NSManagedObjectContextDidSave, object: writer, queue: nil) { notification in
+          saved.withLock { $0 = notification }
+        }
+        defer { NotificationCenter.default.removeObserver(observer) }
+        do {
+          guard try update(writer) else { return LocalWriteResult(succeeded: false, notification: nil) }
+          let accepted = try manager.withCurrentAuthorization(authorization) {
+            try writer.save()
+            return true
+          }
+          guard accepted == true else {
+            writer.rollback()
+            return LocalWriteResult(succeeded: false, notification: nil)
+          }
+          return LocalWriteResult(succeeded: true, notification: saved.withLock { $0 })
+        } catch {
+          writer.rollback()
+          Logger(subsystem: "com.sertacozercan.helio", category: "AccountListPersistence")
+            .error("Failed to persist account lists: \(error.localizedDescription)")
+          return LocalWriteResult(succeeded: false, notification: nil)
+        }
+      }
+      if let notification = result.notification {
+        source.mergeChanges(fromContextDidSave: notification)
+      }
+      return result
     }
+    if context == nil, let notification = result.notification {
+      let view = PersistenceController.shared.container.viewContext
+      await view.perform { view.mergeChanges(fromContextDidSave: notification) }
+    }
+    return result.succeeded
   }
 }
 

@@ -60,22 +60,17 @@ extension Subreddit {
       (credentialID: entity.helioCredentialID, fullname: entity.uuid, favorited: entity.user_has_favorited)
     }
     guard snapshot.credentialID == credential.id, let fullname = snapshot.fullname,
-          let persistence = AccountListPersistence(account: credential, context: context)
+          let persistence = AccountListPersistence(account: credential)
     else { return }
     let previous = snapshot.favorited
     let requested = !previous
     guard let ticket = persistence.beginMutation(fullname: fullname) else { return }
-    guard persistence.setFavorite(requested, fullname: fullname) else {
-      persistence.finish(ticket)
-      return
-    }
-    withAnimation {
-      self.data?.user_has_favorited = requested
-    }
-
     Task(priority: .userInitiated) {
       defer { persistence.finish(ticket) }
-      guard persistence.isCurrent(ticket) else { return }
+      guard await persistence.setFavorite(requested, fullname: fullname), persistence.isCurrent(ticket) else { return }
+      if RedditCredentialsManager.shared.selectedCredential?.authorizationID == credential.authorizationID {
+        withAnimation { self.data?.user_has_favorited = requested }
+      }
       // The existing favorite wrapper resolves selection at request time. Use its
       // same payload and transport with the account captured by the local write.
       let result = await RedditAPI.shared.doRequest(
@@ -85,7 +80,7 @@ extension Subreddit {
       )
       if case .failure = result,
          persistence.isCurrent(ticket),
-         persistence.setFavorite(previous, fullname: fullname, expecting: requested),
+         await persistence.setFavorite(previous, fullname: fullname, expecting: requested),
          RedditCredentialsManager.shared.selectedCredential?.authorizationID == credential.authorizationID,
          self.data?.user_has_favorited == requested
       {
@@ -99,26 +94,23 @@ extension Subreddit {
   @MainActor
   func subscribeToggle(optimistic: Bool = false, expectedAuthorization: RedditCredential.AuthorizationID? = nil, _ cb: (() -> Void)? = nil) {
     guard let data, let credential = RedditCredentialsManager.shared.selectedCredential,
-          let persistence = AccountListPersistence(account: credential, context: PersistenceController.shared.container.viewContext), expectedAuthorization == nil || expectedAuthorization == credential.authorizationID,
+          let persistence = AccountListPersistence(account: credential), expectedAuthorization == nil || expectedAuthorization == credential.authorizationID,
           let ticket = persistence.beginMutation(fullname: data.name)
     else { cb?()
       return
     }
-    let previous = persistence.isSubscribed(fullname: data.name)
-    let requested = !previous
-    if optimistic {
-      guard persistence.setSubscription(requested, subreddit: data) else {
-        persistence.finish(ticket)
-        cb?()
-        return
-      }
-      withAnimation {
-        self.data?.user_is_subscriber = requested
-      }
-    }
     Task(priority: .userInitiated) {
       defer { persistence.finish(ticket)
         cb?()
+      }
+      let previous = await persistence.isSubscribed(fullname: data.name)
+      guard persistence.isCurrent(ticket) else { return }
+      let requested = !previous
+      if optimistic {
+        guard await persistence.setSubscription(requested, subreddit: data), persistence.isCurrent(ticket) else { return }
+        if RedditCredentialsManager.shared.selectedCredential?.authorizationID == credential.authorizationID {
+          withAnimation { self.data?.user_is_subscriber = requested }
+        }
       }
       guard persistence.isCurrent(ticket) else { return }
       let result = await RedditAPI.shared.doRequest(
@@ -133,13 +125,13 @@ extension Subreddit {
       case .success:
         guard !optimistic else { return }
         state = requested
-        saved = persistence.setSubscription(requested, subreddit: data)
+        saved = await persistence.setSubscription(requested, subreddit: data)
       case .failure:
         guard optimistic else { return }
         state = previous
-        saved = persistence.setSubscription(previous, subreddit: data, expecting: requested)
+        saved = await persistence.setSubscription(previous, subreddit: data, expecting: requested)
       }
-      guard saved,
+      guard saved, persistence.isCurrent(ticket),
             RedditCredentialsManager.shared.selectedCredential?.authorizationID == credential.authorizationID
       else { return }
       withAnimation {

@@ -244,11 +244,11 @@ struct AccountListSyncAuthorizationTests {
     let data = try subreddit("kept")
     let accepted1 = await currentLists.replaceSubscriptions(with: [data])
     #expect(accepted1)
-    let accepted2 = staleLists.setSubscription(false, subreddit: data)
+    let accepted2 = await staleLists.setSubscription(false, subreddit: data)
     #expect(!accepted2)
-    let accepted3 = try staleLists.setSubscription(true, subreddit: subreddit("stale-only"))
+    let accepted3 = try await staleLists.setSubscription(true, subreddit: subreddit("stale-only"))
     #expect(!accepted3)
-    let accepted4 = staleLists.setFavorite(true, fullname: data.name)
+    let accepted4 = await staleLists.setFavorite(true, fullname: data.name)
     #expect(!accepted4)
     let saved = try #require(try savedSubscription(in: context, account: current, fullname: data.name))
     #expect(saved.user_is_subscriber == true && saved.user_has_favorited == false)
@@ -257,21 +257,21 @@ struct AccountListSyncAuthorizationTests {
   }
 
   @Test(arguments: [false, true])
-  func localWritesRejectRemovedAndRevokedGrants(revoked: Bool) throws {
+  func localWritesRejectRemovedAndRevokedGrants(revoked: Bool) async throws {
     let captured = credential()
     let context = try context()
     let original = RedditCredentialsManager(credentials: [captured])
     let originalLists = try #require(AccountListPersistence(account: captured, credentialsManager: original, context: context))
     let data = try subreddit("kept")
-    let accepted5 = originalLists.setSubscription(true, subreddit: data)
+    let accepted5 = await originalLists.setSubscription(true, subreddit: data)
     #expect(accepted5)
     var cleared = captured
     cleared.clearIdentity()
     let manager = RedditCredentialsManager(credentials: revoked ? [cleared] : [])
     let staleLists = try #require(AccountListPersistence(account: captured, credentialsManager: manager, context: context))
-    let accepted6 = staleLists.setSubscription(false, subreddit: data, expecting: true)
+    let accepted6 = await staleLists.setSubscription(false, subreddit: data, expecting: true)
     #expect(!accepted6)
-    let accepted7 = staleLists.setFavorite(true, fullname: data.name)
+    let accepted7 = await staleLists.setFavorite(true, fullname: data.name)
     #expect(!accepted7)
     #expect(try savedSubscription(in: context, account: captured, fullname: data.name)?.user_is_subscriber == true)
     #expect(AccountListPersistence(account: cleared, credentialsManager: manager, context: context) == nil)
@@ -337,12 +337,12 @@ struct AccountListSyncAuthorizationTests {
     #expect(Set(members.compactMap(\.0)) == [shared.name, multiOnly.name])
     #expect(members.allSatisfy { $0.1 == captured.id })
     #expect(try savedLists(in: context, account: selected).subs == ["t5_shared": "shared"])
-    let accepted15 = capturedLists.setSubscription(true, subreddit: multiOnly)
+    let accepted15 = await capturedLists.setSubscription(true, subreddit: multiOnly)
     #expect(accepted15)
     #expect(try savedSubscription(in: context, account: captured, fullname: multiOnly.name)?.user_is_subscriber == true)
   }
 
-  @Test func localWritesSaveExplicitStateAndGuardRollback() throws {
+  @Test func localWritesSaveExplicitStateAndGuardRollback() async throws {
     let selected = credential("placeholder-selected-grant")
     let captured = credential("placeholder-background-grant")
     var renewed = captured
@@ -352,30 +352,30 @@ struct AccountListSyncAuthorizationTests {
     let selectedLists = try #require(AccountListPersistence(account: selected, credentialsManager: manager, context: context))
     let lists = try #require(AccountListPersistence(account: captured, credentialsManager: manager, context: context))
     let data = try subreddit("shared", favorited: true)
-    let accepted16 = selectedLists.setSubscription(true, subreddit: data)
+    let accepted16 = await selectedLists.setSubscription(true, subreddit: data)
     #expect(accepted16)
-    let accepted17 = lists.setSubscription(true, subreddit: data)
+    let accepted17 = await lists.setSubscription(true, subreddit: data)
     #expect(accepted17)
-    let accepted18 = lists.setFavorite(false, fullname: data.name)
+    let accepted18 = await lists.setFavorite(false, fullname: data.name)
     #expect(accepted18)
-    let accepted19 = lists.setFavorite(true, fullname: data.name, expecting: false)
+    let accepted19 = await lists.setFavorite(true, fullname: data.name, expecting: false)
     #expect(accepted19)
     var staleSnapshot = data
     staleSnapshot.user_has_favorited = false
-    let accepted20 = lists.setSubscription(true, subreddit: staleSnapshot)
+    let accepted20 = await lists.setSubscription(true, subreddit: staleSnapshot)
     #expect(accepted20)
     // A later local update already restored true; a stale failure expecting false
     // must not write false over it.
-    let accepted21 = lists.setFavorite(false, fullname: data.name, expecting: false)
+    let accepted21 = await lists.setFavorite(false, fullname: data.name, expecting: false)
     #expect(!accepted21)
     #expect(try savedSubscription(in: context, account: captured, fullname: data.name)?.user_has_favorited == true)
-    let accepted22 = lists.setSubscription(false, subreddit: data)
+    let accepted22 = await lists.setSubscription(false, subreddit: data)
     #expect(accepted22)
-    let accepted23 = lists.setFavorite(false, fullname: data.name)
+    let accepted23 = await lists.setFavorite(false, fullname: data.name)
     #expect(!accepted23)
-    let accepted24 = lists.setSubscription(false, subreddit: data, expecting: true)
+    let accepted24 = await lists.setSubscription(false, subreddit: data, expecting: true)
     #expect(!accepted24)
-    let accepted25 = lists.setSubscription(true, subreddit: data, expecting: false)
+    let accepted25 = await lists.setSubscription(true, subreddit: data, expecting: false)
     #expect(accepted25)
     #expect(try savedSubscription(in: context, account: captured, fullname: data.name)?.user_is_subscriber == true)
     #expect(try savedSubscription(in: context, account: selected, fullname: data.name)?.user_has_favorited == true)
@@ -518,7 +518,7 @@ extension AccountListSyncAuthorizationTests {
     let otherLists = try #require(AccountListPersistence(account: other, credentialsManager: manager, context: context))
     let shared = try subreddit("shared")
     let first = await lists.replaceSubscriptions(with: [shared])
-    let second = otherLists.setSubscription(true, subreddit: shared)
+    let second = await otherLists.setSubscription(true, subreddit: shared)
     #expect(first && second)
     var multi = try #require(multis([("kept", "Kept")]).first?.data)
     multi.subreddits = [MultiSub(name: "shared", data: shared)]
@@ -526,10 +526,10 @@ extension AccountListSyncAuthorizationTests {
     #expect(multiSaved)
     let emptied = await lists.replaceSubscriptions(with: [])
     #expect(emptied)
-    #expect(!lists.isSubscribed(fullname: shared.name))
-    #expect(otherLists.isSubscribed(fullname: shared.name))
-    let subscribed = lists.setSubscription(true, subreddit: shared)
-    let unsubscribed = lists.setSubscription(false, subreddit: shared)
+    #expect(await !(lists.isSubscribed(fullname: shared.name)))
+    #expect(await otherLists.isSubscribed(fullname: shared.name))
+    let subscribed = await lists.setSubscription(true, subreddit: shared)
+    let unsubscribed = await lists.setSubscription(false, subreddit: shared)
     #expect(subscribed && unsubscribed)
     let members = try context.performAndWait {
       let request = CachedMulti.fetchRequest()
@@ -539,45 +539,45 @@ extension AccountListSyncAuthorizationTests {
     #expect(members == [shared.name])
   }
 
-  @Test func failedFavoriteIntentsNeverUseAnUnconfirmedRollbackBaseline() throws {
+  @Test func failedFavoriteIntentsNeverUseAnUnconfirmedRollbackBaseline() async throws {
     let captured = credential()
     let manager = RedditCredentialsManager(credentials: [captured])
     let context = try context()
     let lists = try #require(AccountListPersistence(account: captured, credentialsManager: manager, context: context))
     let data = try subreddit("shared")
-    #expect(lists.setSubscription(true, subreddit: data))
+    #expect(await lists.setSubscription(true, subreddit: data))
     let first = try #require(lists.beginMutation(fullname: data.name))
-    #expect(lists.setFavorite(true, fullname: data.name))
+    #expect(await lists.setFavorite(true, fullname: data.name))
     // A second false intent cannot begin from the unconfirmed true value.
     #expect(lists.beginMutation(fullname: data.name) == nil)
     #expect(lists.isCurrent(first))
-    #expect(lists.setFavorite(false, fullname: data.name, expecting: true))
+    #expect(await lists.setFavorite(false, fullname: data.name, expecting: true))
     lists.finish(first)
     let next = try #require(lists.beginMutation(fullname: data.name))
     defer { lists.finish(next) }
     lists.finish(first)
     #expect(lists.isCurrent(next))
-    #expect(lists.setFavorite(true, fullname: data.name))
-    #expect(lists.setFavorite(false, fullname: data.name, expecting: true))
+    #expect(await lists.setFavorite(true, fullname: data.name))
+    #expect(await lists.setFavorite(false, fullname: data.name, expecting: true))
     #expect(try savedSubscription(in: context, account: captured, fullname: data.name)?.user_has_favorited == false)
   }
 
-  @Test func failedUnsubscribeDoesNotAdmitAnOverlappingNonoptimisticSubscribe() throws {
+  @Test func failedUnsubscribeDoesNotAdmitAnOverlappingNonoptimisticSubscribe() async throws {
     let captured = credential()
     let manager = RedditCredentialsManager(credentials: [captured])
     let context = try context()
     let lists = try #require(AccountListPersistence(account: captured, credentialsManager: manager, context: context))
     let data = try subreddit("shared")
-    #expect(lists.setSubscription(true, subreddit: data))
+    #expect(await lists.setSubscription(true, subreddit: data))
     let first = try #require(lists.beginMutation(fullname: data.name))
-    #expect(lists.setSubscription(false, subreddit: data))
+    #expect(await lists.setSubscription(false, subreddit: data))
     // This includes the favorite surface: every action on this row is reserved.
     #expect(lists.beginMutation(fullname: data.name) == nil)
-    #expect(lists.setSubscription(true, subreddit: data, expecting: false))
+    #expect(await lists.setSubscription(true, subreddit: data, expecting: false))
     lists.finish(first)
     let next = try #require(lists.beginMutation(fullname: data.name))
     defer { lists.finish(next) }
-    #expect(lists.isSubscribed(fullname: data.name))
+    #expect(await lists.isSubscribed(fullname: data.name))
     // A failed nonoptimistic unsubscribe makes no local write.
     #expect(try savedSubscription(in: context, account: captured, fullname: data.name)?.user_is_subscriber == true)
   }
@@ -603,7 +603,7 @@ extension AccountListSyncAuthorizationTests {
   private enum FailedLocalWrite: CaseIterable { case insertSubscription, updateSubscription, deleteSubscription, favorite }
 
   @Test(arguments: FailedLocalWrite.allCases)
-  private func aFailedLocalSaveCannotLeaveAnUnsentActionInTheSharedContext(operation: FailedLocalWrite) throws {
+  private func aFailedLocalSaveCannotLeaveAnUnsentActionInTheSharedContext(operation: FailedLocalWrite) async throws {
     let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString, isDirectory: true)
     try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
     defer { try? FileManager.default.removeItem(at: directory) }
@@ -628,13 +628,13 @@ extension AccountListSyncAuthorizationTests {
     let owner = try #require(AccountListPersistence(account: account, credentialsManager: manager, context: source))
     let accepted: Bool = switch operation {
     case .insertSubscription:
-      try owner.setSubscription(true, subreddit: subreddit("new"))
+      try await owner.setSubscription(true, subreddit: subreddit("new"))
     case .updateSubscription:
-      owner.setSubscription(true, subreddit: targetData)
+      await owner.setSubscription(true, subreddit: targetData)
     case .deleteSubscription:
-      owner.setSubscription(false, subreddit: targetData)
+      await owner.setSubscription(false, subreddit: targetData)
     case .favorite:
-      owner.setFavorite(true, fullname: targetData.name)
+      await owner.setFavorite(true, fullname: targetData.name)
     }
     #expect(!accepted)
     #expect(source.insertedObjects.isEmpty)
@@ -650,13 +650,13 @@ extension AccountListSyncAuthorizationTests {
     #expect(try savedLists(in: source, account: account).subs["t5_new"] == nil)
   }
 
-  @Test func aSuccessfulLocalSaveMergesImmediatelyWithoutSavingUnrelatedPendingEdits() throws {
+  @Test func aSuccessfulLocalSaveMergesImmediatelyWithoutSavingUnrelatedPendingEdits() async throws {
     let account = credential()
     let manager = RedditCredentialsManager(credentials: [account])
     let source = try context()
     let owner = try #require(AccountListPersistence(account: account, credentialsManager: manager, context: source))
     let data = try subreddit("shared")
-    let seeded = owner.setSubscription(true, subreddit: data)
+    let seeded = await owner.setSubscription(true, subreddit: data)
     #expect(seeded)
     let pending = try source.performAndWait {
       let request = CachedSub.fetchRequest()
@@ -669,9 +669,9 @@ extension AccountListSyncAuthorizationTests {
       unrelated.title = "Unrelated pending edit"
       return (target: target, unrelated: unrelated)
     }
-    let saved = owner.setFavorite(true, fullname: data.name)
+    let saved = await owner.setFavorite(true, fullname: data.name)
     #expect(saved)
-    #expect(owner.isSubscribed(fullname: data.name))
+    #expect(await owner.isSubscribed(fullname: data.name))
     #expect(try savedSubscription(in: source, account: account, fullname: data.name)?.user_has_favorited == true)
     #expect(source.performAndWait {
       pending.target.title == "Pending metadata on the changed row" && pending.unrelated.title == "Unrelated pending edit" && source.hasChanges
@@ -728,6 +728,43 @@ extension AccountListSyncAuthorizationTests {
     #expect(result.1 == true)
     #expect(result.2 == 1)
     #expect(result.3)
+    #expect(!gate.timedOut)
+  }
+}
+
+extension AccountListSyncAuthorizationTests {
+  @Test func localSubscribeWaitsForMultiReconciliationWithoutBlockingTheUIActor() async throws {
+    let account = credential()
+    let manager = RedditCredentialsManager(credentials: [account])
+    let writer = try context()
+    let gate = CommitGate()
+    let bulk = try #require(AccountListPersistence(account: account, credentialsManager: manager, context: writer, beforeBulkCommit: { gate.pause() }))
+    let local = try #require(AccountListPersistence(account: account, credentialsManager: manager, context: writer))
+    let sub = try subreddit("shared", subscribed: false)
+    var multi = try #require(multis([("shared-list", "Shared list")]).first?.data)
+    multi.subreddits = [MultiSub(name: "shared", data: sub)]
+    let multiTask = Task { await bulk.replaceMultis(with: [multi]) }
+    await gate.waitUntilPaused()
+    defer { gate.release() }
+    let localTask = Task { await local.setSubscription(true, subreddit: sub) }
+    await Task.yield()
+    #expect(Thread.isMainThread)
+    #expect(!gate.timedOut)
+    gate.release()
+    let multiSaved = await multiTask.value
+    let localSaved = await localTask.value
+    #expect(multiSaved && localSaved)
+    let reader = NSManagedObjectContext(concurrencyType: .privateQueueConcurrencyType)
+    reader.persistentStoreCoordinator = writer.persistentStoreCoordinator
+    let rows = try reader.performAndWait {
+      let rows = try reader.fetch(CachedSub.fetchRequest())
+      let multis = try reader.fetch(CachedMulti.fetchRequest())
+      return (rows.count, rows.first?.user_is_subscriber, rows.first?.multis?.count, multis.first?.subreddits?.first?.objectID == rows.first?.objectID)
+    }
+    #expect(rows.0 == 1)
+    #expect(rows.1 == true)
+    #expect(rows.2 == 1)
+    #expect(rows.3)
     #expect(!gate.timedOut)
   }
 }
