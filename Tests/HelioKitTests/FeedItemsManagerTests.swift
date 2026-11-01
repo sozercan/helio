@@ -6,6 +6,7 @@ import Testing
 @MainActor
 @Suite(.serialized)
 struct FeedItemsManagerTests {
+  private static let testCredential = RedditCredential(apiAppID: "placeholder-client-id", refreshToken: "placeholder-grant")
   /// `PostData`'s ids are constants, so re-key the sample post through its Codable form.
   private func post(_ id: String, read: Bool) -> RedditEntityType {
     var json = try! JSONSerialization.jsonObject(with: JSONEncoder().encode(postSampleData)) as! [String: Any]
@@ -28,23 +29,13 @@ struct FeedItemsManagerTests {
     }
   }
 
-  /// Long enough for a load-more that shouldn't exist to reach the fetch function.
-  private func letStrayRequestsStart() async {
-    try? await Task.sleep(for: .milliseconds(200))
-  }
-
-  /// `fetchPage` appends later pages on the main queue; let those blocks run.
-  private func drainMainQueue() async {
-    await withCheckedContinuation { continuation in DispatchQueue.main.async { continuation.resume() } }
-  }
-
   private func makeManager(hideReadPosts: Bool, pages: [String: ([RedditEntityType], String?)]) -> (FeedItemsManager<SubListingSortOption>, () -> [String?]) {
     var requested: [String?] = []
-    let manager = FeedItemsManager<SubListingSortOption>(sorting: nil, hideReadPosts: hideReadPosts) { after, _, _, _ in
+    let manager = FeedItemsManager<SubListingSortOption>(sorting: nil, hideReadPosts: hideReadPosts, currentCredential: { Self.testCredential }, fetchFn: { after, _, _, _, _ in
       requested.append(after)
       let page = pages[after ?? "first"] ?? ([], nil)
       return (page.0, page.1)
-    }
+    })
     manager.chunkSize = 2
     return (manager, { requested })
   }
@@ -62,8 +53,7 @@ struct FeedItemsManagerTests {
         "first": ([post("a", read: true), post("b", read: true)], "p2"),
         "p2": ([post("c", read: true), post("d", read: false)], "p3"),
       ])
-      await manager.fetchCaller(loadingMore: false)
-      await drainMainQueue()
+      await manager.reload()
 
       #expect(requested() == [nil, "p2"])
       #expect(ids(manager.entities) == ["d"])
@@ -77,7 +67,7 @@ struct FeedItemsManagerTests {
       let (manager, requested) = makeManager(hideReadPosts: true, pages: [
         "first": ([post("a", read: true), post("b", read: false)], "p2"),
       ])
-      await manager.fetchCaller(loadingMore: false)
+      await manager.reload()
 
       #expect(requested() == [nil])
       #expect(ids(manager.entities) == ["a", "b"])
@@ -89,7 +79,7 @@ struct FeedItemsManagerTests {
       let (manager, _) = makeManager(hideReadPosts: false, pages: [
         "first": ([post("a", read: true), post("b", read: true)], "p2"),
       ])
-      await manager.fetchCaller(loadingMore: false)
+      await manager.reload()
 
       #expect(ids(manager.entities) == ["a", "b"])
     }
@@ -102,16 +92,14 @@ struct FeedItemsManagerTests {
         pages[i == 0 ? "first" : "p\(i)"] = ([post("a\(i)", read: true), post("b\(i)", read: true)], "p\(i + 1)")
       }
       let (manager, requested) = makeManager(hideReadPosts: true, pages: pages)
-      await manager.fetchCaller(loadingMore: false)
-      await drainMainQueue()
+      await manager.reload()
 
       #expect(requested().count == 6)
       #expect(manager.entities.isEmpty)
       #expect(manager.displayMode == .onlyReadPosts)
 
       // Continuing resumes from where the scan stopped.
-      await manager.fetchCaller(loadingMore: true)
-      await drainMainQueue()
+      await manager.loadMore()
       #expect(requested()[6] == "p6")
     }
   }
@@ -121,7 +109,7 @@ struct FeedItemsManagerTests {
       let (manager, _) = makeManager(hideReadPosts: false, pages: [
         "first": ([post("a", read: false), post("b", read: false)], nil),
       ])
-      await manager.fetchCaller(loadingMore: false)
+      await manager.reload()
 
       #expect(manager.displayMode == .endOfFeed)
     }
@@ -132,7 +120,7 @@ struct FeedItemsManagerTests {
       let (manager, requested) = makeManager(hideReadPosts: true, pages: [
         "first": ([post("a", read: true)], nil),
       ])
-      await manager.fetchCaller(loadingMore: false)
+      await manager.reload()
 
       #expect(requested() == [nil])
       #expect(manager.entities.isEmpty)
@@ -140,401 +128,532 @@ struct FeedItemsManagerTests {
     }
   }
 
-  /// First-page fetches sorted by `.hot` wait on `gate`; `.new` returns `newPage` right away.
-  private func makeGatedManager(gate: Gate, hotPage: ([RedditEntityType], String?)?, newPage: ([RedditEntityType], String?)?) -> FeedItemsManager<SubListingSortOption> {
-    let manager = FeedItemsManager<SubListingSortOption>(sorting: nil) { _, sorting, _, _ in
-      if sorting == .hot {
-        await gate.wait()
-        return hotPage
+  @MainActor
+  private final class ControlledFetch {
+    typealias Page = (entities: [RedditEntityType]?, after: String?)?
+    struct Request {
+      let after: String?
+      let sorting: SubListingSortOption?
+      let query: String?
+      let limit: Int
+      let credential: RedditCredential
+      let continuation: CheckedContinuation<Page, Never>
+    }
+
+    var requests: [Request] = []
+    private var waiters: [(count: Int, continuation: CheckedContinuation<Void, Never>)] = []
+
+    func fetch(_ after: String?, _ sorting: SubListingSortOption?, _ query: String?, _ flair: String?, _ context: FeedItemsManager<SubListingSortOption>.FetchContext) async -> Page {
+      await withCheckedContinuation { continuation in
+        requests.append(Request(after: after, sorting: sorting, query: query, limit: context.limit, credential: context.credential, continuation: continuation))
+        let ready = waiters.filter { requests.count >= $0.count }
+        waiters.removeAll { requests.count >= $0.count }
+        ready.forEach { $0.continuation.resume() }
       }
-      return newPage
     }
-    manager.chunkSize = 1
-    return manager
-  }
 
-  @Test func dropsAFirstPageThatLandsAfterANewerOne() async {
-    await withHideOnRead(false) {
-      let gate = Gate()
-      let manager = makeGatedManager(gate: gate, hotPage: ([post("old", read: false)], "h2"), newPage: ([post("new", read: false)], "n2"))
-      manager.sorting = .hot
-      let slow = Task { await manager.fetchCaller(loadingMore: false) }
-      await gate.untilWaiting()
-
-      // The sort changes while the first page is still loading.
-      manager.sorting = .new
-      await manager.fetchCaller(loadingMore: false)
-      #expect(ids(manager.entities) == ["new"])
-
-      await gate.open()
-      await slow.value
-      #expect(ids(manager.entities) == ["new"])
-      #expect(manager.lastElementId == "n2")
-      #expect(manager.displayMode == .items)
-    }
-  }
-
-  @Test func dropsAnErrorFromASupersededFetch() async {
-    await withHideOnRead(false) {
-      let gate = Gate()
-      let manager = makeGatedManager(gate: gate, hotPage: nil, newPage: ([post("new", read: false)], "n2"))
-      manager.sorting = .hot
-      let slow = Task { await manager.fetchCaller(loadingMore: false) }
-      await gate.untilWaiting()
-
-      manager.sorting = .new
-      await manager.fetchCaller(loadingMore: false)
-      await gate.open()
-      await slow.value
-
-      #expect(manager.displayMode == .items)
-      #expect(ids(manager.entities) == ["new"])
-    }
-  }
-
-  @Test func dropsALoadMorePageAfterTheFeedWasRefreshed() async {
-    await withHideOnRead(false) {
-      let gate = Gate()
-      var refreshed = false
-      let manager = FeedItemsManager<SubListingSortOption>(sorting: nil) { after, _, _, _ in
-        if after == "p2" {
-          await gate.wait()
-          return ([post("stale", read: false)], "p3")
-        }
-        return refreshed ? ([post("b", read: false)], "q2") : ([post("a", read: false)], "p2")
+    func waitForRequests(_ count: Int) async {
+      if requests.count >= count {
+        return
       }
+      await withCheckedContinuation { waiters.append((count, $0)) }
+    }
+
+    func complete(_ index: Int, with page: Page) {
+      requests[index].continuation.resume(returning: page)
+    }
+  }
+
+  @Test(arguments: [false, true]) func newerRefreshOwnsTheFeedEvenWhenOlderFetchCompletes(fails: Bool) async {
+    let fetch = ControlledFetch()
+    let manager = FeedItemsManager<SubListingSortOption>(sorting: nil, currentCredential: { Self.testCredential }, fetchFn: fetch.fetch)
+    manager.chunkSize = 2
+    let old = Task { await manager.reload() }
+    await fetch.waitForRequests(1)
+    let new = Task { await manager.reload() }
+    await fetch.waitForRequests(2)
+    fetch.complete(1, with: ([post("new", read: false)], nil))
+    await new.value
+    fetch.complete(0, with: fails ? nil : ([post("old", read: false)], "old-cursor"))
+    await old.value
+
+    #expect(ids(manager.entities) == ["new"])
+    #expect(manager.lastElementId == nil)
+    #expect(manager.displayMode == .endOfFeed)
+  }
+
+  @Test func supersededPageDoesNotAppendOrReleaseTheNewRefresh() async {
+    let fetch = ControlledFetch()
+    let manager = FeedItemsManager<SubListingSortOption>(sorting: nil, currentCredential: { Self.testCredential }, fetchFn: fetch.fetch)
+    manager.chunkSize = 2
+    let first = Task { await manager.reload() }
+    await fetch.waitForRequests(1)
+    fetch.complete(0, with: ([post("a", read: false), post("b", read: false)], "p2"))
+    await first.value
+    let page = Task { await manager.loadMore() }
+    await fetch.waitForRequests(2)
+    let refresh = Task { await manager.reload() }
+    await fetch.waitForRequests(3)
+    fetch.complete(1, with: ([post("stale", read: false)], nil))
+    await page.value
+
+    // The stale page's cleanup must not let an appearing row start another request.
+    manager.elementAppeared(entity: manager.entities[1])
+    #expect(fetch.requests.count == 3)
+    #expect(ids(manager.entities) == ["a", "b"])
+    fetch.complete(2, with: ([post("fresh", read: false)], nil))
+    await refresh.value
+    #expect(ids(manager.entities) == ["fresh"])
+  }
+
+  @Test func appearingRowsReserveOnlyOnePageRequest() async {
+    let fetch = ControlledFetch()
+    let manager = FeedItemsManager<SubListingSortOption>(sorting: nil, currentCredential: { Self.testCredential }, fetchFn: fetch.fetch)
+    manager.chunkSize = 2
+    let first = Task { await manager.reload() }
+    await fetch.waitForRequests(1)
+    fetch.complete(0, with: ([post("a", read: false), post("b", read: false)], "p2"))
+    await first.value
+    manager.elementAppeared(entity: manager.entities[0])
+    manager.elementAppeared(entity: manager.entities[1])
+    await fetch.waitForRequests(2)
+    #expect(fetch.requests.count == 2)
+    #expect(fetch.requests[1].after == "p2")
+    fetch.complete(1, with: ([post("c", read: false)], nil))
+    // Join the reserved request rather than sending another one.
+    await manager.loadMore()
+    #expect(ids(manager.entities) == ["a", "b", "c"])
+  }
+
+  @Test func cancelledCallerDoesNotStartARequest() async {
+    let fetch = ControlledFetch()
+    let manager = FeedItemsManager<SubListingSortOption>(sorting: nil, currentCredential: { Self.testCredential }, fetchFn: fetch.fetch)
+    let task = Task { await manager.reload() }
+    task.cancel()
+    await task.value
+    #expect(fetch.requests.isEmpty)
+  }
+
+  @Test func hiddenPagesUseOneQuerySnapshot() async {
+    await withHideOnRead(true) {
+      let fetch = ControlledFetch()
+      let manager = FeedItemsManager<SubListingSortOption>(sorting: nil, hideReadPosts: true, currentCredential: { Self.testCredential }, fetchFn: fetch.fetch)
+      manager.chunkSize = 2
+      manager.searchQuery.setNow("original")
+      let task = Task { await manager.reload() }
+      await fetch.waitForRequests(1)
+      manager.searchQuery.setNow("changed")
+      fetch.complete(0, with: ([post("a", read: true), post("b", read: true)], "p2"))
+      await fetch.waitForRequests(2)
+      #expect(fetch.requests.map(\.query) == ["original", "original"])
+      #expect(manager.isLoadingMore)
+      fetch.complete(1, with: ([post("visible", read: false)], nil))
+      await task.value
+      #expect(ids(manager.entities) == ["visible"])
+    }
+  }
+
+  @Test func hiddenPagesKeepTheirLimitUntilTheNextRequestChain() async {
+    await withHideOnRead(true) {
+      let fetch = ControlledFetch()
+      let manager = FeedItemsManager<SubListingSortOption>(sorting: nil, hideReadPosts: true, currentCredential: { Self.testCredential }, fetchFn: fetch.fetch)
+      manager.chunkSize = 2
+      let task = Task { await manager.reload() }
+      await fetch.waitForRequests(1)
       manager.chunkSize = 1
-      await manager.fetchCaller(loadingMore: false)
-      #expect(ids(manager.entities) == ["a"])
-
-      let loadMore = Task { await manager.fetchCaller(loadingMore: true) }
-      await gate.untilWaiting()
-
-      refreshed = true
-      await manager.fetchCaller(loadingMore: false)
-      await gate.open()
-      await loadMore.value
-
-      #expect(ids(manager.entities) == ["b"])
-      #expect(manager.lastElementId == "q2")
-    }
-  }
-
-  @Test func dropsALoadMoreStartedWhileARefreshIsPending() async {
-    await withHideOnRead(false) {
-      let refreshGate = Gate()
-      let loadMoreGate = Gate()
-      var refreshing = false
-      let manager = FeedItemsManager<SubListingSortOption>(sorting: nil) { after, _, _, _ in
-        if after == "p2" {
-          await loadMoreGate.wait()
-          return ([post("stale", read: false)], "p3")
-        }
-        if refreshing {
-          await refreshGate.wait()
-          return ([post("b", read: false)], "q2")
-        }
-        return ([post("a", read: false)], "p2")
-      }
-      manager.chunkSize = 1
-      await manager.fetchCaller(loadingMore: false)
-
-      // Pull to refresh; the old rows stay on screen and ask for the next page meanwhile.
-      refreshing = true
-      let refresh = Task { await manager.fetchCaller(loadingMore: false) }
-      await refreshGate.untilWaiting()
-      let loadMore = Task { await manager.fetchCaller(loadingMore: true) }
-      await loadMoreGate.untilWaiting()
-
-      await refreshGate.open()
-      await refresh.value
-      await loadMoreGate.open()
-      await loadMore.value
-
-      #expect(ids(manager.entities) == ["b"])
-      #expect(manager.lastElementId == "q2")
-    }
-  }
-
-  @Test func keepsPagingAfterAShortPageThatHasACursor() async {
-    await withHideOnRead(false) {
-      let (manager, requested) = makeManager(hideReadPosts: false, pages: [
-        // One item short of a chunk, as when Reddit returns fewer or one fails to decode.
-        "first": ([post("a", read: false)], "p2"),
-        "p2": ([post("b", read: false), post("c", read: false)], nil),
-      ])
-      await manager.fetchCaller(loadingMore: false)
+      fetch.complete(0, with: ([post("a", read: true), post("b", read: true)], "p2"))
+      await fetch.waitForRequests(2)
+      #expect(fetch.requests.map(\.limit) == [2, 2])
+      fetch.complete(1, with: ([post("c", read: true), post("d", read: true)], "p3"))
+      await fetch.waitForRequests(3)
+      #expect(fetch.requests.map(\.limit) == [2, 2, 2])
+      fetch.complete(2, with: ([post("visible", read: false), post("also-visible", read: false)], "p4"))
+      await task.value
       #expect(manager.displayMode == .items)
 
-      await manager.fetchCaller(loadingMore: true)
-      #expect(requested() == [nil, "p2"])
-      #expect(ids(manager.entities) == ["a", "b", "c"])
+      let next = Task { await manager.loadMore() }
+      await fetch.waitForRequests(4)
+      #expect(fetch.requests[3].limit == 1)
+      #expect(fetch.requests[3].after == "p4")
+      fetch.complete(3, with: ([post("last", read: false)], nil))
+      await next.value
       #expect(manager.displayMode == .endOfFeed)
     }
   }
 
-  @Test func reloadingAfterAFailedFirstPageAppliesItsPage() async {
-    await withHideOnRead(false) {
-      var fail = true
-      let manager = FeedItemsManager<SubListingSortOption>(sorting: nil) { _, _, _, _ in
-        fail ? nil : ([post("a", read: false)], "p2")
-      }
-      await manager.fetchCaller(loadingMore: false)
-      #expect(manager.displayMode == .error)
-
-      // The error row's reload button.
-      fail = false
-      await manager.retry()
-      #expect(ids(manager.entities) == ["a"])
-    }
+  @Test(arguments: [false, true]) func aReplacedGrantCannotPublishBeforeTheViewReloads(fails: Bool) async {
+    let fetch = ControlledFetch()
+    var account = RedditCredential(apiAppID: "placeholder-client-id", refreshToken: "placeholder-original-grant")
+    let manager = FeedItemsManager<SubListingSortOption>(sorting: nil, currentCredential: { account }, fetchFn: fetch.fetch)
+    let old = Task { await manager.reload() }
+    await fetch.waitForRequests(1)
+    account.refreshToken = "placeholder-replacement-grant"
+    fetch.complete(0, with: fails ? nil : ([post("old", read: false)], "old-cursor"))
+    await old.value
+    #expect(manager.entities.isEmpty)
+    #expect(manager.lastElementId == nil)
+    #expect(manager.displayMode == .loading)
   }
 
-  @Test func retryingAFailedQueryChangeStartsFromTheFirstPage() async {
-    await withHideOnRead(false) {
-      var newSortFails = true
-      var requests: [String] = []
-      let manager = FeedItemsManager<SubListingSortOption>(sorting: .hot) { after, sorting, _, _ in
-        let sort = sorting == .hot ? "hot" : "new"
-        requests.append("\(sort)/\(after ?? "first")")
-        if sorting == .hot {
-          return ([post("hot1", read: false)], "h2")
-        }
-        return newSortFails ? nil : ([post("new1", read: false)], "n2")
-      }
-      await manager.fetchCaller(loadingMore: false)
-
-      // The sort changes and its first page fails; the old sort's rows stay under the error row.
-      manager.sorting = .new
-      await manager.fetchCaller(loadingMore: false)
-      #expect(manager.displayMode == .error)
-
-      newSortFails = false
-      await manager.retry()
-      #expect(requests == ["hot/first", "new/first", "new/first"])
-      #expect(ids(manager.entities) == ["new1"])
-      #expect(manager.lastElementId == "n2")
-    }
+  @Test func paginationAfterSameIDReauthorizationStartsWithoutTheOldCursor() async {
+    let fetch = ControlledFetch()
+    var account = RedditCredential(apiAppID: "placeholder-client-id", refreshToken: "placeholder-original-grant")
+    let manager = FeedItemsManager<SubListingSortOption>(sorting: nil, currentCredential: { account }, fetchFn: fetch.fetch)
+    manager.chunkSize = 2
+    let first = Task { await manager.reload() }
+    await fetch.waitForRequests(1)
+    fetch.complete(0, with: ([post("same", read: false), post("old", read: false)], "old-cursor"))
+    await first.value
+    account.refreshToken = "placeholder-replacement-grant"
+    let next = Task { await manager.loadMore() }
+    await fetch.waitForRequests(2)
+    #expect(fetch.requests[1].after == nil)
+    #expect(manager.entities.isEmpty)
+    #expect(manager.lastElementId == nil)
+    fetch.complete(1, with: ([post("same", read: false), post("new", read: false)], nil))
+    await next.value
+    #expect(ids(manager.entities) == ["same", "new"])
   }
 
-  @Test func retryingAFailedLoadMoreContinuesTheList() async {
-    await withHideOnRead(false) {
-      var nextPageFails = true
-      var requests: [String?] = []
-      let manager = FeedItemsManager<SubListingSortOption>(sorting: nil) { after, _, _, _ in
-        requests.append(after)
-        if after == "p2" {
-          return nextPageFails ? nil : ([post("b", read: false)], nil)
-        }
-        return ([post("a", read: false)], "p2")
-      }
-      await manager.fetchCaller(loadingMore: false)
-      await manager.fetchCaller(loadingMore: true)
-      #expect(manager.displayMode == .error)
-
-      nextPageFails = false
-      await manager.retry()
-      #expect(requests == [nil, "p2", "p2"])
-      #expect(ids(manager.entities) == ["a", "b"])
-    }
+  @Test func repeatedAppearanceLoadsOnlyOnce() async {
+    let fetch = ControlledFetch()
+    let manager = FeedItemsManager<SubListingSortOption>(sorting: nil, currentCredential: { Self.testCredential }, fetchFn: fetch.fetch)
+    let first = Task { await manager.loadIfNeeded() }
+    await fetch.waitForRequests(1)
+    await manager.loadIfNeeded()
+    #expect(fetch.requests.count == 1)
+    fetch.complete(0, with: ([], nil))
+    await first.value
+    await manager.loadIfNeeded()
+    #expect(manager.displayMode == .empty)
+    #expect(fetch.requests.count == 1)
   }
 
-  @Test func aSupersededFirstPageDoesntFreeTheLoadMoreSlot() async {
-    await withHideOnRead(false) {
-      let slowFirstPage = Gate()
-      let nextPage = Gate()
-      var nextPageRequests = 0
-      let manager = FeedItemsManager<SubListingSortOption>(sorting: .hot) { after, sorting, _, _ in
-        if after == "p2" {
-          nextPageRequests += 1
-          if nextPageRequests == 1 {
-            await nextPage.wait()
-          }
-          return ([post("c", read: false)], "p3")
-        }
-        if sorting == .hot {
-          await slowFirstPage.wait()
-          return ([post("old", read: false)], "h2")
-        }
-        return ([post("a", read: false), post("b", read: false)], "p2")
-      }
-      manager.chunkSize = 2
-      let slow = Task { await manager.fetchCaller(loadingMore: false) }
-      await slowFirstPage.untilWaiting()
-      manager.sorting = .new
-      await manager.fetchCaller(loadingMore: false)
-
-      // A row appears and starts loading the next page, then the old first page lands.
-      manager.elementAppeared(entity: manager.entities[0])
-      await nextPage.untilWaiting()
-      await slowFirstPage.open()
-      await slow.value
-
-      // Another row appearing must not ask for the same page again.
-      manager.elementAppeared(entity: manager.entities[1])
-      await letStrayRequestsStart()
-      #expect(nextPageRequests == 1)
-      await nextPage.open()
-    }
-  }
-
-  @Test func holdsLoadMoreUntilTheNewFirstPageLands() async {
-    await withHideOnRead(false) {
-      let refreshGate = Gate()
-      var refreshing = false
-      var requests: [String?] = []
-      let manager = FeedItemsManager<SubListingSortOption>(sorting: nil) { after, _, _, _ in
-        requests.append(after)
-        switch after {
-        case "p2": return ([post("stale", read: false)], "p3")
-        case "q2": return ([post("c", read: false)], nil)
-        default: break
-        }
-        if refreshing {
-          await refreshGate.wait()
-          // The same post as before, so its row stays on screen and doesn't appear again.
-          return ([post("a", read: false)], "q2")
-        }
-        return ([post("a", read: false)], "p2")
-      }
-      manager.chunkSize = 1
-      await manager.fetchCaller(loadingMore: false)
-
-      refreshing = true
-      let refresh = Task { await manager.fetchCaller(loadingMore: false) }
-      await refreshGate.untilWaiting()
-      manager.elementAppeared(entity: manager.entities[0])
-      await letStrayRequestsStart()
-      // Nothing continues the old list while the new first page is pending.
-      #expect(requests == [nil, nil])
-
-      await refreshGate.open()
-      await refresh.value
-      await letStrayRequestsStart()
-
-      // Once it lands, the held-back load-more continues the new list.
-      #expect(requests == [nil, nil, "q2"])
-      #expect(ids(manager.entities) == ["a", "c"])
-    }
-  }
-
-  @Test func aRefreshCarriesOverTheLoadMoreItReplaces() async {
-    await withHideOnRead(false) {
-      let oldNextPage = Gate()
-      var refreshing = false
-      var requests: [String?] = []
-      let manager = FeedItemsManager<SubListingSortOption>(sorting: nil) { after, _, _, _ in
-        requests.append(after)
-        switch after {
-        case "p2":
-          await oldNextPage.wait()
-          return ([post("stale", read: false)], "p3")
-        case "q2": return ([post("c", read: false)], nil)
-        default: break
-        }
-        // The refresh returns the same post, so its row doesn't appear again.
-        return ([post("a", read: false)], refreshing ? "q2" : "p2")
-      }
-      manager.chunkSize = 1
-      await manager.fetchCaller(loadingMore: false)
-
-      // A row asks for the next page, then a refresh starts before that page arrives.
-      manager.elementAppeared(entity: manager.entities[0])
-      await oldNextPage.untilWaiting()
-      refreshing = true
-      await manager.fetchCaller(loadingMore: false)
-      await letStrayRequestsStart()
-      await oldNextPage.open()
-      await letStrayRequestsStart()
-
-      #expect(requests == [nil, "p2", nil, "q2"])
-      #expect(ids(manager.entities) == ["a", "c"])
-    }
-  }
-
-  @Test func aLoadMoreCancelledBeforeItStartsFetchesNothing() async {
-    await withHideOnRead(false) {
-      var requests: [String?] = []
-      let manager = FeedItemsManager<SubListingSortOption>(sorting: nil) { after, _, _, _ in
-        requests.append(after)
-        return ([post(after ?? "a", read: false)], after == nil ? "p2" : nil)
-      }
-      await manager.fetchCaller(loadingMore: false)
-
-      // As when a refresh cancels a row's load-more before the task gets to run: it would
-      // otherwise read whatever list is current by then.
-      let loadMore = Task { await manager.fetchCaller(loadingMore: true) }
-      loadMore.cancel()
-      await loadMore.value
-
-      #expect(requests == [nil])
-    }
-  }
-
-  @Test func loadingMoreUsesTheQueryTheListWasFetchedWith() async {
-    await withHideOnRead(false) {
-      var requests: [String] = []
-      let manager = FeedItemsManager<SubListingSortOption>(sorting: .hot) { after, sorting, _, _ in
-        requests.append("\(sorting == .hot ? "hot" : "new")/\(after ?? "first")")
-        return after == nil ? ([post("a", read: false)], "h2") : ([post("b", read: false)], "h3")
-      }
-      await manager.fetchCaller(loadingMore: false)
-
-      // The sort changed, but the feed hasn't reloaded yet when the shown list asks for more.
-      manager.sorting = .new
-      await manager.fetchCaller(loadingMore: true)
-
-      #expect(requests == ["hot/first", "hot/h2"])
-      #expect(ids(manager.entities) == ["a", "b"])
-    }
-  }
-
-  @Test func changingTheQueryLeavesTheSpinnerToTheReload() async {
-    await withHideOnRead(false) {
-      let manager = FeedItemsManager<SubListingSortOption>(sorting: .hot) { _, _, _, _ in ([post("a", read: false)], "p2") }
-      manager.chunkSize = 1
-      await manager.fetchCaller(loadingMore: false)
-      #expect(manager.displayMode == .items)
-
-      // Re-picking the sort, or flipping it away and back before the feed reloads, starts no
-      // reload, so a spinner set here would never go away. The feed's reload sets it instead.
-      manager.sorting = .hot
-      manager.sorting = .new
-      manager.sorting = .hot
-      #expect(manager.displayMode == .items)
-    }
-  }
-
-  @Test func showsAnErrorWhenTheFirstPageFails() async {
-    let manager = FeedItemsManager<SubListingSortOption>(sorting: nil) { _, _, _, _ in nil }
-    await manager.fetchCaller(loadingMore: false)
-
+  @Test func retryRestartsTheFailedFirstPage() async {
+    var cursors: [String?] = []
+    let manager = FeedItemsManager<SubListingSortOption>(sorting: nil, currentCredential: { Self.testCredential }, fetchFn: { after, _, _, _, _ in
+      cursors.append(after)
+      return cursors.count == 1 ? nil : ([self.post("a", read: false)], nil)
+    })
+    await manager.reload()
     #expect(manager.displayMode == .error)
+    await manager.retry()
+    #expect(cursors == [nil, nil])
+    #expect(manager.displayMode == .endOfFeed)
+    #expect(ids(manager.entities) == ["a"])
+  }
+
+  @Test func retryResumesTheFailedPageWithoutLosingExistingItems() async {
+    var cursors: [String?] = []
+    let manager = FeedItemsManager<SubListingSortOption>(sorting: nil, currentCredential: { Self.testCredential }, fetchFn: { after, _, _, _, _ in
+      cursors.append(after)
+      if after == nil {
+        return ([self.post("a", read: false), self.post("b", read: false)], "p2")
+      }
+      return cursors.count == 2 ? nil : ([self.post("c", read: false)], nil)
+    })
+    manager.chunkSize = 2
+    await manager.reload()
+    await manager.loadMore()
+    #expect(manager.displayMode == .error)
+    manager.elementAppeared(entity: manager.entities[1])
+    #expect(cursors == [nil, "p2"])
+    await manager.retry()
+    #expect(cursors == [nil, "p2", "p2"])
+    #expect(ids(manager.entities) == ["a", "b", "c"])
+    #expect(manager.displayMode == .endOfFeed)
+  }
+
+  @Test func clearingAFeedClearsItsCursorAndDeduplicationIndex() async {
+    let fetch = ControlledFetch()
+    let manager = FeedItemsManager<SubListingSortOption>(sorting: nil, currentCredential: { Self.testCredential }, fetchFn: fetch.fetch)
+    manager.chunkSize = 2
+    let first = Task { await manager.reload() }
+    await fetch.waitForRequests(1)
+    fetch.complete(0, with: ([post("a", read: false), post("b", read: false)], "p2"))
+    await first.value
+    let reload = Task { await manager.reload(clearItems: true) }
+    await fetch.waitForRequests(2)
+    #expect(manager.entities.isEmpty)
+    #expect(manager.lastElementId == nil)
+    #expect(manager.displayMode == .loading)
+    #expect(!manager.isLoadingMore)
+    fetch.complete(1, with: ([post("a", read: false)], nil))
+    await reload.value
+    #expect(ids(manager.entities) == ["a"])
   }
 }
 
-/// Holds one fetch until the test opens it.
-private actor Gate {
-  private var held: CheckedContinuation<Void, Never>?
-  private var waitingForHold: [CheckedContinuation<Void, Never>] = []
+extension FeedItemsManagerTests {
+  @Test func keepsPagingAfterAShortPageThatHasACursor() async {
+    let (manager, requested) = makeManager(hideReadPosts: false, pages: [
+      // Reddit may return fewer items than requested, including when decoding skips an item.
+      "first": ([post("a", read: false)], "p2"),
+      "p2": ([post("b", read: false), post("c", read: false)], nil),
+    ])
+    await manager.reload()
+    #expect(manager.displayMode == .items)
 
-  func wait() async {
-    await withCheckedContinuation { continuation in
-      held = continuation
-      waitingForHold.forEach { $0.resume() }
-      waitingForHold = []
-    }
+    await manager.loadMore()
+    #expect(requested() == [nil, "p2"])
+    #expect(ids(manager.entities) == ["a", "b", "c"])
+    #expect(manager.displayMode == .endOfFeed)
   }
 
-  /// Returns once a fetch is held at the gate.
-  func untilWaiting() async {
-    if held != nil {
-      return
-    }
-    await withCheckedContinuation { waitingForHold.append($0) }
+  @Test func anEmptyPageEndsPaginationEvenIfItHasACursor() async {
+    let (manager, requested) = makeManager(hideReadPosts: false, pages: [
+      "first": ([post("a", read: false), post("b", read: false)], "p2"),
+      "p2": ([], "p3"),
+    ])
+    await manager.reload()
+    await manager.loadMore()
+    #expect(manager.displayMode == .endOfFeed)
+    await manager.loadMore()
+    #expect(requested() == [nil, "p2"])
+    #expect(ids(manager.entities) == ["a", "b"])
   }
 
-  func open() {
-    held?.resume()
-    held = nil
+  @Test func retryingAFailedQueryChangeStartsFromTheFirstPage() async {
+    var newSortFails = true
+    var requests: [String] = []
+    let manager = FeedItemsManager<SubListingSortOption>(sorting: .hot, currentCredential: { Self.testCredential }, fetchFn: { after, sorting, _, _, _ in
+      let sort = sorting == .hot ? "hot" : "new"
+      requests.append("\(sort)/\(after ?? "first")")
+      if sorting == .hot {
+        return ([post("hot1", read: false)], "h2")
+      }
+      return newSortFails ? nil : ([post("new1", read: false)], "n2")
+    })
+    manager.chunkSize = 1
+    await manager.reload()
+
+    // A failed query change retains the old rows, but retry must not continue their cursor.
+    manager.sorting = .new
+    await manager.reload()
+    #expect(manager.displayMode == .error)
+    #expect(ids(manager.entities) == ["hot1"])
+    #expect(manager.lastElementId == "h2")
+
+    newSortFails = false
+    await manager.retry()
+    #expect(requests == ["hot/first", "new/first", "new/first"])
+    #expect(ids(manager.entities) == ["new1"])
+    #expect(manager.lastElementId == "n2")
+    #expect(manager.displayMode == .items)
+  }
+
+  @Test(arguments: [false, true]) func aSupersededQueryChangeCannotReplaceTheNewList(fails: Bool) async {
+    let fetch = ControlledFetch()
+    let manager = FeedItemsManager<SubListingSortOption>(sorting: .hot, currentCredential: { Self.testCredential }, fetchFn: fetch.fetch)
+    manager.chunkSize = 1
+    let old = Task { await manager.reload() }
+    await fetch.waitForRequests(1)
+    manager.sorting = .new
+    let new = Task { await manager.reload() }
+    await fetch.waitForRequests(2)
+    fetch.complete(1, with: ([post("new", read: false)], "n2"))
+    await new.value
+    fetch.complete(0, with: fails ? nil : ([post("old", read: false)], "h2"))
+    await old.value
+
+    #expect(fetch.requests.map(\.sorting) == [.hot, .new])
+    #expect(ids(manager.entities) == ["new"])
+    #expect(manager.lastElementId == "n2")
+    #expect(manager.displayMode == .items)
+  }
+
+  @Test func aSupersededFirstPageDoesntFreeTheLoadMoreSlot() async {
+    let fetch = ControlledFetch()
+    let manager = FeedItemsManager<SubListingSortOption>(sorting: .hot, currentCredential: { Self.testCredential }, fetchFn: fetch.fetch)
+    manager.chunkSize = 2
+    let old = Task { await manager.reload() }
+    await fetch.waitForRequests(1)
+    manager.sorting = .new
+    let new = Task { await manager.reload() }
+    await fetch.waitForRequests(2)
+    fetch.complete(1, with: ([post("a", read: false), post("b", read: false)], "p2"))
+    await new.value
+
+    manager.elementAppeared(entity: manager.entities[0])
+    await fetch.waitForRequests(3)
+    fetch.complete(0, with: ([post("old", read: false)], "h2"))
+    await old.value
+
+    // The obsolete first page's cleanup cannot release the current page reservation.
+    manager.elementAppeared(entity: manager.entities[1])
+    #expect(fetch.requests.count == 3)
+    #expect(fetch.requests[2].after == "p2")
+    #expect(fetch.requests[2].sorting == .new)
+    fetch.complete(2, with: ([post("c", read: false)], "p3"))
+    await manager.loadMore()
+    #expect(fetch.requests.count == 3)
+    #expect(ids(manager.entities) == ["a", "b", "c"])
+  }
+
+  @Test func holdsLoadMoreUntilTheNewFirstPageLands() async {
+    let fetch = ControlledFetch()
+    let manager = FeedItemsManager<SubListingSortOption>(sorting: nil, currentCredential: { Self.testCredential }, fetchFn: fetch.fetch)
+    manager.chunkSize = 1
+    let first = Task { await manager.reload() }
+    await fetch.waitForRequests(1)
+    fetch.complete(0, with: ([post("a", read: false)], "p2"))
+    await first.value
+
+    let refresh = Task { await manager.reload() }
+    await fetch.waitForRequests(2)
+    manager.elementAppeared(entity: manager.entities[0])
+    manager.elementAppeared(entity: manager.entities[0])
+    // Rows still on screen must not fetch the old cursor while refreshing.
+    #expect(fetch.requests.map(\.after) == [nil, nil])
+    #expect(ids(manager.entities) == ["a"])
+
+    // The same row stays on screen, so no new appearance should be needed to continue.
+    fetch.complete(1, with: ([post("a", read: false)], "q2"))
+    await fetch.waitForRequests(3)
+    #expect(fetch.requests.map(\.after) == [nil, nil, "q2"])
+    fetch.complete(2, with: ([post("c", read: false)], nil))
+    await refresh.value
+    await manager.loadMore()
+    #expect(fetch.requests.count == 3)
+    #expect(ids(manager.entities) == ["a", "c"])
+    #expect(manager.displayMode == .endOfFeed)
+  }
+
+  @Test(arguments: [false, true]) func aRefreshCarriesOverTheLoadMoreItReplaces(fails: Bool) async {
+    let fetch = ControlledFetch()
+    let manager = FeedItemsManager<SubListingSortOption>(sorting: .hot, currentCredential: { Self.testCredential }, fetchFn: fetch.fetch)
+    manager.chunkSize = 1
+    let first = Task { await manager.reload() }
+    await fetch.waitForRequests(1)
+    fetch.complete(0, with: ([post("a", read: false)], "p2"))
+    await first.value
+    let oldPage = Task { await manager.loadMore() }
+    await fetch.waitForRequests(2)
+
+    manager.sorting = .new
+    let refresh = Task { await manager.reload() }
+    await fetch.waitForRequests(3)
+    // Live settings can change again; the handoff belongs to the refreshed list's query.
+    manager.sorting = .hot
+    fetch.complete(2, with: ([post("a", read: false)], "q2"))
+    await fetch.waitForRequests(4)
+    #expect(fetch.requests.map(\.after) == [nil, "p2", nil, "q2"])
+    #expect(fetch.requests.map(\.sorting) == [.hot, .hot, .new, .new])
+    fetch.complete(3, with: ([post("c", read: false)], nil))
+    await refresh.value
+    await manager.loadMore()
+
+    // Cancellation is cooperative: the replaced page may still return data or an error.
+    fetch.complete(1, with: fails ? nil : ([post("stale", read: false)], "p3"))
+    await oldPage.value
+    #expect(fetch.requests.count == 4)
+    #expect(ids(manager.entities) == ["a", "c"])
+    #expect(manager.lastElementId == nil)
+    #expect(manager.displayMode == .endOfFeed)
+  }
+
+  @Test func aLoadMoreCancelledBeforeItStartsFetchesNothing() async {
+    let (manager, requested) = makeManager(hideReadPosts: false, pages: [
+      "first": ([post("a", read: false), post("b", read: false)], "p2"),
+    ])
+    await manager.reload()
+    let loadMore = Task { await manager.loadMore() }
+    loadMore.cancel()
+    await loadMore.value
+    #expect(requested() == [nil])
+    #expect(manager.displayMode == .items)
+  }
+
+  @Test func loadingMoreUsesTheQueryTheListWasFetchedWith() async {
+    let fetch = ControlledFetch()
+    let manager = FeedItemsManager<SubListingSortOption>(sorting: .hot, currentCredential: { Self.testCredential }, fetchFn: fetch.fetch)
+    manager.chunkSize = 1
+    manager.searchQuery.setNow("original")
+    let first = Task { await manager.reload() }
+    await fetch.waitForRequests(1)
+    fetch.complete(0, with: ([post("a", read: false)], "h2"))
+    await first.value
+
+    // The controls changed, but the shown list has not reloaded yet.
+    manager.sorting = .new
+    manager.searchQuery.setNow("changed")
+    manager.chunkSize = 2
+    let next = Task { await manager.loadMore() }
+    await fetch.waitForRequests(2)
+    #expect(fetch.requests.map(\.after) == [nil, "h2"])
+    #expect(fetch.requests.map(\.sorting) == [.hot, .hot])
+    #expect(fetch.requests.map(\.query) == ["original", "original"])
+    #expect(fetch.requests.map(\.limit) == [1, 2])
+    fetch.complete(1, with: ([post("b", read: false)], "h3"))
+    await next.value
+    #expect(ids(manager.entities) == ["a", "b"])
+    #expect(manager.displayMode == .items)
+  }
+
+  @Test func changingTheQueryLeavesTheSpinnerToTheReload() async {
+    let (manager, _) = makeManager(hideReadPosts: false, pages: [
+      "first": ([post("a", read: false), post("b", read: false)], "p2"),
+    ])
+    manager.sorting = .hot
+    await manager.reload()
+    #expect(manager.displayMode == .items)
+
+    // Re-selecting or flipping the sort starts no request, so it must not show a spinner.
+    manager.sorting = .hot
+    manager.sorting = .new
+    manager.sorting = .hot
+    #expect(manager.displayMode == .items)
+  }
+}
+
+extension FeedItemsManagerTests {
+  @Test func signedOutRequestsFailWithoutCallingTheAdapter() async {
+    var dispatched = false
+    let manager = FeedItemsManager<SubListingSortOption>(sorting: nil, currentCredential: { nil }, fetchFn: { _, _, _, _, _ in
+      dispatched = true
+      return ([], nil)
+    })
+    await manager.reload()
+    #expect(!dispatched)
+    #expect(manager.displayMode == .error)
+    #expect(manager.entities.isEmpty && manager.lastElementId == nil)
+  }
+
+  @Test func pageChainsCaptureTheCurrentTokenWithoutChangingAuthorization() async {
+    let fetch = ControlledFetch()
+    var account = Self.testCredential
+    let manager = FeedItemsManager<SubListingSortOption>(sorting: nil, currentCredential: { account }, fetchFn: fetch.fetch)
+    let first = Task { await manager.reload() }
+    await fetch.waitForRequests(1)
+    fetch.complete(0, with: ([post("first", read: false)], "p2"))
+    await first.value
+    account.accessToken = .init(token: "placeholder-renewed-token", expiration: 3600, lastRefresh: Date())
+    let next = Task { await manager.loadMore() }
+    await fetch.waitForRequests(2)
+    #expect(fetch.requests[1].after == "p2")
+    #expect(fetch.requests[1].credential.accessToken?.token == "placeholder-renewed-token")
+    #expect(fetch.requests[1].credential.authorizationID == fetch.requests[0].credential.authorizationID)
+    fetch.complete(1, with: ([post("second", read: false)], nil))
+    await next.value
+    #expect(ids(manager.entities) == ["first", "second"])
+  }
+}
+
+extension FeedItemsManagerTests {
+  @Test(arguments: [false, true]) func nonClearingRefreshKeepsRowsVisibleUntilItFinishes(fails: Bool) async {
+    let fetch = ControlledFetch()
+    let manager = FeedItemsManager<SubListingSortOption>(sorting: nil, currentCredential: { Self.testCredential }, fetchFn: fetch.fetch)
+    let first = Task { await manager.reload() }
+    await fetch.waitForRequests(1)
+    fetch.complete(0, with: ([post("visible", read: false)], nil))
+    await first.value
+    let refresh = Task { await manager.reload(clearItems: false) }
+    await fetch.waitForRequests(2)
+    #expect(ids(manager.entities) == ["visible"])
+    #expect(manager.displayMode == .items)
+    fetch.complete(1, with: fails ? nil : ([post("replacement", read: false)], nil))
+    await refresh.value
+    #expect(ids(manager.entities) == (fails ? ["visible"] : ["replacement"]))
+    #expect(manager.displayMode == (fails ? .error : .endOfFeed))
   }
 }

@@ -113,7 +113,7 @@ struct RedditWebLoginView: View {
     let selectedID = Defaults[.GeneralDefSettings].redditCredentialSelectedID
     saved.save()
     if selectedID == nil || selectedID == saved.id {
-      RedditCredentialsManager.shared.updateMe(altCred: saved)
+      RedditCredentialsManager.shared.updateMe()
     }
     Nav.present(nil)
   }

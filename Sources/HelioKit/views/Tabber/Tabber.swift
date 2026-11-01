@@ -93,15 +93,19 @@ struct Tabber: View {
     .themeImportingListener() // From local file
     .globalLoaderProvider()
     .refetchMeListener()
-    .task(priority: .background) {
-      cleanCredentialOrphanEntities()
+    // Selection/onboarding and the initial profile must not wait for a background
+    // scheduling window while the user is already interacting with the app.
+    .task(priority: .userInitiated) {
       autoSelectCredentialIfNil()
-      removeDefaultThemeFromThemes()
       checkForOnboardingStatus()
       if RedditCredentialsManager.shared.selectedCredential != nil {
         RedditCredentialsManager.shared.updateMe()
         Task(priority: .utility) { await updatePostsInBox(RedditAPI.shared) }
       }
+    }
+    .task(priority: .background) {
+      cleanCredentialOrphanEntities()
+      removeDefaultThemeFromThemes()
     }
     .accentColor(currentTheme.general.accentColor())
     #if targetEnvironment(macCatalyst)

@@ -74,9 +74,20 @@ extension Post {
     CachedDefaults[.SubredditFeedDefSettings].compactPerSubreddit[sub?.id ?? data.subreddit_id ?? ""] ?? CachedDefaults[.PostLinkDefSettings].compactMode.enabled
   }
 
+  func shouldUpdateAvatarFamily(fetchAvatar: Bool) -> Bool {
+    if fetchAvatar {
+      return true
+    }
+    guard helioData != nil else { return false }
+    // Relayout rebuilds embedded Post objects. Rebind their cached avatars, while
+    // a fresh page with no avatars still waits for its one page-owned lookup.
+    return Self.avatarSubjects(for: [self]).contains { $0.helioData?.avatarImageRequest != nil }
+  }
+
   /// Without a `contentWidth` (refreshing a post, changing theme), keeps the width the post
   /// was last laid out for: the full window would be wrong in a split view's column.
   func setupHelioData(data: PostData? = nil, helioData: PostHelioData? = nil, contentWidth: Double? = nil, secondary: Bool = false, theme: HelioTheme, sub: Subreddit? = nil, fetchAvatar: Bool = true) {
+    let updateAvatarFamily = shouldUpdateAvatarFamily(fetchAvatar: fetchAvatar)
     let lastWidth = self.helioData?.layoutWidth ?? 0
     let contentWidth = contentWidth ?? (lastWidth > 0 ? lastWidth : .screenW)
     if let data = data ?? self.data {
@@ -139,9 +150,9 @@ extension Post {
         self.helioData?._strongSubreddit = Subreddit(id: data.subreddit)
       }
 
-      if fetchAvatar {
+      if updateAvatarFamily {
         Task(priority: .utility) {
-          await RedditAPI.shared.updatePostsWithAvatar(posts: [self], avatarSize: theme.postLinks.theme.badge.avatar.size)
+          await RedditAPI.shared.updatePostsWithAvatar(posts: Self.avatarSubjects(for: [self]), avatarSize: theme.postLinks.theme.badge.avatar.size)
         }
       }
     }
@@ -181,6 +192,23 @@ extension Post {
     //      return nil
   }
 
+  static func avatarSubjects(for posts: [Post]) -> [Post] {
+    var subjects = posts
+    var included = Set(posts.map(ObjectIdentifier.init))
+    var index = 0
+    while index < subjects.count {
+      let post = subjects[index]
+      // Compact and forced-normal layouts can own different embedded Post objects.
+      for media in [post.helioData?.extractedMedia, post.helioData?.extractedMediaForcedNormal] {
+        if case let .repost(repost) = media, included.insert(ObjectIdentifier(repost)).inserted {
+          subjects.append(repost)
+        }
+      }
+      index += 1
+    }
+    return subjects
+  }
+
   static func initMultiple(datas: [T], sub: Subreddit? = nil, contentWidth: CGFloat = 0) -> [Post] {
     let context = PersistenceController.shared.container.newBackgroundContext()
     let fetchRequest = NSFetchRequest<SeenPost>(entityName: "SeenPost")
@@ -206,15 +234,9 @@ extension Post {
       }
 
       Task(priority: .utility) {
-        let repostsAvatars = posts.compactMap { post in
-          if case let .repost(repost) = post.helioData?.extractedMedia {
-            return repost
-          }
-          return nil
-        }
-
-        Task(priority: .utility) { await RedditAPI.shared.updatePostsWithAvatar(posts: repostsAvatars, avatarSize: InMemoryTheme.shared.currentTheme.postLinks.theme.badge.avatar.size) }
-        Task(priority: .utility) { await RedditAPI.shared.updatePostsWithAvatar(posts: posts, avatarSize: InMemoryTheme.shared.currentTheme.postLinks.theme.badge.avatar.size) }
+        // Register a page and its crossposts together. Separate tasks can outlive
+        // AvatarLoader's coalescing window and split one page into extra requests.
+        await RedditAPI.shared.updatePostsWithAvatar(posts: avatarSubjects(for: posts), avatarSize: theme.postLinks.theme.badge.avatar.size)
       }
 
       return posts

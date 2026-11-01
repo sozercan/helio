@@ -7,6 +7,7 @@
 
 import Alamofire
 import Combine
+import CryptoKit
 import Defaults
 import Foundation
 import KeychainAccess
@@ -15,22 +16,92 @@ import SwiftUI
 
 private let credentialLogger = Logger(subsystem: "com.sertacozercan.helio", category: "Credentials")
 
-struct RedditCredential: Identifiable, Equatable, Hashable, Codable {
+struct RedditCredential: Identifiable, Equatable, Hashable, Codable, Sendable {
   static func defaultUserAgent(userName: String? = nil) -> String {
     "ios:com.sertacozercan.helio:v1.6.0 (by /u/\(userName ?? "UnknownUser"))"
   }
 
-  enum CodingKeys: String, CodingKey { case id, apiAppID, apiAppSecret, accessToken, refreshToken, userName, profilePicture, _userAgent, signInMethod, webSessionCookies }
+  /// Stable across access-token renewal, different after replacing the OAuth grant or client.
+  /// Cache/request identity must not retain the raw client secret or refresh token.
+  struct AuthorizationID: Hashable, Sendable {
+    let credentialID: UUID
+    let grantID: Data
+
+    fileprivate init(_ credential: RedditCredential, refreshToken: String) {
+      credentialID = credential.id
+      var bytes = Data()
+      for value in [credential.signInMethod.rawValue, credential.apiAppID, credential.apiAppSecret, refreshToken] {
+        bytes.append(contentsOf: "\(value.utf8.count):".utf8)
+        bytes.append(contentsOf: value.utf8)
+      }
+      grantID = Data(SHA256.hash(data: bytes))
+    }
+  }
+
+  var authorizationID: AuthorizationID? {
+    guard let renewalKey, !renewalKey.isEmpty else { return nil }
+    return AuthorizationID(self, refreshToken: isWebSession ? webSessionID.uuidString : renewalKey)
+  }
+
+  /// Merge only the token field into the current record, never a captured credential snapshot.
+  @discardableResult
+  mutating func updateAccessToken(_ token: AccessToken?, for authorization: AuthorizationID) -> Bool {
+    guard !isWebSession, authorizationID == authorization else { return false }
+    if let token {
+      // A delayed shared-refresh waiter must not restore an older rejected token.
+      if let current = accessToken, current.lastRefresh > token.lastRefresh {
+        return false
+      }
+      accessToken = token
+    } else {
+      clearIdentity()
+    }
+    return true
+  }
+
+  /// Legacy imports can lack a username. Never overwrite an edit or another grant.
+  @discardableResult
+  mutating func backfillUserName(_ name: String, for authorization: AuthorizationID) -> Bool {
+    guard authorizationID == authorization, userName?.isEmpty ?? true, !name.isEmpty else { return false }
+    userName = name
+    return true
+  }
+
+  /// Cookie rotation belongs to the same web grant; a new sign-in does not.
+  @discardableResult
+  mutating func updateWebAccessToken(_ token: AccessToken?, cookies: String?, renewedFrom: String, for authorization: AuthorizationID) -> Bool {
+    guard isWebSession, authorizationID == authorization, webSessionCookies == renewedFrom else { return false }
+    if let token, let current = accessToken, current.lastRefresh > token.lastRefresh {
+      return false
+    }
+    let sessionID = webSessionID
+    accessToken = token
+    webSessionCookies = token == nil ? nil : cookies
+    webSessionID = sessionID
+    return true
+  }
+
+  enum CodingKeys: String, CodingKey { case id, apiAppID, apiAppSecret, accessToken, refreshToken, userName, profilePicture, _userAgent, signInMethod, webSessionCookies, webSessionID }
 
   /// How the credential gets its access tokens: from the user's own API key (`apiAppID`,
   /// `refreshToken`), or from a Reddit web session signed in with `RedditWebLoginView`.
-  enum SignInMethod: String, Codable { case apiKey, webSession }
+  enum SignInMethod: String, Codable, Sendable { case apiKey, webSession }
 
   var id: UUID
   var signInMethod: SignInMethod = .apiKey
   /// The reddit.com cookies of a web session, as a `Cookie` header. `nil` once Reddit signs the
   /// session out, which leaves the credential waiting for the user to sign in again.
-  var webSessionCookies: String? = nil
+  var webSessionID = UUID()
+  var webSessionCookies: String? = nil {
+    willSet {
+      // Direct cookie replacement is a new sign-in. Token renewal restores this
+      // identity in updateWebAccessToken after atomically merging rotated cookies.
+      if webSessionCookies != newValue {
+        webSessionID = UUID()
+      }
+    }
+  }
+
   var isWebSession: Bool {
     signInMethod == .webSession
   }
@@ -73,6 +144,7 @@ struct RedditCredential: Identifiable, Equatable, Hashable, Codable {
   }
 
   var profilePicture: String? = nil
+  @MainActor
   func isInKeychain() -> Bool {
     RedditCredentialsManager.shared.credentials.contains { $0.id == self.id }
   }
@@ -123,6 +195,7 @@ struct RedditCredential: Identifiable, Equatable, Hashable, Codable {
     _userAgent = try values.decodeIfPresent(String.self, forKey: ._userAgent)
     signInMethod = try values.decodeIfPresent(SignInMethod.self, forKey: .signInMethod) ?? .apiKey
     webSessionCookies = try values.decodeIfPresent(String.self, forKey: .webSessionCookies)
+    webSessionID = try values.decodeIfPresent(UUID.self, forKey: .webSessionID) ?? id
   }
 
   func encode(to encoder: Encoder) throws {
@@ -138,6 +211,7 @@ struct RedditCredential: Identifiable, Equatable, Hashable, Codable {
     try container.encodeIfPresent(_userAgent, forKey: ._userAgent)
     try container.encode(signInMethod, forKey: .signInMethod)
     try container.encodeIfPresent(webSessionCookies, forKey: .webSessionCookies)
+    try container.encode(webSessionID, forKey: .webSessionID)
   }
 
   mutating func clearIdentity() {
@@ -148,6 +222,7 @@ struct RedditCredential: Identifiable, Equatable, Hashable, Codable {
     _userAgent = nil
     signInMethod = .apiKey
     webSessionCookies = nil
+    webSessionID = UUID()
   }
 
   /// Fills the account name and avatar from `/api/v1/me`.
@@ -158,64 +233,66 @@ struct RedditCredential: Identifiable, Equatable, Hashable, Codable {
     }
   }
 
+  @MainActor
   func save(_ forceCreate: Bool = true) {
     RedditCredentialsManager.shared.saveCred(self, forceCreate: forceCreate)
   }
 
+  @MainActor
   func delete() {
     RedditCredentialsManager.shared.deleteCred(self)
   }
 
-  /// `rejectedToken`: a token the request was refused with (401), which is never reused. A forced
-  /// renewal reuses a fresh token only when it knows the rejected one, so the fresh one is newer.
+  /// A waiter owns its persistence policy. Refresh results merge only into the
+  /// captured installed grant, including web-session cookie rotation/sign-out.
   func getUpToDateToken(forceRenew: Bool = false, saveToken: Bool = true, rejectedToken: String? = nil) async -> AccessToken? {
-    guard let renewalKey else { return nil }
-    if let accessToken = self.accessToken, accessToken.isFresh, accessToken.token != rejectedToken, !forceRenew || rejectedToken != nil {
+    guard let authorization = authorizationID else { return nil }
+    // Adopt newer tokens/cookies only from this installed grant, never selection.
+    let installed = await MainActor.run { RedditCredentialsManager.getById(id) }
+    let current = if let installed, installed.authorizationID == authorization {
+      installed
+    } else {
+      self
+    }
+    guard let refreshToken = current.renewalKey else { return nil }
+    if let accessToken = current.accessToken, accessToken.isFresh, accessToken.token != rejectedToken, !forceRenew || rejectedToken != nil {
       return accessToken
     }
-    return await AccessTokenRefresher.shared.token(refreshToken: renewalKey, forceRenew: forceRenew, rejected: rejectedToken) {
-      if isWebSession {
-        await mintWebSessionToken(cookies: renewalKey)
-      } else {
-        await fetchNewToken(refreshToken: renewalKey)
+    let outcome = await AccessTokenRefresher.shared.refresh(for: authorization, forceRenew: forceRenew, rejected: rejectedToken) {
+      if current.isWebSession {
+        switch await RedditWebSession.mintToken(cookies: refreshToken, userAgent: current.userAgent) {
+        case let .token(token, cookies): return .webSessionToken(token, cookies: cookies)
+        case .signedOut: return .rejected
+        case .failed: return .failed
+        }
       }
+      return await fetchNewToken()
     }
-
-    func mintWebSessionToken(cookies: String) async -> AccessToken? {
-      switch await RedditWebSession.mintToken(cookies: cookies, userAgent: userAgent) {
-      case let .token(newAccessToken, renewedCookies):
-        if saveToken {
-          updateSession(renewedFrom: cookies) { current in
-            current.accessToken = newAccessToken
-            current.webSessionCookies = renewedCookies
+    // Each waiter owns its persistence policy and record, even when sharing a refresh with a
+    // draft or another saved record for the same OAuth grant.
+    if saveToken {
+      switch outcome {
+      case let .token(token): await RedditCredentialsManager.shared.updateAccessToken(token, for: authorization)
+      case let .webSessionToken(token, cookies):
+        await RedditCredentialsManager.shared.updateWebAccessToken(token, cookies: cookies, renewedFrom: refreshToken, for: authorization)
+      case .rejected:
+        await MainActor.run {
+          // A delayed rejected waiter must not clear a newer successful renewal.
+          guard let saved = RedditCredentialsManager.getById(id),
+                saved.authorizationID == authorization, saved.accessToken == current.accessToken
+          else { return }
+          if current.isWebSession {
+            RedditCredentialsManager.shared.updateWebAccessToken(nil, cookies: nil, renewedFrom: refreshToken, for: authorization)
+          } else {
+            RedditCredentialsManager.shared.updateAccessToken(nil, for: authorization)
           }
         }
-        return newAccessToken
-      case .signedOut:
-        // Keeps the account name, so the credential shows whom to sign in as again.
-        if saveToken {
-          updateSession(renewedFrom: cookies) { current in
-            current.webSessionCookies = nil
-            current.accessToken = nil
-          }
-        }
-        return nil
-      case .failed:
-        return nil
+      case .failed: break
       }
     }
+    return outcome.accessToken
 
-    // Changes the saved credential, not this copy, and only while it still has the session the
-    // token came from: a sign-in that finished meanwhile wins.
-    func updateSession(renewedFrom cookies: String, _ change: @escaping (inout RedditCredential) -> Void) {
-      RedditCredentialsManager.shared.updateCred(id) { current in
-        guard current.webSessionCookies == cookies else { return false }
-        change(&current)
-        return true
-      }
-    }
-
-    func fetchNewToken(refreshToken: String) async -> AccessToken? {
+    func fetchNewToken() async -> AccessTokenRefresher.Outcome {
       let payload = RedditAPI.RefreshAccessTokenPayload(refresh_token: refreshToken)
       let result = await RedditAPI.shared._doRequest(authenticated: false) { headers in
         await AF.request(
@@ -233,40 +310,16 @@ struct RedditCredential: Identifiable, Equatable, Hashable, Codable {
       switch result {
       case let .success(data):
         let newAccessToken = RedditCredential.AccessToken(token: data.access_token, expiration: data.expires_in, lastRefresh: Date())
-        if saveToken {
-          updateAPIKey(renewedFrom: refreshToken) { $0.accessToken = newAccessToken }
-        }
-        return newAccessToken
+        return .token(newAccessToken)
       case let .failure(error):
-        credentialLogger.error("Token refresh failed: \(error.localizedDescription, privacy: .public)")
-        if error.responseCode == 401 {
-          // Reddit revoked the refresh token: the account has to authorize again.
-          updateAPIKey(renewedFrom: refreshToken) { current in
-            current.refreshToken = nil
-            current.accessToken = nil
-            current.userName = nil
-            current.profilePicture = nil
-          }
-        }
-        return nil
-      }
-    }
-
-    // Changes the saved credential, not this copy, and only while it still has the key and
-    // refresh token the request used: an edit or a sign-in that finished meanwhile wins.
-    func updateAPIKey(renewedFrom refreshToken: String, _ change: @escaping (inout RedditCredential) -> Void) {
-      RedditCredentialsManager.shared.updateCred(id) { [apiAppID, apiAppSecret] current in
-        guard
-          current.signInMethod == .apiKey, current.refreshToken == refreshToken,
-          current.apiAppID == apiAppID, current.apiAppSecret == apiAppSecret
-        else { return false }
-        change(&current)
-        return true
+        Logger(subsystem: "com.sertacozercan.helio", category: "Authentication")
+          .error("Access-token refresh failed (status \(error.responseCode ?? 0))")
+        return error.responseCode == 401 ? .rejected : .failed
       }
     }
   }
 
-  struct AccessToken: Equatable, Hashable, Codable {
+  struct AccessToken: Equatable, Hashable, Codable, Sendable {
     let token: String
     let expiration: Int
     let lastRefresh: Date

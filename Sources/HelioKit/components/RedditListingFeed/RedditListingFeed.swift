@@ -23,6 +23,10 @@ struct RedditListingFeed<Header: View, Footer: View, S: Sorting>: View {
   @Default(.SubredditFeedDefSettings) private var subredditFeedDefSettings
   @Default(.GeneralDefSettings) private var generalDefSettings
 
+  private var selectedAuthorization: RedditCredential.AuthorizationID? {
+    RedditCredentialsManager.shared.selectedCredential(id: generalDefSettings.redditCredentialSelectedID)?.authorizationID
+  }
+
   init(feedId: String, showSubInPosts: Bool = false, title: String, theme: ThemeBG, fetch: @escaping FeedItemsManager<S>.ItemsFetchFn, @ViewBuilder header: @escaping () -> Header = { EmptyView() }, @ViewBuilder footer: @escaping () -> Footer = { EmptyView() }, initialSorting: S? = nil, disableSearch: Bool = true, subreddit: Subreddit? = nil, forceRefresh: Binding<Bool>? = nil, hideReadPosts: Bool = false) where S == SubListingSortOption {
     self.showSubInPosts = showSubInPosts
     self.feedId = feedId
@@ -41,9 +45,6 @@ struct RedditListingFeed<Header: View, Footer: View, S: Sorting>: View {
   @FetchRequest private var filters: FetchedResults<CachedFilter>
 
   @State private var searchEnabled: Bool
-  @State private var initialLoadDone: Bool = false
-  /// The sort, search and filter the shown items were loaded for.
-  @State private var loadedQueryKey: [String?]?
   @SilentState private var fetchedFilters: Bool = false
 
   @State private var itemsManager: FeedItemsManager<S>
@@ -54,7 +55,7 @@ struct RedditListingFeed<Header: View, Footer: View, S: Sorting>: View {
   @Default(.PostLinkDefSettings) private var postLinkDefSettings
   @Default(.SubredditFeedDefSettings) private var feedDefSettings
 
-  func refetch() async {
+  func refetch(clearItems: Bool = false) async {
     //    if let subreddit, !feedsAndSuch.contains(subreddit.id) {
     //      Task {
     //        withAnimation { itemsManager.loadingPinned = true }
@@ -65,22 +66,14 @@ struct RedditListingFeed<Header: View, Footer: View, S: Sorting>: View {
     //      }
     //    }
 
-    await itemsManager.fetchCaller(loadingMore: false)
-    if let subreddit, !fetchedFilters {
-      await subreddit.fetchAndCacheFlairs()
-      fetchedFilters = true
-    }
+    await itemsManager.reload(clearItems: clearItems)
+    await fetchFiltersIfNeeded()
   }
 
-  private var queryKey: [String?] {
-    [itemsManager.searchQuery.debounced, itemsManager.selectedFilter.map { "\($0.type)/\($0.text)" }, itemsManager.sorting?.meta.apiValue]
-  }
-
-  /// Reloads from the first page after the sort, search or filter changed.
-  func reloadForQueryChange() async {
-    loadedQueryKey = queryKey
-    withAnimation { itemsManager.displayMode = .loading }
-    await refetch()
+  private func fetchFiltersIfNeeded() async {
+    guard let subreddit, !fetchedFilters else { return }
+    fetchedFilters = true
+    await subreddit.fetchAndCacheFlairs()
   }
 
   @ViewBuilder
@@ -223,10 +216,7 @@ struct RedditListingFeed<Header: View, Footer: View, S: Sorting>: View {
                   Text("Only posts you've read so far")
 
                   Button("Load more", systemImage: "arrow.down") {
-                    withAnimation {
-                      itemsManager.displayMode = .items
-                    }
-                    Task { await itemsManager.fetchCaller(loadingMore: true) }
+                    Task { await itemsManager.loadMore() }
                   }
                   .buttonStyle(.actionSecondary)
                 }
@@ -240,7 +230,7 @@ struct RedditListingFeed<Header: View, Footer: View, S: Sorting>: View {
             if itemsManager.displayMode == .error {
               Section {
                 VStack {
-                  if let limitedUntil = RedditRateLimit.shared.limitedUntil(account: RedditAPI.accountID(nil)) {
+                  if let limitedUntil = RedditRateLimit.shared.limitedUntil(account: RedditAPI.accountID(nil), authorization: RedditAPI.accountAuthorization(nil)) {
                     Text(RedditRateLimit.retryText(until: limitedUntil))
                       .multilineTextAlignment(.center)
                   } else {
@@ -248,9 +238,6 @@ struct RedditListingFeed<Header: View, Footer: View, S: Sorting>: View {
                   }
 
                   Button("Manually reload", systemImage: "arrow.clockwise") {
-                    withAnimation {
-                      itemsManager.displayMode = .items
-                    }
                     Task { await itemsManager.retry() }
                   }
                   .buttonStyle(.actionSecondary)
@@ -264,7 +251,7 @@ struct RedditListingFeed<Header: View, Footer: View, S: Sorting>: View {
             //          default: EmptyView()
           }
 
-          if itemsManager.displayMode == .items {
+          if itemsManager.isLoadingMore {
             Section {
               ProgressView()
                 .frame(maxWidth: .infinity, minHeight: 150)
@@ -341,13 +328,8 @@ struct RedditListingFeed<Header: View, Footer: View, S: Sorting>: View {
       } }, contentWidth: contentWidth, theme: selectedTheme)
       //    .onChange(of: itemsManager.selectedFilter) { searchEnabled = $1?.type != .custom }
       .refreshable { await refetch() }
-      .onChange(of: generalDefSettings.redditCredentialSelectedID) { _, _ in
-        withAnimation {
-          itemsManager.entities = []
-          itemsManager.displayMode = .loading
-        }
-
-        Task { await refetch() }
+      .onChange(of: selectedAuthorization) { _, _ in
+        Task { await refetch(clearItems: true) }
       }
       .onChange(of: subredditFeedDefSettings.chunkLoadSize) { itemsManager.chunkSize = $1 }
       .onChange(of: forceRefresh?.wrappedValue) { newValue in
@@ -359,28 +341,14 @@ struct RedditListingFeed<Header: View, Footer: View, S: Sorting>: View {
         }
       }
       .onAppear {
-        // Use unstructured Task for initial load to avoid NavigationSplitView
-        // transition cancelling the structured .task's in-flight network request.
-        // onAppear can fire again before the first page lands; that fetch is already on its way.
-        guard itemsManager.displayMode == .loading, !itemsManager.initialLoadStarted else { return }
-        itemsManager.initialLoadStarted = true
+        // The manager owns the initial request, independent of navigation task cancellation.
         Task {
-          loadedQueryKey = queryKey
-          await refetch()
-          initialLoadDone = true
-          // The sort, search or filter changed while the first page was loading. Also recover when
-          // it changed and changed back: the keys match, but the spinner is up with no fetch coming.
-          if queryKey != loadedQueryKey || itemsManager.displayMode == .loading {
-            await reloadForQueryChange()
-          }
+          await itemsManager.loadIfNeeded()
+          await fetchFiltersIfNeeded()
         }
       }
-      .task(id: queryKey) {
-        // Only handle sort/search/filter changes, not the initial load. Comparing with the loaded
-        // query, not the display mode, keeps re-appearing from reloading and a search typed and
-        // cleared within the debounce from leaving the spinner up.
-        guard initialLoadDone, queryKey != loadedQueryKey else { return }
-        await reloadForQueryChange()
+      .onChange(of: [itemsManager.searchQuery.debounced, itemsManager.selectedFilter?.text, itemsManager.selectedFilter?.type.rawValue, itemsManager.sorting?.meta.apiValue]) {
+        Task { await refetch() }
       }
     }
   }

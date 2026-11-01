@@ -6,10 +6,11 @@
 //
 
 import Alamofire
+import Defaults
 import Foundation
 
 extension RedditAPI {
-  func fetchUserOverview(_ userName: String, _ dataTypeFilter: String? = nil, _ after: String? = nil) async -> ([Either<PostData, CommentData>]?, String?)? {
+  func fetchUserOverview(_ userName: String, _ dataTypeFilter: String? = nil, _ after: String? = nil, limit: Int = Defaults[.SubredditFeedDefSettings].chunkLoadSize, altCredential: RedditCredential? = nil) async -> ([Either<PostData, CommentData>]?, String?)? {
     var endpoint: String
 
     if let dataTypeFilter, !dataTypeFilter.isEmpty {
@@ -27,8 +28,9 @@ extension RedditAPI {
 
     var urlComponents = URLComponents(string: endpoint)!
 
+    urlComponents.queryItems = [URLQueryItem(name: "limit", value: "\(limit)")]
     if let after {
-      urlComponents.queryItems = [URLQueryItem(name: "after", value: after)]
+      urlComponents.queryItems?.append(URLQueryItem(name: "after", value: after))
     }
 
     guard let requestURL = urlComponents.url else {
@@ -36,7 +38,7 @@ extension RedditAPI {
       return nil
     }
 
-    switch await self.doRequest(requestURL.absoluteString, method: .get, decodable: Listing<Either<PostData, CommentData>>.self) {
+    switch await self.doRequest(requestURL.absoluteString, method: .get, decodable: Listing<Either<PostData, CommentData>>.self, altCredential: altCredential) {
     case let .success(data):
       return (data.data?.children?.map(\.data).compactMap(\.self), data.data?.after)
     case let .failure(error):

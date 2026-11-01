@@ -12,6 +12,8 @@ struct PersistenceController {
 
   let container: NSPersistentCloudKitContainer
   let primaryBGContext: NSManagedObjectContext
+  /// Subscription and multi snapshots share a private read/reconcile/save queue.
+  let accountListsContext: NSManagedObjectContext
 
   enum ContextType {
     case main, bg
@@ -50,6 +52,10 @@ struct PersistenceController {
         fatalError("Unresolved error \(error), \(error.userInfo)")
       }
     })
+
+    accountListsContext = container.newBackgroundContext()
+    accountListsContext.mergePolicy = NSMergePolicy.mergeByPropertyObjectTrump
+    accountListsContext.automaticallyMergesChangesFromParent = true
 
     self.primaryBGContext = container.newBackgroundContext()
     self.primaryBGContext.mergePolicy = NSMergePolicy.mergeByPropertyObjectTrump

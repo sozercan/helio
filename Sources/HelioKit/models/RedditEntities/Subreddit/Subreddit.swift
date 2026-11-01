@@ -37,92 +37,108 @@ extension Subreddit {
     feedsAndSuch.contains(self.id)
   }
 
-  /// Add a subreddit to the local like list
-  /// This is a seperate list from reddits liked intenden for usage with subreddits a user wants to favorite but not subscribe to
-  /// returns true if added to favorites and false if removed
+  /// Favorites without a subscription are a separate, device-local list.
+  /// Returns true when added and false when removed.
+  @MainActor
   func localFavoriteToggle() -> Bool {
-    var likedButNotSubbed = Defaults[.likedButNotSubbed]
-    // If the user is not subscribed
-
-    // If its already in liked remove it
-    if likedButNotSubbed.contains(self) {
-      likedButNotSubbed = likedButNotSubbed.filter { $0.id != self.id }
-      return false
-    } else { // Else add it
+    let wasLiked = Defaults[.likedButNotSubbed].contains(self)
+    if wasLiked {
+      Defaults[.likedButNotSubbed].removeAll { $0.id == self.id }
+    } else {
       Defaults[.likedButNotSubbed].append(self)
-      return true
     }
+    return !wasLiked
   }
 
+  @MainActor
   func favoriteToggle(entity: CachedSub? = nil) {
-    if let entity, let name = data?.display_name {
-      let favoritedStatus = entity.user_has_favorited
-      if let context = entity.managedObjectContext {
-        entity.user_has_favorited = !favoritedStatus
+    guard let entity, let name = data?.display_name,
+          let credential = RedditCredentialsManager.shared.selectedCredential,
+          let context = entity.managedObjectContext
+    else { return }
+    let snapshot = context.performAndWait {
+      (credentialID: entity.helioCredentialID, fullname: entity.uuid, favorited: entity.user_has_favorited)
+    }
+    guard snapshot.credentialID == credential.id, let fullname = snapshot.fullname,
+          let persistence = AccountListPersistence(account: credential)
+    else { return }
+    let previous = snapshot.favorited
+    let requested = !previous
+    guard let ticket = persistence.beginMutation(fullname: fullname) else { return }
+    Task(priority: .userInitiated) {
+      defer { persistence.finish(ticket) }
+      guard await persistence.setFavorite(requested, fullname: fullname, expecting: previous), persistence.isCurrent(ticket) else { return }
+      if RedditCredentialsManager.shared.selectedCredential?.authorizationID == credential.authorizationID {
+        withAnimation { self.data?.user_has_favorited = requested }
+      }
+      // The existing favorite wrapper resolves selection at request time. Use its
+      // same payload and transport with the account captured by the local write.
+      let result = await RedditAPI.shared.doRequest(
+        "\(RedditAPI.redditApiURLBase)/api/favorite", method: .post,
+        params: RedditAPI.FavoritePayload(make_favorite: requested, sr_name: name),
+        paramsLocation: .queryString, altCredential: persistence.credential,
+      )
+      if case .failure = result,
+         persistence.isCurrent(ticket),
+         await persistence.setFavorite(previous, fullname: fullname, expecting: requested),
+         RedditCredentialsManager.shared.selectedCredential?.authorizationID == credential.authorizationID,
+         self.data?.user_has_favorited == requested
+      {
         withAnimation {
-          self.data?.user_has_favorited = !favoritedStatus
-          try? context.save()
-        }
-
-        Task {
-          let result = await RedditAPI.shared.favorite(!favoritedStatus, subName: name)
-          if !result {
-            entity.user_has_favorited = favoritedStatus
-            withAnimation {
-              self.data?.user_has_favorited = favoritedStatus
-              try? context.save()
-            }
-          }
+          self.data?.user_has_favorited = previous
         }
       }
     }
   }
 
-  func subscribeToggle(optimistic: Bool = false, _ cb: (() -> Void)? = nil) {
-    guard let currentCredentialID = RedditCredentialsManager.shared.selectedCredential?.id else { return }
-
-    let context = PersistenceController.shared.container.viewContext
-
-    if let data {
-      @Sendable func doToggle() {
-        let fetchRequest = NSFetchRequest<CachedSub>(entityName: "CachedSub")
-        fetchRequest.predicate = NSPredicate(format: "helioCredentialID == %@", currentCredentialID as CVarArg)
-        guard let results = (context.performAndWait { try? context.fetch(fetchRequest) }) else { return }
-        let foundSub = context.performAndWait { results.first(where: { $0.name == self.data?.name }) }
-
-        withAnimation {
-          self.data?.user_is_subscriber?.toggle()
-        }
-        if let foundSub { // when unsubscribe
-          context.delete(foundSub)
-        } else if let newData = self.data {
-          context.performAndWait {
-            _ = CachedSub(data: newData, context: context, credentialID: currentCredentialID)
-          }
-        }
+  @MainActor
+  func subscribeToggle(optimistic: Bool = false, expectedAuthorization: RedditCredential.AuthorizationID? = nil, _ cb: (() -> Void)? = nil) {
+    guard let data, let credential = RedditCredentialsManager.shared.selectedCredential,
+          let persistence = AccountListPersistence(account: credential), expectedAuthorization == nil || expectedAuthorization == credential.authorizationID,
+          let ticket = persistence.beginMutation(fullname: data.name)
+    else { cb?()
+      return
+    }
+    Task(priority: .userInitiated) {
+      defer { persistence.finish(ticket)
+        cb?()
       }
-
-      //      let likedButNotSubbed = Defaults[.likedButNotSubbed]
+      guard let previous = await persistence.isSubscribed(fullname: data.name), persistence.isCurrent(ticket) else { return }
+      let requested = !previous
+      var rollback: AccountListPersistence.SubscriptionRollback?
       if optimistic {
-        doToggle()
-        context.performAndWait {
-          withAnimation {
-            try? context.save()
-          }
+        guard let change = await persistence.optimisticallySetSubscription(requested, subreddit: data, expecting: previous), persistence.isCurrent(ticket) else { return }
+        rollback = change
+        if RedditCredentialsManager.shared.selectedCredential?.authorizationID == credential.authorizationID {
+          withAnimation { self.data?.user_is_subscriber = requested }
         }
       }
-      Task(priority: .background) {
-        let result = await RedditAPI.shared.subscribe((self.data?.user_is_subscriber ?? false) ? (optimistic ? .sub : .unsub) : (optimistic ? .unsub : .sub), subFullname: data.name)
-        context.performAndWait {
-          if (result && !optimistic) || (!result && optimistic) {
-            doToggle()
-          }
-          context.performAndWait {
-            withAnimation {
-              try? context.save()
-            }
-          }
-          cb?()
+      guard persistence.isCurrent(ticket) else { return }
+      let result = await RedditAPI.shared.doRequest(
+        "\(RedditAPI.redditApiURLBase)/api/subscribe", method: .post,
+        params: RedditAPI.SubscribePayload(action: requested ? .sub : .unsub, sr: data.name),
+        paramsLocation: .queryString, altCredential: persistence.credential,
+      )
+      guard persistence.isCurrent(ticket) else { return }
+      let state: Bool
+      let saved: Bool
+      switch result {
+      case .success:
+        // Persist the acknowledged state even when the initial write was optimistic.
+        state = requested
+        saved = await persistence.setSubscription(requested, subreddit: data)
+      case .failure:
+        guard let rollback else { return }
+        state = previous
+        saved = await persistence.rollbackSubscription(rollback)
+      }
+      guard saved, persistence.isCurrent(ticket),
+            RedditCredentialsManager.shared.selectedCredential?.authorizationID == credential.authorizationID
+      else { return }
+      withAnimation {
+        self.data?.user_is_subscriber = state
+        if case .failure = result, let rollback {
+          self.data?.user_has_favorited = rollback.previousFavorite
         }
       }
     }
@@ -219,10 +235,10 @@ extension Subreddit {
     }
   }
 
-  func fetchPosts(sort: SubListingSortOption = .best, after: String? = nil, searchText: String? = nil, contentWidth: CGFloat = .screenW, flair: String? = nil) async -> ([RedditEntityType]?, String?)? {
+  func fetchPosts(sort: SubListingSortOption = .best, after: String? = nil, searchText: String? = nil, contentWidth: CGFloat = .screenW, flair: String? = nil, limit: Int = Defaults[.SubredditFeedDefSettings].chunkLoadSize, altCredential: RedditCredential? = nil) async -> ([RedditEntityType]?, String?)? {
     let response = flair == nil && searchText == nil
-      ? await RedditAPI.shared.fetchSubPosts(data?.url ?? (id == "home" ? "" : id), sort: sort, after: after)
-      : await RedditAPI.shared.searchInSubreddit(data?.url ?? (id == "home" ? nil : id), RedditAPI.AdvancedPostsSearch(after: after, subreddit: data?.url ?? (id == "home" ? "" : id), flairs: flair == nil ? nil : [flair!], searchQuery: searchText, sortOption: sort))
+      ? await RedditAPI.shared.fetchSubPosts(data?.url ?? (id == "home" ? "" : id), limit: limit, sort: sort, after: after, altCredential: altCredential)
+      : await RedditAPI.shared.searchInSubreddit(data?.url ?? (id == "home" ? nil : id), RedditAPI.AdvancedPostsSearch(after: after, subreddit: data?.url ?? (id == "home" ? "" : id), flairs: flair == nil ? nil : [flair!], searchQuery: searchText, sortOption: sort, limit: limit), altCredential: altCredential)
     if let response, let data = response.0 {
       var isMixed = false
       let datas = data.compactMap {

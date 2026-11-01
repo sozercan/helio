@@ -27,7 +27,10 @@ actor AvatarLoader {
   init(fetch: @escaping @Sendable ([String]) async -> [String: String?]? = { ids in
     // Avatars are the first thing to go when the account's request budget runs low. A skipped
     // lookup counts as failed, so a later screen asks again.
-    guard !RedditRateLimit.shared.isLow(account: RedditAPI.accountID(nil)) else { return nil }
+    let account = await MainActor.run {
+      (id: RedditAPI.accountID(nil), authorization: RedditAPI.accountAuthorization(nil))
+    }
+    guard !RedditRateLimit.shared.isLow(account: account.id, authorization: account.authorization) else { return nil }
     return await RedditAPI.shared.fetchUsers(ids)?.mapValues(\.profile_img)
   }) {
     self.fetch = fetch

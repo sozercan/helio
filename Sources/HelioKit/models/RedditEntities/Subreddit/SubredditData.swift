@@ -8,7 +8,7 @@
 import Defaults
 import Foundation
 
-struct SubredditData: Codable, GenericRedditEntityDataType, Defaults.Serializable, Identifiable {
+struct SubredditData: Codable, GenericRedditEntityDataType, Defaults.Serializable, Identifiable, Sendable {
   var user_flair_background_color: String? = nil
   var submit_text_html: String? = nil
   var restrict_posting: Bool? = nil

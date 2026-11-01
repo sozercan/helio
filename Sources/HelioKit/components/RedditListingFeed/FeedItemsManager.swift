@@ -9,195 +9,223 @@ import Defaults
 import Nuke
 import SwiftUI
 
+@MainActor
 @Observable
 class FeedItemsManager<S> {
-  typealias ItemsFetchFn = (_ lastElementId: String?, _ sorting: S?, _ searchQuery: String?, _ flair: String?) async -> (entities: [RedditEntityType]?, after: String?)?
+  struct FetchContext {
+    let limit: Int
+    let credential: RedditCredential
+  }
+
+  typealias ItemsFetchFn = @MainActor (_ lastElementId: String?, _ sorting: S?, _ searchQuery: String?, _ flair: String?, _ context: FetchContext) async -> (entities: [RedditEntityType]?, after: String?)?
 
   /// `onlyReadPosts`: paging stopped after several pages in a row held only hidden read posts.
   enum DisplayMode: String { case loading, empty, items, endOfFeed, error, onlyReadPosts }
 
-  /// The load-more in flight, so rows appearing together start only one. Cleared only by the
-  /// load-more that owns it (matched by `currentTaskID`) or by a new first page taking over.
-  private var currentTask: Task<Void, Never>?
-  @ObservationIgnored private var currentTaskID: UUID?
-  /// A row asked for the next page while a new first page was pending. Rows still on screen won't
-  /// ask again when it lands, so the load-more starts then.
+  @ObservationIgnored private var currentTask: Task<Void, Never>?
+  @ObservationIgnored private var currentRequestID: UUID?
+  @ObservationIgnored private var currentTaskIsReload = false
   @ObservationIgnored private var loadMoreHeldBack = false
-  /// Bumped on the main actor each time the first page is fetched again. A page fetched under an
-  /// older generation is dropped, so a slow earlier response can't overwrite a newer one.
-  @ObservationIgnored private var generation = 0
-  /// The generation of the first page the shown list and its cursor came from. It lags behind
-  /// `generation` while a new first page is pending, so a load-more continuing the old list is dropped.
-  @ObservationIgnored private var listGeneration = 0
-  /// Whether the last failure was a first page, so `retry()` fetches the first page again.
-  @ObservationIgnored private var firstPageFailed = false
+  @ObservationIgnored private var listRequest: Request?
+
+  /// One immutable query for the whole page chain, including pages hidden as already read.
+  private struct Request {
+    let sorting: S?
+    let searchQuery: String?
+    let flair: String?
+    let chunkSize: Int
+    let credential: RedditCredential?
+    var authorization: RedditCredential.AuthorizationID? {
+      credential?.authorizationID
+    }
+  }
+
   /// Set once the feed starts loading its first page.
-  @ObservationIgnored var initialLoadStarted = false
-  var displayMode: DisplayMode = .loading
+  @ObservationIgnored private(set) var initialLoadStarted = false
+  private(set) var displayMode: DisplayMode = .loading
+  private(set) var isLoadingMore = false
+  @ObservationIgnored private var failedLoadingMore = false
   var loadingPinned = false
   var pinnedPosts: [Post] = []
-  var entities: [RedditEntityType] = [] {
+  private(set) var entities: [RedditEntityType] = [] {
     didSet { indexByID = Dictionary(entities.enumerated().map { ($1.id, $0) }, uniquingKeysWith: { first, _ in first }) }
   }
 
   /// Rows look their position up as they appear; searching `entities` for each was quadratic.
   @ObservationIgnored private var indexByID: [String: Int] = [:]
-  var loadedEntitiesIds: Set<String> = []
-  var lastElementId: String?
-  /// Changing the sort, search or filter doesn't touch `displayMode`: the feed shows the spinner
-  /// when it starts the reload, so the spinner can't stay up for a reload that never comes.
+  private var loadedEntitiesIds: Set<String> = []
+  private(set) var lastElementId: String?
   var sorting: S?
 
   var searchQuery = Debouncer("")
   var selectedFilter: ShallowCachedFilter?
 
   var chunkSize: Int
-  private var onScreenEntities: [(entity: RedditEntityType, index: Int)] = []
-  private var fetchFn: ItemsFetchFn
+  private let fetchFn: ItemsFetchFn
+  private let currentCredential: @MainActor () -> RedditCredential?
+  @ObservationIgnored private var authorization: RedditCredential.AuthorizationID?
   private let prefetchRange = 2
   /// Whether this feed drops already-read posts when "Hide read posts" is on.
   private let hideReadPosts: Bool
   /// Pages fetched in a row whose posts were all hidden, before giving up.
   private let maxHiddenPagesInARow = 5
 
-  init(sorting: S?, hideReadPosts: Bool = false, fetchFn: @escaping ItemsFetchFn) {
+  init(sorting: S?, hideReadPosts: Bool = false, currentCredential: @escaping @MainActor () -> RedditCredential? = { RedditCredentialsManager.shared.selectedCredential }, fetchFn: @escaping ItemsFetchFn) {
     self.sorting = sorting
     self.hideReadPosts = hideReadPosts
     self.fetchFn = fetchFn
+    self.currentCredential = currentCredential
     self.chunkSize = Defaults[.SubredditFeedDefSettings].chunkLoadSize
   }
 
-  /// The sort, search and filter one list is fetched with.
-  private struct Query {
-    let sorting: S?
-    let searchQuery: String?
-    let filter: String?
+  func loadIfNeeded() async {
+    guard !initialLoadStarted else { return }
+    await reload()
   }
 
-  private struct PageRequest {
-    let generation: Int
-    let cursor: String?
-    let query: Query
+  func reload(clearItems: Bool = false) async {
+    guard !Task.isCancelled else { return }
+    await startFetch(loadingMore: false, clearItems: clearItems)?.value
   }
 
-  /// The query the shown list was fetched with. Its later pages use it too, not the live settings,
-  /// which may already have changed for a reload that hasn't started yet.
-  @ObservationIgnored private var listQuery: Query?
-
-  func fetchCaller(loadingMore: Bool) async {
-    // Read with the cursor: a load-more belongs to the list its cursor continues.
-    let request: PageRequest? = await MainActor.run {
-      if loadingMore {
-        // A refresh cancelled this load-more before it got here: the refresh starts its own.
-        guard !Task.isCancelled else { return nil }
-        return PageRequest(generation: self.listGeneration, cursor: self.lastElementId, query: self.listQuery ?? self.currentQuery())
-      }
-      self.generation += 1
-      // A new first page replaces the list the pending load-more continues. That load-more's rows
-      // won't appear again to ask for the next page, so ask on their behalf once the page lands.
-      if self.currentTask != nil {
-        self.loadMoreHeldBack = true
-      }
-      self.currentTask?.cancel()
-      self.currentTask = nil
-      self.currentTaskID = nil
-      return PageRequest(generation: self.generation, cursor: nil, query: self.currentQuery())
-    }
-    guard let request else { return }
-    await fetchPage(loadingMore: loadingMore, after: request.cursor, query: request.query, hiddenPagesInARow: 0, generation: request.generation)
+  func loadMore() async {
+    await fetchCaller(loadingMore: true)
   }
 
-  private func currentQuery() -> Query {
-    let custom = selectedFilter?.type == .custom
-    return Query(
-      sorting: sorting,
-      searchQuery: custom ? selectedFilter?.text : searchQuery.debounced.isEmpty ? nil : searchQuery.debounced,
-      filter: custom ? nil : selectedFilter?.text,
-    )
-  }
-
-  /// Retries what failed: the first page, or the next page of the list shown.
   func retry() async {
-    let fromFirstPage = await MainActor.run { firstPageFailed }
-    await fetchCaller(loadingMore: !fromFirstPage)
+    await fetchCaller(loadingMore: failedLoadingMore)
   }
 
-  private func fetchPage(loadingMore: Bool, after lastElementId: String?, query: Query, hiddenPagesInARow: Int, generation: Int) async {
-    guard let (fetchedEntities, after) = await fetchFn(lastElementId, query.sorting, query.searchQuery, query.filter), let fetchedEntities else {
-      await MainActor.run {
-        guard generation == self.generation else { return }
-        // A failed first page leaves the old list under its own generation: it may be for another
-        // sort, search or filter, so neither paging nor a retry may continue it.
-        firstPageFailed = !loadingMore
-        withAnimation { displayMode = .error }
+  private func fetchCaller(loadingMore: Bool) async {
+    // A row task can be cancelled by a refresh before it ever starts running.
+    guard !Task.isCancelled else { return }
+    await startFetch(loadingMore: loadingMore)?.value
+  }
+
+  /// Reserve the request synchronously, so rows appearing together share one page fetch.
+  private func startFetch(loadingMore: Bool, clearItems: Bool = false) -> Task<Void, Never>? {
+    let credential = currentCredential()
+    let currentAuthorization = credential?.authorizationID
+    let accountChanged = initialLoadStarted && authorization != currentAuthorization
+    let paging = loadingMore && !accountChanged
+    if paging {
+      if let currentTask {
+        // The still-visible rows will not appear again if the refresh returns
+        // the same posts. Carry their paging intent over to its replacement list.
+        if currentTaskIsReload, !entities.isEmpty {
+          loadMoreHeldBack = true
+        }
+        return currentTask
       }
+      guard lastElementId != nil, displayMode == .items || displayMode == .onlyReadPosts || displayMode == .error else { return nil }
+    } else {
+      if clearItems || accountChanged {
+        loadMoreHeldBack = false
+        listRequest = nil
+      } else if currentTask != nil, !currentTaskIsReload {
+        loadMoreHeldBack = true
+      }
+      currentTask?.cancel()
+    }
+
+    initialLoadStarted = true
+    isLoadingMore = paging
+    if clearItems || accountChanged {
+      entities = []
+      loadedEntitiesIds = []
+      lastElementId = nil
+    }
+    // A non-clearing refresh keeps the displayed rows mounted until replacement.
+    withAnimation { displayMode = paging || !entities.isEmpty ? .items : .loading }
+    let requestID = UUID()
+    currentRequestID = requestID
+    let request = if paging, let listRequest {
+      // The cursor belongs to the displayed list's query, not settings for a
+      // reload that has not started yet. Each new chain adopts the current limit.
+      Request(sorting: listRequest.sorting, searchQuery: listRequest.searchQuery, flair: listRequest.flair, chunkSize: chunkSize, credential: credential)
+    } else {
+      Request(
+        sorting: sorting,
+        searchQuery: selectedFilter?.type == .custom ? selectedFilter?.text : searchQuery.debounced.isEmpty ? nil : searchQuery.debounced,
+        flair: selectedFilter?.type != .custom ? selectedFilter?.text : nil,
+        chunkSize: chunkSize,
+        credential: credential,
+      )
+    }
+    authorization = currentAuthorization
+    let after = paging ? lastElementId : nil
+    let task = Task {
+      await self.fetchPage(loadingMore: paging, after: after, hiddenPagesInARow: 0, request: request, requestID: requestID)
+      // A superseded task must not release a newer request's reservation.
+      if self.currentRequestID == requestID {
+        self.currentTask = nil
+        self.currentRequestID = nil
+        self.currentTaskIsReload = false
+        self.isLoadingMore = false
+        if !paging, self.displayMode != .error {
+          let resumePaging = self.loadMoreHeldBack
+          self.loadMoreHeldBack = false
+          if resumePaging, self.displayMode == .items, self.currentCredential()?.authorizationID == request.authorization, !Task.isCancelled {
+            await self.startFetch(loadingMore: true)?.value
+          }
+        }
+      }
+    }
+    currentTaskIsReload = !paging
+    currentTask = task
+    return task
+  }
+
+  private func fetchPage(loadingMore: Bool, after lastElementId: String?, hiddenPagesInARow: Int, request: Request, requestID: UUID) async {
+    guard currentRequestID == requestID, !Task.isCancelled, currentCredential()?.authorizationID == request.authorization else { return }
+    // A captured signed-out state must not resolve whatever account is selected later.
+    guard let credential = request.credential else {
+      failedLoadingMore = loadingMore
+      withAnimation { displayMode = .error }
+      return
+    }
+    let result = await fetchFn(lastElementId, request.sorting, request.searchQuery, request.flair, FetchContext(limit: request.chunkSize, credential: credential))
+    // Cancellation is cooperative: a network callback may still return data or an error.
+    guard currentRequestID == requestID, !Task.isCancelled, currentCredential()?.authorizationID == request.authorization else { return }
+    guard let (fetchedEntities, after) = result, let fetchedEntities else {
+      failedLoadingMore = loadingMore
+      withAnimation { displayMode = .error }
       return
     }
 
-    // Without a cursor, the next fetch would start over from the first page. A short page isn't
-    // the end: Reddit can return fewer items than asked for, and undecodable items are skipped.
+    // Without a cursor, the next fetch would start over from the first page.
+    // Reddit can return short pages and lossy decoding can skip individual
+    // children. A nonempty page with a cursor is still pageable.
     let reachedEnd = after == nil || fetchedEntities.isEmpty
     let shownEntities = withoutReadPosts(fetchedEntities)
     let onlyReadPosts = shownEntities.isEmpty && !fetchedEntities.isEmpty && !reachedEnd
-    // Every post on this page was already read: keep paging instead of showing a gap.
     let skipPage = onlyReadPosts && hiddenPagesInARow < maxHiddenPagesInARow
-    // Stop paging, but offer to continue: no new row will appear to trigger the next page.
     let gaveUp = onlyReadPosts && !skipPage
 
-    let applied: Bool
     if !loadingMore {
-      var newLoadedEntitiesIds = Set<String>()
-      for ent in shownEntities {
-        newLoadedEntitiesIds.insert(ent.fullname)
-      }
-      // On the main actor, which renders `entities` and reads the row index.
-      applied = await MainActor.run { [newLoadedEntitiesIds] in
-        guard generation == self.generation else { return false }
-        listGeneration = generation
-        listQuery = query
-        withAnimation {
-          displayMode = skipPage ? .items : gaveUp ? .onlyReadPosts : shownEntities.isEmpty ? .empty : reachedEnd ? .endOfFeed : .items
-          entities = shownEntities
-          self.lastElementId = after
-          loadedEntitiesIds = newLoadedEntitiesIds
-        }
-        if loadMoreHeldBack {
-          loadMoreHeldBack = false
-          // A skipped page already fetches on by itself.
-          if displayMode == .items, !skipPage, currentTask == nil {
-            startLoadingMore()
-          }
-        }
-        return true
+      listRequest = request
+      withAnimation {
+        displayMode = skipPage ? .items : gaveUp ? .onlyReadPosts : shownEntities.isEmpty ? .empty : reachedEnd ? .endOfFeed : .items
+        entities = shownEntities
+        self.lastElementId = after
+        loadedEntitiesIds = Set(shownEntities.map(\.fullname))
       }
     } else {
       var newLoadedEntitiesIds = loadedEntitiesIds
       var newEntities = entities
-
-      for ent in shownEntities {
-        if newLoadedEntitiesIds.contains(ent.fullname) {
-          continue
-        }
-        newLoadedEntitiesIds.insert(ent.fullname)
-        newEntities.append(ent)
+      for entity in shownEntities where newLoadedEntitiesIds.insert(entity.fullname).inserted {
+        newEntities.append(entity)
       }
-
-      // Awaited, so it lands before the next page's (a skipped page fetches on right away)
-      // and can't overwrite that page's error.
-      applied = await MainActor.run { [newEntities, newLoadedEntitiesIds] in
-        // A newer first page replaced the list this page continues.
-        guard generation == self.generation else { return false }
-        // Don't animate appending — it causes scroll position jumps
-        self.displayMode = reachedEnd ? .endOfFeed : gaveUp ? .onlyReadPosts : .items
-        self.entities = newEntities
-        self.lastElementId = after
-        self.loadedEntitiesIds = newLoadedEntitiesIds
-        return true
-      }
+      // Don't animate appending: it causes scroll jumps and builds every new row in one frame.
+      displayMode = reachedEnd ? .endOfFeed : gaveUp ? .onlyReadPosts : .items
+      entities = newEntities
+      self.lastElementId = after
+      loadedEntitiesIds = newLoadedEntitiesIds
     }
 
-    if skipPage, applied {
-      await fetchPage(loadingMore: true, after: after, query: query, hiddenPagesInARow: hiddenPagesInARow + 1, generation: generation)
+    if skipPage {
+      isLoadingMore = true
+      await fetchPage(loadingMore: true, after: after, hiddenPagesInARow: hiddenPagesInARow + 1, request: request, requestID: requestID)
     }
   }
 
@@ -213,15 +241,13 @@ class FeedItemsManager<S> {
 
   /// On the main actor, like the rows calling it: rows appearing together must not each start
   /// loading the next page.
-  @MainActor
   func elementAppeared(entity: RedditEntityType) {
-    let index = indexByID[entity.id] ?? 0
-    if displayMode != .endOfFeed, !entities.isEmpty, index >= entities.count - 7, currentTask == nil {
-      // While a new first page is pending, the next page of the old list would only be dropped.
-      if listGeneration == generation {
-        startLoadingMore()
-      } else {
+    guard let index = indexByID[entity.id] else { return }
+    if !entities.isEmpty, index >= entities.count - 7 {
+      if currentTask != nil, currentTaskIsReload {
         loadMoreHeldBack = true
+      } else if displayMode == .items, currentTask == nil {
+        startFetch(loadingMore: true)
       }
     }
 
@@ -233,22 +259,6 @@ class FeedItemsManager<S> {
     Post.prefetcher.startPrefetching(with: reqs)
   }
 
-  @MainActor
-  private func startLoadingMore() {
-    let id = UUID()
-    currentTaskID = id
-    currentTask = Task {
-      await fetchCaller(loadingMore: true)
-      await MainActor.run {
-        if currentTaskID == id {
-          currentTask = nil
-          currentTaskID = nil
-        }
-      }
-    }
-  }
-
-  @MainActor
   func elementDisappeared(entity: RedditEntityType) {
     let reqs = getImgReqsFrom([entity])
     Post.prefetcher.stopPrefetching(with: reqs)

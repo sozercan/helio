@@ -23,7 +23,12 @@ final class RedditRateLimit: Sendable {
     var resetsAt: Date
   }
 
-  private let budgets = Mutex<[UUID?: Budget]>([:])
+  private struct Key: Hashable {
+    let account: UUID?
+    let authorization: RedditCredential.AuthorizationID?
+  }
+
+  private let budgets = Mutex<[Key: Budget]>([:])
   private let now: @Sendable () -> Date
 
   init(now: @escaping @Sendable () -> Date = { Date() }) {
@@ -31,7 +36,8 @@ final class RedditRateLimit: Sendable {
   }
 
   /// Notes the budget an `oauth.reddit.com` response reports for `account`.
-  func record(_ response: HTTPURLResponse?, account: UUID?) {
+  func record(_ response: HTTPURLResponse?, account: UUID?, authorization: RedditCredential.AuthorizationID? = nil) {
+    let key = Key(account: account, authorization: authorization)
     guard let response, response.url?.host == "oauth.reddit.com" else { return }
     let limited = response.statusCode == 429
     let remaining = response.value(forHTTPHeaderField: "x-ratelimit-remaining").flatMap(Double.init)
@@ -43,11 +49,11 @@ final class RedditRateLimit: Sendable {
       // Responses can arrive out of order, and within a window the budget only goes down: a
       // slow response mustn't lift a limit a later one hit. A reset well after the known one
       // starts a new window.
-      if let known = budgets[account], known.resetsAt > now, budget.resetsAt <= known.resetsAt.addingTimeInterval(Self.sameWindowSlack) {
+      if let known = budgets[key], known.resetsAt > now, budget.resetsAt <= known.resetsAt.addingTimeInterval(Self.sameWindowSlack) {
         budget.remaining = min(budget.remaining, known.remaining)
         budget.resetsAt = max(budget.resetsAt, known.resetsAt)
       }
-      budgets[account] = budget
+      budgets[key] = budget
     }
   }
 
@@ -55,27 +61,28 @@ final class RedditRateLimit: Sendable {
   /// header is in whole seconds and responses take a while to arrive.
   static let sameWindowSlack: TimeInterval = 5
 
-  func recording<T>(_ response: DataResponse<T, AFError>, account: UUID?) -> Result<T, AFError> {
-    record(response.response, account: account)
+  func recording<T>(_ response: DataResponse<T, AFError>, account: UUID?, authorization: RedditCredential.AuthorizationID? = nil) -> Result<T, AFError> {
+    record(response.response, account: account, authorization: authorization)
     return response.result
   }
 
   /// When `account` can make requests again, or `nil` while it can now.
-  func limitedUntil(account: UUID?) -> Date? {
-    guard let budget = currentBudget(account), budget.remaining < 1 else { return nil }
+  func limitedUntil(account: UUID?, authorization: RedditCredential.AuthorizationID? = nil) -> Date? {
+    guard let budget = currentBudget(account, authorization: authorization), budget.remaining < 1 else { return nil }
     return budget.resetsAt
   }
 
   /// Whether `account` is close to spending this window's budget.
-  func isLow(account: UUID?) -> Bool {
-    guard let budget = currentBudget(account) else { return false }
+  func isLow(account: UUID?, authorization: RedditCredential.AuthorizationID? = nil) -> Bool {
+    guard let budget = currentBudget(account, authorization: authorization) else { return false }
     return budget.remaining < Self.lowRemaining
   }
 
-  private func currentBudget(_ account: UUID?) -> Budget? {
+  private func currentBudget(_ account: UUID?, authorization: RedditCredential.AuthorizationID?) -> Budget? {
+    let key = Key(account: account, authorization: authorization)
     let now = now()
     return budgets.withLock { budgets in
-      guard let budget = budgets[account], budget.resetsAt > now else { return nil }
+      guard let budget = budgets[key], budget.resetsAt > now else { return nil }
       return budget
     }
   }

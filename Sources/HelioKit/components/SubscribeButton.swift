@@ -17,7 +17,8 @@ struct SubscribeButton: View {
   @GestureState var pressing = false
 
   var body: some View {
-    let subscribed = subs.contains(where: { $0.name == subreddit.data?.name })
+    let authorization = RedditCredentialsManager.profile.authorizationID
+    let subscribed = subs.contains(where: { $0.helioCredentialID == authorization?.credentialID && $0.user_is_subscriber && $0.name == subreddit.data?.name })
     if let _ = subreddit.data {
       HStack {
         Group {
@@ -59,11 +60,12 @@ struct SubscribeButton: View {
       .contentShape(Rectangle())
       //        .animation(spring, value: subs)
       .onTapGesture {
+        guard !loading, let authorization else { return }
         withAnimation(spring) {
           loading = true
         }
         doThisAfter(0.3) {
-          subreddit.subscribeToggle {
+          subreddit.subscribeToggle(expectedAuthorization: authorization) {
             withAnimation(spring) {
               loading = false
             }

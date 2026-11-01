@@ -37,10 +37,9 @@ public extension CachedMulti {
   }
 
   internal func getSubEntities(_ subs: [MultiSub], context: NSManagedObjectContext, credentialID: UUID) -> [CachedSub] {
-    guard let currentCredentialID = RedditCredentialsManager.shared.selectedCredential?.id else { return [] }
     var cachedSubs: [String: CachedSub] = [:]
     let fetchRequest = NSFetchRequest<CachedSub>(entityName: "CachedSub")
-    fetchRequest.predicate = NSPredicate(format: "helioCredentialID == %@", currentCredentialID as CVarArg)
+    fetchRequest.predicate = NSPredicate(format: "helioCredentialID == %@", credentialID as CVarArg)
     if let results = (context.performAndWait { try? context.fetch(fetchRequest) }) {
       for cachedSub in results {
         context.performAndWait {
@@ -56,7 +55,7 @@ public extension CachedMulti {
         return found
       }
       if let y = subData.data {
-        return CachedSub(data: y, context: context, credentialID: currentCredentialID)
+        return CachedSub(data: y, context: context, credentialID: credentialID)
       }
       return nil
     }

@@ -8,6 +8,7 @@
 import Defaults
 import Foundation
 
+@MainActor
 func autoSelectCredentialIfNil(_ selectedCredID: UUID? = Defaults[.GeneralDefSettings].redditCredentialSelectedID) {
   if selectedCredID == nil {
     let validCreds = RedditCredentialsManager.shared.validCredentials
