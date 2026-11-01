@@ -1,5 +1,6 @@
 import Alamofire
 import Foundation
+import Nuke
 import Synchronization
 import Testing
 @testable import HelioKit
@@ -397,5 +398,20 @@ extension AvatarLoaderTests {
     let urls = await loader.avatarURLs(for: subjects.compactMap { $0.data?.author_fullname })
     #expect(calls.all == [["t2_placeholder-crosspost", "t2_placeholder-nested", "t2_placeholder-parent"]])
     #expect(urls.count == 3)
+  }
+}
+
+@MainActor
+extension AvatarLoaderTests {
+  @Test func relayoutRebindsLoadedEmbeddedAvatarsButFreshPagesWaitForTheirBatch() throws {
+    let parent = Post(id: "placeholder-parent")
+    let embedded = Post(id: "placeholder-embedded")
+    parent.helioData?.extractedMediaForcedNormal = .repost(embedded)
+    #expect(!parent.shouldUpdateAvatarFamily(fetchAvatar: false))
+    #expect(parent.shouldUpdateAvatarFamily(fetchAvatar: true))
+    embedded.helioData?.avatarImageRequest = try ImageRequest(url: #require(URL(string: "https://example.com/avatar.png")))
+    #expect(parent.shouldUpdateAvatarFamily(fetchAvatar: false))
+    embedded.helioData?.avatarImageRequest = nil
+    #expect(!parent.shouldUpdateAvatarFamily(fetchAvatar: false))
   }
 }
