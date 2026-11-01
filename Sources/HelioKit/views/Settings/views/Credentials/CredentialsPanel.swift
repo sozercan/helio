@@ -11,7 +11,6 @@ import SwiftUI
 
 struct CredentialsPanel: View {
   private let credentialsManager = RedditCredentialsManager.shared
-  @Environment(\.useTheme) private var theme
 
   var body: some View {
     Group {
@@ -44,7 +43,7 @@ struct CredentialsPanelList: View {
       Group {
         Section {
           ForEach(credentials) { cred in
-            CredentialPanelItem(cred: cred, deleteCred: RedditCredentialsManager.shared.deleteCred, inUse: cred.id == selectedCredentialID)
+            CredentialPanelItem(cred: cred, inUse: cred.id == selectedCredentialID)
           }
         } footer: {
           Text("To switch accounts, hold the \"me\" (or your username) tab pressed in the bottom bar.")

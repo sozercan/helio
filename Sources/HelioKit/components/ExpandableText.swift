@@ -20,18 +20,6 @@ struct ExpandableText: View {
   let lineLimit: Int
   let moreText: String
 
-  init(
-    _ text: String,
-    font: Font = .callout,
-    lineLimit: Int = 3,
-    moreText: String = "more",
-  ) {
-    self.text = text.trimmingCharacters(in: .whitespacesAndNewlines)
-    self.font = font
-    self.lineLimit = lineLimit
-    self.moreText = moreText
-  }
-
   var body: some View {
     content
       .lineLimit(isExpanded ? nil : lineLimit)
@@ -127,29 +115,6 @@ private struct TruncationTextMask: ViewModifier {
 private extension View {
   func applyingTruncationMask(moreTextSize: CGSize, isExpanded: Bool, isTruncated: Bool) -> some View {
     modifier(TruncationTextMask(moreTextSize: moreTextSize, isExpanded: isExpanded, isTruncated: isTruncated))
-  }
-}
-
-struct ExpandableText_Previews: PreviewProvider {
-  static var previews: some View {
-    ScrollView {
-      VStack(alignment: .leading) {
-        ExpandableText("This is a test\nThis is the second line\nThis is the third line huihiu  huih  g ytf tfytf tf \nFourth!")
-          .border(.red)
-          .padding()
-          .environment(\.layoutDirection, .rightToLeft)
-        ExpandableText("This is a test\nThis is the second line\nThis is the third line huihiu  huih  g ytf tfytf tf \nFourth!")
-          .border(.red)
-          .padding()
-        ExpandableText("This is a test\nThis is the second line\nThis is the third line\nFourth!", lineLimit: 4)
-          .border(.red)
-          .padding()
-        ExpandableText("This is a test\nThis is the second line\nThis is the third line\nFourth!", font: .title3)
-          .border(.red)
-          .padding()
-        Spacer()
-      }
-    }
   }
 }
 

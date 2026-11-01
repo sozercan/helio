@@ -17,33 +17,21 @@ struct AvatarView: View, Equatable {
   var saved: Bool
   var avatarImgRequest: ImageRequest?
   var userID: String
-  var fullname: String?
   var theme: AvatarTheme?
   var avatarSize: CGFloat?
 
-  init(saved: Bool, avatarImgRequest: ImageRequest? = nil, userID: String, fullname: String? = nil, theme: AvatarTheme? = nil, avatarSize: CGFloat? = nil) {
+  init(saved: Bool, avatarImgRequest: ImageRequest? = nil, userID: String, theme: AvatarTheme? = nil, avatarSize: CGFloat? = nil) {
     self.saved = saved
     self.avatarImgRequest = avatarImgRequest
     self.userID = userID
-    self.fullname = fullname
     self.theme = theme
     self.avatarSize = avatarSize
   }
 
-  init(saved: Bool, url: URL?, userID: String, fullname: String? = nil, theme: AvatarTheme? = nil, avatarSize: CGFloat? = nil) {
-    self.saved = saved
-    self.avatarImgRequest = .init(url: url)
-    self.userID = userID
-    self.fullname = fullname
-    self.theme = theme
-    self.avatarSize = avatarSize
-  }
-
-  init(saved: Bool, url: String, userID: String, fullname: String? = nil, theme: AvatarTheme? = nil, avatarSize: CGFloat? = nil) {
+  init(saved: Bool, url: String, userID: String, theme: AvatarTheme? = nil, avatarSize: CGFloat? = nil) {
     self.saved = saved
     self.avatarImgRequest = .init(stringLiteral: url)
     self.userID = userID
-    self.fullname = fullname
     self.theme = theme
     self.avatarSize = avatarSize
   }
@@ -57,7 +45,7 @@ struct AvatarView: View, Equatable {
           .foregroundColor(.red)
       } else {
         if let avatarImgRequest {
-          ThumbReqImage(imgRequest: avatarImgRequest, size: CGSize(width: avatarSize, height: avatarSize))
+          ThumbReqImage(imgRequest: avatarImgRequest)
         } else {
           Text(userID.prefix(1).uppercased())
             .fontSize(avatarSize / 2)

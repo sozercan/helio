@@ -18,16 +18,11 @@ struct PostContent: View, Equatable {
 
   var post: Post
   var helioData: PostHelioData
-  var sub: Subreddit
   var forceCollapse: Bool = false
   @State private var collapsed = false
   @State private var showSpoiler = false
   @Default(.PostPageDefSettings) private var defSettings
   @Environment(\.useTheme) private var selectedTheme
-
-  var contentWidth: CGFloat {
-    .screenW - (selectedTheme.posts.padding.horizontal * 2)
-  }
 
   func openSubreddit() {
     if let subName = post.data?.subreddit {

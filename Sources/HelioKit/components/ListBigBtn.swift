@@ -23,7 +23,6 @@ struct ListBigBtn: View {
   var action: () -> Void
 
   @State private var pressed = false
-  @Environment(\.useTheme) private var theme
 
   var body: some View {
     let isNotCircled = !icon.contains("circle")

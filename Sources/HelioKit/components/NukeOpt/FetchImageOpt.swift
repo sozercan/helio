@@ -17,15 +17,6 @@ public final class FetchImageOpt: Identifiable, LazyImageStateOpt {
   public private(set) var result: Result<ImageResponse, Error>?
 
   /// Returns the fetched image.
-  public var image: Image? {
-    #if os(macOS)
-      imageContainer.map { Image(nsImage: $0.image) }
-    #else
-      imageContainer.map { Image(uiImage: $0.image) }
-    #endif
-  }
-
-  /// Returns the fetched image.
   ///
   /// - note: In case pipeline has `isProgressiveDecodingEnabled` option enabled
   /// and the image being downloaded supports progressive decoding, the `image`
@@ -40,14 +31,6 @@ public final class FetchImageOpt: Identifiable, LazyImageStateOpt {
   /// - note: Animation isn't used when image is available in memory cache.
   public var transaction = Transaction(animation: nil)
 
-  /// The progress of the current image download.
-  public var progress: Progress {
-    if _progress == nil {
-      _progress = Progress()
-    }
-    return _progress!
-  }
-
   private var _progress: Progress?
 
   /// The download progress.
@@ -58,12 +41,6 @@ public final class FetchImageOpt: Identifiable, LazyImageStateOpt {
 
     /// A best-guess upper bound on the number of bytes of the resource.
     public internal(set) var total: Int64 = 0
-
-    /// Returns the fraction of the completion.
-    public var fraction: Float {
-      guard total > 0 else { return 0 }
-      return min(1, Float(completed) / Float(total))
-    }
   }
 
   /// Updates the priority of the task, even if the task is already running.
@@ -93,11 +70,6 @@ public final class FetchImageOpt: Identifiable, LazyImageStateOpt {
   public init() {}
 
   // MARK: Loading Images
-
-  /// Loads an image with the given request.
-  public func load(_ url: URL?) {
-    load(url.map { ImageRequest(url: $0) })
-  }
 
   /// Loads an image with the given request.
   public func load(_ request: ImageRequest?) {
@@ -172,56 +144,7 @@ public final class FetchImageOpt: Identifiable, LazyImageStateOpt {
 
   // MARK: Load (Async/Await)
 
-  /// Loads and displays an image using the given async function.
-  ///
-  /// - parameter action: Fetched the image.
-  public func load(_ action: @escaping () async throws -> ImageResponse) {
-    reset()
-    isLoading = true
-
-    let task = Task {
-      do {
-        let response = try await action()
-        withTransaction(transaction) {
-          handle(result: .success(response))
-        }
-      } catch {
-        handle(result: .failure(error))
-      }
-    }
-
-    cancellable = AnyCancellable { task.cancel() }
-  }
-
   // MARK: Load (Combine)
-
-  /// Loads an image with the given publisher.
-  ///
-  /// - important: Some `FetchImage` features, such as progress reporting and
-  /// dynamically changing the request priority, are not available when
-  /// working with a publisher.
-  public func load<P: Publisher>(_ publisher: P) where P.Output == ImageResponse {
-    reset()
-
-    // Not using `first()` because it should support progressive decoding
-    isLoading = true
-    cancellable = publisher.sink(receiveCompletion: { [weak self] completion in
-      guard let self else { return }
-      self.isLoading = false
-      switch completion {
-      case .finished:
-        if let response = self.lastResponse {
-          self.result = .success(response)
-        } // else was cancelled, do nothing
-      case let .failure(error):
-        self.result = .failure(error)
-      }
-    }, receiveValue: { [weak self] response in
-      guard let self else { return }
-      self.lastResponse = response
-      self.imageContainer = response.container
-    })
-  }
 
   // MARK: Cancel
 

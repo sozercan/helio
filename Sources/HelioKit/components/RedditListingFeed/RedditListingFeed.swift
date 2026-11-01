@@ -11,7 +11,6 @@ import SwiftUI
 
 struct RedditListingFeed<Header: View, Footer: View, S: Sorting>: View {
   private var showSubInPosts: Bool
-  private var feedId: String
   private var title: String
   private var theme: ThemeBG
   //  private var fetch: (_ force: Bool, _ lastElementId: String?, _ searchQuery: String?) async -> [RedditEntityType]?
@@ -29,7 +28,6 @@ struct RedditListingFeed<Header: View, Footer: View, S: Sorting>: View {
 
   init(feedId: String, showSubInPosts: Bool = false, title: String, theme: ThemeBG, fetch: @escaping FeedItemsManager<S>.ItemsFetchFn, @ViewBuilder header: @escaping () -> Header = { EmptyView() }, @ViewBuilder footer: @escaping () -> Footer = { EmptyView() }, initialSorting: S? = nil, disableSearch: Bool = true, subreddit: Subreddit? = nil, forceRefresh: Binding<Bool>? = nil, hideReadPosts: Bool = false) where S == SubListingSortOption {
     self.showSubInPosts = showSubInPosts
-    self.feedId = feedId
     self.title = title
     self.theme = theme
     self.header = header
@@ -38,13 +36,11 @@ struct RedditListingFeed<Header: View, Footer: View, S: Sorting>: View {
     self.disableSearch = disableSearch
     self.forceRefresh = forceRefresh // Assign the optional forceRefresh Binding
     self._itemsManager = .init(initialValue: FeedItemsManager(sorting: initialSorting, hideReadPosts: hideReadPosts, fetchFn: fetch))
-    self._searchEnabled = .init(initialValue: disableSearch)
     self._filters = FetchRequest<CachedFilter>(sortDescriptors: [NSSortDescriptor(key: "text", ascending: true)], predicate: NSPredicate(format: "subID == %@", (subreddit?.data?.display_name ?? feedId) as CVarArg), animation: .default)
   }
 
   @FetchRequest private var filters: FetchedResults<CachedFilter>
 
-  @State private var searchEnabled: Bool
   @SilentState private var fetchedFilters: Bool = false
 
   @State private var itemsManager: FeedItemsManager<S>
@@ -74,37 +70,6 @@ struct RedditListingFeed<Header: View, Footer: View, S: Sorting>: View {
     guard let subreddit, !fetchedFilters else { return }
     fetchedFilters = true
     await subreddit.fetchAndCacheFlairs()
-  }
-
-  @ViewBuilder
-  func getPinnedSection() -> some View {
-    if itemsManager.displayMode != .loading, !itemsManager.pinnedPosts.isEmpty || itemsManager.loadingPinned {
-      let isThereDivider = selectedTheme.postLinks.divider.style != .no
-      let paddingH = selectedTheme.postLinks.theme.outerHPadding
-      let paddingV = selectedTheme.postLinks.spacing / (isThereDivider ? 4 : 2)
-      Section("Pinned") {
-        if itemsManager.loadingPinned {
-          ProgressView().frame(maxWidth: .infinity, minHeight: 100)
-        } else {
-          ScrollView(.horizontal) {
-            LazyHStack(spacing: paddingV * 2) {
-              ForEach(itemsManager.pinnedPosts) { post in
-                StickiedPostLink(post: post)
-              }
-            }
-            .scrollTargetLayout()
-            .padding(.horizontal, paddingH)
-            .padding(.bottom, paddingV)
-          }
-          .scrollTargetBehavior(.viewAligned)
-          .listRowInsets(.zero)
-          .scrollIndicators(.hidden)
-        }
-      }
-      .listRowInsets(EdgeInsets(top: 0, leading: paddingH, bottom: 0, trailing: paddingH))
-      .listRowSeparator(.hidden)
-      .listRowBackground(Color.clear)
-    }
   }
 
   var body: some View {

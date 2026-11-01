@@ -20,10 +20,6 @@ struct CredentialEditAdvancedMode: View {
     draftCredential.accessToken = newToken
   }
 
-  var isDraftValid: Bool {
-    draftCredential.validationStatus != .invalid
-  }
-
   var body: some View {
     let credMeta = draftCredential.validationStatus.getMeta()
     let anyChanges = credential != draftCredential

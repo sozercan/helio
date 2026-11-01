@@ -29,7 +29,7 @@ struct FeedThemingPanel: View {
           LabeledSlider(label: "Posts spacing", value: $theme.postLinks.spacing, range: 0 ... 56)
             .resetter($theme.postLinks.spacing, defaultTheme.postLinks.spacing)
           Divider()
-          ThemeBGPicker(bg: $theme.postLinks.bg, defaultVal: defaultTheme.postLinks.bg)
+          ThemeBGPicker(bg: $theme.postLinks.bg)
         }
 
         FakeSection("Filters") {
@@ -79,8 +79,8 @@ struct FeedThemingPanel: View {
       .frame(height: (.screenH - getSafeArea().top - getSafeArea().bottom) / 2, alignment: .top)
       .clipped()
     }
-    .onAppear { previewPostSample.setupHelioData(helioData: previewPostSample.helioData, contentWidth: previewWidth, theme: theme) }
-    .onChange(of: theme) { x in previewPostSample.setupHelioData(helioData: previewPostSample.helioData, contentWidth: previewWidth, theme: x) }
+    .onAppear { previewPostSample.setupHelioData(contentWidth: previewWidth, theme: theme) }
+    .onChange(of: theme) { x in previewPostSample.setupHelioData(contentWidth: previewWidth, theme: x) }
     .onGeometryChange(for: Double.self) { $0.size.width } action: { panelWidth = $0 }
     .relayoutPosts({ [previewPostSample] }, contentWidth: previewWidth, theme: theme)
     .scrollContentBackground(.hidden)

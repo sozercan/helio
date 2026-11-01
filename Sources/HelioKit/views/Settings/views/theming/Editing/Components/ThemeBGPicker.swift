@@ -9,7 +9,6 @@ import SwiftUI
 
 struct ThemeBGPicker: View {
   @Binding var bg: ThemeBG
-  var defaultVal: ThemeBG
   var body: some View {
     VStack {
       HStack {

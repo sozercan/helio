@@ -9,7 +9,7 @@ import Alamofire
 import Foundation
 
 extension RedditAPI {
-  func fetchMoreReplies(comments: [String], moreID: String, postFullname: String, sort: CommentSortOption = .confidence, dropFirst: Bool = false) async -> [ListingChild<CommentData>]? {
+  func fetchMoreReplies(comments: [String], moreID: String, postFullname: String, sort: CommentSortOption = .confidence) async -> [ListingChild<CommentData>]? {
     let params = MoreRepliesPayload(children: comments.joined(separator: ","), link_id: postFullname, sort: sort.rawVal.value, id: moreID)
     switch await self.doRequest("\(RedditAPI.redditApiURLBase)/api/morechildren.json", method: .get, params: params, paramsLocation: .queryString, decodable: MoreRepliesResponse.self) {
     case let .success(data):

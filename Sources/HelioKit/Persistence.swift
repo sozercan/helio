@@ -15,10 +15,6 @@ struct PersistenceController {
   /// Subscription and multi snapshots share a private read/reconcile/save queue.
   let accountListsContext: NSManagedObjectContext
 
-  enum ContextType {
-    case main, bg
-  }
-
 //  func fetchEntity(_ entity: String, runsOnBG: Bool = false, where whereProp: String? = nil, is isProp: CVarArg? = nil) {
 //    let context = !runsOnBG ? self.container.viewContext : self.primaryBGContext
 //    let fetchRequest = NSFetchRequest<CachedFilter>(entityName: "CachedFilter")

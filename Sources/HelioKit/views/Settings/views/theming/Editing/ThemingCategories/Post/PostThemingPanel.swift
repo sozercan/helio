@@ -12,14 +12,9 @@ private enum Category: String, CaseIterable {
   case page, texts, badge
 }
 
-private enum PreviewBG: String, CaseIterable {
-  case blur, opaque, theme
-}
-
 struct PostThemingPanel: View {
   @Binding var theme: HelioTheme
   @State private var selectedCategory = Category.page.rawValue
-  @State private var previewBG: PreviewBG = .blur
   @State private var previewPostSample = Post(data: selfPostSampleData)
 
   var body: some View {
@@ -44,7 +39,7 @@ struct PostThemingPanel: View {
     } preview: {
       VStack(alignment: .leading, spacing: theme.posts.spacing) {
         if let helioData = previewPostSample.helioData {
-          PostContent(post: previewPostSample, helioData: helioData, sub: Subreddit(id: "Apple"))
+          PostContent(post: previewPostSample, helioData: helioData)
             .environment(\.useTheme, theme)
             .allowsHitTesting(false)
         }

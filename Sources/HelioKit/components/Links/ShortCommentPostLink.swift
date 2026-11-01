@@ -12,7 +12,6 @@ struct ShortCommentPostLink: View {
   var comment: Comment
   @State var openedPost = false
   @State var openedSub = false
-  @Environment(\.useTheme) private var selectedTheme
   var body: some View {
     if let data = comment.data, let _ = data.link_id, let _ = data.subreddit {
       VStack(alignment: .leading, spacing: 6) {

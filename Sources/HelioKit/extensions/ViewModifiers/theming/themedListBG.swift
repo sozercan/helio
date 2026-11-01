@@ -48,7 +48,7 @@ struct ThemedListBGModifier: ViewModifier {
       .background {
         if !disable, uiImage == nil {
           GeometryReader { geo in
-            returnColor(bg: bg, cs: cs, brighter: actuallyBrighter)
+            returnColor(bg: bg, brighter: actuallyBrighter)
               .frame(width: geo.size.width, height: geo.size.height)
           }.edgesIgnoringSafeArea(.all).allowsHitTesting(false)
         }
@@ -62,7 +62,7 @@ extension View {
   }
 }
 
-private func returnColor(bg: ThemeBG, cs: ColorScheme, brighter: Bool) -> Color {
+private func returnColor(bg: ThemeBG, brighter: Bool) -> Color {
   switch bg {
   case let .color(color):
     color(brighter: brighter)

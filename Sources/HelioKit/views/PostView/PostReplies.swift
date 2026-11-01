@@ -16,7 +16,6 @@ struct PostReplies: View {
   var highlightID: String?
   var sort: CommentSortOption
   var proxy: ScrollViewProxy
-  var geometryReader: GeometryProxy
   @Environment(\.useTheme) private var selectedTheme
 
   // MARK: Properties related to comment skipper
@@ -39,7 +38,7 @@ struct PostReplies: View {
     let result = if let prefetched {
       await prefetched.value
     } else {
-      await post.refreshPost(commentID: commentID, sort: sort, after: nil, subreddit: subreddit.data?.display_name ?? subreddit.id, full: full)
+      await post.refreshPost(commentID: commentID, sort: sort, subreddit: subreddit.data?.display_name ?? subreddit.id, full: full)
     }
     if let result, let newComments = result.0 {
       newComments.forEach { $0.parentHelio = comments }

@@ -132,14 +132,6 @@ class GenericRedditEntity<T: GenericRedditEntityDataType, B: Hashable>: Identifi
     self.typePrefix = typePrefix
     self.joinedID = data.id + kind
   }
-
-  func duplicate() -> GenericRedditEntity<T, B> {
-    let copy = GenericRedditEntity<T, B>(id: id, typePrefix: typePrefix)
-    copy.data = data
-    copy.kind = kind
-    copy.childrenHelio = childrenHelio
-    return copy
-  }
 }
 
 enum RedditEntityType: Hashable, Equatable, Identifiable {
@@ -169,17 +161,6 @@ enum RedditEntityType: Hashable, Equatable, Identifiable {
     case let .comment(x): x.id
     case let .user(x): x.id
     case let .message(x): x.id
-    }
-  }
-
-  var selfPrefix: String {
-    switch self {
-    case let .post(x): x.selfPrefix
-    case let .subreddit(x): x.selfPrefix
-    case let .multi(x): x.selfPrefix
-    case let .comment(x): x.selfPrefix
-    case let .user(x): x.selfPrefix
-    case let .message(x): x.selfPrefix
     }
   }
 }

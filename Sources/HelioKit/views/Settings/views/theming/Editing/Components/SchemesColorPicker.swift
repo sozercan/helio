@@ -10,7 +10,6 @@ import SwiftUI
 struct SchemesColorPicker: View {
   @Binding var theme: ColorSchemes<ThemeColor>
   var defaultVal: ColorSchemes<ThemeColor>
-  @Environment(\.useTheme) private var currentTheme
 
   var body: some View {
     HStack {

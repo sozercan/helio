@@ -10,7 +10,6 @@ import SwiftUI
 struct SchemesBGImagesPicker: View {
   @Binding var theme: ColorSchemes<String>
   var defaultVal: ColorSchemes<String>
-  @Environment(\.useTheme) private var currentTheme
 
   var body: some View {
     HStack {

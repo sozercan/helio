@@ -9,7 +9,6 @@ import SwiftUI
 
 struct CredentialPanelItem: View {
   var cred: RedditCredential
-  var deleteCred: @MainActor (RedditCredential) -> Void
   var inUse: Bool
   @State private var deleteAlertOpened = false
   var body: some View {

@@ -295,8 +295,6 @@ private func extractYoutubeIdFromOEmbed(_ text: String) -> String? {
   }
 }
 
-struct StreamableAPIParams: Codable {}
-
 struct StreamableAPIResponse: Codable {
   let files: StreamableAPIFiles?
 }

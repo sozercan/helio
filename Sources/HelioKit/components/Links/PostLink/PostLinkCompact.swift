@@ -117,11 +117,11 @@ struct PostLinkCompact: View, Equatable, Identifiable {
             }
 
             let newCommentsCount = helioData.seenCommentsCount == nil ? nil : data.num_comments - helioData.seenCommentsCount!
-            BadgeView(avatarRequest: helioData.avatarImageRequest, showAuthorOnPostLinks: defSettings.showAuthor, saved: data.badgeKit.saved, usernameColor: nil, author: data.badgeKit.author, fullname: data.badgeKit.authorFullname, userFlair: data.badgeKit.userFlair, created: data.badgeKit.created, avatarURL: nil, theme: theme.theme.badge, commentsCount: formatBigNumber(data.badgeKit.numComments), newCommentsCount: newCommentsCount, votesCount: formatBigNumber(data.badgeKit.ups), likes: data.likes, openSub: !theme.theme.badge.avatar.visible && showSub ? openSubreddit : nil, subName: data.subreddit, onTapStats: openPost)
+            BadgeView(avatarRequest: helioData.avatarImageRequest, showAuthorOnPostLinks: defSettings.showAuthor, saved: data.badgeKit.saved, usernameColor: nil, author: data.badgeKit.author, userFlair: data.badgeKit.userFlair, created: data.badgeKit.created, avatarURL: nil, theme: theme.theme.badge, commentsCount: formatBigNumber(data.badgeKit.numComments), newCommentsCount: newCommentsCount, votesCount: formatBigNumber(data.badgeKit.ups), likes: data.likes, openSub: !theme.theme.badge.avatar.visible && showSub ? openSubreddit : nil, subName: data.subreddit, onTapStats: openPost)
 
             if showSub, theme.theme.badge.avatar.visible {
               let subName = data.subreddit
-              Tag(subredditIconKit: nil, text: "r/\(subName)", color: theme.theme.badge.subColor())
+              Tag(subredditIconKit: nil, text: "r/\(subName)")
                 .highPriorityGesture(TapGesture().onEnded(openSubreddit))
             }
           }
@@ -138,7 +138,7 @@ struct PostLinkCompact: View, Equatable, Identifiable {
         .zIndex(1)
         .frame(maxWidth: .infinity, alignment: .topLeading)
       }
-      .postLinkStyle(showSubBottom: showSub && theme.theme.badge.avatar.visible, post: post, sub: sub, theme: theme.theme, size: helioData.postDimensions.size, secondary: secondary, openPost: openPost, readPostOnScroll: defSettings.readOnScroll)
+      .postLinkStyle(post: post, sub: sub, theme: theme.theme, secondary: secondary, readPostOnScroll: defSettings.readOnScroll)
       .swipyUI(onTap: openPost, actionsSet: defSettings.swipeActions, entity: post)
 //      .frame(width: helioData.postDimensions.size.width, height: helioData.postDimensions.size.height)
     }

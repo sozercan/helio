@@ -36,8 +36,6 @@ private struct Feature: View {
 }
 
 struct OnboardingAPIIntro: View {
-  var prevStep: () -> Void
-  var nextStep: () -> Void
   var body: some View {
     ScrollView {
       VStack(spacing: 24) {
@@ -56,7 +54,7 @@ struct OnboardingAPIIntro: View {
         }
 
         VStack(spacing: 12) {
-          MasterButton(label: "Sign in with Reddit", colorHoverEffect: .animated, textSize: 18, height: 48, fullWidth: true, cornerRadius: 16, action: {
+          MasterButton(label: "Sign in with Reddit", textSize: 18, height: 48, fullWidth: true, cornerRadius: 16, action: {
             Nav.present(.redditSignIn(nil))
           })
 

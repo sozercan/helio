@@ -80,12 +80,8 @@ struct SharedVideo: Equatable {
   var size: CGSize
   var posterURL: URL?
 
-  static func get(url: URL, size: CGSize, posterURL: URL? = nil, resetCache: Bool = false) -> SharedVideo {
+  static func get(url: URL, size: CGSize, posterURL: URL? = nil) -> SharedVideo {
     SharedVideo(url: url, size: size, posterURL: posterURL)
-  }
-
-  static func cacheKey(url: URL, size: CGSize) -> String {
-    "\(url.absoluteString):\(size.width)x\(size.height)"
   }
 
   init(url: URL, size: CGSize, posterURL: URL? = nil) {
@@ -163,10 +159,6 @@ struct VideoPlayerPost: View, Equatable {
     self.maxMediaHeightScreenPercentage = maxMediaHeightScreenPercentage
     self.cornerRadius = cornerRadius
     _holder = StateObject(wrappedValue: VideoPlayerHolder(url: cachedVideo != nil ? url : nil))
-  }
-
-  var safe: Double {
-    getSafeArea().top + getSafeArea().bottom
   }
 
   var body: some View {
@@ -608,7 +600,6 @@ struct AVPlayerRepresentable: UIViewRepresentable {
 class NiceAVPlayer: AVPlayerViewController, AVPlayerViewControllerDelegate {
   @Binding var fullscreen: Bool
   var autoPlayVideos: Bool
-  var ida = UUID().uuidString
   var gone = true
   private var loopObserver: NSObjectProtocol?
   @Default(.VideoDefSettings) private var videoDefSettings
@@ -681,14 +672,6 @@ class NiceAVPlayer: AVPlayerViewController, AVPlayerViewControllerDelegate {
     }
   }
 
-  func exitFullScreen(animated: Bool) {
-    let selector = NSSelectorFromString("exitFullScreenAnimated:completionHandler:")
-
-    if self.responds(to: selector) {
-      self.perform(selector, with: animated, with: nil)
-    }
-  }
-
   func playerViewController(
     _ playerViewController: AVPlayerViewController,
     willBeginFullScreenPresentationWithAnimationCoordinator coordinator: UIViewControllerTransitionCoordinator,
@@ -734,8 +717,4 @@ class NiceAVPlayer: AVPlayerViewController, AVPlayerViewControllerDelegate {
   }
 }
 
-extension AVPlayer {
-  var isVideoPlaying: Bool {
-    rate != 0 && error == nil
-  }
-}
+extension AVPlayer {}

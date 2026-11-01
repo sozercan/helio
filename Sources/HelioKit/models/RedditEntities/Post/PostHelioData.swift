@@ -39,7 +39,6 @@ class PostHelioData: Hashable {
   var linkMedia: PreviewModel?
   var videoMedia: SharedVideo?
   var postBodyAttr: NSAttributedString?
-  var media: PostHelioDataMedia?
   var seenCommentsCount: Int?
   var seenComments: String?
 
@@ -51,16 +50,4 @@ class PostHelioData: Hashable {
     hasher.combine(titleAttr)
     hasher.combine(postBodyAttr)
   }
-}
-
-enum PostHelioDataMedia {
-  case link(PreviewModel)
-  case video(SharedVideo)
-  case imgs([ImageRequest])
-  case yt(YTMediaExtracted)
-  case repost(Post)
-  case post(id: String, subreddit: String)
-  case comment(id: String, postID: String, subreddit: String)
-  case subreddit(name: String)
-  case user(username: String)
 }

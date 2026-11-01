@@ -22,11 +22,8 @@ struct CredentialEditAssistantMode: View {
   enum AssistantScene { case tutorial, credsCaptured, urlError, authSuccess, authError, loadingRefreshToken }
   enum AssistantCommonScene { case waiting, empty }
 
-  static let fabHeight: Double = 48
-  static let fabMargin: Double = 12
   @State private var scene: AssistantScene = .tutorial
   @State private var commonScene: AssistantCommonScene? = nil
-  @State private var loading = false
   @State private var timer = TimerHolder()
   @Environment(\.webAuthenticationSession) private var webAuthenticationSession
 
@@ -88,7 +85,7 @@ struct CredentialEditAssistantMode: View {
     .frame(maxWidth: .infinity, maxHeight: .infinity)
     .overlay(alignment: .bottom) {
       GeometryReader { _ in
-        PeakQuestionsOverlay(peakQuestions: questions)
+        PeakQuestionsOverlay()
       }
       .ignoresSafeArea(.all)
     }

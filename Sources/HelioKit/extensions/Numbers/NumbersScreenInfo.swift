@@ -18,10 +18,6 @@ extension Double {
   static var screenH: Double {
     WindowMetrics.shared.size.height
   }
-
-  static var screenScale: Double {
-    WindowMetrics.shared.displayScale
-  }
 }
 
 extension CGFloat {

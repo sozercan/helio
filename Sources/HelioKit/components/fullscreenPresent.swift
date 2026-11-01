@@ -8,12 +8,7 @@
 import SwiftUI
 
 /// Custom View Modifier Extension
-extension View {
-  func fullscreenPresent(show: Binding<Bool>, @ViewBuilder content: @escaping () -> some View) -> some View {
-    self
-      .modifier(HelperHeroView(show: show, overlay: content()))
-  }
-}
+extension View {}
 
 /// Helper Modifier
 private struct HelperHeroView<Overlay: View>: ViewModifier {
@@ -53,26 +48,6 @@ private struct HelperHeroView<Overlay: View>: ViewModifier {
   }
 }
 
-private struct ExtractSwiftUIParentController<Content: View>: UIViewRepresentable {
-  var content: Content
-  @Binding var hostView: CustomHostingView<Content>?
-  var parentController: (UIViewController?) -> Void
-
-  func makeUIView(context: Context) -> UIView {
-    // Simply Return Empty View
-    UIView()
-  }
-
-  func updateUIView(_ uiView: UIView, context: Context) {
-    // Update HostView's Root View (So that SwiftUI Will be updated when ever any state changes occurs in it's view)
-    hostView?.rootView = content
-    DispatchQueue.main.async {
-      // Retrieve it's parent view controller
-      parentController(uiView.superview?.superview?.parentController)
-    }
-  }
-}
-
 class CustomHostingView<Content: View>: UIHostingController<Content> {
   @Binding var show: Bool
 
@@ -95,16 +70,4 @@ class CustomHostingView<Content: View>: UIHostingController<Content> {
 }
 
 /// Return parent view controller for the given UIView
-public extension UIView {
-  var parentController: UIViewController? {
-    var responder = self.next
-    while responder != nil {
-      if let viewController = responder as? UIViewController {
-        return viewController
-      }
-      responder = responder?.next
-    }
-
-    return nil
-  }
-}
+public extension UIView {}

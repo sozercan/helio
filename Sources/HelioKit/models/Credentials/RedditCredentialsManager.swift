@@ -24,7 +24,6 @@ final class RedditCredentialsManager {
     RedditCredentialsManager.shared.credentials.first(where: { $0.id == credID })
   }
 
-  static let keychainEntryDivider = "\\--(*.*)--/"
   static let oldKeychainServiceString = "com.sertacozercan.helio.reddit-credentials"
   static let keychainServiceString = "com.sertacozercan.helio.reddit-multi-credentials"
   static let keychain = Keychain(service: RedditCredentialsManager.keychainServiceString).synchronizable(Defaults[.BehaviorDefSettings].iCloudSyncCredentials)

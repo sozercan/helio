@@ -18,23 +18,4 @@ extension RedditAPI {
       return nil
     }
   }
-
-  func fetchUserPublic(_ userName: String) async -> UserData? {
-    switch await self.doRequest("\(RedditAPI.redditWWWApiURLBase)/user/\(userName)/about.json", authenticated: false, method: .get, decodable: ListingChild<Either<EmptyStruct, UserData>>.self) {
-    case let .success(data):
-      switch data.data {
-      case .first:
-        return nil
-      case let .second(userData):
-        return userData
-      case .none:
-        return nil
-      }
-    case let .failure(error):
-      print(error)
-      return nil
-    }
-  }
-
-  struct EmptyStruct: Codable, Hashable {}
 }

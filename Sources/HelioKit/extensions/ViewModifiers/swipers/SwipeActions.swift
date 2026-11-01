@@ -25,7 +25,6 @@ struct SwipeUI<T: GenericRedditEntityDataType, B: Hashable>: ViewModifier {
   @State private var pressed = false
   @State private var enableBG = false
 
-  var secondary: Bool
   var offsetYAction: CGFloat = 0
   var controlledDragAmount: Binding<CGFloat>?
   var controlledIsSource = true
@@ -264,7 +263,6 @@ extension View {
     skipAnimation: Bool = false,
   ) -> some View {
     self.modifier(SwipeUI(
-      secondary: secondary,
       offsetYAction: offsetYAction,
       controlledDragAmount: controlledDragAmount,
       controlledIsSource: controlledIsSource,

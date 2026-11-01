@@ -57,7 +57,6 @@ struct CommentLinkContent: View {
   @State private var showSpoiler = false
   @State private var commentSwipeActions: SwipeActionsSet = CachedDefaults[.CommentLinkDefSettings].swipeActions
 
-  @Default(.CommentLinkDefSettings) private var defSettings
   @Default(.CommentsSectionDefSettings) private var sectionDefSettings
 
   @Environment(\.useTheme) private var selectedTheme
@@ -101,7 +100,7 @@ struct CommentLinkContent: View {
             if bars {
               CommentHeaderLine(data: data, avatarRequest: helioData.avatarImageRequest, isOP: (post?.data?.author ?? "") == data.author, unseen: seenComments == nil ? false : !seenComments!.contains(data.id), theme: theme.theme)
             } else if let author = data.author {
-              BadgeView(avatarRequest: helioData.avatarImageRequest, saved: data.badgeKit.saved, unseen: seenComments == nil ? false : !seenComments!.contains(data.id), usernameColor: (post?.data?.author ?? "") == author ? Color.green : nil, author: data.badgeKit.author, fullname: data.badgeKit.authorFullname, userFlair: data.badgeKit.userFlair, created: data.badgeKit.created, theme: theme.theme.badge, commentTheme: theme.theme)
+              BadgeView(avatarRequest: helioData.avatarImageRequest, saved: data.badgeKit.saved, unseen: seenComments == nil ? false : !seenComments!.contains(data.id), usernameColor: (post?.data?.author ?? "") == author ? Color.green : nil, author: data.badgeKit.author, userFlair: data.badgeKit.userFlair, created: data.badgeKit.created, theme: theme.theme.badge, commentTheme: theme.theme)
             }
 
             Spacer()
@@ -363,7 +362,7 @@ struct CommentHeaderLine: View {
     let badge = theme.badge
     HStack(alignment: .center, spacing: 6) {
       if badge.avatar.visible, let author = data.author {
-        AvatarView(saved: data.saved ?? false, avatarImgRequest: avatarRequest, userID: author, fullname: data.author_fullname, theme: badge.avatar)
+        AvatarView(saved: data.saved ?? false, avatarImgRequest: avatarRequest, userID: author, theme: badge.avatar)
       }
 
       if let author = data.author {
@@ -399,17 +398,3 @@ struct CommentHeaderLine: View {
 //        CommentLinkContent()
 //    }
 // }
-
-struct AnimatingCellHeight: AnimatableModifier {
-  var height: CGFloat = 0
-  var disable: Bool = false
-
-  var animatableData: CGFloat {
-    get { height }
-    set { height = newValue }
-  }
-
-  func body(content: Content) -> some View {
-    content.frame(height: disable ? nil : height, alignment: .topLeading)
-  }
-}

@@ -12,13 +12,6 @@ struct EditCredentialProfile: View {
   let username: String
   let statusInfo: RedditCredential.CredentialValidationState.Meta
 
-  struct StatusInfo: Equatable {
-    let color: Color
-    let lottieIcon: String
-    let label: String
-    let description: String
-  }
-
   var body: some View {
     HStack(spacing: 12) {
       if let pictureURL, let url = URL(string: pictureURL) {

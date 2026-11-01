@@ -26,5 +26,3 @@ func getCommentSampleData(_ withChild: Bool = true) -> CommentData {
   }
   return commentSampleData
 }
-
-let commentSample = Comment(data: getCommentSampleData())

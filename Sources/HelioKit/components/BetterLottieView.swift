@@ -67,19 +67,6 @@ struct BetterLottieView: View {
     self.contentMode = contentMode
   }
 
-  init(_ animationName: String, size: CGSize, loopDelay: Double? = nil, initialDelay: Double = 0, skipInitialProgress: Double = 0, color: Color? = .accentColor, animationSupportsSwitching: Bool = false, contentMode: ContentMode = .fit) {
-    self.animationName = animationName
-    self.size = size
-    self._playbackMode = .init(initialValue: .paused(at: .progress(skipInitialProgress)))
-    self._actualAnimationName = .init(initialValue: animationName)
-    self.loopDelay = loopDelay
-    self.skipInitialProgress = skipInitialProgress
-    self.initialDelay = initialDelay
-    self.color = color
-    self.animationSupportsSwitching = animationSupportsSwitching
-    self.contentMode = contentMode
-  }
-
   var body: some View {
     let actualColor = color ?? .white
     let rgb = UIColor(actualColor).rgb

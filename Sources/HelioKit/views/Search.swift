@@ -36,15 +36,8 @@ struct SearchOption: View {
   }
 }
 
-enum SearchTypeArr {
-  case subreddit([Subreddit])
-  case user([User])
-  case post([Post])
-}
-
 struct Search: View {
   @State var router: Router
-
   @State private var searchType: SearchType = .subreddit
   @State private var resultsSubs: [Subreddit] = []
   @State private var resultsUsers: [User] = []

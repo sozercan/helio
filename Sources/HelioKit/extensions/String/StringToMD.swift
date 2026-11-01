@@ -84,46 +84,4 @@ extension String {
 //    }
 // }
 
-extension String {
-  var niceMD: AttributedString {
-    let patterns = [
-      "\\*\\*(.+?)\\*\\*": [NSAttributedString.Key.font: UIFont.boldSystemFont(ofSize: UIFont.systemFontSize)],
-      "\\*(.+?)\\*": [NSAttributedString.Key.font: UIFont.italicSystemFont(ofSize: UIFont.systemFontSize)],
-      "\\[(.*?)\\]\\((.*?)\\)": [NSAttributedString.Key.link: URL(string: "$2") as Any],
-      "\\>(.+?)\\n": [NSAttributedString.Key.backgroundColor: UIColor.lightGray, NSAttributedString.Key.font: UIFont.systemFont(ofSize: UIFont.systemFontSize)],
-      "\\#\\s(.+?)\\n": [NSAttributedString.Key.font: UIFont.boldSystemFont(ofSize: 24)],
-      "\\#\\#\\s(.+?)\\n": [NSAttributedString.Key.font: UIFont.boldSystemFont(ofSize: 18)],
-      "\\#\\#\\#\\s(.+?)\\n": [NSAttributedString.Key.font: UIFont.boldSystemFont(ofSize: 14)],
-      "\\#\\#\\#\\#\\s(.+?)\\n": [NSAttributedString.Key.font: UIFont.boldSystemFont(ofSize: 10)],
-      "\\s{2,}(\\n)": [NSAttributedString.Key.font: UIFont.boldSystemFont(ofSize: 10)],
-    ]
-
-    var input = [String]()
-    self.enumerateLines { line, _ in
-      input.append(line)
-    }
-
-    let output = NSMutableAttributedString()
-
-    for line in input {
-      let formattedLine = NSMutableAttributedString(string: line)
-
-      for (pattern, attributes) in patterns {
-        let regex = try! NSRegularExpression(pattern: pattern, options: [])
-        let matches = regex.matches(in: line, range: NSRange(formattedLine.string.startIndex..., in: formattedLine.string))
-
-        for match in matches {
-          let range = match.range(at: 1)
-          let string = (formattedLine.string as NSString).substring(with: range)
-          let attributedString = NSAttributedString(string: string, attributes: attributes)
-          formattedLine.replaceCharacters(in: range, with: attributedString)
-        }
-      }
-
-      output.append(formattedLine)
-      output.append(NSAttributedString(string: "\n"))
-    }
-
-    return AttributedString(output)
-  }
-}
+extension String {}

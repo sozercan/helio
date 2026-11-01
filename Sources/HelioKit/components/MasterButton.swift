@@ -7,18 +7,10 @@
 
 import SwiftUI
 
-let BTN_SHRINK_ANIMATION = Animation.spring(response: 0.35)
-
 enum MasterButtonMode {
   case soft
   case normal
   case subtle
-}
-
-enum ColorHoverEffect {
-  case none
-  case normal
-  case animated
 }
 
 enum ProportionalTypes {
@@ -34,20 +26,15 @@ struct MasterButton: View {
   var label: String?
   var mode: MasterButtonMode = .normal
   var color: Color = .blue
-  var colorHoverEffect: ColorHoverEffect = .none
   var textColor: Color = .white
   var textSize: CGFloat = 16
   var textWeight: Font.Weight = .semibold
   var textDesign: Font.Design = .rounded
-  var shrinkHoverEffect: Bool = false
-  var padding: CGFloat = 10
   var height: CGFloat = 36
   var fullWidth: Bool = false
   var align: Alignment = .center
   var fullHeight: Bool = false
   var cornerRadius: CGFloat = 10
-  var shrinkRatio: CGFloat = 0.1
-  var confirmLabel: String?
   var proportional: ProportionalTypes = .no
   var growAnchor: Alignment = .center
   var disabled = false

@@ -8,14 +8,6 @@
 import NukeUI
 import SwiftUI
 
-struct LightBoxElement: Identifiable, Equatable {
-  var url: String
-  var size: CGSize
-  var id: String {
-    self.url
-  }
-}
-
 struct LightBoxElementView: View {
   var el: ImgExtracted
   var onTap: (() -> Void)?

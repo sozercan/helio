@@ -15,10 +15,6 @@ extension Message {
     self.init(data: data, typePrefix: "t1_")
   }
 
-  convenience init(id: String) {
-    self.init(id: id, typePrefix: "t1_")
-  }
-
   func toggleRead() async -> Bool {
     if let fullname = data?.name {
       let old = data?.new ?? false

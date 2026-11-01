@@ -12,7 +12,6 @@ class Hap {
   static var shared = Hap()
 
   private var engine: CHHapticEngine?
-  private var continuousHapticTimer: Timer?
   private var engineNeedsStart = true
   private var continuousPlayer: CHHapticAdvancedPatternPlayer?
   private lazy var supportsHaptics: Bool = AppDelegate.instance?.supportsHaptics ?? false
@@ -38,38 +37,6 @@ class Hap {
       try continuousPlayer.start(atTime: CHHapticTimeImmediate)
     } catch {
       print("Error starting the continuous haptic player: \(error)")
-    }
-  }
-
-  func playAhapFromFileName(_ filename: String) {
-    guard supportsHaptics, let engine = self.engine else { return }
-
-    guard let url = Bundle.main.url(forResource: filename, withExtension: "ahap"), let pattern = try? CHHapticPattern(contentsOf: url) else {
-      print("Failed to find \(filename) in bundle.")
-      return
-    }
-
-    playAhapFromURL(url)
-  }
-
-  func playAhapFromURL(_ url: URL) {
-    guard supportsHaptics, let engine = self.engine else { return }
-
-    guard let pattern = try? CHHapticPattern(contentsOf: url) else {
-      print("Failed to find.")
-      return
-    }
-
-    playPattern(pattern)
-  }
-
-  func playPattern(_ pattern: CHHapticPattern) {
-    guard supportsHaptics, let engine = self.engine else { return }
-    do {
-      let player = try engine.makePlayer(with: pattern)
-      try player.start(atTime: CHHapticTimeImmediate)
-    } catch {
-      print("Failed to play.")
     }
   }
 

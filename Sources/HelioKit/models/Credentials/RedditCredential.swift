@@ -14,8 +14,6 @@ import KeychainAccess
 import os
 import SwiftUI
 
-private let credentialLogger = Logger(subsystem: "com.sertacozercan.helio", category: "Credentials")
-
 struct RedditCredential: Identifiable, Equatable, Hashable, Codable, Sendable {
   static func defaultUserAgent(userName: String? = nil) -> String {
     "ios:com.sertacozercan.helio:v1.6.0 (by /u/\(userName ?? "UnknownUser"))"
@@ -236,11 +234,6 @@ struct RedditCredential: Identifiable, Equatable, Hashable, Codable, Sendable {
   @MainActor
   func save(_ forceCreate: Bool = true) {
     RedditCredentialsManager.shared.saveCred(self, forceCreate: forceCreate)
-  }
-
-  @MainActor
-  func delete() {
-    RedditCredentialsManager.shared.deleteCred(self)
   }
 
   /// A waiter owns its persistence policy. Refresh results merge only into the

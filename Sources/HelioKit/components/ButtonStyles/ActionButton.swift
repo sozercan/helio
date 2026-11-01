@@ -68,15 +68,7 @@ extension PrimitiveButtonStyle where Self == ActionButtonPrimitive {
     ActionButtonPrimitive()
   }
 
-  static func action(fullWidth: Bool = true) -> ActionButtonPrimitive {
-    ActionButtonPrimitive(fullWidth: fullWidth)
-  }
-
   static var actionSecondary: ActionButtonPrimitive {
     ActionButtonPrimitive(color: .acceptablePrimary, textColor: .primary)
-  }
-
-  static func actionSecondary(fullWidth: Bool = true) -> ActionButtonPrimitive {
-    ActionButtonPrimitive(fullWidth: fullWidth, color: .acceptablePrimary, textColor: .primary)
   }
 }

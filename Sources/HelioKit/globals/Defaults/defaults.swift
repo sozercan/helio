@@ -62,7 +62,6 @@ extension Defaults.Keys {
   static let likedButNotSubbed = Key<[Subreddit]>("likedButNotSubbed", default: [])
   /* </Heavy Defaults are kept separated, these should be in CoreData or something> */
 
-  static let wereOldDefaultsMigrated = Key<Bool>("wereOldDefaultsMigrated", default: false)
   /// When each account's subscriptions and multis were last synced at launch, by credential id
   /// and user name.
   static let subsSyncedAt = Key<[String: Date]>("subsSyncedAt", default: [:])

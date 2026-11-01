@@ -26,7 +26,7 @@ struct ShortPostLink: View {
 //              .equatable()
 //          }
           Spacer()
-          Tag(text: "r/\(data.subreddit)", color: selectedTheme.postLinks.theme.badge.subColor())
+          Tag(text: "r/\(data.subreddit)")
             .highPriorityGesture(TapGesture().onEnded {
               Nav.to(.reddit(.subFeed(Subreddit(id: data.subreddit))))
             })

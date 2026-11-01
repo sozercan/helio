@@ -28,11 +28,3 @@ extension View {
     self.modifier(ShrinkOnTap())
   }
 }
-
-private struct ShrinkOnTapButtonStyle: ButtonStyle {
-  func makeBody(configuration: Self.Configuration) -> some View {
-    configuration.label
-      .buttonStyle(PlainButtonStyle())
-      .shrinkOnTap()
-  }
-}

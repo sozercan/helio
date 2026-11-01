@@ -36,26 +36,4 @@ public struct HelioScene: Scene {
     }
     .commands { NavCommands() }
   }
-
-  func addQuickActions() {
-    @FetchRequest(sortDescriptors: [NSSortDescriptor(key: "name", ascending: true)], animation: .default) var subreddits: FetchedResults<CachedSub>
-
-    var searchUserInfo: [String: NSSecureCoding] {
-      ["name": "search" as NSSecureCoding]
-    }
-    var savedInfo: [String: NSSecureCoding] {
-      ["name": savedKeyword as NSSecureCoding]
-    }
-    var statususerInfo: [String: NSSecureCoding] {
-      ["name": "status" as NSSecureCoding]
-    }
-    var contactuserInfo: [String: NSSecureCoding] {
-      ["name": "contact" as NSSecureCoding]
-    }
-
-    UIApplication.shared.shortcutItems = [
-      UIApplicationShortcutItem(type: "Search", localizedTitle: "Search", localizedSubtitle: "Search a Subreddit", icon: UIApplicationShortcutIcon(type: .search), userInfo: searchUserInfo),
-      UIApplicationShortcutItem(type: "Saved", localizedTitle: "Saved", localizedSubtitle: "", icon: UIApplicationShortcutIcon(type: .bookmark), userInfo: savedInfo),
-    ]
-  }
 }

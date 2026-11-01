@@ -123,7 +123,7 @@ struct PostLinkNormal: View, Equatable, Identifiable {
 
         HStack(alignment: .center) {
           let newCommentsCount = helioData.seenCommentsCount == nil ? nil : data.num_comments - helioData.seenCommentsCount!
-          BadgeView(avatarRequest: helioData.avatarImageRequest, showAuthorOnPostLinks: defSettings.showAuthor, saved: data.badgeKit.saved, usernameColor: nil, author: data.badgeKit.author, fullname: data.badgeKit.authorFullname, userFlair: data.badgeKit.userFlair, created: data.badgeKit.created, avatarURL: nil, theme: theme.theme.badge, commentsCount: formatBigNumber(data.num_comments), newCommentsCount: newCommentsCount, votesCount: formatBigNumber(data.ups), likes: data.likes, openSub: showSub ? openSubreddit : nil, subName: data.subreddit, onTapStats: openPost, upvoteRatio: defSettings.showUpVoteRatio ? data.upvote_ratio : nil)
+          BadgeView(avatarRequest: helioData.avatarImageRequest, showAuthorOnPostLinks: defSettings.showAuthor, saved: data.badgeKit.saved, usernameColor: nil, author: data.badgeKit.author, userFlair: data.badgeKit.userFlair, created: data.badgeKit.created, avatarURL: nil, theme: theme.theme.badge, commentsCount: formatBigNumber(data.num_comments), newCommentsCount: newCommentsCount, votesCount: formatBigNumber(data.ups), likes: data.likes, openSub: showSub ? openSubreddit : nil, subName: data.subreddit, onTapStats: openPost, upvoteRatio: defSettings.showUpVoteRatio ? data.upvote_ratio : nil)
 
           Spacer(minLength: 8)
 
@@ -138,7 +138,7 @@ struct PostLinkNormal: View, Equatable, Identifiable {
           }
         }
       }
-      .postLinkStyle(post: post, sub: sub, theme: theme.theme, size: helioData.postDimensions.size, secondary: secondary, openPost: openPost, readPostOnScroll: defSettings.readOnScroll)
+      .postLinkStyle(post: post, sub: sub, theme: theme.theme, secondary: secondary, readPostOnScroll: defSettings.readOnScroll)
       .swipyUI(onTap: openPost, actionsSet: defSettings.swipeActions, entity: post, secondary: secondary)
     }
   }

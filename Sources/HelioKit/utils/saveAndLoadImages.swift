@@ -63,19 +63,6 @@ func loadImage(fileName: String) -> UIImage? {
   return nil
 }
 
-func loadImageURL(fileName: String) -> URL? {
-  let documentDirectory = FileManager.SearchPathDirectory.documentDirectory
-
-  let userDomainMask = FileManager.SearchPathDomainMask.userDomainMask
-  let paths = NSSearchPathForDirectoriesInDomains(documentDirectory, userDomainMask, true)
-
-  if let dirPath = paths.first {
-    return URL(fileURLWithPath: dirPath).appendingPathComponent(fileName)
-  }
-
-  return nil
-}
-
 // struct ZipDocument: FileDocument {
 //    static var readableContentTypes = [UTType.zip]
 //    var zipfile: URL

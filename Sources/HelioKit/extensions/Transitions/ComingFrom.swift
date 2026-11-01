@@ -21,13 +21,6 @@ struct ComeFromBotTrans: ViewModifier {
   let isActive: Bool
   let delay: Double
 
-  private func offsetFor(_ x: Edge) -> Double {
-    switch x {
-    case .top, .leading: -24
-    case .bottom, .trailing: 24
-    }
-  }
-
   private func edgeToUnit(_ x: Edge) -> UnitPoint {
     switch x {
     case .top: .top

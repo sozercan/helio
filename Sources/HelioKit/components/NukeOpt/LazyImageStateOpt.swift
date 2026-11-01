@@ -22,12 +22,6 @@ public protocol LazyImageStateOpt {
   /// and the image being downloaded supports progressive decoding, the `image`
   /// might be updated multiple times during the download.
   var imageContainer: ImageContainer? { get }
-
-  /// Returns `true` if the image is being loaded.
-  var isLoading: Bool { get }
-
-  /// The progress of the image download.
-  var progress: FetchImageOpt.Progress { get }
 }
 
 public extension LazyImageStateOpt {

@@ -15,13 +15,6 @@ struct SubsNStuffLine: View, Equatable {
   ///  static let height = Tag.height + 4
   static let height: CGFloat = 1
 
-  var showSub: Bool?
-  var feedsAndSuch: [String]?
-  var subredditIconKit: SubredditIconKit?
-  var sub: Subreddit?
-  var flair: String?
-  var over18: Bool?
-
   var body: some View {
     HStack(spacing: 0) {
       WDivider()

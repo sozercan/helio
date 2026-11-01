@@ -11,7 +11,6 @@ struct GuidedWaitingScene: View {
   @Binding var nav: [CredentialEditStack.Mode]
   @Binding var scene: CredentialEditAssistantMode.AssistantScene
   @Binding var commonScene: CredentialEditAssistantMode.AssistantCommonScene?
-  @State private var imLost = false
   @State private var state: WaitingState = .start
   @Environment(\.openURL) private var openURL
 

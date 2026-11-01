@@ -7,12 +7,6 @@
 
 import Foundation
 
-func rootURL(_ url: URL) -> URL? {
-  var components = URLComponents(url: url, resolvingAgainstBaseURL: false)
-  components?.query = nil
-  return components?.url
-}
-
 func rootURL(_ str: String) -> URL? {
   if let url = URL(string: str) {
     var components = URLComponents(url: url, resolvingAgainstBaseURL: false)

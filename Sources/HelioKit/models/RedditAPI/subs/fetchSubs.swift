@@ -11,19 +11,6 @@ import Defaults
 import Foundation
 import os
 
-func cleanSubs(_ subs: [ListingChild<SubredditData>]) -> [ListingChild<SubredditData>] {
-  subs.compactMap { y in
-    var x = y
-    x.data?.description = ""
-    x.data?.description_html = ""
-    x.data?.public_description = ""
-    x.data?.public_description_html = ""
-    x.data?.submit_text_html = ""
-    x.data?.submit_text = ""
-    return x
-  }
-}
-
 extension RedditAPI {
   /// `account`: whose subscriptions; the selected account when nil.
   func fetchAllSubs(after: String? = nil, accumulatedSubs: [ListingChild<SubredditData>]? = nil, account: RedditCredential? = nil) async -> [ListingChild<SubredditData>]? {

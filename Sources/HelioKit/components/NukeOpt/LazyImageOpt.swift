@@ -95,16 +95,6 @@ public struct LazyImageOpt<Content: View>: View {
     map { $0.context?.request.processors = processors ?? [] }
   }
 
-  /// Sets the priority of the requests.
-  public func priority(_ priority: ImageRequest.Priority?) -> Self {
-    map { $0.context?.request.priority = priority ?? .normal }
-  }
-
-  /// Changes the underlying pipeline used for image loading.
-  public func pipeline(_ pipeline: ImagePipeline) -> Self {
-    map { $0.pipeline = pipeline }
-  }
-
   public enum DisappearBehavior {
     /// Cancels the current request but keeps the presentation state of
     /// the already displayed image.
@@ -113,19 +103,9 @@ public struct LazyImageOpt<Content: View>: View {
     case lowerPriority
   }
 
-  /// Gets called when the request is started.
-  public func onStart(_ closure: @escaping (ImageTask) -> Void) -> Self {
-    map { $0.viewModel.onStart = closure }
-  }
-
   /// Override the behavior on disappear. By default, the view is reset.
   public func onDisappear(_ behavior: DisappearBehavior?) -> Self {
     map { $0.onDisappearBehavior = behavior }
-  }
-
-  /// Gets called when the current request is completed.
-  public func onCompletion(_ closure: @escaping (Result<ImageResponse, Error>) -> Void) -> Self {
-    map { $0.onCompletion = closure }
   }
 
   private func map(_ closure: (inout LazyImageOpt) -> Void) -> Self {

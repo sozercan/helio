@@ -13,7 +13,6 @@ struct PeakQuestionsScroller: View, Equatable {
     lhs.selectedQuestion == rhs.selectedQuestion && lhs.prevSelectedQuestion == rhs.prevSelectedQuestion
   }
 
-  var peakQuestions: [PeakQuestion]
   var selectedQuestion: PeakQuestion?
   var prevSelectedQuestion: PeakQuestion?
   var selectQuestion: (PeakQuestion) -> Void
@@ -29,7 +28,6 @@ struct PeakQuestionsScroller: View, Equatable {
 }
 
 struct PeakQuestionsOverlay: View {
-  var peakQuestions: [PeakQuestion]
   @State private var selectedQuestion: PeakQuestion? = nil
   @State private var prevSelectedQuestion: PeakQuestion? = nil
   @State private var pressed = false
@@ -64,7 +62,7 @@ struct PeakQuestionsOverlay: View {
   var body: some View {
     VStack(alignment: .center, spacing: 24) {
       if closedSize != nil {
-        PeakQuestionsScroller(peakQuestions: peakQuestions, selectedQuestion: selectedQuestion, prevSelectedQuestion: prevSelectedQuestion, selectQuestion: toggle, ns: ns)
+        PeakQuestionsScroller(selectedQuestion: selectedQuestion, prevSelectedQuestion: prevSelectedQuestion, selectQuestion: toggle, ns: ns)
           .padding(.top, 32)
           .zIndex(1)
           .compositingGroup()

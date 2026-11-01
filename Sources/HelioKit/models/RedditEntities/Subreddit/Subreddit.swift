@@ -28,11 +28,6 @@ extension Subreddit {
     self.init(id: id, typePrefix: "\(Subreddit.prefix)_")
   }
 
-  convenience init(entity: CachedSub) {
-    self.init(id: entity.uuid ?? UUID().uuidString, typePrefix: "\(Subreddit.prefix)_")
-    self.data = SubredditData(entity: entity)
-  }
-
   var isFeed: Bool {
     feedsAndSuch.contains(self.id)
   }
@@ -278,65 +273,6 @@ extension Subreddit {
 //    }
 //    return nil
 //  }
-
-  func fetchSavedMixedMedia(after: String? = nil, searchText: String? = nil, contentWidth: CGFloat = .screenW) async -> [Either<Post, Comment>]? {
-    // saved feed is a mix of posts and comments - logic needs to be handled separately
-    if let savedMediaData = await RedditAPI.shared.fetchSavedPosts(savedKeyword, after: after, searchText: searchText) {
-      await MainActor.run {
-        self.loading = false
-      }
-
-      var comments: [Comment] = []
-
-      let selectedTheme = InMemoryTheme.shared.currentTheme
-
-      let returnData: [Either<Post, Comment>]? = savedMediaData.map {
-        switch $0 {
-        case let .first(postData):
-          return .first(Post(data: postData, sub: self))
-        case let .second(commentData):
-          let comment = Comment(data: commentData)
-          comments.append(comment)
-          return .second(comment)
-        }
-      }
-
-      Task(priority: .utility) { [comments] in
-        _ = await RedditAPI.shared.updateCommentsWithAvatar(comments: comments, avatarSize: selectedTheme.comments.theme.badge.avatar.size)
-      }
-
-      return returnData
-    }
-    return nil
-  }
-
-  func resetFlairs() {
-    let context = PersistenceController.shared.container.newBackgroundContext()
-
-    let fetchRequest = NSFetchRequest<NSFetchRequestResult>(entityName: "CachedFilter")
-    fetchRequest.predicate = NSPredicate(format: "subID == %@ && type == 'flair'", self.id)
-
-    let deleteRequest = NSBatchDeleteRequest(fetchRequest: fetchRequest)
-    deleteRequest.resultType = .resultTypeObjectIDs
-
-    do {
-      // Perform the batch delete
-      try context.performAndWait {
-        let batchDelete = try context.execute(deleteRequest) as? NSBatchDeleteResult
-
-        guard let deleteResult = batchDelete?.result as? [NSManagedObjectID] else { return }
-        let deletedObjects: [AnyHashable: Any] = [NSDeletedObjectsKey: deleteResult]
-
-        NSManagedObjectContext.mergeChanges(fromRemoteContextSave: deletedObjects, into: [context])
-      }
-    } catch {
-      print("Error resetting flairs for \(self.id)")
-    }
-  }
-}
-
-struct CommentContributionSettings: Codable, Hashable {
-  let allowed_media_types: [String]?
 }
 
 struct SubListingSort: Codable, Identifiable {
@@ -346,8 +282,6 @@ struct SubListingSort: Codable, Identifiable {
     value
   }
 }
-
-let ablocaq = Array(SubListingSortOption.TopListingSortOption.allCases)[0].valueWithParent
 
 enum SubListingSortOption: Sorting {
   case best, hot, new, controversial, top(TopListingSortOption)

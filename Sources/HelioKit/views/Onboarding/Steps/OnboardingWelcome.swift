@@ -45,7 +45,7 @@ struct OnboardingWelcome: View {
       }
 
       if showBtn {
-        MasterButton(label: "👋 Hi, Helio!", colorHoverEffect: .animated, textSize: 18, height: 48, cornerRadius: 16, action: nextStep)
+        MasterButton(label: "👋 Hi, Helio!", textSize: 18, height: 48, cornerRadius: 16, action: nextStep)
           .padding(.top, 16)
           .transition(.scaleAndBlur)
       }

@@ -324,26 +324,4 @@ struct PinchZoom: UIViewRepresentable {
   }
 }
 
-struct PinchToZoom: ViewModifier {
-  var onTap: (() -> Void)?
-  var size: CGSize
-  @Binding var isPinching: Bool
-  @Binding var scale: CGFloat
-  @Binding var anchor: UnitPoint
-  @Binding var offset: CGSize
-
-  func body(content: Content) -> some View {
-    content
-      .frame(width: isWideLayout ? (.screenH * size.width) / size.height : .screenW, height: isWideLayout ? .screenH : (.screenW * size.height) / size.width)
-      .scaleEffect(scale, anchor: anchor)
-      .offset(offset)
-      .frame(.screenSize, .center)
-      .overlay(PinchZoom(onTap: onTap, imgSize: size, scale: $scale, anchor: $anchor, offset: $offset, isPinching: $isPinching))
-  }
-}
-
-extension View {
-  func pinchToZoom(onTap: (() -> Void)? = nil, size: CGSize, isPinching: Binding<Bool>, scale: Binding<CGFloat>, anchor: Binding<UnitPoint>, offset: Binding<CGSize>) -> some View {
-    self.modifier(PinchToZoom(onTap: onTap, size: size, isPinching: isPinching, scale: scale, anchor: anchor, offset: offset))
-  }
-}
+extension View {}
