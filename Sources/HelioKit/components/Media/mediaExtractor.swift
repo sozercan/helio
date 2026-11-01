@@ -90,7 +90,8 @@ func mediaExtractor(compact: Bool, contentWidth: Double = .screenW, _ data: Post
   // A crosspost's own url and media describe the original post's media (often a bare
   // v.redd.it link with no `media`), which can't be played from here. Show the original.
   if let postEmbed = data.crosspost_parent_list?.first {
-    return .repost(Post(data: postEmbed, contentWidth: contentWidth, secondary: true, theme: theme))
+    // The outer post/page owns avatar registration for the complete embedded tree.
+    return .repost(Post(data: postEmbed, contentWidth: contentWidth, secondary: true, theme: theme, fetchAvatar: false))
   }
 
   if let is_gallery = data.is_gallery, is_gallery, let galleryData = data.gallery_data?.items, let metadata = data.media_metadata {

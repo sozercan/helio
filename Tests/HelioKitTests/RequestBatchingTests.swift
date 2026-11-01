@@ -362,3 +362,40 @@ struct RetryPolicyTests {
     #expect(!RedditAPI.isTransient(.explicitlyCancelled))
   }
 }
+
+@MainActor
+extension AvatarLoaderTests {
+  @Test func aPageRegistersPostAndCrosspostAuthorsInOneLookup() async {
+    func post(_ id: String, author: String) -> Post {
+      let post = Post(id: id)
+      var data = postSampleData
+      data.author_fullname = author
+      post.data = data
+      return post
+    }
+    let parent = post("placeholder-parent", author: "t2_placeholder-parent")
+    let crosspost = post("placeholder-crosspost", author: "t2_placeholder-crosspost")
+    let other = post("placeholder-other", author: "t2_placeholder-parent")
+    let normalCrosspost = post("placeholder-normal-crosspost", author: "t2_placeholder-crosspost")
+    let nested = post("placeholder-nested", author: "t2_placeholder-nested")
+    parent.helioData?.extractedMedia = .repost(crosspost)
+    parent.helioData?.extractedMediaForcedNormal = .repost(normalCrosspost)
+    crosspost.helioData?.extractedMedia = .repost(nested)
+    other.helioData?.extractedMedia = .repost(crosspost)
+    let subjects = Post.avatarSubjects(for: [parent, other])
+    #expect(subjects.count == 5)
+    #expect(subjects[0] === parent)
+    #expect(subjects[1] === other)
+    #expect(subjects[2] === crosspost)
+    #expect(subjects[3] === normalCrosspost)
+    #expect(subjects[4] === nested)
+    let calls = Calls()
+    let loader = AvatarLoader { ids in
+      calls.record(ids)
+      return Dictionary(uniqueKeysWithValues: ids.map { ($0, "https://example.com/\($0).png") })
+    }
+    let urls = await loader.avatarURLs(for: subjects.compactMap { $0.data?.author_fullname })
+    #expect(calls.all == [["t2_placeholder-crosspost", "t2_placeholder-nested", "t2_placeholder-parent"]])
+    #expect(urls.count == 3)
+  }
+}
