@@ -74,7 +74,7 @@ func createTitleTagsAttrString(titleTheme: ThemeText, postData: PostData, textCo
   }
 }
 
-func buildTitleWithTags(attrString: NSAttributedString, title: String, fontSize: Double, fontWeight: UIFont.Weight, color: UIColor, size: CGSize) -> SwiftyLabel {
+func buildTitleWithTags(attrString: NSAttributedString, title: String, color: UIColor, size: CGSize) -> SwiftyLabel {
 //  let text = UITextView(usingTextLayoutManager: false)
   let text = SwiftyLabel()
   text.frame = .init(x: 0, y: 0, width: size.width, height: size.height)
@@ -109,13 +109,12 @@ struct Prepend: UIViewRepresentable, Equatable {
 
   var attrString: NSAttributedString
   var title: String
-  var fontSize: CGFloat
   var fontWeight: UIFont.Weight
   var color: UIColor
   var size: CGSize
 
   func makeUIView(context: Context) -> SwiftyLabel {
-    buildTitleWithTags(attrString: attrString, title: title, fontSize: fontSize, fontWeight: fontWeight, color: color, size: size)
+    buildTitleWithTags(attrString: attrString, title: title, color: color, size: size)
   }
 
   func updateUIView(_ uiLabel: SwiftyLabel, context: Context) {

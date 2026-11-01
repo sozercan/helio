@@ -9,9 +9,6 @@ import SwiftUI
 
 struct HelioButtonConfig {
   static let success = Self.primary()
-  static func success(fullWidth: Bool = false, cornerRadius: Double = 12, fontSize: Double = 17) -> HelioButtonConfig {
-    HelioButtonConfig(fullWidth: fullWidth, bgColor: .green, textColor: .white, cornerRadius: cornerRadius, fontSize: fontSize, fontWeight: .medium, animation: .easeIn(duration: 0.135))
-  }
 
   static let primary = Self.primary()
   static func primary(fullWidth: Bool = false, cornerRadius: Double = 12, fontSize: Double = 17) -> HelioButtonConfig {

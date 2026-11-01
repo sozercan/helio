@@ -16,7 +16,7 @@ struct PostPageTheming: View {
 
       Divider()
 
-      ThemeBGPicker(bg: $theme.bg, defaultVal: defaultTheme.posts.bg)
+      ThemeBGPicker(bg: $theme.bg)
 
       Divider()
 

@@ -11,14 +11,6 @@ import Foundation
 class AVLooperPlayer: AVQueuePlayer {
   private var looper: AVPlayerLooper!
 
-  func togglePlaying() {
-    if self.isPlaying {
-      self.pause()
-    } else {
-      self.play()
-    }
-  }
-
   override convenience init(url: URL) {
     let playerItem = AVPlayerItem(url: url)
     self.init(playerItem: playerItem)

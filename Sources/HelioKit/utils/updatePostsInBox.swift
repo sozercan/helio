@@ -10,7 +10,7 @@ import Defaults
 import Foundation
 import SwiftUI
 
-func updatePostsInBox(_ redditAPI: RedditAPI, force: Bool = false) async {
+func updatePostsInBox(force: Bool = false) async {
   let postsInBox = Defaults[.postsInBox]
   let postsInBoxNames: [String] = postsInBox.compactMap { post in
     if let lastRefresh = post.lastUpdatedAt, !force, Date().timeIntervalSince1970 - lastRefresh < 120 {

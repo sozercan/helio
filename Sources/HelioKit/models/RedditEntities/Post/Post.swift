@@ -86,7 +86,7 @@ extension Post {
 
   /// Without a `contentWidth` (refreshing a post, changing theme), keeps the width the post
   /// was last laid out for: the full window would be wrong in a split view's column.
-  func setupHelioData(data: PostData? = nil, helioData: PostHelioData? = nil, contentWidth: Double? = nil, secondary: Bool = false, theme: HelioTheme, sub: Subreddit? = nil, fetchAvatar: Bool = true) {
+  func setupHelioData(data: PostData? = nil, contentWidth: Double? = nil, secondary: Bool = false, theme: HelioTheme, sub: Subreddit? = nil, fetchAvatar: Bool = true) {
     let updateAvatarFamily = shouldUpdateAvatarFamily(fetchAvatar: fetchAvatar)
     let lastWidth = self.helioData?.layoutWidth ?? 0
     let contentWidth = contentWidth ?? (lastWidth > 0 ? lastWidth : .screenW)
@@ -158,7 +158,7 @@ extension Post {
     }
   }
 
-  static func extractFlairData(data: PostData, checkDefaultsForColor: Bool = false) -> PrependTag? {
+  static func extractFlairData(data: PostData) -> PrependTag? {
     if let flair = data.link_flair_text, let cleansed = flairWithoutEmojis(str: flair), !cleansed.joined().isEmpty {
       if let bgColor = data.link_flair_background_color, !bgColor.isEmpty {
         let textColor = data.link_flair_text_color == "light" ? "FFFFFF" : "000000"
@@ -555,7 +555,7 @@ extension Post {
     return false
   }
 
-  func refreshPost(commentID: String? = nil, sort: CommentSortOption = .confidence, after: String? = nil, subreddit: String? = nil, full: Bool = true, subId: String? = nil) async -> ([Comment]?, String?)? {
+  func refreshPost(commentID: String? = nil, sort: CommentSortOption = .confidence, subreddit: String? = nil, full: Bool = true) async -> ([Comment]?, String?)? {
     if let subreddit = data?.subreddit ?? subreddit, let response = await RedditAPI.shared.fetchPost(subreddit: subreddit, postID: id, commentID: commentID, sort: sort), response.count >= 2 {
       if let post = response[0] {
         switch post {
@@ -633,19 +633,5 @@ extension Post {
       }
     }
     return result
-  }
-
-  func hide(_ hide: Bool) async {
-    if data?.helioHidden == hide {
-      return
-    }
-    await MainActor.run {
-      withAnimation {
-        data?.helioHidden = true
-      }
-    }
-    if let name = data?.name {
-      await RedditAPI.shared.hidePost(hide, fullnames: [name])
-    }
   }
 }

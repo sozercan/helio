@@ -80,8 +80,8 @@ struct PostLinkThemingPanel: View {
         .padding(.horizontal, 16)
       }
     }
-    .onAppear { previewPostSample.setupHelioData(helioData: previewPostSample.helioData, contentWidth: previewWidth, theme: theme) }
-    .onChange(of: theme) { x in previewPostSample.setupHelioData(helioData: previewPostSample.helioData, contentWidth: previewWidth, theme: x) }
+    .onAppear { previewPostSample.setupHelioData(contentWidth: previewWidth, theme: theme) }
+    .onChange(of: theme) { x in previewPostSample.setupHelioData(contentWidth: previewWidth, theme: x) }
     .onGeometryChange(for: Double.self) { $0.size.width } action: { panelWidth = $0 }
     .relayoutPosts({ [previewPostSample] }, contentWidth: previewWidth, theme: theme)
     .themedListBG(theme.lists.bg)

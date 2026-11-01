@@ -52,7 +52,7 @@ struct PostView: View, Equatable {
   /// Reloads the post and its comments (pull to refresh, another sort).
   func asyncFetch() async {
     let request = await MainActor.run { commentsLoad.begin() }
-    if let result = await post.refreshPost(commentID: ignoreSpecificComment ? nil : highlightID, sort: sort, after: nil, subreddit: subreddit.data?.display_name ?? subreddit.id, full: true), let newComments = result.0 {
+    if let result = await post.refreshPost(commentID: ignoreSpecificComment ? nil : highlightID, sort: sort, subreddit: subreddit.data?.display_name ?? subreddit.id, full: true), let newComments = result.0 {
       newComments.forEach { $0.parentHelio = comments }
       let applied = await MainActor.run {
         // A later request (another sort) replaces these.
@@ -87,7 +87,7 @@ struct PostView: View, Equatable {
           Group {
             Section {
               if let helioData = post.helioData {
-                PostContent(post: post, helioData: helioData, sub: subreddit, forceCollapse: forceCollapse)
+                PostContent(post: post, helioData: helioData, forceCollapse: forceCollapse)
               }
               //              .equatable()
 
@@ -105,7 +105,7 @@ struct PostView: View, Equatable {
             .listRowBackground(Color.clear)
 
             if !hideElements {
-              PostReplies(commentsLoad: commentsLoad, post: post, subreddit: subreddit, ignoreSpecificComment: ignoreSpecificComment, highlightID: highlightID, sort: sort, proxy: proxy, geometryReader: geometryReader, topVisibleCommentId: $topVisibleCommentId, previousScrollTarget: $previousScrollTarget, comments: $comments)
+              PostReplies(commentsLoad: commentsLoad, post: post, subreddit: subreddit, ignoreSpecificComment: ignoreSpecificComment, highlightID: highlightID, sort: sort, proxy: proxy, topVisibleCommentId: $topVisibleCommentId, previousScrollTarget: $previousScrollTarget, comments: $comments)
             }
 
             if !ignoreSpecificComment, highlightID != nil {
@@ -167,7 +167,7 @@ struct PostView: View, Equatable {
           if !commentsLoad.started {
             let full = post.data == nil
             let task = Task(priority: .userInitiated) {
-              await post.refreshPost(commentID: highlightID, sort: sort, after: nil, subreddit: subreddit.data?.display_name ?? subreddit.id, full: full)
+              await post.refreshPost(commentID: highlightID, sort: sort, subreddit: subreddit.data?.display_name ?? subreddit.id, full: full)
             }
             commentsLoad.startPrefetch(CommentsLoad.Prefetch(task: task, sort: sort, commentID: highlightID))
           }

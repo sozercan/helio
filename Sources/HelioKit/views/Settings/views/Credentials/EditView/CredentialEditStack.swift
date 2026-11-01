@@ -11,19 +11,7 @@ struct CredentialEditStack: View {
   var credential: RedditCredential
   @State private var player = AVLooperPlayer(url: Bundle.main.url(forResource: "auth-ext", withExtension: "mov")!)
   @State private var draftCredential = RedditCredential()
-  @State private var waitingForCallback: Bool? = nil
   @State private var navPath: [Mode] = []
-
-  @Environment(\.useTheme) private var theme
-
-  func renewAccessToken() async {
-    let newToken = await draftCredential.getUpToDateToken(forceRenew: true)
-    draftCredential.accessToken = newToken
-  }
-
-  var isDraftValid: Bool {
-    draftCredential.validationStatus != .invalid
-  }
 
   enum Mode: Int, Hashable { case assistant, advanced, webLogin }
 

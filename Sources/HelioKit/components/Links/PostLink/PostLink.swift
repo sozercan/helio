@@ -9,8 +9,6 @@ import Defaults
 import NukeUI
 import SwiftUI
 
-let POSTLINK_INNER_H_PAD: CGFloat = 16
-
 struct PostLink: View, Equatable, Identifiable {
   static func == (lhs: PostLink, rhs: PostLink) -> Bool {
     lhs.id == rhs.id && lhs.repostAvatarRequest?.url == rhs.repostAvatarRequest?.url && lhs.defSettings == rhs.defSettings && lhs.compactPerSubreddit == rhs.compactPerSubreddit && lhs.theme == rhs.theme && lhs.contentWidth == rhs.contentWidth
@@ -55,7 +53,7 @@ struct PostLink: View, Equatable, Identifiable {
 }
 
 extension View {
-  func postLinkStyle(showSubBottom: Bool = false, post: Post, sub: Subreddit, theme: PostLinkTheme, size: CGSize, secondary: Bool, openPost: @escaping () -> Void, readPostOnScroll: Bool) -> some View {
+  func postLinkStyle(post: Post, sub: Subreddit, theme: PostLinkTheme, secondary: Bool, readPostOnScroll: Bool) -> some View {
     let seen = (post.data?.helioSeen ?? false)
     let fadeReadPosts = theme.unseenType == .fade
     return self

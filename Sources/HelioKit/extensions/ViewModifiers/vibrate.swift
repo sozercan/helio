@@ -215,9 +215,4 @@ struct VibrateModifier<T: Equatable>: ViewModifier {
   }
 }
 
-extension View {
-  func vibrate<T: Equatable>(_ vibration: VibrateModifier<T>.Vibration, trigger: T, disabled: Bool = false) -> some View {
-    self
-      .modifier(VibrateModifier(vibration, trigger: trigger, disabled: disabled))
-  }
-}
+extension View {}

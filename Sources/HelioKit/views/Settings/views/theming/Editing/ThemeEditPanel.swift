@@ -19,7 +19,6 @@ struct ThemeEditPanel: View {
   let theme: HelioTheme
   @State private var draftTheme: HelioTheme = defaultTheme
   @State private var iconPickerOpen = false
-  @State private var themeColor: Color = .blue
   @State private var navPath: [ThemeEditPanels] = []
 
   @Environment(\.dismiss) private var dismiss

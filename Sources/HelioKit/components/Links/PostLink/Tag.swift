@@ -13,10 +13,8 @@ struct Tag: View {
 
   var subredditIconKit: SubredditIconKit?
   var text: String
-  var color: Color = .secondary
   var fontSize: Double?
   var backgroundColor: Color = .accentColor
-  @Environment(\.useTheme) private var theme
 
   var body: some View {
     HStack(spacing: 4) {

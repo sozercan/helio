@@ -30,29 +30,6 @@ public struct GIFImage: UIViewRepresentable {
     }
   }
 
-  /// Initialzies the view with the given GIF image url.
-  public init(url: URL, size: CGSize? = nil) {
-    self.source = .url(url)
-    if let size {
-      self.size = size
-    }
-  }
-
-  /// Initialzies the view with the given GIF image name.
-  public init(imageName: String, size: CGSize? = nil) {
-    self.source = .imageName(imageName)
-    if let size {
-      self.size = size
-    }
-  }
-
-  /// Sets the desired number of loops. By default, the number of loops infinite.
-  public func loopCount(_ value: Int) -> GIFImage {
-    var copy = self
-    copy.loopCount = value
-    return copy
-  }
-
   public func makeUIView(context: Context) -> GIFImageView {
     let view = GIFImageView(frame: .init(origin: .zero, size: self.size))
     view.contentMode = .scaleAspectFill

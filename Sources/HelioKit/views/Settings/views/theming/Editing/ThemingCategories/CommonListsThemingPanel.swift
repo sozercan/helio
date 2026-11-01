@@ -13,7 +13,7 @@ struct CommonListsThemingPanel: View {
     ScrollView {
       VStack(alignment: .leading, spacing: 32) {
         FakeSection("Background", footer: "The screen's background, not the list rows.") {
-          ThemeBGPicker(bg: $theme.lists.bg, defaultVal: defaultTheme.lists.bg)
+          ThemeBGPicker(bg: $theme.lists.bg)
         }
 
         FakeSection("Foreground color", footer: "The list rows background.") {

@@ -11,10 +11,6 @@ import SwiftUI
 struct Inbox: View {
   @State var router: Router
 
-  @State private var messages: [Message] = []
-  @State private var loading = false
-  @Default(.GeneralDefSettings) private var generalDefSettings
-  @Default(.SubredditFeedDefSettings) var subredditFeedDefSettings
   @Environment(\.useTheme) private var selectedTheme
 
   init(router: Router) {

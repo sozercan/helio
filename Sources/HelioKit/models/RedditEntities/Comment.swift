@@ -13,10 +13,6 @@ import SwiftUI
 
 typealias Comment = GenericRedditEntity<CommentData, CommentHelioData>
 
-enum RandomErr: Error {
-  case oops
-}
-
 enum CommentParentElement {
   case post(Binding<[Comment]>)
   case comment(Comment)
@@ -73,51 +69,6 @@ extension Comment {
 //    guard let helioData = self.helioData, let data = self.data else { return }
 //    let theme = InMemoryTheme.shared.currentTheme.comments.theme
 //    let cs: ColorScheme = UIScreen.main.traitCollection.userInterfaceStyle == .dark ? .dark : .light
-  }
-
-  convenience init(message: Message) throws {
-    if let message = message.data {
-      var commentData = CommentData(id: message.id)
-      commentData.subreddit_id = nil
-      commentData.subreddit = message.subreddit
-      commentData.likes = nil
-      commentData.replies = .first("")
-      commentData.saved = false
-      commentData.archived = false
-      commentData.count = nil
-      commentData.author = message.author
-      commentData.created_utc = message.created_utc
-      commentData.send_replies = false
-      commentData.parent_id = message.parent_id
-      commentData.score = nil
-      commentData.author_fullname = message.author_fullname
-      commentData.author_flair_text = message.author_flair_text
-      commentData.approved_by = nil
-      commentData.mod_note = nil
-      commentData.collapsed = false
-      commentData.body = message.body
-      commentData.top_awarded_type = nil
-      commentData.name = message.name
-      commentData.is_submitter = nil
-      commentData.downs = nil
-      commentData.children = nil
-      commentData.body_html = message.body_html
-      commentData.permalink = nil
-      commentData.created = message.created
-      commentData.link_id = nil
-      commentData.link_title = message.link_title
-      commentData.subreddit_name_prefixed = message.subreddit_name_prefixed
-      commentData.depth = nil
-      commentData.author_flair_background_color = nil
-      commentData.collapsed_because_crowd_control = nil
-      commentData.mod_reports = nil
-      commentData.num_reports = nil
-      commentData.ups = nil
-      self.init(data: commentData, typePrefix: "\(Comment.prefix)_")
-      self.helioData = .init()
-    } else {
-      throw RandomErr.oops
-    }
   }
 
   static func initMultiple(datas: [ListingChild<T>], parent: [GenericRedditEntity<T, B>]? = nil) -> [Comment] {
@@ -193,7 +144,7 @@ extension Comment {
 
       let childrensLimit = 25
 
-      if let children = await RedditAPI.shared.fetchMoreReplies(comments: count > 0 ? Array(childrenIDS.prefix(childrensLimit)) : [String(parent_id.dropFirst(3))], moreID: actualID, postFullname: postFullname, dropFirst: count == 0) {
+      if let children = await RedditAPI.shared.fetchMoreReplies(comments: count > 0 ? Array(childrenIDS.prefix(childrensLimit)) : [String(parent_id.dropFirst(3))], moreID: actualID, postFullname: postFullname) {
         let parentID = data.parent_id ?? ""
         //        switch parent {
         //        case .comment(let comment):
@@ -517,16 +468,6 @@ struct CommentData: GenericRedditEntityDataType {
 //       try container.encode(helioBodyAttr.markdownRepresentation, forKey: .helioBodyAttr)
 //   }
 // }
-
-struct Gildings: Codable {}
-
-struct CommentSort: Codable, Identifiable {
-  var icon: String
-  var value: String
-  var id: String {
-    value
-  }
-}
 
 enum CommentSortOption: Codable, CaseIterable, Identifiable, Defaults.Serializable {
   var id: String {

@@ -22,11 +22,6 @@ struct FloatingBounceEffectModifier: ViewModifier {
   @State private var floatOffset: CGSize = .zero
   @State private var timer: AutoconnectableTimer
 
-  init(disabled: Bool) {
-    self.disabled = disabled
-    self._timer = .init(initialValue: Self.getTimer())
-  }
-
   func stopTimer() {
     timer.upstream.connect().cancel()
   }
@@ -65,8 +60,4 @@ struct FloatingBounceEffectModifier: ViewModifier {
   }
 }
 
-extension View {
-  func floatingBounceEffect(disabled: Bool = false) -> some View {
-    self.modifier(FloatingBounceEffectModifier(disabled: disabled))
-  }
-}
+extension View {}

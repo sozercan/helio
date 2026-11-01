@@ -45,8 +45,6 @@ class FeedItemsManager<S> {
   private(set) var displayMode: DisplayMode = .loading
   private(set) var isLoadingMore = false
   @ObservationIgnored private var failedLoadingMore = false
-  var loadingPinned = false
-  var pinnedPosts: [Post] = []
   private(set) var entities: [RedditEntityType] = [] {
     didSet { indexByID = Dictionary(entities.enumerated().map { ($1.id, $0) }, uniquingKeysWith: { first, _ in first }) }
   }

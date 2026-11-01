@@ -24,7 +24,7 @@ struct Onboarding7Ending: View {
       Text("Helio is ready to be used!")
         .opacity(0.75)
 
-      MasterButton(icon: "party.popper.fill", label: "Start using Helio!", colorHoverEffect: .animated, textSize: 18, height: 48, fullWidth: true, cornerRadius: 16, action: {
+      MasterButton(icon: "party.popper.fill", label: "Start using Helio!", textSize: 18, height: 48, fullWidth: true, cornerRadius: 16, action: {
         withAnimation {
           dismiss()
         }

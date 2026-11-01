@@ -80,17 +80,4 @@ struct AdvancedInstructions: View {
   }
 }
 
-extension LottieSwitch {
-  func colorValueProviders(_ colorValueProviders: [String: [Keyframe<LottieColor>]]) -> Self {
-    var copy = self
-
-    for (keypath, keyframes) in colorValueProviders {
-      copy = copy.valueProvider(
-        ColorValueProvider(keyframes),
-        for: AnimationKeypath(keypath: keypath),
-      )
-    }
-
-    return copy
-  }
-}
+extension LottieSwitch {}

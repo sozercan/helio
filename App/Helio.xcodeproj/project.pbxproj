@@ -16,7 +16,6 @@
 		65E45A6E2AFD3C1D007DBBFC /* changelog.json in Resources */ = {isa = PBXBuildFile; fileRef = 65E45A6D2AFD3C1D007DBBFC /* changelog.json */; };
 		93CC68DA4C8E17458DCB81E8 /* HelioApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6D6A0F8510E59A6EE7607767 /* HelioApp.swift */; };
 		EC051C472ACAF2DC00E9D9ED /* themeFileIcon.png in Resources */ = {isa = PBXBuildFile; fileRef = EC051C462ACAF2DC00E9D9ED /* themeFileIcon.png */; };
-		EC13D4452BB06CF300741E39 /* blackhole.ahap in Resources */ = {isa = PBXBuildFile; fileRef = EC13D4442BB06CF300741E39 /* blackhole.ahap */; };
 		EC13D4482BB06E1D00741E39 /* blackhole.mp4 in Resources */ = {isa = PBXBuildFile; fileRef = EC13D4472BB06E1D00741E39 /* blackhole.mp4 */; };
 		EC1AC99A2B1FEB0200674B31 /* openInHelio.e7e2aad9.js in Resources */ = {isa = PBXBuildFile; fileRef = EC1AC97E2B1FEB0200674B31 /* openInHelio.e7e2aad9.js */; };
 		EC1AC99B2B1FEB0200674B31 /* HelioApiHelper.b37faa57.css in Resources */ = {isa = PBXBuildFile; fileRef = EC1AC97F2B1FEB0200674B31 /* HelioApiHelper.b37faa57.css */; };
@@ -67,7 +66,6 @@
 		EC61D8772B4B47E200B236FF /* spinner.json in Resources */ = {isa = PBXBuildFile; fileRef = EC61D8762B4B47E200B236FF /* spinner.json */; };
 		EC6CBE332A7D6BF80089EAA0 /* README.md in Resources */ = {isa = PBXBuildFile; fileRef = EC6CBE322A7D6BF80089EAA0 /* README.md */; };
 		EC6CBE352A7D6E760089EAA0 /* LICENSE.md in Resources */ = {isa = PBXBuildFile; fileRef = EC6CBE342A7D6E760089EAA0 /* LICENSE.md */; };
-		EC7567042BB47DCB00CB67A3 /* supernova-appear.ahap in Resources */ = {isa = PBXBuildFile; fileRef = EC7567032BB47DCB00CB67A3 /* supernova-appear.ahap */; };
 		EC8F347C2A6CEBD600EB8249 /* Helio.xcdatamodeld in Sources */ = {isa = PBXBuildFile; fileRef = EC8F347A2A6CEBD600EB8249 /* Helio.xcdatamodeld */; };
 		EC982A2F2B4A267200FFE582 /* edit-appear.json in Resources */ = {isa = PBXBuildFile; fileRef = EC982A2E2B4A267200FFE582 /* edit-appear.json */; };
 		EC982A382B4A6BE200FFE582 /* confetti.json in Resources */ = {isa = PBXBuildFile; fileRef = EC982A372B4A6BE200FFE582 /* confetti.json */; };
@@ -79,7 +77,6 @@
 		ECAD01B62BC8738B008C18C0 /* book-opening.json in Resources */ = {isa = PBXBuildFile; fileRef = ECAD01B52BC8738B008C18C0 /* book-opening.json */; };
 		ECAD01B82BC87E29008C18C0 /* article.json in Resources */ = {isa = PBXBuildFile; fileRef = ECAD01B72BC87E29008C18C0 /* article.json */; };
 		ECD77F7D2BAFECE1006382F7 /* supernova.mp4 in Resources */ = {isa = PBXBuildFile; fileRef = ECD77F7C2BAFECE1006382F7 /* supernova.mp4 */; };
-		ECD77F842BB0070D006382F7 /* supernova.ahap in Resources */ = {isa = PBXBuildFile; fileRef = ECD77F832BB0070D006382F7 /* supernova.ahap */; };
 		ECE5AE122B11F66D00DA2020 /* Wave.metal in Sources */ = {isa = PBXBuildFile; fileRef = ECE5AE112B11F66C00DA2020 /* Wave.metal */; };
 		ECE5AE152B11FD0A00DA2020 /* Dust.sks in Resources */ = {isa = PBXBuildFile; fileRef = ECE5AE132B11FD0A00DA2020 /* Dust.sks */; };
 		ECED2EB72B282AAF00F4D25F /* particle.mov in Resources */ = {isa = PBXBuildFile; fileRef = ECED2EB62B282AAF00F4D25F /* particle.mov */; };
@@ -133,7 +130,6 @@
 		7448FB6DD4714375AB558491 /* SmokeUITests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = SmokeUITests.swift; sourceTree = "<group>"; };
 		EC051C2A2ACAEFC500E9D9ED /* QuickLookThumbnailing.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = QuickLookThumbnailing.framework; path = System/Library/Frameworks/QuickLookThumbnailing.framework; sourceTree = SDKROOT; };
 		EC051C462ACAF2DC00E9D9ED /* themeFileIcon.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = themeFileIcon.png; sourceTree = "<group>"; };
-		EC13D4442BB06CF300741E39 /* blackhole.ahap */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = blackhole.ahap; sourceTree = "<group>"; };
 		EC13D4472BB06E1D00741E39 /* blackhole.mp4 */ = {isa = PBXFileReference; lastKnownFileType = file; path = blackhole.mp4; sourceTree = "<group>"; };
 		EC1AC8962B1B6DA600674B31 /* src */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; name = src; path = "helio-everywhere/src"; sourceTree = SOURCE_ROOT; };
 		EC1AC97E2B1FEB0200674B31 /* openInHelio.e7e2aad9.js */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.javascript; path = openInHelio.e7e2aad9.js; sourceTree = "<group>"; };
@@ -191,7 +187,6 @@
 		EC61D8762B4B47E200B236FF /* spinner.json */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.json; path = spinner.json; sourceTree = "<group>"; };
 		EC6CBE322A7D6BF80089EAA0 /* README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = ../README.md; sourceTree = "<group>"; };
 		EC6CBE342A7D6E760089EAA0 /* LICENSE.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = ../LICENSE.md; sourceTree = "<group>"; };
-		EC7567032BB47DCB00CB67A3 /* supernova-appear.ahap */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = "supernova-appear.ahap"; sourceTree = "<group>"; };
 		EC8F347B2A6CEBD600EB8249 /* Helio.xcdatamodel */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcdatamodel; path = Helio.xcdatamodel; sourceTree = "<group>"; };
 		EC982A2E2B4A267200FFE582 /* edit-appear.json */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.json; path = "edit-appear.json"; sourceTree = "<group>"; };
 		EC982A372B4A6BE200FFE582 /* confetti.json */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.json; path = confetti.json; sourceTree = "<group>"; };
@@ -204,7 +199,6 @@
 		ECAD01B52BC8738B008C18C0 /* book-opening.json */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.json; path = "book-opening.json"; sourceTree = "<group>"; };
 		ECAD01B72BC87E29008C18C0 /* article.json */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.json; path = article.json; sourceTree = "<group>"; };
 		ECD77F7C2BAFECE1006382F7 /* supernova.mp4 */ = {isa = PBXFileReference; lastKnownFileType = file; path = supernova.mp4; sourceTree = "<group>"; };
-		ECD77F832BB0070D006382F7 /* supernova.ahap */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = supernova.ahap; sourceTree = "<group>"; };
 		ECE5AE112B11F66C00DA2020 /* Wave.metal */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.metal; path = Wave.metal; sourceTree = "<group>"; };
 		ECE5AE132B11FD0A00DA2020 /* Dust.sks */ = {isa = PBXFileReference; lastKnownFileType = file.sks; path = Dust.sks; sourceTree = "<group>"; };
 		ECED2EB62B282AAF00F4D25F /* particle.mov */ = {isa = PBXFileReference; lastKnownFileType = video.quicktime; path = particle.mov; sourceTree = "<group>"; };
@@ -381,7 +375,6 @@
 		EC7078F52ACAD93800A83240 /* Assets */ = {
 			isa = PBXGroup;
 			children = (
-				ECD77F802BB004A2006382F7 /* haptics */,
 				EC6081212B43A681001A1077 /* lottie */,
 				EC143B272B222A50008A567F /* videos */,
 				EC796DD22B147E1F00B425A1 /* particles */,
@@ -422,16 +415,6 @@
 				65C3A1C22B136430004609CA /* InfoPlist.strings */,
 			);
 			path = "helio-everywhere";
-			sourceTree = "<group>";
-		};
-		ECD77F802BB004A2006382F7 /* haptics */ = {
-			isa = PBXGroup;
-			children = (
-				EC7567032BB47DCB00CB67A3 /* supernova-appear.ahap */,
-				ECD77F832BB0070D006382F7 /* supernova.ahap */,
-				EC13D4442BB06CF300741E39 /* blackhole.ahap */,
-			);
-			path = haptics;
 			sourceTree = "<group>";
 		};
 		ECE5AE102B11F66500DA2020 /* shaders */ = {
@@ -587,7 +570,6 @@
 				EC593ADC2A4673B3002D6454 /* Assets.xcassets in Resources */,
 				EC6CBE332A7D6BF80089EAA0 /* README.md in Resources */,
 				ECAD01B82BC87E29008C18C0 /* article.json in Resources */,
-				EC7567042BB47DCB00CB67A3 /* supernova-appear.ahap in Resources */,
 				EC4792E92B453F1C00487AEE /* error.json in Resources */,
 				EC6081362B43F59E001A1077 /* warning-appear.json in Resources */,
 				EC4792ED2B4689CB00487AEE /* bell.json in Resources */,
@@ -608,9 +590,7 @@
 				EC60812C2B43C2EA001A1077 /* keys.json in Resources */,
 				EC13D4482BB06E1D00741E39 /* blackhole.mp4 in Resources */,
 				EC61D8752B4B478900B236FF /* party-appear.json in Resources */,
-				ECD77F842BB0070D006382F7 /* supernova.ahap in Resources */,
 				ECAD01B62BC8738B008C18C0 /* book-opening.json in Resources */,
-				EC13D4452BB06CF300741E39 /* blackhole.ahap in Resources */,
 				ECD77F7D2BAFECE1006382F7 /* supernova.mp4 in Resources */,
 				EC051C472ACAF2DC00E9D9ED /* themeFileIcon.png in Resources */,
 				EC61D8772B4B47E200B236FF /* spinner.json in Resources */,

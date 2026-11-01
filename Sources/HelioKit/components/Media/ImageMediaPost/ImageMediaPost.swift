@@ -28,9 +28,7 @@ struct ImageMediaPost: View, Equatable {
     lhs.postTitle == rhs.postTitle && lhs.compact == rhs.compact && lhs.contentWidth == rhs.contentWidth && lhs.badgeKit == rhs.badgeKit && lhs.cornerRadius == rhs.cornerRadius
   }
 
-  var helioData: PostHelioData
   var fullPage = false
-  weak var controller: UIViewController?
   let postTitle: String
   let badgeKit: BadgeKit
   let avatarImageRequest: ImageRequest?

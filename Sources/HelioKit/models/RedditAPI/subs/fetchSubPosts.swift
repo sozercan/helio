@@ -64,19 +64,7 @@ extension RedditAPI {
       subID += "search\(appendedFileType)"
     } else {
       if let sort {
-        switch sort {
-        case .best:
-          subID += "best\(appendedFileType)"
-        case .hot:
-          subID += "hot\(appendedFileType)"
-        case .new:
-          subID += "new\(appendedFileType)"
-        case let .top(topSortOption):
-          subID += "top\(appendedFileType)"
-          subID += buildTopSortQuery(topSortOption)
-        case .controversial:
-          subID += "controversial\(appendedFileType)"
-        }
+        subID += Self.listingEndpoint(sort)
       }
     }
 
@@ -95,20 +83,14 @@ extension RedditAPI {
     return subID
   }
 
-  private func buildTopSortQuery(_ topSortOption: SubListingSortOption.TopListingSortOption) -> String {
-    switch topSortOption {
-    case .hour:
-      "?t=hour"
-    case .day:
-      "?t=day"
-    case .week:
-      "?t=week"
-    case .month:
-      "?t=month"
-    case .year:
-      "?t=year"
-    case .all:
-      "?t=all"
+  /// The listing for a sort relative to a subreddit or multi path, such as `top.json?t=week`.
+  static func listingEndpoint(_ sort: SubListingSortOption) -> String {
+    switch sort {
+    case .best: "best.json"
+    case .hot: "hot.json"
+    case .new: "new.json"
+    case let .top(range): "top.json?t=\(range.rawValue)"
+    case .controversial: "controversial.json"
     }
   }
 

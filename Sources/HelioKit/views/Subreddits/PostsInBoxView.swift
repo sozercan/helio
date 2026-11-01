@@ -24,7 +24,7 @@ struct PostsInBoxView: View {
           }
         }
         .id("quickPosts")
-        .onAppear { Task(priority: .utility) { await updatePostsInBox(RedditAPI.shared) } }
+        .onAppear { Task(priority: .utility) { await updatePostsInBox() } }
       }
       .listRowInsets(EdgeInsets(top: 0, leading: 0, bottom: 0, trailing: 0))
     }

@@ -12,23 +12,7 @@ extension CGSize {
     CGSize(width: lhs.width + rhs.width, height: lhs.height + rhs.height)
   }
 
-  static func + (lhs: CGSize, rhs: Double) -> CGSize {
-    CGSize(width: lhs.width + rhs, height: lhs.height + rhs)
-  }
-
   static func - (lhs: CGSize, rhs: CGSize) -> CGSize {
     CGSize(width: lhs.width - rhs.width, height: lhs.height - rhs.height)
-  }
-
-  static func - (lhs: CGSize, rhs: Double) -> CGSize {
-    CGSize(width: lhs.width - rhs, height: lhs.height - rhs)
-  }
-
-  static func * (lhs: CGSize, rhs: CGSize) -> CGSize {
-    CGSize(width: lhs.width * rhs.width, height: lhs.height * rhs.height)
-  }
-
-  static func * (lhs: CGSize, rhs: Double) -> CGSize {
-    CGSize(width: lhs.width * rhs, height: lhs.height * rhs)
   }
 }

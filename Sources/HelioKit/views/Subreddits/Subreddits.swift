@@ -10,8 +10,6 @@ import Defaults
 import SwiftDate
 import SwiftUI
 
-let alphabetLetters = Array("ABCDEFGHIJKLMNOPQRSTUVWXYZ").map { String($0) }
-
 // Mac windows paint the subs list with the window background instead of the theme's, so it
 // continues the title bar above it rather than starting below it in another shade.
 #if targetEnvironment(macCatalyst)
@@ -50,7 +48,6 @@ struct Subreddits: View, Equatable {
 
   //  @Default(.likedButNotSubbed) private var likedButNotSubbed // subreddits that a user likes but is not subscribed to so they wont be in subsDict
   @Default(.AppearanceDefSettings) private var appearanceDefSettings
-  @Environment(\.managedObjectContext) private var context
   @Environment(\.useTheme) private var selectedTheme
 
   var sections: [String: [CachedSub]] {
@@ -210,7 +207,7 @@ struct Subreddits: View, Equatable {
       )
       .refreshable {
         Task(priority: .utility) {
-          await updatePostsInBox(RedditAPI.shared, force: true)
+          await updatePostsInBox(force: true)
         }
         Task(priority: .utility) {
           _ = await RedditAPI.shared.fetchMyMultis()

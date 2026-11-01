@@ -20,7 +20,6 @@ struct URLImage: View, Equatable {
   var doLiveText: Bool = false
   var showOverlay: Bool = false
   var imgRequest: ImageRequest?
-  var pipeline: ImagePipeline?
   var processors: [ImageProcessing]?
   var size: CGSize?
   /// Static preview shown behind the spinner while a GIF loads.
@@ -116,7 +115,6 @@ struct ThumbReqImage: View, Equatable {
   }
 
   var imgRequest: ImageRequest
-  var size: CGSize
 
   var body: some View {
     LazyImageOpt(request: imgRequest, transaction: .init(animation: .default)) { state in

@@ -13,7 +13,6 @@ import YouTubePlayerKit
 struct OnlyURL: View {
   static let height: Double = 22
   var url: URL
-  @Environment(\.openURL) private var openURL
   var body: some View {
     HStack(spacing: 4) {
       Image(systemName: "link")
@@ -61,10 +60,10 @@ struct MediaPresenter: View, Equatable {
     case let .imgs(imgsExtracted):
       if !showURLInstead {
         if !imgsExtracted.isEmpty, imgsExtracted[0].url.absoluteString.hasSuffix(".gif") {
-          ImageMediaPost(helioData: helioData, controller: controller, postTitle: postTitle, badgeKit: badgeKit, avatarImageRequest: avatarImageRequest, markAsSeen: markAsSeen, cornerRadius: cornerRadius, compact: compact, images: imgsExtracted, contentWidth: contentWidth, maxMediaHeightScreenPercentage: maxMediaHeightScreenPercentage)
+          ImageMediaPost(postTitle: postTitle, badgeKit: badgeKit, avatarImageRequest: avatarImageRequest, markAsSeen: markAsSeen, cornerRadius: cornerRadius, compact: compact, images: imgsExtracted, contentWidth: contentWidth, maxMediaHeightScreenPercentage: maxMediaHeightScreenPercentage)
             .nsfw(over18 && blurPostLinkNSFW, smallIcon: compact, size: mediaSize)
         } else {
-          ImageMediaPost(helioData: helioData, controller: controller, postTitle: postTitle, badgeKit: badgeKit, avatarImageRequest: avatarImageRequest, markAsSeen: markAsSeen, cornerRadius: cornerRadius, compact: compact, images: imgsExtracted, contentWidth: contentWidth, maxMediaHeightScreenPercentage: maxMediaHeightScreenPercentage)
+          ImageMediaPost(postTitle: postTitle, badgeKit: badgeKit, avatarImageRequest: avatarImageRequest, markAsSeen: markAsSeen, cornerRadius: cornerRadius, compact: compact, images: imgsExtracted, contentWidth: contentWidth, maxMediaHeightScreenPercentage: maxMediaHeightScreenPercentage)
             .nsfw(over18 && blurPostLinkNSFW, smallIcon: compact, size: mediaSize)
         }
       }

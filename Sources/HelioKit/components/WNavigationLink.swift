@@ -13,7 +13,6 @@ struct WListButton<Content: View>: View {
   var action: () -> Void
   @ViewBuilder var label: () -> Content
   @State private var forcedActive = false
-  @State private var uuid = UUID()
 
   init(showArrow: Bool = false, active: Bool = false, _ action: @escaping () -> Void, @ViewBuilder label: @escaping () -> Content) {
     self.active = active
@@ -77,32 +76,6 @@ struct WSListButton: View {
       } else {
         Text(label)
       }
-    }
-  }
-}
-
-struct WNavigationLink<Content: View>: View {
-  var value: Router.NavDest
-  var active: Bool = false
-  var label: () -> Content
-
-  init(_ value: Router.NavDest, active: Bool = false, _ label: @escaping () -> Content) {
-    self.value = value
-    self.active = active
-    self.label = label
-  }
-
-  init(value: Router.NavDest, active: Bool = false, _ label: @escaping () -> Content) {
-    self.value = value
-    self.active = active
-    self.label = label
-  }
-
-  var body: some View {
-    WListButton(showArrow: true, active: active) {
-      Nav.to(value)
-    } label: {
-      label()
     }
   }
 }

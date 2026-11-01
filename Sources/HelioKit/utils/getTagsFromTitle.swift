@@ -9,14 +9,6 @@ import Foundation
 import SwiftUI
 import UIKit
 
-func getTagsFromTitle(_ post: Post) -> [PrependTag] {
-  var tags: [PrependTag] = []
-  if let data = post.data {
-    tags = getTagsFromTitleRaw(data)
-  }
-  return tags
-}
-
 func getTagsFromTitle(_ data: PostData) -> [PrependTag] {
   getTagsFromTitleRaw(data)
 }
@@ -26,7 +18,7 @@ func getTagsFromTitleRaw(_ data: PostData) -> [PrependTag] {
   if data.over_18 ?? false {
     tags.append(.init(label: "NSFW", bgColor: UIColor(.red.opacity(0.9)), textColor: .white))
   }
-  if let flair = Post.extractFlairData(data: data, checkDefaultsForColor: true) {
+  if let flair = Post.extractFlairData(data: data) {
     tags.append(flair)
   }
   return tags

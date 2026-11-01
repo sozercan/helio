@@ -15,12 +15,4 @@ extension View {
       self
     }
   }
-
-  @ViewBuilder func ifLet<E: Any>(_ el: E?, transform: (Self, E) -> some View) -> some View {
-    if let el {
-      transform(self, el)
-    } else {
-      self
-    }
-  }
 }

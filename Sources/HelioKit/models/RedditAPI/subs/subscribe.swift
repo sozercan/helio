@@ -9,16 +9,6 @@ import Alamofire
 import Foundation
 
 extension RedditAPI {
-  func subscribe(_ action: SubscribeAction, subFullname: String) async -> Bool {
-    let params = SubscribePayload(action: action, sr: subFullname)
-    switch await self.doRequest("\(RedditAPI.redditApiURLBase)/api/subscribe", method: .post, params: params, paramsLocation: .queryString) {
-    case .success:
-      return true
-    case .failure:
-      return false
-    }
-  }
-
   struct SubscribePayload: Codable {
     var action: SubscribeAction
     var action_source = "o"

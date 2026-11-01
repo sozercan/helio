@@ -236,24 +236,6 @@ struct GeneralPanel: View {
     totalCacheSize = "0 bytes"
     print("Cache cleared successfully.")
   }
-
-  func clearDirectory(directory: URL?) {
-    guard let directory else {
-      return
-    }
-
-    let fileManager = FileManager.default
-
-    do {
-      let fileURLs = try fileManager.contentsOfDirectory(at: directory, includingPropertiesForKeys: nil, options: .skipsHiddenFiles)
-
-      for fileURL in fileURLs {
-        try fileManager.removeItem(at: fileURL)
-      }
-    } catch {
-      print("Error deleting files in directory: \(error.localizedDescription)")
-    }
-  }
 }
 
 /// The directories holding only this app's cache files. On iOS, and in a sandboxed Mac app, the

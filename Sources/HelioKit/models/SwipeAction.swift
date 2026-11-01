@@ -403,24 +403,6 @@ struct SelectTextCommentAction: SwipeAction {
   }
 }
 
-struct ShareCommentAction: SwipeAction {
-  var id = "share-comment-swipe-action"
-  var label = "Share comment"
-  var icon = SwipeActionItem(normal: "square.and.arrow.up.fill")
-  var color = SwipeActionItem(normal: "0B84FE")
-  var bgColor = SwipeActionItem(normal: "353439")
-  func action(_ entity: Comment) async {}
-
-  func active(_ entity: Comment) -> Bool {
-    true
-  }
-
-  @MainActor
-  func enabled(_ entity: Comment) -> Bool {
-    true
-  }
-}
-
 struct CopyCommentAction: SwipeAction {
   var id = "copy-comment-swipe-action"
   var label = "Copy text"

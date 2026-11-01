@@ -9,25 +9,14 @@ import Defaults
 import NukeUI
 import SwiftUI
 
-struct UserViewContextPreview: View {
-  var author: String
-  var body: some View {
-    NavigationStack { UserView(user: User(id: author)) }
-  }
-}
-
 struct UserView: View {
   var user: User
-  @State private var lastActivities: [Either<Post, Comment>]?
   @State private var contentWidth: CGFloat = 0
-  @State private var loadingOverview = true
-  @State private var lastItemId: String? = nil
   @Default(.SubredditFeedDefSettings) private var subFeedSettings
   @Environment(\.useTheme) private var selectedTheme
 
   @State private var dataTypeFilter: String = "" // Handles filtering for only posts or only comments.
   @State private var forceRefresh = false
-  @State private var loadNextData: Bool = false
 
   func fetcher(_ after: String?, _ sorting: SubListingSortOption?, _ searchQuery: String?, _ flair: String?, _ context: FeedItemsManager<SubListingSortOption>.FetchContext) async -> ([RedditEntityType]?, String?)? {
     if let overviewDataResult = await user.refetchOverview(dataTypeFilter, after, limit: context.limit, altCredential: context.credential), let overviewData = overviewDataResult.0 {

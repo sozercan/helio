@@ -32,10 +32,6 @@ class Nav: Identifiable, Equatable {
     Nav.shared.presentingSheet = content
   }
 
-  static func resetStack() {
-    Nav.shared.activeRouter.resetNavPath()
-  }
-
   /* </Util static functions for ease of use> */
 
   private static func newRouterForTab(_ tab: TabIdentifier, _ id: UUID) -> Router {
@@ -123,10 +119,6 @@ class Nav: Identifiable, Equatable {
     routers[tab]?.navigateTo(dest, reset)
   }
 
-  func resetStack() {
-    activeRouter.resetNavPath()
-  }
-
   subscript(tab: TabIdentifier) -> Router {
     let router = self.routers[tab] ?? Self.newRouterForTab(tab, id)
     if self.routers[tab] == nil {
@@ -149,12 +141,6 @@ class Nav: Identifiable, Equatable {
       UIApplication.shared.firstKeyWindow?.rootViewController?.present(vc, animated: true)
     } else {
       UIApplication.shared.open(url)
-    }
-  }
-
-  static func openURL(_ urlStr: String) {
-    if let url = URL(string: urlStr) {
-      openURL(url)
     }
   }
 }

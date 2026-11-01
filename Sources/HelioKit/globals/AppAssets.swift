@@ -13,7 +13,6 @@ extension ImageResource {
   static let discordLogo = ImageResource(name: "discordLogo", bundle: .main)
   static let loader = ImageResource(name: "loader", bundle: .main)
   static let redditLogo = ImageResource(name: "redditLogo", bundle: .main)
-  static let spotlight = ImageResource(name: "spotlight", bundle: .main)
 }
 
 extension ColorResource {

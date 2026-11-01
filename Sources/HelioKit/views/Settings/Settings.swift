@@ -13,11 +13,9 @@ import WhatsNewKit
 
 struct Settings: View {
   @State var router: Router
-
   @Environment(\.openURL) private var openURL
   //  @Default(.likedButNotSubbed) private var likedButNotSubbed
   @Environment(\.useTheme) private var selectedTheme
-  @State private var id = UUID().uuidString
   @State private var presentingWhatsNew: Bool = false
 
   init(router: Router) {

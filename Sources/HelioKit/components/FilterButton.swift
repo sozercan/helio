@@ -19,11 +19,9 @@ struct FilterButton: View, Equatable {
   private let colorDotSize: Double = 8
   private let hPadding: Double = 14
   private let height: Double = 32
-  private let longPressDuration: Double = 0.275
 
-  //  @GestureState private var pressingDown = false
+  ///  @GestureState private var pressingDown = false
   @State private var pressingDown = false
-  @State private var editTimer: Timer? = nil
 
   var body: some View {
 //    let isSelected = filter.type == "search" ? searchText.lowercased() == filter.text.lowercased() : isSelected

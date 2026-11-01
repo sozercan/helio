@@ -23,22 +23,6 @@ enum ArrowKind: Equatable {
       self
     }
   }
-
-  var isStraight: Bool {
-    self == .straight
-  }
-
-  var isStraightCurve: Bool {
-    self == .straightCurve
-  }
-
-  var isCurve: Bool {
-    self == .curve
-  }
-
-  var isEmpty: Bool {
-    self == .empty
-  }
 }
 
 struct Arrows: View, Equatable {

@@ -8,37 +8,11 @@
 import Defaults
 import SwiftUI
 
-let ZINDEX_SLOTS_COMMENT = 100000
-
-struct Top: Shape {
-  func path(in rect: CGRect) -> Path {
-    let path = UIBezierPath(roundedRect: rect, byRoundingCorners: [.topLeft, .topRight], cornerRadii: CGSize(width: 20, height: 20))
-    return Path(path.cgPath)
-  }
-}
-
 enum CommentBGSide {
   case top
   case middle
   case bottom
   case single
-
-  static func getFromArray(count: Int, i: Int) -> Self {
-    if !isWideLayout {
-      return .middle
-    }
-    let finalIndex = count - 1
-    if count == 1 {
-      return .single
-    }
-    if i == 0 {
-      return .top
-    }
-    if i == finalIndex {
-      return .bottom
-    }
-    return .middle
-  }
 }
 
 struct CommentBG: Shape {
@@ -60,10 +34,6 @@ struct CommentBG: Shape {
     let path = UIBezierPath(roundedRect: rect, byRoundingCorners: roundingCorners, cornerRadii: CGSize(width: cornerRadius, height: cornerRadius))
     return Path(path.cgPath)
   }
-}
-
-class SubCommentsReferencesContainer: ObservableObject {
-  @Published var data: [Comment] = []
 }
 
 struct CommentLink: View, Equatable {
@@ -124,24 +94,6 @@ struct CommentLink: View, Equatable {
 
     } else {
       Text("Oops")
-    }
-  }
-}
-
-struct CustomDisclosureGroupStyle: DisclosureGroupStyle {
-  func makeBody(configuration: Configuration) -> some View {
-    VStack {
-      configuration.label
-        .contentShape(Rectangle())
-        .onTapGesture {
-          withAnimation {
-            configuration.isExpanded.toggle()
-          }
-        }
-      if configuration.isExpanded {
-        configuration.content
-          .disclosureGroupStyle(self)
-      }
     }
   }
 }

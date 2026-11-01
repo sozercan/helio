@@ -21,27 +21,9 @@ extension Multi {
     self.init(data: data, typePrefix: "\(Post.prefix)_")
   }
 
-  convenience init(id: String) {
-    self.init(id: id, typePrefix: "\(Post.prefix)_")
-  }
-
-  func fetchData() async -> Bool? {
-//    if let data = await RedditAPI.shared.fetchMultiInfo(id) {
-//
-//    }
-    nil
-  }
-
   func fetchPosts(sort: SubListingSortOption = .best, after: String? = nil, contentWidth: CGFloat = .screenW, limit: Int = Defaults[.SubredditFeedDefSettings].chunkLoadSize, altCredential: RedditCredential? = nil) async -> ([RedditEntityType]?, String?)? {
     if let data, let response = await RedditAPI.shared.fetchMultiPosts(path: data.path, sort: sort, after: after, limit: limit, altCredential: altCredential), let data = response.0 {
       return (Post.initMultiple(datas: data.compactMap(\.data), contentWidth: contentWidth).map { .post($0) }, response.1)
-    }
-    return nil
-  }
-
-  func delete() async -> Bool? {
-    if let data {
-      return await RedditAPI.shared.deleteMulti(data.path)
     }
     return nil
   }

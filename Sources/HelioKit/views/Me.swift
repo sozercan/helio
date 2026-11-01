@@ -15,7 +15,6 @@ struct Me: View {
     self._router = .init(initialValue: router)
   }
 
-  @State private var loading = true
   var body: some View {
     NavigationStack(path: $router.fullPath) {
       Group {

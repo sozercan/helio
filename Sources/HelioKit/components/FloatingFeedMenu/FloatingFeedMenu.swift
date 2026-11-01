@@ -34,7 +34,6 @@ struct FloatingFeedMenu: View, Equatable {
   }
 
   @Default(.SubredditFeedDefSettings) var subredditFeedDefSettings
-  @Default(.PostLinkDefSettings) var postLinkDefSettings
 
   init(subId: String, filters: [ShallowCachedFilter], selectedFilter: Binding<ShallowCachedFilter?>) {
     self.subId = subId

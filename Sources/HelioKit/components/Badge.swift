@@ -61,7 +61,6 @@ struct BadgeView: View, Equatable {
   var unseen = false
   var usernameColor: Color?
   var author: String
-  var fullname: String?
   var userFlair: String?
   var created: Double
   var avatarURL: String?
@@ -90,7 +89,7 @@ struct BadgeView: View, Equatable {
     let showsFirstLine = showAuthorOnPostLinks || (showSubName && !theme.forceSubsAsTags)
     HStack(spacing: theme.spacing) {
       if showAvatar {
-        AvatarView(saved: saved, avatarImgRequest: avatarRequest, userID: author, fullname: fullname, theme: theme.avatar)
+        AvatarView(saved: saved, avatarImgRequest: avatarRequest, userID: author, theme: theme.avatar)
           .highPriorityGesture(TapGesture().onEnded(openUser))
       }
 
@@ -100,7 +99,7 @@ struct BadgeView: View, Equatable {
           HStack(alignment: .center, spacing: 4) {
             if let openSub, let subName {
               if theme.forceSubsAsTags {
-                Tag(subredditIconKit: nil, text: "r/\(subName)", color: theme.subColor(), fontSize: theme.authorText.size, backgroundColor: theme.subColor())
+                Tag(subredditIconKit: nil, text: "r/\(subName)", fontSize: theme.authorText.size, backgroundColor: theme.subColor())
                   .onTapGesture(perform: openSub)
               } else {
                 Text(subName).foregroundStyle(theme.subColor())
@@ -142,7 +141,7 @@ struct BadgeView: View, Equatable {
 
         HStack(alignment: .center, spacing: theme.statsText.size * 0.62) {
           if let openSub, let subName, theme.forceSubsAsTags, !showAuthorOnPostLinks {
-            Tag(subredditIconKit: nil, text: "r/\(subName)", color: theme.subColor(), fontSize: theme.statsText.size, backgroundColor: theme.subColor())
+            Tag(subredditIconKit: nil, text: "r/\(subName)", fontSize: theme.statsText.size, backgroundColor: theme.subColor())
               .highPriorityGesture(TapGesture().onEnded(openSub))
           }
 
@@ -205,7 +204,7 @@ struct Badge: View {
 
   var body: some View {
     if let data = post.data {
-      BadgeView(saved: data.saved, usernameColor: usernameColor, author: data.author, fullname: data.author_fullname, userFlair: data.author_flair_text, created: data.created, avatarURL: avatarURL, theme: theme, commentsCount: formatBigNumber(data.num_comments), votesCount: !showVotes ? nil : formatBigNumber(data.ups))
+      BadgeView(saved: data.saved, usernameColor: usernameColor, author: data.author, userFlair: data.author_flair_text, created: data.created, avatarURL: avatarURL, theme: theme, commentsCount: formatBigNumber(data.num_comments), votesCount: !showVotes ? nil : formatBigNumber(data.ups))
     }
   }
 }
@@ -225,20 +224,6 @@ struct BadgeOpt: View, Equatable {
   var subName: String?
 
   var body: some View {
-    BadgeView(avatarRequest: avatarRequest, saved: badgeKit.saved, usernameColor: usernameColor, author: badgeKit.author, fullname: badgeKit.authorFullname, userFlair: badgeKit.userFlair, created: badgeKit.created, avatarURL: avatarURL, theme: theme, commentsCount: formatBigNumber(badgeKit.numComments), votesCount: !showVotes ? nil : formatBigNumber(badgeKit.ups), openSub: openSub, subName: subName)
-  }
-}
-
-struct BadgeExtraInfo: Hashable, Equatable, Identifiable {
-  static func == (lhs: BadgeExtraInfo, rhs: BadgeExtraInfo) -> Bool {
-    lhs.id == rhs.id
-  }
-
-  var systemImage: String = ""
-  var text: String
-  //    var textColor: Color = Color.primary
-  var iconColor: Color?
-  var id: String {
-    systemImage + text
+    BadgeView(avatarRequest: avatarRequest, saved: badgeKit.saved, usernameColor: usernameColor, author: badgeKit.author, userFlair: badgeKit.userFlair, created: badgeKit.created, avatarURL: avatarURL, theme: theme, commentsCount: formatBigNumber(badgeKit.numComments), votesCount: !showVotes ? nil : formatBigNumber(badgeKit.ups), openSub: openSub, subName: subName)
   }
 }

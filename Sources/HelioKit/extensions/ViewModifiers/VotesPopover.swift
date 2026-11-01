@@ -66,9 +66,4 @@ struct ViewVotesModifier: ViewModifier {
   }
 }
 
-extension View {
-  func viewVotes(_ ups: Int, _ downs: Int) -> some View {
-    self
-      .modifier(ViewVotesModifier(ups: ups, downs: downs))
-  }
-}
+extension View {}

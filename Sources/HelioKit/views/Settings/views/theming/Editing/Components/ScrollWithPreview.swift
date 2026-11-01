@@ -22,8 +22,6 @@ struct ScrollWithPreview<Content: View, Preview: View>: View {
   @State private var pro: Double = 0
   @State private var safeArea = getSafeArea()
 
-  @Environment(\.tabBarHeight) private var tabBarHeight
-  @Environment(\.sheetHeight) private var sheetHeight
   @Environment(\.useTheme) private var currentTheme
   @ViewBuilder let content: () -> Content
   @ViewBuilder let preview: () -> Preview

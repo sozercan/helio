@@ -19,7 +19,6 @@ struct SubredditLinkContainer: View {
 struct SubredditLink: View {
   var noHPad = false
   var sub: Subreddit
-  @State private var opened = false
   var body: some View {
     if let data = sub.data {
       @State var isSubbed = data.user_is_subscriber ?? false

@@ -13,10 +13,7 @@ struct Tabber: View {
   var redditCredentialsManager = RedditCredentialsManager.shared
   @State var nav = Nav.shared
 
-  @State var tabBarHeight: Double? = nil
-
   @Environment(\.useTheme) private var currentTheme
-  @Environment(\.colorScheme) private var colorScheme
   @Environment(\.setTabBarHeight) private var setTabBarHeight
   @Default(.AppearanceDefSettings) private var appearanceDefSettings
   #if targetEnvironment(macCatalyst)
@@ -100,7 +97,7 @@ struct Tabber: View {
       checkForOnboardingStatus()
       if RedditCredentialsManager.shared.selectedCredential != nil {
         RedditCredentialsManager.shared.updateMe()
-        Task(priority: .utility) { await updatePostsInBox(RedditAPI.shared) }
+        Task(priority: .utility) { await updatePostsInBox() }
       }
     }
     .task(priority: .background) {

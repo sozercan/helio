@@ -43,12 +43,12 @@ struct Onboarding: View {
         .contentShape(Rectangle())
         .simultaneousGesture(DragGesture())
         .tag(0)
-      OnboardingAPIIntro(prevStep: prevStep, nextStep: nextStep)
+      OnboardingAPIIntro()
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .contentShape(Rectangle())
         .simultaneousGesture(DragGesture())
         .tag(1)
-      Onboarding1OpeningSettings(prevStep: prevStep, nextStep: nextStep)
+      Onboarding1OpeningSettings(nextStep: nextStep)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .contentShape(Rectangle())
         .simultaneousGesture(DragGesture())
@@ -208,12 +208,6 @@ struct Star: View {
 }
 
 extension CGFloat {
-  static func random(_ range1: ClosedRange<CGFloat>, _ range2: ClosedRange<CGFloat>) -> CGFloat {
-    let ranges = [range1, range2]
-    let selectedRange = ranges.randomElement()!
-    return CGFloat.random(in: selectedRange)
-  }
-
   static func rand(_ range: ClosedRange<CGFloat>) -> CGFloat {
     CGFloat(arc4random_uniform(UInt32(range.upperBound - range.lowerBound) + 1) + UInt32(range.lowerBound))
   }

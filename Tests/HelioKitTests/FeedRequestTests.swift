@@ -164,3 +164,34 @@ extension FeedRequestTests {
     #expect(reads.withLock { $0 } == 0)
   }
 }
+
+/// A multi sort and the listing it should request.
+struct MultiSortCase: Sendable {
+  let sort: SubListingSortOption
+  let path: String
+  var range: String?
+}
+
+extension FeedRequestTests {
+  @Test(arguments: [
+    MultiSortCase(sort: .best, path: "/user/placeholder/m/example.json"),
+    MultiSortCase(sort: .hot, path: "/user/placeholder/m/example/hot.json"),
+    MultiSortCase(sort: .new, path: "/user/placeholder/m/example/new.json"),
+    MultiSortCase(sort: .controversial, path: "/user/placeholder/m/example/controversial.json"),
+    MultiSortCase(sort: .top(.week), path: "/user/placeholder/m/example/top.json", range: "week"),
+  ])
+  func multiFeedsRequestTheChosenSort(_ sortCase: MultiSortCase) async throws {
+    let credential = account("placeholder")
+    let api = RedditAPI(session: session(), currentAccount: { credential })
+    for multiPath in ["/user/placeholder/m/example", "/user/placeholder/m/example/"] {
+      FeedRequestProtocol.requests.withLock { $0 = [] }
+      _ = await api.fetchMultiPosts(path: multiPath, sort: sortCase.sort, limit: 15, altCredential: credential)
+      let request = try #require(FeedRequestProtocol.requests.withLock { $0 }.first)
+      let url = try #require(request.url)
+      let query = URLComponents(url: url, resolvingAgainstBaseURL: false)?.queryItems
+      #expect(url.path == sortCase.path)
+      #expect(query?.first(where: { $0.name == "t" })?.value == sortCase.range)
+      #expect(query?.first(where: { $0.name == "limit" })?.value == "15")
+    }
+  }
+}
