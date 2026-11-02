@@ -5,7 +5,6 @@
 //  Created by Igor Marcossi on 20/08/23.
 //
 
-import Popovers
 import SwiftUI
 
 struct MultiLink: View {
