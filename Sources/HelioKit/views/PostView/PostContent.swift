@@ -48,7 +48,8 @@ struct PostContent: View, Equatable {
       Group {
         HStack {
           Text(data.title)
-            .fontSize(postsTheme.titleText.size, .semibold)
+            .contentFont(postsTheme.titleText.size, .semibold, relativeTo: .title)
+            .accessibilityAddTraits(.isHeader)
             .foregroundColor(postsTheme.titleText.color())
             .fixedSize(horizontal: false, vertical: true)
             .id("post-title")
@@ -57,12 +58,7 @@ struct PostContent: View, Equatable {
 
           if MarkdownUtil.containsSpoiler(data.selftext ?? "") {
             Spacer()
-            Image(systemName: showSpoiler ? "eye.slash.fill" : "eye.fill")
-              .onTapGesture {
-                withAnimation {
-                  showSpoiler.toggle()
-                }
-              }
+            SpoilerToggle(showSpoiler: $showSpoiler)
           }
         }
 

@@ -60,6 +60,7 @@ struct CommentLinkContent: View {
   @Default(.CommentsSectionDefSettings) private var sectionDefSettings
 
   @Environment(\.useTheme) private var selectedTheme
+  @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
   @State var commentViewLoaded = false
 
@@ -81,7 +82,10 @@ struct CommentLinkContent: View {
       let collapsed = data.collapsed ?? false
       // `indentLines` overrides the depth, like the reply sheet's unindented preview.
       let barDepth = bars ? (indentLines ?? data.depth ?? 0) : nil
-      let headerLineHeight = max(theme.theme.badge.authorText.size * 1.25, theme.theme.badge.avatar.visible ? theme.theme.badge.avatar.size : 0)
+      // The header's fixed height follows its text size.
+      let authorSize = ContentTextScale.size(theme.theme.badge.authorText.size, relativeTo: .meta, dynamicTypeSize: dynamicTypeSize)
+      let statsSize = ContentTextScale.size(theme.theme.badge.statsText.size, relativeTo: .meta, dynamicTypeSize: dynamicTypeSize)
+      let headerLineHeight = max(authorSize * 1.25, theme.theme.badge.avatar.visible ? theme.theme.badge.avatar.size : 0)
       let headerTopPad = max(0, theme.theme.innerPadding.vertical + (data.depth == 0 ? -theme.theme.cornerRadius : theme.theme.repliesSpacing))
       Group {
         HStack(spacing: CommentLinkContent.indentLineContentSpacing) {
@@ -110,6 +114,7 @@ struct CommentLinkContent: View {
                 .fontSize(14)
                 .foregroundColor(.green)
                 .transition(.scale.combined(with: .opacity))
+                .accessibilityLabel("Saved")
             }
 
             if selectable {
@@ -130,25 +135,30 @@ struct CommentLinkContent: View {
             if bars {
               if collapsed, hiddenReplyCount > 0 {
                 Text("+\(formatBigNumber(hiddenReplyCount))")
-                  .font(.system(size: theme.theme.badge.statsText.size, weight: .medium))
+                  .contentFont(theme.theme.badge.statsText.size, .medium, relativeTo: .meta)
                   .foregroundStyle(theme.theme.badge.statsText.color())
                   .padding(.horizontal, 6)
                   .background(theme.theme.loadMoreBackground(), in: Capsule(style: .continuous))
+                  .accessibilityLabel("\(hiddenReplyCount) hidden \(hiddenReplyCount == 1 ? "reply" : "replies")")
               }
               Text(timeSince(Int(data.badgeKit.created)))
-                .font(.system(size: theme.theme.badge.statsText.size, weight: theme.theme.badge.statsText.weight.t))
+                .contentFont(theme.theme.badge.statsText.size, theme.theme.badge.statsText.weight.t, relativeTo: .meta)
                 .foregroundStyle(theme.theme.badge.statsText.color())
+                .accessibilityLabel(spokenTimeSince(Int(data.badgeKit.created)))
             } else if let ups = data.ups {
               HStack(alignment: .center, spacing: 4) {
-                Image(systemName: "arrow.up")
-                  .foregroundColor(data.likes != nil && data.likes! ? .orange : .gray)
-                  .contentShape(Rectangle())
-                  .onTapGesture {
-                    Task {
-                      haptic()
-                      _ = await comment.vote(action: .up)
-                    }
+                Button {
+                  Task {
+                    haptic()
+                    _ = await comment.vote(action: .up)
                   }
+                } label: {
+                  Image(systemName: "arrow.up")
+                    .foregroundStyle(data.likes != nil && data.likes! ? Color.orange : Color.gray)
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("Upvote")
 
                 let downup = Int(ups)
                 Text(data.score_hidden == true ? "–" : formatBigNumber(downup))
@@ -156,19 +166,22 @@ struct CommentLinkContent: View {
                   .foregroundColor(data.likes != nil ? (data.likes! ? .orange : .blue) : .gray)
                   .contentTransition(.numericText())
                   //                  .foregroundColor(downup == 0 ? .gray : downup > 0 ? .orange : .blue)
-                  .fontSize(14, .semibold)
+                  .contentFont(14, .semibold, relativeTo: .meta)
 
-                Image(systemName: "arrow.down")
-                  .foregroundColor(data.likes != nil && !data.likes! ? .blue : .gray)
-                  .contentShape(Rectangle())
-                  .onTapGesture {
-                    Task {
-                      haptic()
-                      _ = await comment.vote(action: .down)
-                    }
+                Button {
+                  Task {
+                    haptic()
+                    _ = await comment.vote(action: .down)
                   }
+                } label: {
+                  Image(systemName: "arrow.down")
+                    .foregroundStyle(data.likes != nil && !data.likes! ? Color.blue : Color.gray)
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("Downvote")
               }
-              .fontSize(14, .medium)
+              .contentFont(14, .medium, relativeTo: .meta)
               .padding(.horizontal, 6)
               .padding(.vertical, 2)
               .background(Capsule(style: .continuous).fill(.secondary.opacity(0.1)))
@@ -183,12 +196,20 @@ struct CommentLinkContent: View {
                     Text("+\(formatBigNumber(hiddenReplyCount))")
                   }
                 }
-                .fontSize(14, .medium)
-                .opacity(0.5)
+                .contentFont(14, .medium, relativeTo: .meta)
+                .foregroundStyle(Color.secondaryText)
                 .allowsHitTesting(false)
               }
             }
           }
+          // The header is the comment's collapse control: one element that reads who wrote it,
+          // its score and age, whether it's collapsed, and has the comment's actions.
+          .accessibilityElement(children: .combine)
+          .accessibilityAddTraits(.isButton)
+          .accessibilityValue(collapsed ? "Collapsed" : "Expanded")
+          .accessibilityAction(.default) { withAnimation(spring) { comment.toggleCollapsed(optimistic: true) } }
+          // Its author button becomes one of its actions.
+          .accessibilityActions { CommentLinkActions(comment: comment, data: data) }
           .padding(.top, headerTopPad)
           .compositingGroup()
           .opacity(collapsed && !bars ? 0.5 : 1)
@@ -205,13 +226,10 @@ struct CommentLinkContent: View {
           )
         }
         .padding(.horizontal, bars ? 0 : horPad)
-        .frame(height: (bars ? headerLineHeight : max((theme.theme.badge.authorText.size * 1.2) + (theme.theme.badge.statsText.size * 1.2) + 2, theme.theme.badge.avatar.size)) + headerTopPad, alignment: .leading)
+        .frame(height: (bars ? headerLineHeight : max((authorSize * 1.2) + (statsSize * 1.2) + 2, theme.theme.badge.avatar.size)) + headerTopPad, alignment: .leading)
         .padding(.bottom, bars && collapsed ? theme.theme.innerPadding.vertical : 0)
         .commentDepthBar(barDepth, theme: theme.theme, top: max(0, headerTopPad - 2), bottom: collapsed ? 8 : 0, separator: true)
         .mask(Color.black)
-        // The header's vote arrows are gone in this style, so keep voting reachable for VoiceOver.
-        .accessibilityAction(named: "Upvote") { Task { _ = await comment.vote(action: .up) } }
-        .accessibilityAction(named: "Downvote") { Task { _ = await comment.vote(action: .down) } }
         .onAppear {
           if !commentViewLoaded, sectionDefSettings.collapseAutoModerator {
             if data.depth == 0, data.author == "AutoModerator", !(data.collapsed ?? false) {
@@ -251,19 +269,15 @@ struct CommentLinkContent: View {
 
                       if MarkdownUtil.containsSpoiler(body) {
                         Spacer()
-                        Image(systemName: showSpoiler ? "eye.slash.fill" : "eye.fill")
-                          .onTapGesture {
-                            withAnimation {
-                              showSpoiler.toggle()
-                            }
-                          }
+                        SpoilerToggle(showSpoiler: $showSpoiler)
                       }
                     }
                   }
                 }
-                .fontSize(theme.theme.bodyText.size, theme.theme.bodyText.weight.t)
+                .contentFont(theme.theme.bodyText.size, theme.theme.bodyText.weight.t)
                 .foregroundColor(theme.theme.bodyText.color())
               }
+              .accessibilityActions { CommentLinkActions(comment: comment, data: data) }
               .offset(x: offsetX)
               .animation(draggingAnimation, value: offsetX)
               .swipyUI(
@@ -313,32 +327,7 @@ struct CommentLinkContent: View {
       }
       .contextMenu {
         if !selectable, forcedBodySize == nil {
-          ForEach(allCommentSwipeActions) { action in
-            let active = action.active(comment)
-            if action.enabled(comment) {
-              Button {
-                Task(priority: .background) {
-                  await action.action(comment)
-                }
-              } label: {
-                Label(active ? "Undo \(action.label.lowercased())" : action.label, systemImage: active ? action.icon.active : action.icon.normal)
-                  .foregroundColor(action.bgColor.normal == "353439" ? action.color.normal == "FFFFFF" ? Color.blue : Color.hex(action.color.normal) : Color.hex(action.bgColor.normal))
-              }
-            }
-          }
-
-          if let body = data.body, !body.isEmpty {
-            Button {
-              Nav.present(.selectText(body))
-            } label: { Label("Select Text", systemImage: "selection.pin.in.out") }
-          }
-
-          if let permalink = data.permalink {
-            // ShareLink inside a .contextMenu is a known SwiftUI bug; present imperatively instead.
-            Button {
-              ShareUtils.shareItem(item: "https://reddit.com\(permalink.escape.urlEncoded)")
-            } label: { Label("Share", systemImage: "square.and.arrow.up") }
-          }
+          CommentLinkActions(comment: comment, data: data)
         }
       } preview: {
         CommentLinkContentPreview(forcedBodySize: size, showReplies: showReplies, arrowKinds: arrowKinds, indentLines: indentLines, lineLimit: lineLimit, post: post, comment: comment, avatarsURL: avatarsURL)
@@ -347,6 +336,60 @@ struct CommentLinkContent: View {
     } else {
       Text("oops")
     }
+  }
+}
+
+/// A comment's actions: its swipe actions, Select Text and Share. Its context menu, and its
+/// VoiceOver actions.
+struct CommentLinkActions: View {
+  var comment: Comment
+  var data: CommentData
+
+  var body: some View {
+    ForEach(allCommentSwipeActions) { action in
+      let active = action.active(comment)
+      if action.enabled(comment) {
+        Button {
+          Task(priority: .background) {
+            await action.action(comment)
+          }
+        } label: {
+          Label(active ? "Undo \(action.label.lowercased())" : action.label, systemImage: active ? action.icon.active : action.icon.normal)
+            .foregroundStyle(action.bgColor.normal == "353439" ? action.color.normal == "FFFFFF" ? Color.blue : Color.hex(action.color.normal) : Color.hex(action.bgColor.normal))
+        }
+      }
+    }
+
+    if let body = data.body, !body.isEmpty {
+      Button {
+        Nav.present(.selectText(body))
+      } label: { Label("Select Text", systemImage: "selection.pin.in.out") }
+    }
+
+    if let permalink = data.permalink {
+      // ShareLink inside a .contextMenu is a known SwiftUI bug; present imperatively instead.
+      Button {
+        ShareUtils.shareItem(item: "https://reddit.com\(permalink.escape.urlEncoded)")
+      } label: { Label("Share", systemImage: "square.and.arrow.up") }
+    }
+  }
+}
+
+/// The eye button that reveals or hides a body's spoilers.
+struct SpoilerToggle: View {
+  @Binding var showSpoiler: Bool
+
+  var body: some View {
+    Button {
+      withAnimation {
+        showSpoiler.toggle()
+      }
+    } label: {
+      Image(systemName: showSpoiler ? "eye.slash.fill" : "eye.fill")
+    }
+    .buttonStyle(.plain)
+    .hoverEffect(.highlight)
+    .accessibilityLabel(showSpoiler ? "Hide spoilers" : "Show spoilers")
   }
 }
 
@@ -366,11 +409,17 @@ struct CommentHeaderLine: View {
       }
 
       if let author = data.author {
-        Text(author)
-          .font(.system(size: badge.authorText.size, weight: badge.authorText.weight.t))
-          .foregroundStyle(author == "[deleted]" ? .red : isOP ? Color.accentColor : badge.authorText.color())
-          .lineLimit(1)
-          .onTapGesture { Nav.to(.reddit(.user(User(id: author)))) }
+        Button {
+          Nav.to(.reddit(.user(User(id: author))))
+        } label: {
+          Text(author)
+            .contentFont(badge.authorText.size, badge.authorText.weight.t, relativeTo: .meta)
+            .foregroundStyle(author == "[deleted]" ? .red : isOP ? Color.accentColor : badge.authorText.color())
+            .lineLimit(1)
+        }
+        .buttonStyle(.plain)
+        .hoverEffect(.highlight)
+        .accessibilityLabel(isOP ? "u/\(author), OP" : "u/\(author)")
       }
 
       if unseen {
@@ -384,10 +433,9 @@ struct CommentHeaderLine: View {
       }
 
       if let ups = data.ups {
-        BadgeStat(icon: data.likes == false ? "arrow.down" : "arrow.up", text: data.score_hidden == true ? "–" : formatBigNumber(ups))
-          .font(.system(size: badge.statsText.size, weight: badge.statsText.weight.t))
-          .foregroundStyle(data.likes == nil ? badge.statsText.color() : data.likes == true ? Color.upvote : Color.downvote)
-          .accessibilityLabel(data.score_hidden == true ? "Score hidden" : "\(ups) points")
+        BadgeStat(icon: data.likes == false ? "arrow.down" : "arrow.up", text: data.score_hidden == true ? "–" : formatBigNumber(ups), label: data.score_hidden == true ? "Score hidden" : "\(formatBigNumber(ups)) points\(data.likes == nil ? "" : data.likes == true ? ", upvoted" : ", downvoted")")
+          .contentFont(badge.statsText.size, badge.statsText.weight.t, relativeTo: .meta)
+          .foregroundStyle(data.likes == nil ? badge.statsText.color() : data.likes == true ? Color.upvoteText : Color.downvoteText)
       }
     }
   }

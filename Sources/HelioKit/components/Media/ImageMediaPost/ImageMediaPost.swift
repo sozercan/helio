@@ -67,6 +67,7 @@ struct ImageMediaPost: View, Equatable {
           .mask(RR(capped ? cornerRadius : 0, Color.black))
 //          .background(sourceHeight > 0 || compact ? nil : GeometryReader { geo in Color.clear.onAppear { helioData.postDimensions.mediaSize = geo.size }.onChange(of: geo.size) { helioData.postDimensions.mediaSize = $0 } })
           .onTapGesture { withAnimation(spring) { fullscreenIndex = 0 } }
+          .mediaImageAccessibility(postTitle, index: 0, count: images.count)
           .overlay(
             !compact || images.count <= 1
               ? nil
@@ -82,10 +83,12 @@ struct ImageMediaPost: View, Equatable {
             GalleryThumb(cornerRadius: cornerRadius, width: compact ? scaledCompactModeThumbSize() : width, height: compact ? scaledCompactModeThumbSize() : height, url: images[0].url, imgRequest: !images.isEmpty ? images[0].request : nil)
               .equatable()
               .onTapGesture { withAnimation(spring) { fullscreenIndex = 0 } }
+              .mediaImageAccessibility(postTitle, index: 0, count: images.count)
 
             GalleryThumb(cornerRadius: cornerRadius, width: width, height: height, url: images[1].url, imgRequest: images.count > 1 ? images[1].request : nil)
               .equatable()
               .onTapGesture { withAnimation(spring) { fullscreenIndex = 1 } }
+              .mediaImageAccessibility(postTitle, index: 1, count: images.count)
           }
 
           if images.count > 2 {
@@ -93,10 +96,12 @@ struct ImageMediaPost: View, Equatable {
               GalleryThumb(cornerRadius: cornerRadius, width: images.count == 3 ? contentWidth : width, height: height, url: images[2].url, imgRequest: images.count > 2 ? images[2].request : nil)
                 .equatable()
                 .onTapGesture { withAnimation(spring) { fullscreenIndex = 2 } }
+                .mediaImageAccessibility(postTitle, index: 2, count: images.count)
               if images.count == 4 {
                 GalleryThumb(cornerRadius: cornerRadius, width: width, height: height, url: images[3].url, imgRequest: images.count > 3 ? images[3].request : nil)
                   .equatable()
                   .onTapGesture { withAnimation(spring) { fullscreenIndex = 3 } }
+                  .mediaImageAccessibility(postTitle, index: 3, count: images.count)
               } else if images.count > 4 {
                 Text("\(images.count - 3)+")
                   .fontSize(24, .medium)
@@ -104,6 +109,7 @@ struct ImageMediaPost: View, Equatable {
                   .background(Circle().fill(.primary.opacity(0.05)))
                   .frame(width: width, height: height)
                   .onTapGesture { withAnimation(spring) { fullscreenIndex = 0 } }
+                  .accessibilityLabel("\(images.count - 3) more images")
               }
             }
             //              .frame(width: contentWidth, height: height)
@@ -122,6 +128,15 @@ struct ImageMediaPost: View, Equatable {
     .fullScreenCover(item: $fullscreenIndex) { i in
       LightBoxImage(postTitle: postTitle, badgeKit: badgeKit, avatarImageRequest: avatarImageRequest, markAsSeen: markAsSeen, i: i, imagesArr: images, doLiveText: Defaults[.BehaviorDefSettings].doLiveText)
     }
+  }
+}
+
+extension View {
+  /// A post's image for VoiceOver: an image named by the post's title, and its place in a gallery.
+  func mediaImageAccessibility(_ title: String, index: Int, count: Int) -> some View {
+    accessibilityElement(children: .ignore)
+      .accessibilityLabel(count > 1 ? "\(title), image \(index + 1) of \(count)" : title)
+      .accessibilityAddTraits(.isImage)
   }
 }
 
