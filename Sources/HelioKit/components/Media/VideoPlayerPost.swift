@@ -132,8 +132,9 @@ struct VideoPlayerPost: View, Equatable {
   @State private var isVisible = false
   @StateObject private var holder: VideoPlayerHolder
 
+  /// Off when iOS's Auto-Play Video Previews setting is, too.
   private var autoPlayVideos: Bool {
-    videoDefSettings.autoPlay
+    videoDefSettings.autoPlay && UIAccessibility.isVideoAutoplayEnabled
   }
 
   private var loopVideos: Bool {
@@ -175,6 +176,7 @@ struct VideoPlayerPost: View, Equatable {
       if let controller {
         AVPlayerRepresentable(fullscreen: $fullscreen, autoPlayVideos: autoPlayVideos, player: player, aspect: .resizeAspectFill, controller: controller)
           .frame(width: compact ? scaledCompactModeThumbSize() : contentWidth, height: compact ? scaledCompactModeThumbSize() : CGFloat(finalHeight))
+          .accessibilityIgnoresInvertColors()
           .mask(RR(cornerRadius, Color.black))
           .allowsHitTesting(false)
           .contentShape(Rectangle())
@@ -199,6 +201,7 @@ struct VideoPlayerPost: View, Equatable {
             }
           }
           .frame(width: compact ? scaledCompactModeThumbSize() : contentWidth, height: compact ? scaledCompactModeThumbSize() : CGFloat(finalHeight))
+          .accessibilityIgnoresInvertColors()
           .overlay {
             // Covers the player's black frame while the video buffers.
             if !holder.isReadyToPlay, let posterURL = sharedVideo.posterURL {
@@ -396,6 +399,7 @@ struct FullScreenVP: View {
   var body: some View {
     let interpolate = interpolatorBuilder([0, 100], value: abs(drag.height))
     FullScreenPlayerView(player: player, holder: holder, onPictureInPictureStart: { dismiss() })
+      .accessibilityIgnoresInvertColors()
       .background(
         size != .zero
           ? nil

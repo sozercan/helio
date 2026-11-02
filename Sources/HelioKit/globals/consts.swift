@@ -13,6 +13,14 @@ import UIKit
 
 let spring = Animation.interpolatingSpring(stiffness: 300, damping: 30, initialVelocity: 0)
 let draggingAnimation = Animation.interpolatingSpring(stiffness: 1000, damping: 75, initialVelocity: 0)
+
+/// `animation`, or with Reduce Motion on, a short ease-out to the same place: no bounce or
+/// overshoot. For springs that end gestures, like a swipe snapping back.
+@MainActor
+func motionAware(_ animation: Animation) -> Animation {
+  UIAccessibility.isReduceMotionEnabled ? .easeOut(duration: 0.2) : animation
+}
+
 let collapsedPresentation = PresentationDetent.height(75)
 let redditApiSettingsUrl = URL(string: "https://old.reddit.com/prefs/apps")!
 let compactModeThumbSize: CGFloat = 75

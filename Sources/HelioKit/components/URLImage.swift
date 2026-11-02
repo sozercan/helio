@@ -26,6 +26,12 @@ struct URLImage: View, Equatable {
   var posterURL: URL?
 
   var body: some View {
+    // Photos keep their colors under Smart Invert.
+    image.accessibilityIgnoresInvertColors()
+  }
+
+  @ViewBuilder
+  private var image: some View {
     if url.isGIF {
       LazyImageOpt(url: url) { state in
         if let imageData = state.imageContainer?.data {
@@ -117,6 +123,10 @@ struct ThumbReqImage: View, Equatable {
   var imgRequest: ImageRequest
 
   var body: some View {
+    image.accessibilityIgnoresInvertColors()
+  }
+
+  private var image: some View {
     LazyImageOpt(request: imgRequest, transaction: .init(animation: .default)) { state in
       //                if case .success(let response) = state.result {
       ////                  Image(uiImage: response.image).resizable()

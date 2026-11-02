@@ -154,7 +154,7 @@ struct SwipeUI<T: GenericRedditEntityDataType, B: Hashable>: ViewModifier {
             var initialVel = abs(predictedEnd / distance)
             initialVel = initialVel < 3.75 ? 0 : initialVel * 2
 
-            withAnimation(.interpolatingSpring(stiffness: 150, damping: 16, initialVelocity: initialVel)) {
+            withAnimation(motionAware(.interpolatingSpring(stiffness: 150, damping: 16, initialVelocity: initialVel))) {
               if controlledDragAmount != nil {
                 controlledDragAmount?.wrappedValue = 0
               } else {
@@ -188,7 +188,7 @@ struct SwipeUI<T: GenericRedditEntityDataType, B: Hashable>: ViewModifier {
               break
             }
           }
-          withAnimation(.interpolatingSpring(stiffness: 150, damping: 17)) { triggeredAction = .none }
+          withAnimation(motionAware(.interpolatingSpring(stiffness: 150, damping: 17))) { triggeredAction = .none }
           return
         }
 
@@ -215,7 +215,7 @@ struct SwipeUI<T: GenericRedditEntityDataType, B: Hashable>: ViewModifier {
           impact.prepare()
           impact.impactOccurred()
           //          try? haptics.fire(intensity: increasing ? 0.5 : 0.35, sharpness: increasing ? 0.25 : 0.5)
-          withAnimation(isSecond ? .default.speed(2) : .interpolatingSpring(stiffness: 200, damping: 15, initialVelocity: increasing ? 35 : 0)) {
+          withAnimation(motionAware(isSecond ? .default.speed(2) : .interpolatingSpring(stiffness: 200, damping: 15, initialVelocity: increasing ? 35 : 0))) {
             triggeredAction = triggering
           }
         }

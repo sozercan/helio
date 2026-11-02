@@ -60,6 +60,7 @@ struct SubredditIcon: View {
       .scaledToFill()
       .frame(width: size, height: size)
       .mask(Circle())
+      .accessibilityIgnoresInvertColors()
     } else {
       Text(subredditIconKit.initialLetter)
         .frame(width: size, height: size)
