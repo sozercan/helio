@@ -207,11 +207,22 @@ struct PostView: View, Equatable {
           if showSkipper, skipperOnLeft {
             CommentSkipper(topVisibleCommentId: $topVisibleCommentId, previousScrollTarget: $previousScrollTarget, comments: comments, reader: proxy)
           }
-          Spacer(minLength: 0)
-          if !inlineActions {
-            // At its natural width: squeezed, the score's ratio wraps.
-            PostFloatingPill(post: post, subreddit: subreddit, showUpVoteRatio: defSettings.showUpVoteRatio)
-              .fixedSize()
+          if inlineActions {
+            // Only the skipper shows: keep it on its side.
+            Spacer(minLength: 0)
+          } else {
+            // The pill at its natural width, since squeezed the score's ratio wraps. When that
+            // doesn't fit the room left beside the skipper (narrow windows, large text), drop
+            // the ratio, then fold the actions into a menu.
+            ViewThatFits(in: .horizontal) {
+              pill(showRatio: defSettings.showUpVoteRatio, compact: false)
+              if defSettings.showUpVoteRatio {
+                pill(showRatio: false, compact: false)
+              }
+              pill(showRatio: false, compact: true)
+            }
+            // Takes the room the skipper leaves, so the choice above is measured against all of it.
+            .frame(maxWidth: .infinity, alignment: .trailing)
           }
           if showSkipper, !skipperOnLeft {
             CommentSkipper(topVisibleCommentId: $topVisibleCommentId, previousScrollTarget: $previousScrollTarget, comments: comments, reader: proxy)
@@ -221,6 +232,11 @@ struct PostView: View, Equatable {
       .padding(.horizontal, 12)
       .padding(.bottom, 8)
     }
+  }
+
+  private func pill(showRatio: Bool, compact: Bool) -> some View {
+    PostFloatingPill(post: post, subreddit: subreddit, showUpVoteRatio: showRatio, compact: compact)
+      .fixedSize()
   }
 }
 

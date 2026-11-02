@@ -14,6 +14,8 @@ struct PostFloatingPill: View {
   var subreddit: Subreddit
   var updateComments: (() -> Void)?
   var showUpVoteRatio: Bool
+  /// Narrow windows: Share, Posts Box and Reply fold into one menu so the votes stay in reach.
+  var compact: Bool = false
 
   @Default(.postsInBox) private var postsInBox
   @Environment(\.useTheme) private var selectedTheme
@@ -80,16 +82,38 @@ struct PostFloatingPill: View {
         if !selectedTheme.posts.inlineFloatingPill {
           // The post page's bottom bar: monochrome icons on glass, like the system's bars.
           HStack(spacing: 2) {
-            HStack(spacing: -12) {
-              LightBoxButton(icon: "square.and.arrow.up", label: "Share") {
-                ShareUtils.shareItem(item: permalink)
+            if compact {
+              Menu {
+                Button("Share", systemImage: "square.and.arrow.up") {
+                  ShareUtils.shareItem(item: permalink)
+                }
+                Button(boxLabel, systemImage: boxIcon) { togglePostsBox(data) }
+                Button("Reply", systemImage: "arrowshape.turn.up.left") {
+                  withAnimation(spring) {
+                    showReplyModal = true
+                  }
+                }
+              } label: {
+                Image(systemName: "ellipsis")
+                  .frame(width: 44, height: 44)
+                  .contentShape(Rectangle())
               }
+              .menuStyle(.button)
+              .buttonStyle(.plain)
+              .accessibilityLabel("Post actions")
+              .help("Post actions")
+            } else {
+              HStack(spacing: -12) {
+                LightBoxButton(icon: "square.and.arrow.up", label: "Share") {
+                  ShareUtils.shareItem(item: permalink)
+                }
 
-              postsBoxButton(data)
+                postsBoxButton(data)
 
-              LightBoxButton(icon: "arrowshape.turn.up.left", label: "Reply") {
-                withAnimation(spring) {
-                  showReplyModal = true
+                LightBoxButton(icon: "arrowshape.turn.up.left", label: "Reply") {
+                  withAnimation(spring) {
+                    showReplyModal = true
+                  }
                 }
               }
             }
