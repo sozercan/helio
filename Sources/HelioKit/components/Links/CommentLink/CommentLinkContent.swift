@@ -418,7 +418,6 @@ struct CommentHeaderLine: View {
             .lineLimit(1)
         }
         .buttonStyle(.plain)
-        .hoverEffect(.highlight)
         .accessibilityLabel(isOP ? "u/\(author), OP" : "u/\(author)")
       }
 

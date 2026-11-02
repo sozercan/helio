@@ -107,7 +107,6 @@ struct BadgeView: View, Equatable {
                 }
               }
               .buttonStyle(.plain)
-              .hoverEffect(.highlight)
               .accessibilityLabel("r/\(subName)")
             }
 
@@ -123,7 +122,6 @@ struct BadgeView: View, Equatable {
                   .lineLimit(1)
               }
               .buttonStyle(.plain)
-              .hoverEffect(.highlight)
               .accessibilityLabel("u/\(author)")
 
               if unseen {
@@ -154,7 +152,6 @@ struct BadgeView: View, Equatable {
               Tag(subredditIconKit: nil, text: "r/\(subName)", fontSize: theme.statsText.size, backgroundColor: theme.subColor())
             }
             .buttonStyle(.plain)
-            .hoverEffect(.highlight)
           }
 
           // The numbers read as one element, "4.8K points, 1.3K comments, 2 hours ago".
