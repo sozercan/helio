@@ -325,6 +325,40 @@ struct RouterTests {
     #expect(router.postColumn == [otherPost])
   }
 
+  // MARK: The open Duo's panes
+
+  @Test func theFeedPaneHoldsTheFeedAndItsScreensButNotThePost() {
+    let router = Router(id: "test")
+    router.firstSelected = feed("apple")
+    router.navigateTo(sub, from: .feed)
+    router.navigateTo(post, from: .feed)
+    #expect(router.feedPanePath == [feed("apple"), sub])
+    // Popping a screen stacked on the feed keeps the open post.
+    router.feedPanePath = [feed("apple")]
+    #expect(router.fullPath == [feed("apple"), post])
+  }
+
+  @Test func goingBackToTheSubsListInTheFeedPaneClosesThePost() {
+    let router = Router(id: "test")
+    router.firstSelected = feed("apple")
+    router.navigateTo(post, from: .feed)
+    router.feedPanePath = []
+    #expect(router.fullPath.isEmpty)
+  }
+
+  @Test func backInTheDuoPanesClosesThePostThenTheFeed() {
+    // The feed is pushed on the subs list there, so Back can leave it.
+    let router = Router(id: "test")
+    router.showsPostBesideFeed = true
+    router.firstSelected = feed("apple")
+    router.navigateTo(post, from: .feed)
+    router.goBack()
+    #expect(router.fullPath == [feed("apple")])
+    #expect(router.canGoBack)
+    router.goBack()
+    #expect(router.fullPath.isEmpty)
+  }
+
   @Test func feedPathIgnoresPushesWithoutAFeed() {
     let router = Router(id: "test")
     router.feedPath = [sub]
@@ -364,7 +398,27 @@ struct SplitLayoutTests {
       let layout = SplitLayout(sizeClass: sizeClass, frame: frame(668), division: hinge)
       #expect(layout.showsColumns)
       #expect(layout.hingeFeedWidth == 330)
+      #expect(layout.hingeWidth == 8)
     }
+  }
+
+  @Test func theOpenDuoUsesTwoPanesInsteadOfTheSplitView() {
+    // Each half is narrower than the split view tiles a feed and a post, so it would overlay them.
+    let layout = SplitLayout(sizeClass: .regular, frame: frame(668), division: CGRect(x: 330, y: 0, width: 8, height: 900))
+    #expect(layout.usesPanes)
+    #expect(!layout.fitsSidebar)
+    // The subs list is the feed pane's first screen, not a sidebar beside the feed.
+    #expect(!layout.sidebarBesideFeed)
+  }
+
+  @Test func wideWindowsKeepTheSplitView() {
+    for width in [820.0, 1366] {
+      let layout = SplitLayout(sizeClass: .regular, frame: frame(width), division: nil)
+      #expect(!layout.usesPanes)
+      #expect(layout.sidebarBesideFeed)
+    }
+    #expect(!SplitLayout(sizeClass: .compact, frame: frame(390), division: nil).usesPanes)
+    #expect(!SplitLayout(sizeClass: .regular, frame: frame(668), division: CGRect(x: 0, y: 440, width: 668, height: 8)).usesPanes)
   }
 
   @Test func aHorizontalHingeDoesNotSizeTheFeed() {

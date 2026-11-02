@@ -280,7 +280,7 @@ final class CommandTargets {
     // post registers its posts too): a post opened from elsewhere (the Posts Box, the subs list)
     // isn't in the feed kept from before.
     guard let feedTop = router.feedPath.last ?? router.fullPath.first, listsPosts(feedTop), let post = router.postColumn.first,
-          router.firstIsSidebarSelection || router.postPath.isEmpty else { return nil }
+          router.showsPostBesideFeed || router.postPath.isEmpty else { return nil }
     return post.id
   }
 

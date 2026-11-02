@@ -78,6 +78,11 @@ class Router: Hashable, Equatable, Identifiable {
   /// other screen and Back returns to the subs list.
   var firstIsSidebarSelection = false
 
+  /// True while the posts tab shows the post column beside the feed: the split view's columns, or
+  /// the open iPhone Duo's two panes. Then the feed marks its open post, Next and Previous Post
+  /// follow it under screens opened from it.
+  var showsPostBesideFeed = false
+
   /// Back can't remove the sidebar's feed beside the detail column, but a post or a user opened
   /// as the first screen (from a link) can always be closed.
   var canGoBack: Bool {
@@ -174,6 +179,13 @@ class Router: Hashable, Equatable, Identifiable {
       guard let start = postColumnStart else { return }
       fullPath = Array(fullPath[...start]) + newValue
     }
+  }
+
+  /// The open iPhone Duo's feed pane: the feed and the screens opened from it, on top of the subs
+  /// list. Going back to the subs list closes the feed, and with it the post opened from it.
+  var feedPanePath: [NavDest] {
+    get { Array(fullPath.prefix(postColumnStart ?? fullPath.count)) }
+    set { fullPath = newValue.isEmpty ? [] : newValue + postColumn }
   }
 
   /// Empties the post column.
