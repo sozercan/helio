@@ -76,8 +76,6 @@ struct RouterDestinationView: View {
         CommentSwipePanel()
       case .postSwipe:
         PostSwipePanel()
-      case .accessibility:
-        AccessibilityPanel()
       case .filteredSubreddits:
         FilteredSubredditsSettings()
       case .faq:
