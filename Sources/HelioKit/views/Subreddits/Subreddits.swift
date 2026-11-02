@@ -199,7 +199,9 @@ struct Subreddits: View, Equatable {
         }
       }
       .overlay(
-        AlphabetJumper(letters: sections.keys.sorted(), proxy: proxy),
+        // Only while the list shows its letter sections: filtered or without them, there's
+        // nothing for a letter to scroll to.
+        AlphabetJumper(letters: searchText.isEmpty && !appearanceDefSettings.disableAlphabetLettersSectionsInSubsList ? sections.keys.sorted() : [], proxy: proxy),
         alignment: .trailing,
       )
       .refreshable {

@@ -51,7 +51,7 @@ enum QuickAction: Equatable {
   }
 
   /// Opens the action's tab or feed at its root, closing screens left open on it.
-  func perform(on nav: Nav = .shared, subreddit: (String) -> Subreddit = QuickAction.subreddit(named:)) {
+  func perform(on nav: Nav = .shared, subreddit: (String) -> Subreddit = QuickAction.cachedSubreddit(named:)) {
     switch self {
     case .search:
       nav[.search].fullPath = []
@@ -63,13 +63,15 @@ enum QuickAction: Equatable {
     }
   }
 
-  /// The current account's cached subreddit with this name, as the sidebar shows it, so the
-  /// sidebar marks it selected; a subreddit known only by name otherwise.
+  /// A default feed by name: the front page, Popular or All, else the subreddit of that name.
   static func subreddit(named name: String) -> Subreddit {
-    // The default feed can be the front page, Popular or All, not a subreddit of that name.
-    if builtInFeedIDs.contains(name) {
-      return Subreddit(id: name)
-    }
+    builtInFeedIDs.contains(name) ? Subreddit(id: name) : cachedSubreddit(named: name)
+  }
+
+  /// The current account's cached subreddit with this name, as the sidebar shows it, so the
+  /// sidebar marks it selected; a subreddit known only by name otherwise. A favorite named like a
+  /// built-in feed (r/home) is still that subreddit.
+  static func cachedSubreddit(named name: String) -> Subreddit {
     let context = PersistenceController.shared.container.viewContext
     if let credentialID = Defaults[.GeneralDefSettings].redditCredentialSelectedID {
       let request = CachedSub.fetchRequest()

@@ -48,6 +48,28 @@ struct RouterTests {
     #expect(QuickAction.subreddit(named: "home").data == nil)
   }
 
+  @Test func theSameFeedTakesTheSubredditsDetails() throws {
+    let json = #"{"name": "t5_2qh1f", "id": "2qh1f", "display_name": "Apple", "url": "/r/Apple/", "public_description": ""}"#
+    let cached = try Router.NavDest.reddit(.subFeed(Subreddit(data: JSONDecoder().decode(SubredditData.self, from: Data(json.utf8)))))
+    let router = Router(id: "test")
+    router.firstSelected = feed("apple")
+    router.navigateTo(post)
+    router.firstSelected = cached
+    #expect(router.fullPath == [cached, post])
+    // Choosing the name-only feed again doesn't drop the details.
+    router.firstSelected = feed("apple")
+    #expect(router.fullPath == [cached, post])
+  }
+
+  @Test func backClosesAPostOpenedFirstBesideTheSidebar() {
+    let router = Router(id: "test")
+    router.firstIsSidebarSelection = true
+    router.firstSelected = post
+    #expect(router.canGoBack)
+    router.goBack()
+    #expect(router.fullPath.isEmpty)
+  }
+
   @Test func showingTheFeedRootClosesItsScreens() {
     let router = Router(id: "test")
     router.firstSelected = feed("apple")

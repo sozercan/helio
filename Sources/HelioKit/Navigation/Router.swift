@@ -59,7 +59,13 @@ class Router: Hashable, Equatable, Identifiable {
     get { fullPath.first }
     set {
       if let newValue {
-        if !(fullPath.first?.isSameFeed(as: newValue) ?? false) {
+        if let first = fullPath.first, first.isSameFeed(as: newValue) {
+          // The same feed keeps its screens, but takes the subreddit's details if it gains them
+          // (opened from a link by name, then chosen in the sidebar).
+          if newValue.addsSubredditData(to: first) {
+            fullPath[0] = newValue
+          }
+        } else {
           fullPath = [newValue]
         }
       } else {
@@ -74,8 +80,11 @@ class Router: Hashable, Equatable, Identifiable {
   /// other screen and Back returns to the subs list.
   var firstIsSidebarSelection = false
 
+  /// Back can't remove the sidebar's feed beside the detail column, but a post or a user opened
+  /// as the first screen (from a link) can always be closed.
   var canGoBack: Bool {
-    fullPath.count > (firstIsSidebarSelection ? 1 : 0)
+    let protectsRoot = firstIsSidebarSelection && fullPath.first?.isFeed == true
+    return fullPath.count > (protectsRoot ? 1 : 0)
   }
 
   var fullPath: [NavDest] = [] {
@@ -166,7 +175,11 @@ class Router: Hashable, Equatable, Identifiable {
 
   /// Shows `dest` with nothing stacked on it, even when it's the feed already selected.
   func showFeedRoot(_ dest: NavDest) {
-    fullPath = [fullPath.first.flatMap { $0.isSameFeed(as: dest) ? $0 : nil } ?? dest]
+    if let first = fullPath.first, first.isSameFeed(as: dest), !dest.addsSubredditData(to: first) {
+      fullPath = [first]
+    } else {
+      fullPath = [dest]
+    }
   }
 
   enum CodingKeys: String, CodingKey {
@@ -195,6 +208,20 @@ extension Router.NavDest {
       return "feed:\(sub.id)"
     }
     return (sub.data?.display_name ?? sub.id).lowercased()
+  }
+
+  /// A subreddit or multireddit feed, which the sidebar can select.
+  var isFeed: Bool {
+    switch self {
+    case .reddit(.subFeed), .reddit(.multiFeed): true
+    default: false
+    }
+  }
+
+  /// Whether this is a subreddit feed with details that `other`, the same feed by name, lacks.
+  func addsSubredditData(to other: Router.NavDest) -> Bool {
+    guard case let .reddit(.subFeed(sub)) = self, case let .reddit(.subFeed(otherSub)) = other else { return false }
+    return sub.data != nil && otherSub.data == nil
   }
 
   /// Whether both show the same feed, matching subreddits by name.
