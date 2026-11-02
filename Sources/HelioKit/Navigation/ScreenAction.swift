@@ -112,11 +112,13 @@ extension ScreenAction {
   }
 
   /// Switches between the signed-in accounts. Nil with only one.
+  /// Pass the observed selection where the caller watches it (the menu bar), so the check mark
+  /// follows a switch made elsewhere.
   @MainActor
-  static func switchAccount(manager: RedditCredentialsManager = .shared) -> ScreenAction? {
+  static func switchAccount(manager: RedditCredentialsManager = .shared, selectedID: UUID? = nil) -> ScreenAction? {
     let credentials = manager.validCredentials
     guard credentials.count > 1 else { return nil }
-    let selected = manager.selectedCredential?.id
+    let selected = selectedID ?? manager.selectedCredential?.id
     return ScreenAction(id: .switchAccount, title: "Switch Account", systemImage: "person.2.circle", content: .menu(credentials.map { cred in
       .choice(cred.userName ?? "Account", isOn: cred.id == selected) {
         Defaults[.GeneralDefSettings].redditCredentialSelectedID = cred.id

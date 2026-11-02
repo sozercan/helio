@@ -3,6 +3,7 @@
 //  Helio
 //
 
+import Defaults
 import SwiftUI
 
 /// Menu bar items and keyboard shortcuts on Mac and on iPad with a hardware keyboard: the tabs,
@@ -10,6 +11,9 @@ import SwiftUI
 /// takes a key from a text field; the arrows also take Option, which text fields don't use.
 struct NavCommands: Commands {
   private let targets = CommandTargets.shared
+  /// Observed so Switch Account's check mark follows the selected account, which can change
+  /// while nothing else in the menu bar does.
+  @Default(.GeneralDefSettings) private var generalDefSettings
 
   /// A screen action's menu. While no screen shown has the action, `placeholder`'s items show
   /// disabled: always a submenu, as switching between a submenu and an item reorders the
@@ -29,7 +33,7 @@ struct NavCommands: Commands {
       Button("Settings…", systemImage: "gearshape") { Nav.shared.activeTab = .settings }
         .keyboardShortcut(",")
       // From any tab, not only Me, where the toolbar has it.
-      actionMenu(ScreenAction.switchAccount(), title: "Switch Account")
+      actionMenu(ScreenAction.switchAccount(selectedID: generalDefSettings.redditCredentialSelectedID), title: "Switch Account")
     }
 
     // Edit > Find. Not in place of the system's `.textEditing` items: on iPad that group never
