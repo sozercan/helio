@@ -19,6 +19,7 @@ struct CommentLinkContentPreview: View {
   var post: Post?
   var comment: Comment
   var avatarsURL: [String: String]?
+  @Environment(\.contentWidth) private var contentWidth
   var body: some View {
     if let helioData = comment.helioData, let forcedBodySize {
       VStack(alignment: .leading, spacing: 0) {
@@ -26,7 +27,7 @@ struct CommentLinkContentPreview: View {
       }
 //      .frame(width: .screenW, height: forcedBodySize.height + CGFloat((data.depth != 0 ? 42 : 30) + 16))
       .padding(.vertical, 12)
-      .frame(width: .screenW)
+      .frame(width: contentWidth)
       .fixedSize()
     }
   }

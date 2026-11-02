@@ -43,7 +43,9 @@ struct PostContent: View, Equatable {
         VStack {
           ProgressView()
             .progressViewStyle(.circular)
-            .frame(maxWidth: .infinity, minHeight: .screenH - 200)
+            // Fills the post's list until the post loads.
+            .containerRelativeFrame(.vertical) { height, _ in max(0, height - 200) }
+            .frame(maxWidth: .infinity)
             .id("post-loading")
         }
       }

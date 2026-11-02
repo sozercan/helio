@@ -57,9 +57,14 @@ struct LiveTextInteraction: UIViewRepresentable {
 }
 
 class LiveTextImageView: UIImageView {
-  /// Use intrinsicContentSize to change the default image size
-  /// so that we can change the size in our SwiftUI View
+  /// The window's size rather than the image's, so SwiftUI sizes the view by its frame. Not the
+  /// screen's: the window can be smaller (iPad multitasking, a Mac window, the folded iPhone Duo).
   override var intrinsicContentSize: CGSize {
-    CGSize(width: UIScreen.main.bounds.width, height: UIScreen.main.bounds.height)
+    window?.bounds.size ?? CGSize(width: UIView.noIntrinsicMetric, height: UIView.noIntrinsicMetric)
+  }
+
+  override func didMoveToWindow() {
+    super.didMoveToWindow()
+    invalidateIntrinsicContentSize()
   }
 }

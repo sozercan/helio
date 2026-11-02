@@ -93,17 +93,16 @@ struct PostInBoxLink: View {
     }
     .padding(.horizontal, 13)
     .padding(.vertical, 11)
-    .frame(width: .screenW / 1.75, height: 120, alignment: .topLeading)
-    .background(
-      postInBox.img != nil && postInBox.img != ""
-
-        ? URLImage(url: URL(string: postInBox.img!)!)
-        .scaledToFill()
-        .opacity(0.15)
-        .frame(width: .screenW / 1.75, height: 120)
-        .clipped()
-        : nil,
-    )
+    .frame(maxWidth: .infinity, minHeight: 120, maxHeight: 120, alignment: .topLeading)
+    // A share of the list it scrolls in (the sidebar on wide layouts), not of the window.
+    .containerRelativeFrame(.horizontal) { width, _ in width / 1.75 }
+    .background {
+      if let img = postInBox.img, !img.isEmpty, let url = URL(string: img) {
+        Color.clear
+          .overlay { URLImage(url: url).scaledToFill().opacity(0.15) }
+          .clipped()
+      }
+    }
     .themedListRowLikeBG()
     .mask(RR(20, Color.listBG))
     .offset(y: offsetY ?? 0)

@@ -31,7 +31,7 @@ struct Me: View {
         } else {
           ProgressView()
             .progressViewStyle(.circular)
-            .frame(maxWidth: .infinity, minHeight: .screenH - 200)
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
             .onAppear {
               Task(priority: .userInitiated) {
                 await RedditCredentialsManager.profile.refresh()

@@ -70,7 +70,8 @@ final class WindowMetrics: @unchecked Sendable {
     _size = screen?.bounds.size ?? CGSize(width: 390, height: 844)
     _contentWidth = _size.width
     _contentFrame = CGRect(origin: .zero, size: _size)
-    _isWide = UIDevice.current.userInterfaceIdiom != .phone
+    // The size class arrives with the first layout; until then, guess from the size.
+    _isWide = _size.width >= 700
     _displayScale = screen?.scale ?? 3
   }
 
