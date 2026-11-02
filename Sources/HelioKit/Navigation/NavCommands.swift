@@ -18,6 +18,12 @@ struct NavCommands: Commands {
   /// A screen action's menu. While no screen shown has the action, `placeholder`'s items show
   /// disabled: always a submenu, as switching between a submenu and an item reorders the
   /// menu's items on Mac, and a submenu can't be disabled there.
+  /// The shown screen's action with `id`, unless a reply, a full-screen viewer or a sheet covers
+  /// it: acting on the screen behind could navigate under it or close it.
+  private func screenAction(_ id: ScreenAction.ID) -> ScreenAction? {
+    targets.isCovered() ? nil : targets.action(id)
+  }
+
   private func actionMenu(_ action: ScreenAction?, title: String, placeholder: ScreenAction? = nil) -> some View {
     Menu(title) {
       if case let .menu(entries) = (action ?? placeholder)?.content {
@@ -56,9 +62,9 @@ struct NavCommands: Commands {
       // The feed's and the post's own menus, as in their toolbars. In this group: in a second
       // group before the toolbar's items, their actions never run on Mac.
       Divider()
-      actionMenu(targets.action(.sortPosts), title: "Sort Posts", placeholder: .sortPosts(SubListingSortOption?.none) { _ in })
-      actionMenu(targets.action(.feedOptions), title: "Feed Options", placeholder: .feedOptions(compact: false, setCompact: { _ in }, filters: [], selected: nil, select: { _ in }))
-      actionMenu(targets.action(.sortComments), title: "Sort Comments", placeholder: .sortComments(nil) { _ in })
+      actionMenu(screenAction(.sortPosts), title: "Sort Posts", placeholder: .sortPosts(SubListingSortOption?.none) { _ in })
+      actionMenu(screenAction(.feedOptions), title: "Feed Options", placeholder: .feedOptions(compact: false, setCompact: { _ in }, filters: [], selected: nil, select: { _ in }))
+      actionMenu(screenAction(.sortComments), title: "Sort Comments", placeholder: .sortComments(nil) { _ in })
     }
 
     CommandMenu("Go") {
@@ -77,7 +83,7 @@ struct NavCommands: Commands {
         .keyboardShortcut("[")
         .disabled(!Nav.shared.activeRouter.canGoBack)
 
-      let info = targets.action(.subredditInfo)
+      let info = screenAction(.subredditInfo)
       Button(info?.title ?? "About Subreddit", systemImage: "info.circle") { info?.perform() }
         .disabled(info == nil)
     }

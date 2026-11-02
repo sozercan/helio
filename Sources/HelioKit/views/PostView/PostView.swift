@@ -244,10 +244,15 @@ struct PostView: View, Equatable {
 
   /// The comment sort and the subreddit's info, as in the navigation bar.
   private var actions: [ScreenAction] {
-    var actions: [ScreenAction] = [.sortComments(sort) { opt in
-      sort = opt
-      Defaults[.PostPageDefSettings].postSorts[post.id] = opt
-    }]
+    var actions: [ScreenAction] = []
+    // Like the navigation bar's picker, not before the comments start loading: a sort chosen
+    // in that moment would start a second request for them.
+    if !hideElements {
+      actions.append(.sortComments(sort) { opt in
+        sort = opt
+        Defaults[.PostPageDefSettings].postSorts[post.id] = opt
+      })
+    }
     if subreddit.data != nil, !feedsAndSuch.contains(subreddit.id) {
       // Like the navigation bar's button, which doesn't say where it's from.
       actions.append(.subredditInfo(subreddit, column: nil))
