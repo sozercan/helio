@@ -9,7 +9,8 @@ import Defaults
 import SwiftUI
 
 /// The posts tab: the subs sidebar, the feed, and the open post. Wide windows show the feed and
-/// the post side by side; narrow ones collapse the three into one stack of the same path.
+/// the post side by side; narrow ones collapse the three into one stack of the same path. The open
+/// iPhone Duo shows them as two panes, one on each side of its hinge.
 struct SubredditsStack: View {
   @State var router: Router
   @Default(.BehaviorDefSettings) private var behaviorDefSettings // handle default feed selection routing
@@ -29,15 +30,32 @@ struct SubredditsStack: View {
 
   var body: some View {
     let layout = SplitLayout(sizeClass: horizontalSizeClass, frame: frame, division: WindowMetrics.shared.divisionFrame)
-    NavigationSplitView(columnVisibility: $columnVisibility, preferredCompactColumn: compactColumn) {
-      if let redditCredentialSelectedID = generalDefSettings.redditCredentialSelectedID {
-        Subreddits(firstDestination: sidebarSelection(showsColumns: layout.showsColumns), loaded: loaded, currentCredentialID: redditCredentialSelectedID, inSidebar: layout.showsColumns)
-          .id("subreddits-list-\(redditCredentialSelectedID)")
-          .attachViewControllerToRouter(tabID: .posts)
-          // A post opened from the sidebar's saved posts replaces the open one.
-          .environment(\.navColumn, .feed)
-          .hidesSidebarToggleOnMac()
+    Group {
+      if layout.usesPanes {
+        panes(layout)
+      } else {
+        splitView(layout)
       }
+    }
+    .onGeometryChange(for: CGRect.self) { $0.frame(in: .global) } action: { newFrame in
+      frame = newFrame
+      chooseLaunchFeed(in: newFrame)
+    }
+    .onChange(of: layout.showsColumns, initial: true) { _, showsColumns in
+      router.showsPostBesideFeed = showsColumns
+    }
+    .onChange(of: layout.sidebarBesideFeed, initial: true) { _, besideFeed in
+      router.firstIsSidebarSelection = besideFeed
+    }
+    .onChange(of: layout.fitsSidebar, initial: true) { _, fits in
+      columnVisibility = fits ? .all : .doubleColumn
+    }
+  }
+
+  /// Subs, feed and post as the split view's three columns, or collapsed into one stack.
+  private func splitView(_ layout: SplitLayout) -> some View {
+    NavigationSplitView(columnVisibility: $columnVisibility, preferredCompactColumn: compactColumn) {
+      subsList(inSidebar: layout.showsColumns)
     } content: {
       NavigationStack(path: $router.feedPath) {
         feedRoot
@@ -47,42 +65,94 @@ struct SubredditsStack: View {
       }
       .environment(\.navColumn, .feed)
       .columnContentWidth()
-      .feedColumnWidth(columnVisibility == .all ? nil : layout.hingeFeedWidth)
+      .navigationSplitViewColumnWidth(min: SplitLayout.minFeedWidth, ideal: SplitLayout.idealFeedWidth, max: SplitLayout.maxFeedWidth)
     } detail: {
-      NavigationStack(path: $router.postPath) {
-        Group {
-          if let post = router.postColumn.first {
-            // Keyed by the whole destination: two comments from one post are different threads.
-            RouterDestinationView(dest: post)
-              .id(post)
-              .hidesNavigationBarOnMac(layout.showsColumns)
-          } else {
-            // On the post view's background, so the column doesn't change shade when a post opens.
-            ContentUnavailableView("No Post Selected", systemImage: "doc.text.image", description: Text("Choose a post from the feed."))
-              .frame(maxWidth: .infinity, maxHeight: .infinity)
-              .themedListBG(selectedTheme.posts.bg)
-          }
-        }
-        .attachViewControllerToRouter(tabID: .posts)
-        .injectInTabDestinations()
-      }
-      .environment(\.navColumn, .post)
-      .columnContentWidth()
+      postColumn(layout)
     }
     .navigationSplitViewStyle(.balanced)
     // Too narrow for the feed and a post side by side (a narrow iPad or Mac window), the split view
-    // collapses into one stack as it does in compact width; across a hinge it never does.
+    // collapses into one stack as it does in compact width.
     .environment(\.horizontalSizeClass, layout.showsColumns ? .regular : .compact)
-    .onGeometryChange(for: CGRect.self) { $0.frame(in: .global) } action: { newFrame in
-      frame = newFrame
-      chooseLaunchFeed(in: newFrame)
+  }
+
+  /// The open iPhone Duo: the subs list and the feed on the left of the hinge, the post on the
+  /// right, each its own stack. The split view would cover the post with the feed there, as
+  /// neither half is as wide as its columns need.
+  @ViewBuilder
+  private func panes(_ layout: SplitLayout) -> some View {
+    #if compiler(>=6.4)
+      if #available(iOS 27.1, *) {
+        // Splits at the hinge, and follows the device into book posture.
+        ArrangementView {
+          feedPane
+        } secondary: {
+          postColumn(layout)
+            .environment(\.horizontalSizeClass, .compact)
+        }
+        .arrangementViewStyle(.split.axes(.horizontal))
+      } else {
+        hingePanes(layout)
+      }
+    #else
+      hingePanes(layout)
+    #endif
+  }
+
+  /// The two panes side by side, the first ending at the hinge.
+  private func hingePanes(_ layout: SplitLayout) -> some View {
+    HStack(spacing: layout.hingeWidth) {
+      feedPane
+        .frame(width: layout.hingeFeedWidth)
+      postColumn(layout)
+        .environment(\.horizontalSizeClass, .compact)
     }
-    .onChange(of: layout.showsColumns, initial: true) { _, showsColumns in
-      router.firstIsSidebarSelection = showsColumns
+  }
+
+  /// The subs list with the feed and what's opened from it stacked on it, as in one stack.
+  private var feedPane: some View {
+    NavigationStack(path: $router.feedPanePath) {
+      subsList(inSidebar: false)
+        .injectInTabDestinations()
     }
-    .onChange(of: layout.fitsSidebar, initial: true) { _, fits in
-      columnVisibility = fits ? .all : .doubleColumn
+    .environment(\.navColumn, .feed)
+    .columnContentWidth()
+    .environment(\.horizontalSizeClass, .compact)
+  }
+
+  /// The subs list: the split view's sidebar beside the feed, else the first screen of a stack.
+  @ViewBuilder
+  private func subsList(inSidebar: Bool) -> some View {
+    if let redditCredentialSelectedID = generalDefSettings.redditCredentialSelectedID {
+      Subreddits(firstDestination: sidebarSelection(inSidebar: inSidebar), loaded: loaded, currentCredentialID: redditCredentialSelectedID, inSidebar: inSidebar)
+        .id("subreddits-list-\(redditCredentialSelectedID)")
+        .attachViewControllerToRouter(tabID: .posts)
+        // A post opened from the sidebar's saved posts replaces the open one.
+        .environment(\.navColumn, .feed)
+        .hidesSidebarToggleOnMac()
     }
+  }
+
+  /// The open post and the screens opened from it, or a placeholder.
+  private func postColumn(_ layout: SplitLayout) -> some View {
+    NavigationStack(path: $router.postPath) {
+      Group {
+        if let post = router.postColumn.first {
+          // Keyed by the whole destination: two comments from one post are different threads.
+          RouterDestinationView(dest: post)
+            .id(post)
+            .hidesNavigationBarOnMac(layout.showsColumns)
+        } else {
+          // On the post view's background, so the column doesn't change shade when a post opens.
+          ContentUnavailableView("No Post Selected", systemImage: "doc.text.image", description: Text("Choose a post from the feed."))
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .themedListBG(selectedTheme.posts.bg)
+        }
+      }
+      .attachViewControllerToRouter(tabID: .posts)
+      .injectInTabDestinations()
+    }
+    .environment(\.navColumn, .post)
+    .columnContentWidth()
   }
 
   /// Opens the launch feed once the window's width is measured: before that, the size class alone
@@ -111,11 +181,11 @@ struct SubredditsStack: View {
 
   /// The subs list's selection. Beside the feed, the list can't clear it (as a Command-click
   /// would on Mac), which would empty the feed column; in a stack, Back clears it.
-  private func sidebarSelection(showsColumns: Bool) -> Binding<Router.NavDest?> {
+  private func sidebarSelection(inSidebar: Bool) -> Binding<Router.NavDest?> {
     Binding {
       router.firstSelected
     } set: { dest in
-      if dest != nil || !showsColumns {
+      if dest != nil || !inSidebar {
         router.firstSelected = dest
       }
     }
@@ -190,12 +260,23 @@ struct SplitLayout: Equatable {
   /// The feed and the post side by side, else one stack. The open iPhone Duo always shows both,
   /// one on each side of the hinge, where a single column would be cut in two.
   let showsColumns: Bool
+  /// Two panes split at a vertical hinge instead of the split view's columns. Neither half of the
+  /// open Duo is as wide as a post column needs, so the split view would lay the feed over the post.
+  let usesPanes: Bool
   /// Room for the sidebar beside them.
   let fitsSidebar: Bool
   /// Whether the window's width is known. Until it is, the size class decides.
   let measured: Bool
-  /// The feed column's width that ends it at a vertical hinge, when there is one.
+  /// The first pane's width, which ends it at a vertical hinge, when there is one.
   let hingeFeedWidth: CGFloat?
+  /// The hinge's width, between the two panes.
+  let hingeWidth: CGFloat
+
+  /// The subs list shows beside the feed, as the split view's sidebar. In one stack, and in the
+  /// Duo's first pane, the feed is a screen pushed on it instead, which Back can leave.
+  var sidebarBesideFeed: Bool {
+    showsColumns && !usesPanes
+  }
 
   init(sizeClass: UserInterfaceSizeClass?, frame: CGRect, division: CGRect?) {
     let width = frame.width
@@ -203,29 +284,20 @@ struct SplitLayout: Equatable {
     self.measured = measured
     // Only a vertical hinge separates a left and a right column.
     let division = division.flatMap { $0.height > $0.width ? $0 : nil }
+    usesPanes = division != nil
     showsColumns = division != nil || (sizeClass != .compact && (!measured || width >= Self.minFeedWidth + Self.minPostWidth))
-    fitsSidebar = showsColumns && (!measured || width >= Self.sidebarWidth + Self.idealFeedWidth + Self.minPostWidth)
+    fitsSidebar = showsColumns && !usesPanes && (!measured || width >= Self.sidebarWidth + Self.idealFeedWidth + Self.minPostWidth)
     if let division, measured, division.minX > frame.minX, division.maxX < frame.maxX {
       hingeFeedWidth = division.minX - frame.minX
+      hingeWidth = division.width
     } else {
       hingeFeedWidth = nil
+      hingeWidth = 0
     }
   }
 }
 
 private extension View {
-  /// The feed column ends at the hinge when there's one (and no sidebar before it), else it
-  /// takes a phone-like width.
-  /// One modifier either way, so folding or unfolding doesn't rebuild the feed's stack (and lose
-  /// its pages, filter and scroll position): at a hinge, all three widths are the hinge's.
-  func feedColumnWidth(_ hingeWidth: CGFloat?) -> some View {
-    navigationSplitViewColumnWidth(
-      min: hingeWidth ?? SplitLayout.minFeedWidth,
-      ideal: hingeWidth ?? SplitLayout.idealFeedWidth,
-      max: hingeWidth ?? SplitLayout.maxFeedWidth,
-    )
-  }
-
   /// Beside the feed on Mac, the open post needs no bar of its own under the window toolbar:
   /// its actions are in that toolbar (`MacTabToolbar`), its subreddit is in its header, and at
   /// the column's root there's no Back. Screens opened over it get their bar, with Back.
