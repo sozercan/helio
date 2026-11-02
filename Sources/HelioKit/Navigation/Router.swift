@@ -80,7 +80,7 @@ class Router: Hashable, Equatable, Identifiable {
 
   /// True while the posts tab shows the post column beside the feed: the split view's columns, or
   /// the open iPhone Duo's two panes. Then the feed marks its open post, Next and Previous Post
-  /// follow it under screens opened from it.
+  /// follow it under screens opened from it, and web pages open beside the feed.
   var showsPostBesideFeed = false
 
   /// Back can't remove the sidebar's feed beside the detail column, but a post or a user opened
@@ -130,8 +130,8 @@ class Router: Hashable, Equatable, Identifiable {
     withAnimation { self.fullPath.removeAll() }
   }
 
-  /// Opens `dest`. From the posts split view's feed column, a post replaces the post column's
-  /// screens and anything else stacks on the feed, leaving the open post where it is. From the
+  /// Opens `dest`. From the posts split view's feed column, a post or a web page replaces the post
+  /// column's screens and anything else stacks on the feed, leaving the open post where it is. From the
   /// post column, or anywhere else, it goes on top of the whole path.
   func navigateTo(_ dest: NavDest, _ reset: Bool = false, from column: Column? = nil) {
     if reset {
@@ -200,16 +200,19 @@ class Router: Hashable, Equatable, Identifiable {
       switch self {
       case let .reddit(reddit): reddit.id
       case let .setting(setting): setting.id
+      case let .web(url): "web-\(url.absoluteString)"
       }
     }
 
     case reddit(Reddit)
     case setting(Setting)
+    /// A web page, shown in the app beside the feed. Compact layouts open pages in a Safari sheet instead.
+    case web(URL)
 
-    /// Posts open in the posts split view's post column.
+    /// Posts and web pages open in the posts split view's post column.
     var opensInPostColumn: Bool {
       switch self {
-      case .reddit(.post), .reddit(.postHighlighted): true
+      case .reddit(.post), .reddit(.postHighlighted), .web: true
       default: false
       }
     }
@@ -281,6 +284,15 @@ extension Router.NavDest {
       return "feed:\(sub.id)"
     }
     return (sub.data?.display_name ?? sub.id).lowercased()
+  }
+
+  /// A web page shown in the app.
+  var isWebPage: Bool {
+    if case .web = self {
+      true
+    } else {
+      false
+    }
   }
 
   /// A subreddit or multireddit feed, which the sidebar can select.

@@ -181,9 +181,57 @@ class Nav: Identifiable, Equatable {
     } else if let dest {
       // From another tab it starts over on the posts tab, as the app's link handling does.
       withAnimation { Nav.fullTo(.posts, dest, true) }
+    } else if let page = webPaneDestination(for: url, from: column, activeTab: Nav.shared.activeTab, showsPostBesideFeed: Nav.shared[.posts].showsPostBesideFeed) {
+      // Beside the feed, the page opens in the post column, as a post does.
+      withAnimation { Nav.to(page, from: column) }
     } else {
       // Not something the app opens (a wiki page, any other site): the page itself.
       Nav.openURL(url)
+    }
+  }
+
+  /// The in-app page for a web link tapped in the posts tab's feed or post column while the two
+  /// show side by side. Nil in one stack or another tab, where the page opens in a Safari sheet.
+  static func webPaneDestination(for url: URL, from column: Router.Column?, activeTab: TabIdentifier, showsPostBesideFeed: Bool) -> Router.NavDest? {
+    guard column != nil, activeTab == .posts, showsPostBesideFeed, ["http", "https"].contains(url.scheme?.lowercased()) else { return nil }
+    return .web(url)
+  }
+
+  /// The web page a link in a post's or comment's text points to, for links the app doesn't open
+  /// itself. Their Markdown has them as `helioapp://` links; posts, subreddits and users among them
+  /// open in the app, and pictures in its image viewer, so those give nil.
+  static func webLink(fromAppLink url: URL) -> URL? {
+    guard url.scheme?.lowercased() == "helioapp" else { return nil }
+    switch parseRedditURL(url.absoluteString) {
+    case .other, .youtube: break
+    default: return nil
+    }
+    let address = url.absoluteString.replacingOccurrences(of: #"^helioapp://"#, with: "", options: [.regularExpression, .caseInsensitive])
+    guard let web = URL(string: "https://" + address), web.host()?.contains(".") == true, !isImageUrl(web.absoluteString) else { return nil }
+    return web
+  }
+
+  /// The feed and post columns' URL actions. Made once: a new action each time a column redraws
+  /// would update every view that reads it.
+  static let feedOpenURLAction = openURLAction(from: .feed)
+  static let postOpenURLAction = openURLAction(from: .post)
+
+  /// Opens web links in a column's Markdown (posts, comments) beside the feed when the post column
+  /// shows there; everything else goes through the app's URL handling as before.
+  private static func openURLAction(from column: Router.Column) -> OpenURLAction {
+    OpenURLAction { url in
+      openTextLink(url, from: column)
+      return .handled
+    }
+  }
+
+  /// Opens a link from a post's or comment's text: a web page beside the feed when the post
+  /// column shows there, anything else from the column it was tapped in.
+  static func openTextLink(_ url: URL, from column: Router.Column?) {
+    if let web = webLink(fromAppLink: url), let page = webPaneDestination(for: web, from: column, activeTab: Nav.shared.activeTab, showsPostBesideFeed: Nav.shared[.posts].showsPostBesideFeed) {
+      withAnimation { Nav.to(page, from: column) }
+    } else {
+      openLink(url, from: column)
     }
   }
 
@@ -228,7 +276,7 @@ private struct ColumnLinkOpener: ViewModifier {
 
   func body(content: Content) -> some View {
     content.environment(\.openURL, OpenURLAction { url in
-      Nav.openLink(url, from: navColumn)
+      Nav.openTextLink(url, from: navColumn)
       return .handled
     })
   }

@@ -63,6 +63,7 @@ struct SubredditsStack: View {
           .hidesSidebarToggleOnMac()
       }
       .environment(\.navColumn, .feed)
+      .environment(\.openURL, Nav.feedOpenURLAction)
       .columnContentWidth()
       .navigationSplitViewColumnWidth(min: SplitLayout.minFeedWidth, ideal: SplitLayout.idealFeedWidth, max: SplitLayout.maxFeedWidth)
     } detail: {
@@ -114,6 +115,7 @@ struct SubredditsStack: View {
         .injectInTabDestinations()
     }
     .environment(\.navColumn, .feed)
+    .environment(\.openURL, Nav.feedOpenURLAction)
     .columnContentWidth()
     .environment(\.horizontalSizeClass, .compact)
   }
@@ -139,7 +141,17 @@ struct SubredditsStack: View {
           // Keyed by the whole destination: two comments from one post are different threads.
           RouterDestinationView(dest: post)
             .id(post)
-            .hidesNavigationBarOnMac(layout.showsColumns)
+            .hidesNavigationBarOnMac(layout.showsColumns && !post.isWebPage)
+            .toolbar {
+              // A page opened from the feed has no post to go back to.
+              if layout.showsColumns, post.isWebPage {
+                ToolbarItem(placement: .topBarLeading) {
+                  Button("Close", systemImage: "xmark") {
+                    withAnimation { router.closePost() }
+                  }
+                }
+              }
+            }
         } else {
           ContentUnavailableView("No Post Selected", systemImage: "doc.text.image", description: Text("Choose a post from the feed."))
         }
@@ -148,6 +160,7 @@ struct SubredditsStack: View {
       .injectInTabDestinations()
     }
     .environment(\.navColumn, .post)
+    .environment(\.openURL, Nav.postOpenURLAction)
     .columnContentWidth()
   }
 

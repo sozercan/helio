@@ -325,7 +325,31 @@ struct RouterTests {
     #expect(router.postColumn == [otherPost])
   }
 
-  // MARK: The open Duo's panes
+  // MARK: Web pages and the open Duo's panes
+
+  private let page = Router.NavDest.web(URL(string: "https://example.com/story")!)
+
+  @Test func aWebPageFromTheFeedReplacesThePostColumn() {
+    let router = Router(id: "test")
+    router.firstSelected = feed("apple")
+    router.navigateTo(post, from: .feed)
+    router.navigateTo(user, from: .post)
+    router.navigateTo(page, from: .feed)
+    #expect(router.fullPath == [feed("apple"), page])
+    #expect(router.postColumn == [page])
+  }
+
+  @Test func aWebPageFromThePostStacksOnItSoBackReturnsToTheComments() {
+    let router = Router(id: "test")
+    router.firstIsSidebarSelection = true
+    router.firstSelected = feed("apple")
+    router.navigateTo(post, from: .feed)
+    router.navigateTo(page, from: .post)
+    #expect(router.postColumn == [post, page])
+    #expect(router.postPath == [page])
+    router.goBack()
+    #expect(router.fullPath == [feed("apple"), post])
+  }
 
   @Test func theFeedPaneHoldsTheFeedAndItsScreensButNotThePost() {
     let router = Router(id: "test")
@@ -357,6 +381,11 @@ struct RouterTests {
     #expect(router.canGoBack)
     router.goBack()
     #expect(router.fullPath.isEmpty)
+  }
+
+  @Test func aWebPageSurvivesEncoding() throws {
+    let data = try JSONEncoder().encode([page])
+    #expect(try JSONDecoder().decode([Router.NavDest].self, from: data) == [page])
   }
 
   @Test func feedPathIgnoresPushesWithoutAFeed() {
@@ -472,6 +501,37 @@ struct RedditLinkTests {
     // A subreddit's comments listing has no post id: opened as the page, not a crash.
     let listing = try #require(URL(string: "https://www.reddit.com/r/apple/comments/"))
     #expect(Nav.linkDestination(for: listing) == nil)
+  }
+}
+
+struct WebLinkTests {
+  private let story = URL(string: "https://example.com/story")!
+
+  @Test func webLinksOpenBesideTheFeedInThePostsTab() {
+    for column in [Router.Column.feed, .post] {
+      #expect(Nav.webPaneDestination(for: story, from: column, activeTab: .posts, showsPostBesideFeed: true) == .web(story))
+    }
+  }
+
+  @Test func webLinksOpenInSafariInOneStackOrAnotherTab() throws {
+    #expect(Nav.webPaneDestination(for: story, from: .feed, activeTab: .posts, showsPostBesideFeed: false) == nil)
+    #expect(Nav.webPaneDestination(for: story, from: nil, activeTab: .posts, showsPostBesideFeed: true) == nil)
+    #expect(Nav.webPaneDestination(for: story, from: .feed, activeTab: .inbox, showsPostBesideFeed: true) == nil)
+    let mail = try #require(URL(string: "mailto:someone@example.com"))
+    #expect(Nav.webPaneDestination(for: mail, from: .post, activeTab: .posts, showsPostBesideFeed: true) == nil)
+  }
+
+  @Test func markdownWebLinksBecomeTheirPages() throws {
+    let link = try #require(URL(string: "helioapp://example.com/story?id=1"))
+    #expect(Nav.webLink(fromAppLink: link) == URL(string: "https://example.com/story?id=1"))
+    let wiki = try #require(URL(string: "helioapp://www.reddit.com/r/apple/wiki/index"))
+    #expect(Nav.webLink(fromAppLink: wiki) == URL(string: "https://www.reddit.com/r/apple/wiki/index"))
+  }
+
+  @Test func markdownLinksTheAppOpensItselfStayInTheApp() throws {
+    for link in ["helioapp://r/apple", "helioapp://u/someone", "helioapp://www.reddit.com/r/apple/comments/abc123/a_title/", "helioapp://i.example.com/photo.jpg", "helioapp://auth-success", "https://example.com/story"] {
+      #expect(try Nav.webLink(fromAppLink: #require(URL(string: link))) == nil, "\(link)")
+    }
   }
 }
 
