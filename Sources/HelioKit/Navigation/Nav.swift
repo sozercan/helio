@@ -171,6 +171,23 @@ class Nav: Identifiable, Equatable {
     lhs.id == rhs.id
   }
 
+  /// Opens a link tapped in a feed or a post. In the posts tab, Reddit posts, subreddits and users
+  /// open from the column the link sits in, like other taps there; anything else, or a link in
+  /// another tab, goes through the app's URL handling as before.
+  static func openLink(_ url: URL, from column: Router.Column?) {
+    let dest: Router.NavDest? = switch parseRedditURL(url.absoluteString) {
+    case let .post(postID, subID): .reddit(.post(Post(id: postID, subID: subID)))
+    case let .subreddit(name): .reddit(.subFeed(Subreddit(id: name)))
+    case let .user(username): .reddit(.user(User(id: username)))
+    default: nil
+    }
+    if let dest, Nav.shared.activeTab == .posts {
+      withAnimation { Nav.to(dest, from: column) }
+    } else if let newURL = URL(string: url.absoluteString.replacingOccurrences(of: "https://reddit.com/", with: "helioapp://")) {
+      Nav.openURL(newURL)
+    }
+  }
+
   static func openURL(_ url: URL) {
     if url.scheme?.lowercased().contains(/http(s)?/) == true {
       let vc = SFSafariViewController(url: url)

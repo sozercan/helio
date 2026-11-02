@@ -13,6 +13,7 @@ import YouTubePlayerKit
 struct OnlyURL: View {
   static let height: Double = 22
   var url: URL
+  @Environment(\.navColumn) private var navColumn
   var body: some View {
     HStack(spacing: 4) {
       Image(systemName: "link")
@@ -24,11 +25,9 @@ struct OnlyURL: View {
     .background(Capsule(style: .continuous).fill(Color.accentColor.opacity(0.3)))
     .fontSize(15, .medium)
     .lineLimit(1)
-    .foregroundColor(.white)
+    .foregroundStyle(.white)
     .highPriorityGesture(TapGesture().onEnded {
-      if let newURL = URL(string: url.absoluteString.replacingOccurrences(of: "https://reddit.com/", with: "helioapp://")) {
-        Nav.openURL(newURL)
-      }
+      Nav.openLink(url, from: navColumn)
     })
   }
 }

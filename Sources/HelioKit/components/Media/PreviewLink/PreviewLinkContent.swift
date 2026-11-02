@@ -39,11 +39,10 @@ struct PreviewLinkContentRaw: View, Equatable {
   var description: String?
   var loading: Bool
   var url: URL
+  @Environment(\.navColumn) private var navColumn
 
   func open() {
-    if let newURL = URL(string: url.absoluteString.replacingOccurrences(of: "https://reddit.com/", with: "helioapp://")) {
-      Nav.openURL(newURL)
-    }
+    Nav.openLink(url, from: navColumn)
   }
 
   var body: some View {

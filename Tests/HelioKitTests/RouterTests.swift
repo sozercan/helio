@@ -369,7 +369,10 @@ struct SplitLayoutTests {
 
   @Test func aHorizontalHingeDoesNotSizeTheFeed() {
     let hinge = CGRect(x: 0, y: 440, width: 668, height: 8)
-    #expect(SplitLayout(sizeClass: .regular, frame: frame(668), division: hinge).hingeFeedWidth == nil)
+    let layout = SplitLayout(sizeClass: .regular, frame: frame(668), division: hinge)
+    #expect(layout.hingeFeedWidth == nil)
+    // It doesn't separate a left and a right column, so the width rule still collapses them.
+    #expect(!layout.showsColumns)
   }
 
   @Test func beforeMeasuringTheSizeClassDecides() {

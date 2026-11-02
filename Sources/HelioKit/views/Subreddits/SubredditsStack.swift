@@ -66,8 +66,9 @@ struct SubredditsStack: View {
       NavigationStack(path: $router.postPath) {
         Group {
           if let post = router.postColumn.first {
+            // Keyed by the whole destination: two comments from one post are different threads.
             RouterDestinationView(dest: post)
-              .id(post.id)
+              .id(post)
           } else {
             ContentUnavailableView("No Post Selected", systemImage: "doc.text.image", description: Text("Choose a post from the feed."))
           }
@@ -86,7 +87,7 @@ struct SubredditsStack: View {
     .onChange(of: layout.showsColumns, initial: true) { _, showsColumns in
       router.firstIsSidebarSelection = showsColumns
     }
-    .onChange(of: layout.fitsSidebar) { _, fits in
+    .onChange(of: layout.fitsSidebar, initial: true) { _, fits in
       columnVisibility = fits ? .all : .doubleColumn
     }
   }
@@ -162,9 +163,11 @@ struct SplitLayout: Equatable {
     let width = frame.width
     // Before the first measurement, the size class decides.
     let measured = width > 0
+    // Only a vertical hinge separates a left and a right column.
+    let division = division.flatMap { $0.height > $0.width ? $0 : nil }
     showsColumns = division != nil || (sizeClass != .compact && (!measured || width >= Self.minFeedWidth + Self.minPostWidth))
     fitsSidebar = showsColumns && (!measured || width >= Self.sidebarWidth + Self.idealFeedWidth + Self.minPostWidth)
-    if let division, measured, division.height > division.width, division.minX > frame.minX, division.maxX < frame.maxX {
+    if let division, measured, division.minX > frame.minX, division.maxX < frame.maxX {
       hingeFeedWidth = division.minX - frame.minX
     } else {
       hingeFeedWidth = nil
