@@ -25,6 +25,7 @@ struct PostLinkNormalSelftext: View, Equatable {
 }
 
 struct PostLinkNormal: View, Equatable, Identifiable {
+  @Environment(\.navColumn) private var navColumn
   static func == (lhs: PostLinkNormal, rhs: PostLinkNormal) -> Bool {
     lhs.id == rhs.id && lhs.contentWidth == rhs.contentWidth && lhs.secondary == rhs.secondary && lhs.defSettings == rhs.defSettings && lhs.theme == rhs.theme
   }
@@ -45,13 +46,13 @@ struct PostLinkNormal: View, Equatable, Identifiable {
   }
 
   func openPost() {
-    Nav.to(.reddit(.post(post)))
+    Nav.to(.reddit(.post(post)), from: navColumn)
   }
 
   func openSubreddit() {
     if let subName = post.data?.subreddit {
       withAnimation {
-        Nav.to(.reddit(.subFeed(Subreddit(id: subName))))
+        Nav.to(.reddit(.subFeed(Subreddit(id: subName))), from: navColumn)
       }
     }
   }

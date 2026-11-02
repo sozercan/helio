@@ -56,6 +56,7 @@ struct Settings: View {
       .themedListBG(selectedTheme.lists.bg)
       .scrollContentBackground(.hidden)
       .navigationTitle("Settings")
+      .readableWidth()
       .attachViewControllerToRouter(tabID: .settings)
       .injectInTabDestinations()
     }

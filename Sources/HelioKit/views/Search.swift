@@ -246,6 +246,7 @@ struct Search: View {
         fetch()
       }
       .navigationTitle("Search")
+      .readableWidth()
       .relayoutPosts({ resultPosts }, contentWidth: contentWidth, theme: theme)
       // One handler, so changing the type and the query together fetches once.
       .onChange(of: [searchType.rawValue, searchQuery.debounced]) {

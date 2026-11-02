@@ -25,6 +25,7 @@ struct PostContent: View, Equatable {
   // Markdown sets its own font sizes, so bodies scale by passing a scaled size in.
   @Environment(\.dynamicTypeSize) private var dynamicTypeSize
   @Environment(\.useTheme) private var selectedTheme
+  @Environment(\.contentWidth) private var contentWidth
 
   func openSubreddit() {
     if let subName = post.data?.subreddit {
@@ -68,11 +69,11 @@ struct PostContent: View, Equatable {
           if !isCollapsed {
             VStack(spacing: 0) {
               VStack(spacing: selectedTheme.posts.spacing) {
-                if let extractedMedia = helioData.extractedMediaForcedNormal {
+                if let layout = post.pageLayout(contentWidth: contentWidth, theme: selectedTheme), let extractedMedia = layout.media {
                   // The feed's size runs full-bleed images edge to edge; the post page keeps them inset.
                   let feedTheme = selectedTheme.postLinks.theme
                   let fullBleedInset = isFullBleedMedia(extractedMedia, theme: feedTheme, secondary: false, compact: false) ? feedTheme.innerPadding.horizontal * 2 : 0
-                  MediaPresenter(helioData: helioData, fullPage: true, controller: nil, postTitle: data.title, badgeKit: data.badgeKit, avatarImageRequest: helioData.avatarImageRequest, markAsSeen: {}, cornerRadius: selectedTheme.postLinks.theme.mediaCornerRadius, blurPostLinkNSFW: defSettings.blurNSFW, media: extractedMedia, over18: over18, compact: false, contentWidth: (helioData.postDimensionsForcedNormal.mediaSize?.width ?? 0) - fullBleedInset, maxMediaHeightScreenPercentage: Defaults[.PostLinkDefSettings].maxMediaHeightScreenPercentage)
+                  MediaPresenter(helioData: helioData, fullPage: true, controller: nil, postTitle: data.title, badgeKit: data.badgeKit, avatarImageRequest: helioData.avatarImageRequest, markAsSeen: {}, cornerRadius: selectedTheme.postLinks.theme.mediaCornerRadius, blurPostLinkNSFW: defSettings.blurNSFW, media: extractedMedia, over18: over18, compact: false, contentWidth: (layout.mediaSize?.width ?? 0) - fullBleedInset, maxMediaHeightScreenPercentage: Defaults[.PostLinkDefSettings].maxMediaHeightScreenPercentage)
                 }
 
                 if !(data.selftext?.isEmpty ?? true) {

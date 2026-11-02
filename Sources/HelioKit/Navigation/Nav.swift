@@ -20,8 +20,10 @@ class Nav: Identifiable, Equatable {
     Nav.shared.activeRouter.goBack()
   }
 
-  static func to(_ dest: Router.NavDest, _ reset: Bool = false) {
-    Nav.shared.activeRouter.navigateTo(dest, reset)
+  /// Opens `dest` in the active tab. Pass the column the request comes from (the
+  /// `navColumn` environment value) so the posts split view opens it in the right one.
+  static func to(_ dest: Router.NavDest, _ reset: Bool = false, from column: Router.Column? = nil) {
+    Nav.shared.activeRouter.navigateTo(dest, reset, from: column)
   }
 
   static func fullTo(_ tab: TabIdentifier, _ dest: Router.NavDest, _ reset: Bool = false) {

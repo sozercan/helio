@@ -398,6 +398,7 @@ struct SpoilerToggle: View {
 
 /// Apollo's comment header: author, flair and score on one line.
 struct CommentHeaderLine: View {
+  @Environment(\.navColumn) private var navColumn
   var data: CommentData
   var avatarRequest: ImageRequest?
   var isOP: Bool
@@ -413,7 +414,7 @@ struct CommentHeaderLine: View {
 
       if let author = data.author {
         Button {
-          Nav.to(.reddit(.user(User(id: author))))
+          Nav.to(.reddit(.user(User(id: author))), from: navColumn)
         } label: {
           Text(author)
             .contentFont(badge.authorText.size, badge.authorText.weight.t, relativeTo: .meta)

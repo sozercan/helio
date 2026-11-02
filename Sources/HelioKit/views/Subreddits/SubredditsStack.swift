@@ -8,101 +8,189 @@
 import Defaults
 import SwiftUI
 
+/// The posts tab: the subs sidebar, the feed, and the open post. Wide windows show the feed and
+/// the post side by side; narrow ones collapse the three into one stack of the same path.
 struct SubredditsStack: View {
   @State var router: Router
   @Default(.BehaviorDefSettings) private var behaviorDefSettings // handle default feed selection routing
   @Default(.GeneralDefSettings) private var generalDefSettings // handle default feed selection routing
-  @State private var columnVisibility: NavigationSplitViewVisibility = .automatic
+  @State private var columnVisibility: NavigationSplitViewVisibility = .all
   /// The split view collapses into one stack in compact width.
   @Environment(\.horizontalSizeClass) private var horizontalSizeClass
-  /// The posts column's measured frame. Follows window resizes, unlike a screen-size calculation.
-  @State private var detailFrame: CGRect = .zero
+  /// The split view's measured frame. Follows window resizes, unlike a screen-size calculation.
+  @State private var frame: CGRect = .zero
 
   init(router: Router) {
     self._router = .init(initialValue: router)
   }
 
-  /// The column runs under the unfolded iPhone Duo's side tab bar while its posts stop at the
-  /// window's safe area, so only the part inside that counts.
-  var postContentWidth: CGFloat {
-    guard detailFrame.width > 0 else { return .screenW }
-    let visible = detailFrame.intersection(WindowMetrics.shared.contentFrame)
-    return visible.width > 0 ? visible.width : detailFrame.width
-  }
-
   @State private var loaded = false
+
   var body: some View {
-    NavigationSplitView(columnVisibility: $columnVisibility) {
+    let layout = SplitLayout(sizeClass: horizontalSizeClass, frame: frame, division: WindowMetrics.shared.divisionFrame)
+    NavigationSplitView(columnVisibility: $columnVisibility, preferredCompactColumn: compactColumn) {
       if let redditCredentialSelectedID = generalDefSettings.redditCredentialSelectedID {
         Subreddits(firstDestination: $router.firstSelected, loaded: loaded, currentCredentialID: redditCredentialSelectedID)
           .id("subreddits-list-\(redditCredentialSelectedID)")
           .attachViewControllerToRouter(tabID: .posts)
-        #if targetEnvironment(macCatalyst)
-          // The window toolbar has the Mac's sidebar button (`MacTabToolbar`).
-          .toolbar(removing: .sidebarToggle)
-        #endif
+          // A post opened from the sidebar's saved posts replaces the open one.
+          .environment(\.navColumn, .feed)
+          .hidesSidebarToggleOnMac()
       }
-    } detail: {
-      NavigationStack(path: $router.path) {
-        Group {
-          if let firstSelected = router.firstSelected {
-            switch firstSelected {
-            case let .reddit(.multiFeed(multi)):
-              MultiPostsView(multi: multi)
-                .id("\(multi.id)-multi-first-tab")
-                .attachViewControllerToRouter(tabID: .posts)
-            case let .reddit(.subFeed(sub)):
-              SubredditPosts(subreddit: sub)
-                // By the feed's name, which stays put when a feed opened by name takes in its
-                // subreddit's details (and with them Reddit's id), so it keeps its pages.
-                .id("\(Router.NavDest.reddit(.subFeed(sub)).subredditFeedName ?? sub.id)-sub-first-tab")
-            case let .reddit(.post(post)):
-              if let sub = post.helioData?.subreddit {
-                PostView(post: post, subreddit: sub)
-                  .id("\(post.id)-post-first-tab")
-                  .attachViewControllerToRouter(tabID: .posts)
+    } content: {
+      NavigationStack(path: $router.feedPath) {
+        feedRoot
+          .readableWidth()
+          .injectInTabDestinations()
+          .hidesSidebarToggleOnMac()
+          .task(priority: .background) {
+            if !loaded {
+              // MARK: Route to default feed
+
+              // Skipped when a feed is already chosen, such as by a Home Screen quick action.
+              if behaviorDefSettings.preferenceDefaultFeed != "subList", router.firstSelected == nil { // we are in subList, can ignore
+                let tempSubreddit = QuickAction.subreddit(named: behaviorDefSettings.preferenceDefaultFeed)
+                router.firstSelected = .reddit(.subFeed(tempSubreddit))
               }
-            case let .reddit(.user(user)):
-              UserView(user: user)
-                .id("\(user.id)-user-first-tab")
-                .attachViewControllerToRouter(tabID: .posts)
-            default:
-              EmptyView()
-            }
-          } else {
-            ContentUnavailableView("No Feed Selected", systemImage: "rectangle.stack", description: Text("Pick a feed or subreddit."))
-              .attachViewControllerToRouter(tabID: .posts)
-          }
-        }
-        .injectInTabDestinations()
-        .task(priority: .background) {
-          if !loaded {
-            // MARK: Route to default feed
 
-            // Skipped when a feed is already chosen, such as by a Home Screen quick action.
-            if behaviorDefSettings.preferenceDefaultFeed != "subList", router.firstSelected == nil { // we are in subList, can ignore
-              let tempSubreddit = QuickAction.subreddit(named: behaviorDefSettings.preferenceDefaultFeed)
-              router.firstSelected = .reddit(.subFeed(tempSubreddit))
-            }
-
-            withAnimation {
-              loaded = true
+              withAnimation {
+                loaded = true
+              }
             }
           }
-        }
       }
-      .environment(\.contentWidth, postContentWidth)
-      // Fill the column so this measures it rather than the content (the placeholder is 200pt).
-      .frame(maxWidth: .infinity, maxHeight: .infinity)
-      .onGeometryChange(for: CGRect.self) { $0.frame(in: .global) } action: { detailFrame = $0 }
+      .environment(\.navColumn, .feed)
+      .columnContentWidth()
+      .feedColumnWidth(columnVisibility == .all ? nil : layout.hingeFeedWidth)
+    } detail: {
+      NavigationStack(path: $router.postPath) {
+        Group {
+          if let post = router.postColumn.first {
+            RouterDestinationView(dest: post)
+              .id(post.id)
+          } else {
+            ContentUnavailableView("No Post Selected", systemImage: "doc.text.image", description: Text("Choose a post from the feed."))
+          }
+        }
+        .attachViewControllerToRouter(tabID: .posts)
+        .injectInTabDestinations()
+      }
+      .environment(\.navColumn, .post)
+      .columnContentWidth()
     }
-//    .swipeAnywhere()
-    // Side by side unless the sidebar is toggled off. In narrower wide windows (unfolded iPhone
-    // Duo) the automatic style overlays the sidebar on the posts instead.
     .navigationSplitViewStyle(.balanced)
-    .environment(\.contentWidth, postContentWidth)
-    .onChange(of: horizontalSizeClass, initial: true) { _, sizeClass in
-      router.firstIsSidebarSelection = sizeClass != .compact
+    // Too narrow for the feed and a post side by side (a narrow iPad or Mac window), the split view
+    // collapses into one stack as it does in compact width; across a hinge it never does.
+    .environment(\.horizontalSizeClass, layout.showsColumns ? .regular : .compact)
+    .onGeometryChange(for: CGRect.self) { $0.frame(in: .global) } action: { frame = $0 }
+    .onChange(of: layout.showsColumns, initial: true) { _, showsColumns in
+      router.firstIsSidebarSelection = showsColumns
     }
+    .onChange(of: layout.fitsSidebar) { _, fits in
+      columnVisibility = fits ? .all : .doubleColumn
+    }
+  }
+
+  /// The feed at the root of the feed column: the sidebar's selection.
+  @ViewBuilder
+  private var feedRoot: some View {
+    if let firstSelected = router.firstSelected {
+      switch firstSelected {
+      case let .reddit(.multiFeed(multi)):
+        MultiPostsView(multi: multi)
+          .id("\(multi.id)-multi-first-tab")
+          .attachViewControllerToRouter(tabID: .posts)
+      case let .reddit(.subFeed(sub)):
+        SubredditPosts(subreddit: sub)
+          // By the feed's name, which stays put when a feed opened by name takes in its
+          // subreddit's details (and with them Reddit's id), so it keeps its pages.
+          .id("\(Router.NavDest.reddit(.subFeed(sub)).subredditFeedName ?? sub.id)-sub-first-tab")
+      case let .reddit(.post(post)):
+        if let sub = post.helioData?.subreddit {
+          PostView(post: post, subreddit: sub)
+            .id("\(post.id)-post-first-tab")
+            .attachViewControllerToRouter(tabID: .posts)
+        }
+      case let .reddit(.user(user)):
+        UserView(user: user)
+          .id("\(user.id)-user-first-tab")
+          .attachViewControllerToRouter(tabID: .posts)
+      default:
+        EmptyView()
+      }
+    } else {
+      ContentUnavailableView("No Feed Selected", systemImage: "rectangle.stack", description: Text("Pick a feed or subreddit."))
+        .attachViewControllerToRouter(tabID: .posts)
+    }
+  }
+
+  /// Which column the collapsed split view shows: the open post, else the feed, else the subs.
+  /// Going back from the post or the feed there closes it.
+  private var compactColumn: Binding<NavigationSplitViewColumn> {
+    Binding {
+      router.postColumnStart != nil ? .detail : router.firstSelected != nil ? .content : .sidebar
+    } set: { column in
+      guard !router.firstIsSidebarSelection else { return }
+      if column == .content {
+        router.closePost()
+      } else if column == .sidebar {
+        router.firstSelected = nil
+      }
+    }
+  }
+}
+
+/// How the posts split view lays out its columns for a window width.
+struct SplitLayout: Equatable {
+  static let minFeedWidth: CGFloat = 320
+  static let idealFeedWidth: CGFloat = 400
+  static let maxFeedWidth: CGFloat = 480
+  /// The narrowest post column worth reading in. Narrower, the post replaces the feed.
+  static let minPostWidth: CGFloat = 440
+  /// The sidebar's width when shown beside the other two.
+  static let sidebarWidth: CGFloat = 320
+
+  /// The feed and the post side by side, else one stack. The open iPhone Duo always shows both,
+  /// one on each side of the hinge, where a single column would be cut in two.
+  let showsColumns: Bool
+  /// Room for the sidebar beside them.
+  let fitsSidebar: Bool
+  /// The feed column's width that ends it at a vertical hinge, when there is one.
+  let hingeFeedWidth: CGFloat?
+
+  init(sizeClass: UserInterfaceSizeClass?, frame: CGRect, division: CGRect?) {
+    let width = frame.width
+    // Before the first measurement, the size class decides.
+    let measured = width > 0
+    showsColumns = division != nil || (sizeClass != .compact && (!measured || width >= Self.minFeedWidth + Self.minPostWidth))
+    fitsSidebar = showsColumns && (!measured || width >= Self.sidebarWidth + Self.idealFeedWidth + Self.minPostWidth)
+    if let division, measured, division.height > division.width, division.minX > frame.minX, division.maxX < frame.maxX {
+      hingeFeedWidth = division.minX - frame.minX
+    } else {
+      hingeFeedWidth = nil
+    }
+  }
+}
+
+private extension View {
+  /// The feed column ends at the hinge when there's one (and no sidebar before it), else it
+  /// takes a phone-like width.
+  @ViewBuilder
+  func feedColumnWidth(_ hingeWidth: CGFloat?) -> some View {
+    if let hingeWidth {
+      navigationSplitViewColumnWidth(hingeWidth)
+    } else {
+      navigationSplitViewColumnWidth(min: SplitLayout.minFeedWidth, ideal: SplitLayout.idealFeedWidth, max: SplitLayout.maxFeedWidth)
+    }
+  }
+
+  /// The Mac window toolbar has the sidebar button (`MacTabToolbar`).
+  @ViewBuilder
+  func hidesSidebarToggleOnMac() -> some View {
+    #if targetEnvironment(macCatalyst)
+      toolbar(removing: .sidebarToggle)
+    #else
+      self
+    #endif
   }
 }

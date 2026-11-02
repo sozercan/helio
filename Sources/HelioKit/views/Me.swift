@@ -39,6 +39,7 @@ struct Me: View {
             }
         }
       }
+      .readableWidth()
       .toolbar {
         if RedditCredentialsManager.shared.validCredentials.count > 1 {
           ToolbarItem(placement: .topBarLeading) { AccountSwitcherMenu() }

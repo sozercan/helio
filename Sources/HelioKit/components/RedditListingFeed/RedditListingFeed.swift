@@ -47,6 +47,7 @@ struct RedditListingFeed<Header: View, Footer: View, S: Sorting>: View {
 
   @Environment(\.useTheme) private var selectedTheme
   @Environment(\.contentWidth) private var contentWidth
+  @Environment(\.navColumn) private var navColumn
 
   @Default(.PostLinkDefSettings) private var postLinkDefSettings
   @Default(.SubredditFeedDefSettings) private var feedDefSettings
@@ -147,7 +148,7 @@ struct RedditListingFeed<Header: View, Footer: View, S: Sorting>: View {
                     .contentShape(Rectangle())
                     .onTapGesture {
                       if let data = comment.data, let link_id = data.link_id, let subID = data.subreddit {
-                        Nav.to(.reddit(.postHighlighted(Post(id: link_id, subID: subID), comment.id)))
+                        Nav.to(.reddit(.postHighlighted(Post(id: link_id, subID: subID), comment.id)), from: navColumn)
                       }
                     }
                     .listRowInsets(EdgeInsets(top: paddingV, leading: paddingH, bottom: paddingV, trailing: paddingH))
@@ -249,7 +250,7 @@ struct RedditListingFeed<Header: View, Footer: View, S: Sorting>: View {
           ToolbarSpacer(.fixed, placement: .topBarTrailing)
           ToolbarItem(placement: .topBarTrailing) {
             Button {
-              Nav.to(.reddit(.subInfo(sub)))
+              Nav.to(.reddit(.subInfo(sub)), from: navColumn)
             } label: {
               SubredditIcon(subredditIconKit: data.subredditIconKit)
             }

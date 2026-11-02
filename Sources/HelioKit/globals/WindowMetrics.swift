@@ -23,6 +23,7 @@ final class WindowMetrics: @unchecked Sendable {
   @ObservationIgnored private var _contentFrame: CGRect
   @ObservationIgnored private var _isWide: Bool
   @ObservationIgnored private var _displayScale: CGFloat
+  @ObservationIgnored private var _divisionFrame: CGRect?
 
   /// The window's full size, including the safe area.
   var size: CGSize {
@@ -56,6 +57,14 @@ final class WindowMetrics: @unchecked Sendable {
     return lock.withLock { _displayScale }
   }
 
+  /// The open iPhone Duo's hinge, in global coordinates: content and controls shouldn't span it.
+  /// Nil on displays without one. Kept in every posture, so layout doesn't change when the
+  /// device goes flat.
+  var divisionFrame: CGRect? {
+    access(keyPath: \.divisionFrame)
+    return lock.withLock { _divisionFrame }
+  }
+
   private init() {
     let screen = (UIApplication.shared.connectedScenes.first as? UIWindowScene)?.screen
     _size = screen?.bounds.size ?? CGSize(width: 390, height: 844)
@@ -65,7 +74,10 @@ final class WindowMetrics: @unchecked Sendable {
     _displayScale = screen?.scale ?? 3
   }
 
-  func update(size: CGSize? = nil, contentWidth: CGFloat? = nil, contentFrame: CGRect? = nil, horizontalSizeClass: UserInterfaceSizeClass? = nil, displayScale: CGFloat? = nil) {
+  func update(size: CGSize? = nil, contentWidth: CGFloat? = nil, contentFrame: CGRect? = nil, divisionFrame: CGRect?? = nil, horizontalSizeClass: UserInterfaceSizeClass? = nil, displayScale: CGFloat? = nil) {
+    if let divisionFrame, divisionFrame != self.divisionFrame {
+      withMutation(keyPath: \.divisionFrame) { lock.withLock { _divisionFrame = divisionFrame } }
+    }
     if let size, size.width > 0, size.height > 0, size != self.size {
       withMutation(keyPath: \.size) { lock.withLock { _size = size } }
     }
@@ -101,6 +113,18 @@ private struct WindowMetricsReader: ViewModifier {
     var size: CGSize
     var contentWidth: CGFloat
     var contentFrame: CGRect
+    var divisionFrame: CGRect?
+  }
+
+  /// The hinge, in the proxy's coordinates (iOS 27.1 and later). The API is in the iOS 27.1 SDK:
+  /// Xcode 26 can't see it (hence the compiler check), and the workflows pin Xcode 27.2.
+  private static func divisionFrame(_ proxy: GeometryProxy) -> CGRect? {
+    #if compiler(>=6.4)
+      if #available(iOS 27.1, *) {
+        return proxy.reservedRegions(kind: .division, options: .includeInactive).first?.frame
+      }
+    #endif
+    return nil
   }
 
   func body(content: Content) -> some View {
@@ -112,8 +136,9 @@ private struct WindowMetricsReader: ViewModifier {
           .onGeometryChange(for: Geometry.self) { proxy in
             let insets = proxy.safeAreaInsets
             let size = CGSize(width: proxy.size.width + insets.leading + insets.trailing, height: proxy.size.height + insets.top + insets.bottom)
-            return Geometry(size: size, contentWidth: proxy.size.width, contentFrame: proxy.frame(in: .global))
-          } action: { WindowMetrics.shared.update(size: $0.size, contentWidth: $0.contentWidth, contentFrame: $0.contentFrame) }
+            let frame = proxy.frame(in: .global)
+            return Geometry(size: size, contentWidth: proxy.size.width, contentFrame: frame, divisionFrame: Self.divisionFrame(proxy)?.offsetBy(dx: frame.minX, dy: frame.minY))
+          } action: { WindowMetrics.shared.update(size: $0.size, contentWidth: $0.contentWidth, contentFrame: $0.contentFrame, divisionFrame: .some($0.divisionFrame)) }
       }
       .onChange(of: horizontalSizeClass, initial: true) { _, sizeClass in
         WindowMetrics.shared.update(horizontalSizeClass: sizeClass)

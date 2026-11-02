@@ -125,8 +125,62 @@ class Router: Hashable, Equatable, Identifiable {
     withAnimation { self.fullPath.removeAll() }
   }
 
-  func navigateTo(_ dest: NavDest, _ reset: Bool = false) {
-    self.path = reset ? [dest] : self.path + [dest]
+  /// Opens `dest`. From the posts split view's feed column, a post replaces the post column's
+  /// screens and anything else stacks on the feed, leaving the open post where it is. From the
+  /// post column, or anywhere else, it goes on top of the whole path.
+  func navigateTo(_ dest: NavDest, _ reset: Bool = false, from column: Column? = nil) {
+    if reset {
+      path = [dest]
+    } else if column == .feed, !fullPath.isEmpty {
+      let feedStack = Array(fullPath[..<(postColumnStart ?? fullPath.count)])
+      fullPath = feedStack + [dest] + (dest.opensInPostColumn ? [] : postColumn)
+    } else {
+      path.append(dest)
+    }
+  }
+
+  // MARK: The posts split view's feed and post columns
+
+  /// The posts tab's two content columns. The path is one stack, which is how the split view
+  /// shows it when collapsed: the feed and the screens opened from it, then the first post
+  /// and the screens opened from that.
+  enum Column {
+    case feed, post
+  }
+
+  /// Where the post column starts in `fullPath`: the first post after the feed.
+  var postColumnStart: Int? {
+    fullPath.indices.dropFirst().first { fullPath[$0].opensInPostColumn }
+  }
+
+  /// The post column's screens: the open post and what was opened from it.
+  var postColumn: [NavDest] {
+    postColumnStart.map { Array(fullPath[$0...]) } ?? []
+  }
+
+  /// The screens stacked on the feed in its column.
+  var feedPath: [NavDest] {
+    get { Array(fullPath.dropFirst().prefix(max(0, (postColumnStart ?? fullPath.count) - 1))) }
+    set {
+      guard let feed = fullPath.first else { return }
+      fullPath = [feed] + newValue + postColumn
+    }
+  }
+
+  /// The screens stacked on the open post in its column.
+  var postPath: [NavDest] {
+    get { Array(postColumn.dropFirst()) }
+    set {
+      guard let start = postColumnStart else { return }
+      fullPath = Array(fullPath[...start]) + newValue
+    }
+  }
+
+  /// Empties the post column.
+  func closePost() {
+    if let start = postColumnStart {
+      fullPath = Array(fullPath[..<start])
+    }
   }
 
   enum NavDest: Hashable, Codable, Identifiable {
@@ -139,6 +193,14 @@ class Router: Hashable, Equatable, Identifiable {
 
     case reddit(Reddit)
     case setting(Setting)
+
+    /// Posts open in the posts split view's post column.
+    var opensInPostColumn: Bool {
+      switch self {
+      case .reddit(.post), .reddit(.postHighlighted): true
+      default: false
+      }
+    }
 
     enum Reddit: Hashable, Codable, Identifiable {
       var id: String {

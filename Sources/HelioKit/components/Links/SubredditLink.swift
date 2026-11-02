@@ -17,6 +17,7 @@ struct SubredditLinkContainer: View {
 }
 
 struct SubredditLink: View {
+  @Environment(\.navColumn) private var navColumn
   var noHPad = false
   var sub: Subreddit
   var body: some View {
@@ -48,7 +49,7 @@ struct SubredditLink: View {
       .if(noHPad) { $0.mask(RR(20, .black)) }
       .if(!noHPad) { $0.hairlineRowSeparator() }
       .onTapGesture {
-        Nav.to(.reddit(.subFeed(sub)))
+        Nav.to(.reddit(.subFeed(sub)), from: navColumn)
       }
     }
   }

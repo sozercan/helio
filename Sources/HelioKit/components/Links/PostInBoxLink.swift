@@ -10,6 +10,7 @@ import NukeUI
 import SwiftUI
 
 struct PostInBoxLink: View {
+  @Environment(\.navColumn) private var navColumn
   @Default(.postsInBox) private var postsInBox
 
   var postInBox: PostInBox
@@ -116,7 +117,7 @@ struct PostInBoxLink: View {
         .scaleEffect(deleting ? 1 : 0.85),
     )
     .onTapGesture {
-      Nav.to(.reddit(.post(post)))
+      Nav.to(.reddit(.post(post)), from: navColumn)
     }
     .gesture(
       LongPressGesture(minimumDuration: 0.5, maximumDistance: 10)

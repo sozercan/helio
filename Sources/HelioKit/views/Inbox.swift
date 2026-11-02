@@ -27,6 +27,7 @@ struct Inbox: View {
   var body: some View {
     NavigationStack(path: $router.fullPath) {
       RedditListingFeed(feedId: "inbox", title: "Inbox", theme: selectedTheme.lists.bg, fetch: fetcher, disableSearch: true)
+        .readableWidth()
         .injectInTabDestinations()
         .attachViewControllerToRouter(tabID: .inbox)
     }

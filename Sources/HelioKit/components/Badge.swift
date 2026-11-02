@@ -50,6 +50,7 @@ func flairWithoutEmojis(str: String?) -> [String]? {
 }
 
 struct BadgeView: View, Equatable {
+  @Environment(\.navColumn) private var navColumn
   static let authorStatsSpacing: Double = 6
   static func == (lhs: BadgeView, rhs: BadgeView) -> Bool {
     lhs.avatarURL == rhs.avatarURL && lhs.saved == rhs.saved && lhs.avatarRequest?.url == rhs.avatarRequest?.url && lhs.theme == rhs.theme && lhs.commentsCount == rhs.commentsCount && lhs.newCommentsCount == rhs.newCommentsCount && lhs.votesCount == rhs.votesCount && lhs.likes == rhs.likes
@@ -79,7 +80,7 @@ struct BadgeView: View, Equatable {
   var upvoteRatio: Double?
 
   nonisolated func openUser() {
-    Nav.to(.reddit(.user(User(id: author))))
+    Nav.to(.reddit(.user(User(id: author))), from: navColumn)
   }
 
   var body: some View {

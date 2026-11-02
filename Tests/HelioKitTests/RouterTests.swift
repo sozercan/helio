@@ -1,5 +1,6 @@
 import CoreData
 import Foundation
+import SwiftUI
 import Testing
 @testable import HelioKit
 
@@ -217,5 +218,173 @@ struct RouterTests {
     router.goBack()
     router.goBack()
     #expect(router.fullPath.isEmpty)
+  }
+
+  // MARK: The posts split view's feed and post columns
+
+  private let otherPost = Router.NavDest.reddit(.post(Post(id: "def", subID: "apple")))
+  private let sub = Router.NavDest.reddit(.subFeed(Subreddit(id: "pics")))
+
+  @Test func aPostFromTheFeedOpensInThePostColumn() {
+    let router = Router(id: "test")
+    router.firstSelected = feed("apple")
+    router.navigateTo(post, from: .feed)
+    #expect(router.feedPath.isEmpty)
+    #expect(router.postColumn == [post])
+    #expect(router.postPath.isEmpty)
+  }
+
+  @Test func anotherPostFromTheFeedReplacesThePostColumn() {
+    let router = Router(id: "test")
+    router.firstSelected = feed("apple")
+    router.navigateTo(post, from: .feed)
+    router.navigateTo(user, from: .post)
+    router.navigateTo(otherPost, from: .feed)
+    #expect(router.fullPath == [feed("apple"), otherPost])
+  }
+
+  @Test func screensOpenedFromThePostStackInThePostColumn() {
+    let router = Router(id: "test")
+    router.firstSelected = feed("apple")
+    router.navigateTo(post, from: .feed)
+    router.navigateTo(user, from: .post)
+    router.navigateTo(otherPost, from: .post)
+    #expect(router.feedPath.isEmpty)
+    #expect(router.postColumn == [post, user, otherPost])
+    #expect(router.postPath == [user, otherPost])
+  }
+
+  @Test func aSubredditFromTheFeedStacksOnTheFeedAndKeepsTheOpenPost() {
+    let router = Router(id: "test")
+    router.firstSelected = feed("apple")
+    router.navigateTo(post, from: .feed)
+    router.navigateTo(sub, from: .feed)
+    #expect(router.feedPath == [sub])
+    #expect(router.postColumn == [post])
+    // Collapsed into one stack, the order is the same.
+    #expect(router.fullPath == [feed("apple"), sub, post])
+  }
+
+  @Test func poppingTheFeedColumnKeepsTheOpenPost() {
+    let router = Router(id: "test")
+    router.firstSelected = feed("apple")
+    router.navigateTo(sub, from: .feed)
+    router.navigateTo(post, from: .feed)
+    router.feedPath = []
+    #expect(router.fullPath == [feed("apple"), post])
+  }
+
+  @Test func poppingThePostColumnKeepsItsRoot() {
+    let router = Router(id: "test")
+    router.firstSelected = feed("apple")
+    router.navigateTo(post, from: .feed)
+    router.navigateTo(user, from: .post)
+    router.postPath = []
+    #expect(router.fullPath == [feed("apple"), post])
+  }
+
+  @Test func closingThePostEmptiesThePostColumnOnly() {
+    let router = Router(id: "test")
+    router.firstSelected = feed("apple")
+    router.navigateTo(sub, from: .feed)
+    router.navigateTo(post, from: .feed)
+    router.navigateTo(user, from: .post)
+    router.closePost()
+    #expect(router.fullPath == [feed("apple"), sub])
+    #expect(router.postColumnStart == nil)
+  }
+
+  @Test func backInTheSplitLayoutClosesThePostThenPopsTheFeedButKeepsIt() {
+    let router = Router(id: "test")
+    router.firstIsSidebarSelection = true
+    router.firstSelected = feed("apple")
+    router.navigateTo(sub, from: .feed)
+    router.navigateTo(post, from: .feed)
+    router.goBack()
+    #expect(router.fullPath == [feed("apple"), sub])
+    router.goBack()
+    #expect(router.fullPath == [feed("apple")])
+    router.goBack()
+    #expect(router.fullPath == [feed("apple")])
+  }
+
+  @Test func choosingAnotherFeedClosesTheOpenPost() {
+    let router = Router(id: "test")
+    router.firstSelected = feed("apple")
+    router.navigateTo(post, from: .feed)
+    router.firstSelected = feed("pics")
+    #expect(router.postColumn.isEmpty)
+  }
+
+  @Test func aPostChosenAsTheFeedIsNotThePostColumn() {
+    // A post can be the sidebar's selection itself (a link opened from another tab).
+    let router = Router(id: "test")
+    router.firstSelected = post
+    #expect(router.postColumnStart == nil)
+    router.navigateTo(otherPost, from: .feed)
+    #expect(router.postColumn == [otherPost])
+  }
+
+  @Test func feedPathIgnoresPushesWithoutAFeed() {
+    let router = Router(id: "test")
+    router.feedPath = [sub]
+    #expect(router.fullPath.isEmpty)
+  }
+}
+
+struct SplitLayoutTests {
+  private func frame(_ width: CGFloat) -> CGRect {
+    CGRect(x: 0, y: 0, width: width, height: 900)
+  }
+
+  @Test func compactWidthIsOneStack() {
+    #expect(!SplitLayout(sizeClass: .compact, frame: frame(1000), division: nil).showsColumns)
+  }
+
+  @Test func aNarrowRegularWindowIsOneStack() {
+    let layout = SplitLayout(sizeClass: .regular, frame: frame(SplitLayout.minFeedWidth + SplitLayout.minPostWidth - 1), division: nil)
+    #expect(!layout.showsColumns)
+    #expect(!layout.fitsSidebar)
+  }
+
+  @Test func aWideWindowShowsTheFeedAndThePost() {
+    let layout = SplitLayout(sizeClass: .regular, frame: frame(820), division: nil)
+    #expect(layout.showsColumns)
+    #expect(!layout.fitsSidebar)
+    #expect(layout.hingeFeedWidth == nil)
+  }
+
+  @Test func aFullScreenIPadShowsTheSidebarToo() {
+    #expect(SplitLayout(sizeClass: .regular, frame: frame(1366), division: nil).fitsSidebar)
+  }
+
+  @Test func theOpenDuoSplitsAtItsHinge() {
+    let hinge = CGRect(x: 330, y: 0, width: 8, height: 900)
+    for sizeClass in [UserInterfaceSizeClass.compact, .regular] {
+      let layout = SplitLayout(sizeClass: sizeClass, frame: frame(668), division: hinge)
+      #expect(layout.showsColumns)
+      #expect(layout.hingeFeedWidth == 330)
+    }
+  }
+
+  @Test func aHorizontalHingeDoesNotSizeTheFeed() {
+    let hinge = CGRect(x: 0, y: 440, width: 668, height: 8)
+    #expect(SplitLayout(sizeClass: .regular, frame: frame(668), division: hinge).hingeFeedWidth == nil)
+  }
+
+  @Test func beforeMeasuringTheSizeClassDecides() {
+    #expect(SplitLayout(sizeClass: .regular, frame: .zero, division: nil).showsColumns)
+    #expect(!SplitLayout(sizeClass: .compact, frame: .zero, division: nil).showsColumns)
+  }
+}
+
+struct ReadableWidthTests {
+  @Test func wideColumnsAreCapped() {
+    #expect(ReadableWidth.contentWidth(column: 1200, hasDivision: false) == ReadableWidth.max)
+    #expect(ReadableWidth.contentWidth(column: 500, hasDivision: false) == 500)
+  }
+
+  @Test func theOpenDuoUsesItsWholeWidth() {
+    #expect(ReadableWidth.contentWidth(column: 1200, hasDivision: true) == 1200)
   }
 }

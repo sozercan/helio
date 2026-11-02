@@ -151,7 +151,8 @@ struct PostView: View, Equatable {
         .navigationTitle(navTitle)
         .navigationSubtitle(navSubtitle)
         .navigationBarTitleDisplayMode(.inline)
-        .relayoutPosts({ [post] }, contentWidth: contentWidth, theme: selectedTheme)
+        // Not `relayoutPosts`: the page lays its media out on its own (`Post.pageLayout`), and
+        // relaying out the post would fight its feed row when the two are side by side.
         .toolbar { Toolbar(hideElements: hideElements, subreddit: subreddit, post: post, sort: $sort) }
         .onChange(of: sort) { _ in
           updatePost()

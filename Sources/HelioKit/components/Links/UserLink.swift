@@ -16,6 +16,7 @@ struct UserLinkContainer: View {
 }
 
 struct UserLink: View {
+  @Environment(\.navColumn) private var navColumn
   var noHPad = false
   var user: User
   var body: some View {
@@ -44,7 +45,7 @@ struct UserLink: View {
       .if(noHPad) { $0.mask(RR(20, .black)) }
       .if(!noHPad) { $0.hairlineRowSeparator() }
       .onTapGesture {
-        Nav.to(.reddit(.user(user)))
+        Nav.to(.reddit(.user(user)), from: navColumn)
       }
     }
   }

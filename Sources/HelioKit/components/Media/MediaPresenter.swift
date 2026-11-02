@@ -55,7 +55,7 @@ struct MediaPresenter: View, Equatable {
   let maxMediaHeightScreenPercentage: CGFloat
 
   var body: some View {
-    let mediaSize = (fullPage ? helioData.postDimensionsForcedNormal : helioData.postDimensions).mediaSize
+    let mediaSize = fullPage ? helioData.pageLayout?.mediaSize : helioData.postDimensions.mediaSize
     switch media {
     case let .imgs(imgsExtracted):
       if !showURLInstead {

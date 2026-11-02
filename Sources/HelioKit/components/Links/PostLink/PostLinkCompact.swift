@@ -31,6 +31,7 @@ struct PostLinkCompactThumbPlaceholder: View, Equatable {
 }
 
 struct PostLinkCompact: View, Equatable, Identifiable {
+  @Environment(\.navColumn) private var navColumn
   static func == (lhs: PostLinkCompact, rhs: PostLinkCompact) -> Bool {
     lhs.id == rhs.id && lhs.theme == rhs.theme && lhs.contentWidth == rhs.contentWidth && lhs.defSettings == rhs.defSettings
   }
@@ -51,12 +52,12 @@ struct PostLinkCompact: View, Equatable, Identifiable {
   }
 
   func openPost() {
-    Nav.to(.reddit(.post(post)))
+    Nav.to(.reddit(.post(post)), from: navColumn)
   }
 
   func openSubreddit() {
     if let subName = post.data?.subreddit {
-      Nav.to(.reddit(.subFeed(Subreddit(id: subName))))
+      Nav.to(.reddit(.subFeed(Subreddit(id: subName))), from: navColumn)
     }
   }
 

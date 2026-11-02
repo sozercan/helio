@@ -84,6 +84,44 @@ extension Post {
   }
 }
 
+/// The post page's full-size media and its size, for the page's column width.
+struct PostPageLayout {
+  struct Key: Equatable {
+    let width: Double
+    let windowHeight: Double
+    let theme: HelioTheme
+    /// The row's full-size media this was derived from. The row's relayouts, or a Streamable
+    /// link resolving to a video, replace it.
+    let source: MediaExtractedType?
+  }
+
+  let key: Key
+  let media: MediaExtractedType?
+  let mediaSize: CGSize?
+}
+
+extension Post {
+  /// The post page's layout for a column `contentWidth` wide. Computed when the width, the
+  /// window height or the row's media change, without touching the row's own layout, so a post
+  /// open beside its feed doesn't make the two lay each other out in turn.
+  func pageLayout(contentWidth: Double, theme: HelioTheme) -> PostPageLayout? {
+    guard let helioData, let data, contentWidth > 0 else { return nil }
+    let source = helioData.extractedMediaForcedNormal
+    let key = PostPageLayout.Key(width: contentWidth, windowHeight: .screenH, theme: theme, source: source)
+    if let layout = helioData.pageLayout, layout.key == key {
+      return layout
+    }
+    // Images are requested at the column's size; other media are shared with the row, which keeps
+    // players, link previews and videos playing.
+    let media = source?.dependsOnWidth == true ? mediaExtractor(compact: false, contentWidth: contentWidth, data, theme: theme) : source?.relayoutingParts(contentWidth: contentWidth, theme: theme)
+    // The size depends on the media's own shape, the same in either extraction.
+    let dimensions = getPostDimensions(post: self, helioData: helioData, columnWidth: contentWidth, rawTheme: theme, compact: false)
+    let layout = PostPageLayout(key: key, media: media, mediaSize: dimensions.mediaSize)
+    helioData.pageLayout = layout
+    return layout
+  }
+}
+
 extension View {
   /// Re-lays out `posts` when the column width or window height changes (media height is
   /// capped by the window's), after it has settled: resizing a Mac window changes it every frame.
