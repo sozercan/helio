@@ -16,10 +16,10 @@ class InMemoryTheme {
   var currTask: Task<Void, Never>?
 
   init() {
-    self.currentTheme = Defaults[.ThemesDefSettings].themesPresets.first { $0.id == Defaults[.ThemesDefSettings].selectedThemeID } ?? defaultTheme
+    self.currentTheme = HelioTheme.selected(in: Defaults[.ThemesDefSettings])
     self.currTask = Task {
       for await value in Defaults.updates(.ThemesDefSettings) {
-        self.currentTheme = value.themesPresets.first { $0.id == value.selectedThemeID } ?? defaultTheme
+        self.currentTheme = HelioTheme.selected(in: value)
       }
     }
   }

@@ -38,8 +38,8 @@ extension MediaExtractedType {
 
 extension Post {
   /// Recomputes media requests and row sizes for a new column width, window height (window
-  /// resized, iPhone Duo folded or unfolded), presentation, compact mode or text size. Does
-  /// nothing if the post was already laid out for all five.
+  /// resized, iPhone Duo folded or unfolded), presentation, compact mode, text size or title
+  /// style (a new theme). Does nothing if the post was already laid out for all six.
   func relayout(contentWidth: Double, theme: HelioTheme, secondary: Bool = false) {
     guard let helioData, let data, contentWidth > 0 else { return }
     let windowHeight = Double.screenH
@@ -48,8 +48,10 @@ extension Post {
     let compact = Post.isCompact(data, sub: sub)
     let compactChanged = helioData.layoutCompact != compact
     let mediaChanged = helioData.layoutWidth != contentWidth || helioData.layoutWindowHeight != windowHeight || helioData.layoutSecondary != secondary || compactChanged
-    let textSizeChanged = helioData.layoutDynamicTypeSize != textSize
-    guard mediaChanged || textSizeChanged else { return }
+    let titleText = theme.postLinks.theme.titleText
+    // A new theme can change the title's color or size, which are drawn into it.
+    let titleChanged = helioData.layoutDynamicTypeSize != textSize || helioData.layoutTitleText != titleText
+    guard mediaChanged || titleChanged else { return }
     if mediaChanged {
       // Compact and large rows extract images and link previews differently, so a compact
       // change extracts those again.
@@ -72,8 +74,8 @@ extension Post {
       }
     }
     // The title is drawn into a frame its measured size, in fonts scaled for the text size.
-    if textSizeChanged {
-      helioData.titleAttr = createTitleTagsAttrString(titleTheme: theme.postLinks.theme.titleText, postData: data, textColor: theme.postLinks.theme.titleText.color.uiColor(), dynamicTypeSize: textSize)
+    if titleChanged {
+      helioData.titleAttr = createTitleTagsAttrString(titleTheme: titleText, postData: data, textColor: titleText.color.uiColor(), dynamicTypeSize: textSize)
     }
     helioData.postDimensions = getPostDimensions(post: self, helioData: helioData, columnWidth: contentWidth, secondary: secondary, rawTheme: theme, subId: sub?.settingsKey, dynamicTypeSize: textSize)
     helioData.postDimensionsForcedNormal = getPostDimensions(post: self, helioData: helioData, columnWidth: contentWidth, secondary: secondary, rawTheme: theme, compact: false, dynamicTypeSize: textSize)
@@ -82,6 +84,7 @@ extension Post {
     helioData.layoutSecondary = secondary
     helioData.layoutCompact = compact
     helioData.layoutDynamicTypeSize = textSize
+    helioData.layoutTitleText = titleText
   }
 }
 
@@ -146,7 +149,7 @@ final class PageYouTubePlayer {
 extension View {
   /// Re-lays out `posts` when the column width or window height changes (media height is
   /// capped by the window's), after it has settled: resizing a Mac window changes it every frame.
-  /// Also when compact mode or the text size is switched, which change every row's size.
+  /// Also when compact mode, the text size or the theme's titles change, which change every row.
   func relayoutPosts(_ posts: @escaping () -> [Post], contentWidth: Double, theme: HelioTheme) -> some View {
     modifier(RelayoutPostsModifier(posts: posts, contentWidth: contentWidth, theme: theme))
   }
@@ -159,7 +162,7 @@ private struct RelayoutPostsModifier: ViewModifier {
 
   @Default(.SubredditFeedDefSettings) private var feedDefSettings
   @Default(.PostLinkDefSettings) private var postLinkDefSettings
-  @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+  @Environment(\.contentTypeSize) private var dynamicTypeSize
 
   func body(content: Content) -> some View {
     content
@@ -183,6 +186,10 @@ private struct RelayoutPostsModifier: ViewModifier {
       }
       .onChange(of: postLinkDefSettings.compactMode.enabled) {
         withAnimation { posts().forEach { $0.relayout(contentWidth: contentWidth, theme: theme) } }
+      }
+      // Titles are drawn in the theme's color: a new theme draws them again.
+      .onChange(of: theme.postLinks.theme.titleText) {
+        posts().forEach { $0.relayout(contentWidth: contentWidth, theme: theme) }
       }
   }
 }

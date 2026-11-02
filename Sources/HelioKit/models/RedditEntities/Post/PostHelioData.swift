@@ -37,6 +37,8 @@ class PostHelioData: Hashable {
   var layoutCompact: Bool?
   /// The text size the title was drawn and measured for (see `ContentTextScale`).
   var layoutDynamicTypeSize: DynamicTypeSize?
+  /// The theme's title style the title was drawn and measured in.
+  var layoutTitleText: ThemeText?
   var titleAttr: NSAttributedString?
   /// The post page's layout, kept apart from the feed row's: side by side, the page and the row
   /// are in columns of different widths. Derived when the page draws (`Post.pageLayout`).

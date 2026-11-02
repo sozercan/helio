@@ -23,10 +23,10 @@ struct PostContent: View, Equatable {
   @State private var showSpoiler = false
   @State private var youTubePlayer = PageYouTubePlayer()
   @Default(.PostPageDefSettings) private var defSettings
-  // Markdown sets its own font sizes, so bodies scale by passing a scaled size in.
-  @Environment(\.dynamicTypeSize) private var dynamicTypeSize
   @Environment(\.useTheme) private var selectedTheme
   @Environment(\.contentWidth) private var contentWidth
+  /// Markdown sets its own font size, so it's scaled here like `contentFont` scales text.
+  @Environment(\.contentTypeSize) private var contentTypeSize
 
   @Environment(\.navColumn) private var navColumn
 
@@ -87,7 +87,7 @@ struct PostContent: View, Equatable {
                   HStack {
                     Markdown(MarkdownUtil.markdownContent(data.selftext ?? "", showSpoiler: showSpoiler))
                       .opensLinksInItsColumn()
-                      .markdownTheme(.helioMarkdown(fontSize: ContentTextScale.size(selectedTheme.posts.bodyText.size, dynamicTypeSize: dynamicTypeSize), lineSpacing: selectedTheme.posts.linespacing, textSelection: true))
+                      .markdownTheme(.helioMarkdown(fontSize: ContentTextScale.size(selectedTheme.posts.bodyText.size, dynamicTypeSize: contentTypeSize), lineSpacing: selectedTheme.posts.linespacing, textSelection: true))
                       .fixedSize(horizontal: false, vertical: true)
 
                     Spacer()

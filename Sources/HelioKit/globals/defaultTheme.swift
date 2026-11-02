@@ -50,105 +50,240 @@ let listDefaultBGImage: ColorSchemes<String> = .init(light: "helioNoBG", dark: "
 let defaultFancyDivider: LineTheme = .init(style: .fancy, thickness: 8, color: themeBandColor)
 let defaultThemeBG: ThemeBG = .color(defaultBG)
 
-let badgeTheme: BadgeTheme = .init(
-  avatar: AvatarTheme(size: 32, cornerRadius: 16, visible: false),
-  authorText: .init(size: 14, color: themeFontSecondary, weight: .medium),
-  subColor: themeFontSecondary,
-  flairText: .init(size: 12, color: themeFontTertiary),
-  flairBackground: themeBandColor,
-  statsText: .init(size: 13, color: themeFontSecondary), spacing: 8,
-  forceSubsAsTags: false,
-)
+let badgeTheme: BadgeTheme = ThemePalette.apollo.feedBadge
 
-private let commentBadgeTheme: BadgeTheme = .init(
-  avatar: AvatarTheme(size: 32, cornerRadius: 16, visible: false),
-  authorText: .init(size: 14, color: themeFontPrimary, weight: .medium),
-  subColor: themeAccentColor,
-  flairText: .init(size: 12, color: themeFontTertiary),
-  flairBackground: themeBandColor,
-  statsText: .init(size: 14, color: themeFontTertiary), spacing: 8,
-  forceSubsAsTags: false,
-)
+/// The colors a built-in theme is made of. The built-in themes share Apollo's layout and sizes
+/// and differ only in these, so each is `HelioTheme(palette:)` with its own palette.
+struct ThemePalette {
+  var fontPrimary: ColorSchemes<ThemeColor>
+  var fontSecondary: ColorSchemes<ThemeColor>
+  var fontTertiary: ColorSchemes<ThemeColor>
+  /// Posts' and comments' background.
+  var cellBG: ColorSchemes<ThemeColor>
+  /// The band between feed posts.
+  var band: ColorSchemes<ThemeColor>
+  /// Behind flair and comments' "load more".
+  var flairBackground: ColorSchemes<ThemeColor>
+  /// Links and highlights inside posts and comments, such as "load more".
+  var accent: ColorSchemes<ThemeColor>
+  /// Hairlines: comment and list separators.
+  var divider: ColorSchemes<ThemeColor>
+  /// The background behind lists and feeds.
+  var background: ColorSchemes<ThemeColor>
+  /// Grouped list rows, as in Settings.
+  var listRow: ColorSchemes<ThemeColor>
+  /// The feed's divider between posts.
+  var feedDivider: LineTheme
+
+  static let apollo = ThemePalette(
+    fontPrimary: themeFontPrimary,
+    fontSecondary: themeFontSecondary,
+    fontTertiary: themeFontTertiary,
+    cellBG: themeCellBG,
+    band: themeBandColor,
+    flairBackground: themeBandColor,
+    accent: themeAccentColor,
+    divider: defaultThemeDividerColor,
+    background: defaultBG,
+    listRow: listSectionBGTheme,
+    feedDivider: defaultFancyDivider,
+  )
+
+  /// Apollo in light mode; in dark mode, nothing but text, media, flair and hairlines is lit,
+  /// for OLED screens: the band between posts and Settings' rows turn black.
+  static let trueBlack: ThemePalette = {
+    var palette = ThemePalette.apollo
+    palette.band = .init(light: themeBandColor.light, dark: .init(hex: "000000"))
+    palette.listRow = .init(light: listSectionBGTheme.light, dark: .init(hex: "000000"))
+    palette.divider = scheme("CCCCCC", "2C2C2E")
+    palette.feedDivider = .init(style: .fancy, thickness: 8, color: palette.band)
+    return palette
+  }()
+
+  /// Text at 7:1 or more on its background in both modes (WCAG AAA), separators at 3:1 or
+  /// more. These are the Increase Contrast versions of Apollo's greys (`highContrastPalette`),
+  /// kept on whatever the system setting.
+  static let highContrast: ThemePalette = {
+    var palette = ThemePalette.apollo
+    palette.fontPrimary = scheme("000000", "FFFFFF")
+    palette.fontSecondary = highContrastPalette[themeFontSecondary] ?? themeFontSecondary
+    palette.fontTertiary = highContrastPalette[themeFontTertiary] ?? themeFontTertiary
+    palette.divider = highContrastPalette[defaultThemeDividerColor] ?? defaultThemeDividerColor
+    palette.accent = scheme("0040DD", "409CFF")
+    // A darker band sets posts apart; flair keeps the lighter grey its text is measured on.
+    palette.band = scheme("E5E5EA", "1C1C1E")
+    palette.feedDivider = .init(style: .fancy, thickness: 8, color: palette.band)
+    return palette
+  }()
+
+  /// Badges under feed posts: author, subreddit, flair and stats.
+  var feedBadge: BadgeTheme {
+    .init(
+      avatar: AvatarTheme(size: 32, cornerRadius: 16, visible: false),
+      authorText: .init(size: 14, color: fontSecondary, weight: .medium),
+      subColor: fontSecondary,
+      flairText: .init(size: 12, color: fontTertiary),
+      flairBackground: flairBackground,
+      statsText: .init(size: 13, color: fontSecondary), spacing: 8,
+      forceSubsAsTags: false,
+    )
+  }
+
+  /// Badges over comments.
+  var commentBadge: BadgeTheme {
+    .init(
+      avatar: AvatarTheme(size: 32, cornerRadius: 16, visible: false),
+      authorText: .init(size: 14, color: fontPrimary, weight: .medium),
+      subColor: accent,
+      flairText: .init(size: 12, color: fontTertiary),
+      flairBackground: flairBackground,
+      statsText: .init(size: 14, color: fontTertiary), spacing: 8,
+      forceSubsAsTags: false,
+    )
+  }
+}
 
 let defaultTheme = HelioTheme(
+  palette: .apollo,
+  id: "default",
   metadata: .init(
-    name: "Default",
-    description: "The default Helio theme. Apollo's layout with iOS's Liquid Glass.",
+    name: "Apollo",
+    description: "Apollo's look, in light and dark.",
     color: .init(hex: "007AFF"),
     icon: "paintbrush.fill",
     author: "Helio",
   ),
-  id: "default",
-  postLinks: .init(
-    theme: .init(
-      cornerRadius: 0,
-      mediaCornerRadius: 10,
-      innerPadding: .init(horizontal: 16, vertical: 14),
-      outerHPadding: 0,
-      stickyPostBorderColor: .init(thickness: 4, color: .init(light: .init(hex: "2FD058", alpha: 0.12), dark: .init(hex: "2FD058", alpha: 0.12))),
-      titleText: .init(size: 17, color: themeFontPrimary),
-      bodyText: .init(size: 15, color: themeFontSecondary),
-      linespacing: 0,
-      badge: badgeTheme,
-      verticalElementsSpacing: 12,
-      bg: .init(blurry: false, color: themeCellBG),
-      unseenType: .fade,
-      unseenFadeOpacity: 1,
-      compactSelftextPostLinkPlaceholderImg: .init(type: .icon, color: .init(light: .init(hex: "000000", alpha: 0.2), dark: .init(hex: "ffffff", alpha: 0.2))),
-      showDivider: false,
-    ),
-    spacing: 0,
-    divider: defaultFancyDivider,
-    bg: defaultThemeBG,
-    stickyFilters: false,
-    filterText: .init(size: 17, color: .init(light: .init(hex: "000000"), dark: .init(hex: "000000")), weight: .semibold),
-    filterPadding: .init(horizontal: 6, vertical: 8),
-    filterOpacity: 0.3,
-  ),
-  posts: .init(
-    padding: .init(horizontal: 16, vertical: 12),
-    spacing: 12,
-    badge: badgeTheme,
-    bg: .color(themeCellBG),
-    commentsDistance: 0,
-    titleText: .init(size: 19, color: themeFontPrimary, weight: .medium),
-    bodyText: .init(size: 15, color: themeFontPrimary),
-    linespacing: 0,
-    inlineFloatingPill: false,
-  ),
-  comments: .init(
-    theme: .init(
-      innerPadding: .init(horizontal: 15, vertical: 10),
-      outerHPadding: 0,
-      repliesSpacing: 0,
-      indentCurve: 12,
-      indentColor: defaultThemeDividerColor,
-      indentColors: rainbowIndentColors,
-      cornerRadius: 0,
-      badge: commentBadgeTheme,
-      bodyText: .init(size: 15, color: themeFontPrimary),
-      bodyAuthorSpacing: 6,
-      linespacing: 0,
-      bg: themeCellBG,
-      loadMoreInnerPadding: .init(horizontal: 10, vertical: 6),
-      loadMoreText: .init(size: 15, color: themeAccentColor, weight: .semibold),
-      loadMoreBackground: themeBandColor,
-      unseenDot: themeAccentColor,
-    ),
-    spacing: 0,
-    divider: .init(style: .no, thickness: 1, color: defaultThemeDividerColor),
-    //    bg: defaultThemeBG
-  ),
-  lists: .init(
-    bg: defaultThemeBG,
-    foreground: .init(blurry: false, color: listSectionBGTheme),
-    dividersColors: defaultThemeDividerColor,
-  ),
-  general: .init(
-    navPanelBG: .init(blurry: true, color: clearColor),
-    tabBarBG: .init(blurry: true, color: clearColor),
-    floatingPanelsBG: .init(blurry: true, color: clearColor),
-    modalsBG: .init(blurry: true, color: clearColor),
-    accentColor: themeAccentColor,
-  ),
 )
+
+extension HelioTheme {
+  /// A built-in theme: Apollo's layout and sizes in `palette`'s colors. `general` (bars and the
+  /// app's tint) is the same for all of them: changing it needs a restart.
+  init(palette: ThemePalette, id: String, metadata: HelioThemeMeta) {
+    self.init(
+      metadata: metadata,
+      id: id,
+      postLinks: .init(
+        theme: .init(
+          cornerRadius: 0,
+          mediaCornerRadius: 10,
+          innerPadding: .init(horizontal: 16, vertical: 14),
+          outerHPadding: 0,
+          stickyPostBorderColor: .init(thickness: 4, color: .init(light: .init(hex: "2FD058", alpha: 0.12), dark: .init(hex: "2FD058", alpha: 0.12))),
+          titleText: .init(size: 17, color: palette.fontPrimary),
+          bodyText: .init(size: 15, color: palette.fontSecondary),
+          linespacing: 0,
+          badge: palette.feedBadge,
+          verticalElementsSpacing: 12,
+          bg: .init(blurry: false, color: palette.cellBG),
+          unseenType: .fade,
+          unseenFadeOpacity: 1,
+          compactSelftextPostLinkPlaceholderImg: .init(type: .icon, color: .init(light: .init(hex: "000000", alpha: 0.2), dark: .init(hex: "ffffff", alpha: 0.2))),
+          showDivider: false,
+        ),
+        spacing: 0,
+        divider: palette.feedDivider,
+        bg: .color(palette.background),
+        stickyFilters: false,
+        filterText: .init(size: 17, color: .init(light: .init(hex: "000000"), dark: .init(hex: "000000")), weight: .semibold),
+        filterPadding: .init(horizontal: 6, vertical: 8),
+        filterOpacity: 0.3,
+      ),
+      posts: .init(
+        padding: .init(horizontal: 16, vertical: 12),
+        spacing: 12,
+        badge: palette.feedBadge,
+        bg: .color(palette.cellBG),
+        commentsDistance: 0,
+        titleText: .init(size: 19, color: palette.fontPrimary, weight: .medium),
+        bodyText: .init(size: 15, color: palette.fontPrimary),
+        linespacing: 0,
+        inlineFloatingPill: false,
+      ),
+      comments: .init(
+        theme: .init(
+          innerPadding: .init(horizontal: 15, vertical: 10),
+          outerHPadding: 0,
+          repliesSpacing: 0,
+          indentCurve: 12,
+          indentColor: palette.divider,
+          indentColors: rainbowIndentColors,
+          cornerRadius: 0,
+          badge: palette.commentBadge,
+          bodyText: .init(size: 15, color: palette.fontPrimary),
+          bodyAuthorSpacing: 6,
+          linespacing: 0,
+          bg: palette.cellBG,
+          loadMoreInnerPadding: .init(horizontal: 10, vertical: 6),
+          loadMoreText: .init(size: 15, color: palette.accent, weight: .semibold),
+          loadMoreBackground: palette.flairBackground,
+          unseenDot: palette.accent,
+        ),
+        spacing: 0,
+        divider: .init(style: .no, thickness: 1, color: palette.divider),
+      ),
+      lists: .init(
+        bg: .color(palette.background),
+        foreground: .init(blurry: false, color: palette.listRow),
+        dividersColors: palette.divider,
+      ),
+      general: .init(
+        navPanelBG: .init(blurry: true, color: clearColor),
+        tabBarBG: .init(blurry: true, color: clearColor),
+        floatingPanelsBG: .init(blurry: true, color: clearColor),
+        modalsBG: .init(blurry: true, color: clearColor),
+        accentColor: themeAccentColor,
+      ),
+    )
+  }
+}
+
+/// A theme Settings > Appearance offers as is, beside the user's own.
+struct ThemePreset: Identifiable {
+  /// The modes the theme changes. True Black leaves light mode as Apollo has it.
+  enum Modes {
+    case lightAndDark, dark
+
+    var label: String {
+      switch self {
+      case .lightAndDark: "Light & Dark"
+      case .dark: "Dark"
+      }
+    }
+  }
+
+  let theme: HelioTheme
+  let modes: Modes
+
+  var id: String {
+    theme.id
+  }
+
+  static let apollo = ThemePreset(theme: defaultTheme, modes: .lightAndDark)
+
+  static let trueBlack = ThemePreset(theme: HelioTheme(palette: .trueBlack, id: "trueBlack", metadata: .init(
+    name: "True Black",
+    description: "Pure black backgrounds in dark mode, for OLED screens.",
+    color: .init(hex: "000000"),
+    icon: "moon.fill",
+    author: "Helio",
+  )), modes: .dark)
+
+  static let highContrast = ThemePreset(theme: HelioTheme(palette: .highContrast, id: "highContrast", metadata: .init(
+    name: "High Contrast",
+    description: "Stronger text and separators, always on.",
+    color: .init(hex: "0040DD"),
+    icon: "circle.lefthalf.filled",
+    author: "Helio",
+  )), modes: .lightAndDark)
+
+  static let all: [ThemePreset] = [.apollo, .trueBlack, .highContrast]
+}
+
+extension HelioTheme {
+  /// The theme `settings` select: a built-in one or one the user imported, else Apollo.
+  static func selected(in settings: ThemesDefSettings) -> HelioTheme {
+    ThemePreset.all.first { $0.id == settings.selectedThemeID }?.theme
+      ?? settings.themesPresets.first { $0.id == settings.selectedThemeID }
+      ?? defaultTheme
+  }
+}

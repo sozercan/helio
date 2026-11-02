@@ -15,7 +15,7 @@ struct Tag: View {
   var text: String
   var fontSize: Double?
   var backgroundColor: Color = .accentColor
-  @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+  @Environment(\.contentTypeSize) private var dynamicTypeSize
 
   var body: some View {
     HStack(spacing: 4) {

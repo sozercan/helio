@@ -146,6 +146,7 @@ extension Post {
       self.helioData?.layoutCompact = compact
 
       self.helioData?.titleAttr = createTitleTagsAttrString(titleTheme: theme.postLinks.theme.titleText, postData: data, textColor: theme.postLinks.theme.titleText.color.uiColor(), dynamicTypeSize: textSize)
+      self.helioData?.layoutTitleText = theme.postLinks.theme.titleText
 
       if let sub {
         self.helioData?.subreddit = sub

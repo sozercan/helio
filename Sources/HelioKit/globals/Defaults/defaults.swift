@@ -61,6 +61,10 @@ extension Defaults.Keys {
   static let likedButNotSubbed = Key<[Subreddit]>("likedButNotSubbed", default: [])
   /* </Heavy Defaults are kept separated, these should be in CoreData or something> */
 
+  /// Steps content text is moved from the system text size (Settings > Appearance > Text Size).
+  /// Its own key: a new field in an existing settings struct would fail to decode stored values.
+  static let contentTextSizeAdjustment = Key<Int>("contentTextSizeAdjustment", default: 0)
+
   /// When each account's subscriptions and multis were last synced at launch, by credential id
   /// and user name.
   static let subsSyncedAt = Key<[String: Date]>("subsSyncedAt", default: [:])

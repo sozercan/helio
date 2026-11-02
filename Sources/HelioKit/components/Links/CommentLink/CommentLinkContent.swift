@@ -61,7 +61,7 @@ struct CommentLinkContent: View {
   @Default(.CommentsSectionDefSettings) private var sectionDefSettings
 
   @Environment(\.useTheme) private var selectedTheme
-  @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+  @Environment(\.contentTypeSize) private var dynamicTypeSize
 
   @State var commentViewLoaded = false
 
