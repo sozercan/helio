@@ -23,6 +23,7 @@ public struct HelioScene: Scene {
   public var body: some Scene {
     WindowGroup {
       AppContent()
+        .trackContentTextScale()
         .environment(\.managedObjectContext, persistenceController.container.viewContext)
         .environment(\.primaryBGContext, persistenceController.primaryBGContext)
         .environment(

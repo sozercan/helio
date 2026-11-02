@@ -18,14 +18,15 @@ struct EndOfFeedView: View {
         .foregroundStyle(.orange.gradient)
       Text(QuirkyMessageUtil.quirkyEndOfFeed())
         .fixedSize(horizontal: false, vertical: true)
-        .font(.system(size: 16, weight: .bold))
+        .contentFont(16, .bold)
         .multilineTextAlignment(.center)
         .lineLimit(4)
     }
     .padding()
     .frame(maxWidth: .infinity, maxHeight: .infinity)
     .background(.quaternary)
-    .frame(minWidth: 0, maxWidth: .infinity, minHeight: 150, maxHeight: 150, alignment: .center)
+    // At least 150 tall; taller when larger text needs it.
+    .frame(minWidth: 0, maxWidth: .infinity, minHeight: 150, alignment: .center)
 //    .fixedSize()
     .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
     .onTapGesture {
