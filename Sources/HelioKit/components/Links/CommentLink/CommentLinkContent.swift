@@ -345,8 +345,11 @@ struct CommentLinkActions: View {
   var comment: Comment
   var data: CommentData
 
+  /// Select Text below opens the selection sheet, so the swipe action's twin is left out.
+  static let swipeActions = allCommentSwipeActions.filter { $0.id != SelectTextCommentAction().id }
+
   var body: some View {
-    ForEach(allCommentSwipeActions) { action in
+    ForEach(Self.swipeActions) { action in
       let active = action.active(comment)
       if action.enabled(comment) {
         Button {
