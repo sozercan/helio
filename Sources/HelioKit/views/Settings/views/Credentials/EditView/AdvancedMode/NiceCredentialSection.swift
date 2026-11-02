@@ -52,7 +52,7 @@ struct NiceCredentialSectionExtra<C: View, TC: View>: View {
         content()
       }
       if let footer {
-        Text(footer).fontSize(13).opacity(0.5).padding(.horizontal, 16)
+        Text(footer).fontSize(13).foregroundStyle(Color.secondaryText).padding(.horizontal, 16)
       }
     }
   }

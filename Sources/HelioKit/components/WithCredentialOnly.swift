@@ -22,8 +22,8 @@ struct WithCredentialOnly<Content: View>: View {
           VStack(spacing: 4) {
             Text(credential == nil ? "No credential" : "Credential invalid")
               .fontSize(24, .bold)
-              .opacity(0.5)
-            Text("We can't load this page 😔").fontSize(16, .medium).opacity(0.35)
+              .foregroundStyle(Color.secondaryText)
+            Text("We can't load this page 😔").fontSize(16, .medium).foregroundStyle(Color.secondaryText)
           }
         }
         Button("Go to credentials settings", systemImage: "gear") {
@@ -56,9 +56,9 @@ struct WithCredentialOnly<Content: View>: View {
         VStack(spacing: 4) {
           Text("Reddit signed you out")
             .fontSize(24, .bold)
-            .opacity(0.5)
+            .foregroundStyle(Color.secondaryText)
           if let userName = credential.userName {
-            Text("Sign in again as u/\(userName) to keep going.").fontSize(16, .medium).opacity(0.35)
+            Text("Sign in again as u/\(userName) to keep going.").fontSize(16, .medium).foregroundStyle(Color.secondaryText)
           }
         }
       }

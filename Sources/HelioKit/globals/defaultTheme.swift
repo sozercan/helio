@@ -28,6 +28,20 @@ let rainbowIndentColors: [ColorSchemes<ThemeColor>] = [
   scheme("0D74DC", "1F68B1"), scheme("224688", "224688"), scheme("643B95", "643B95"),
 ]
 
+/// Increase Contrast versions of the palette's greys, for themes that use them: secondary and
+/// tertiary text reach 7:1 on the cells, and separators darken to 3:1.
+let highContrastPalette: [ColorSchemes<ThemeColor>: ColorSchemes<ThemeColor>] = [
+  themeFontSecondary: scheme("4D4D4D", "B4B6BC"),
+  themeFontTertiary: scheme("505156", "ADAFB5"),
+  defaultThemeDividerColor: scheme("8E8E93", "5A606B"),
+]
+
+extension Color {
+  /// Secondary text outside themed cells, instead of dimming primary text with opacity: it
+  /// keeps 4.5:1 and follows Increase Contrast.
+  static let secondaryText = themeFontSecondary.color()
+}
+
 let listSectionBGTheme: ColorSchemes<ThemeColor> = .init(light: .init(hex: "ffffff"), dark: .init(hex: "1C1C1E"))
 let defaultBG = scheme("F2F3F7", "000000")
 private let clearColor: ColorSchemes<ThemeColor> = .init(light: .init(hex: "ffffff", alpha: 0), dark: .init(hex: "ffffff", alpha: 0))

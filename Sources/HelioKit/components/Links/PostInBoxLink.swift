@@ -68,8 +68,7 @@ struct PostInBoxLink: View {
           }
         }
         .font(.system(size: 13, weight: .medium))
-        .compositingGroup()
-        .opacity(0.5)
+        .foregroundStyle(Color.secondaryText)
 
         Spacer()
         HStack(alignment: .center, spacing: 4) {

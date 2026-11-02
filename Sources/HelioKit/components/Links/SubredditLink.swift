@@ -35,7 +35,7 @@ struct SubredditLink: View {
               .frame(height: 24) // Adjust the height as needed
           }
           Text("\(formatBigNumber(data.subscribers ?? 0)) subscribers")
-            .fontSize(14).opacity(0.5)
+            .fontSize(14).foregroundStyle(Color.secondaryText)
           Text((data.public_description).md()).lineLimit(2)
             .fontSize(15).opacity(0.75)
         }

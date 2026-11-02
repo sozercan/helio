@@ -44,6 +44,7 @@ extension ColorSchemes<ThemeColor> {
   func uiColor(brighter: Bool = false, brighterRatio: Double = 0.11) -> UIColor {
     let systemBrighter = brighter ? getSystemBrighterColor(self.dark.hex) : nil
     let finalDarkColor = systemBrighter == nil ? self.dark.uiColor().lighter(by: brighter ? brighterRatio : 0) : UIColor(systemBrighter!)
-    return UIColor(light: self.light.uiColor(), dark: finalDarkColor)
+    let highContrast = highContrastPalette[self]
+    return UIColor(light: self.light.uiColor(), dark: finalDarkColor, highContrastLight: highContrast?.light.uiColor(), highContrastDark: highContrast?.dark.uiColor())
   }
 }
