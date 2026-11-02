@@ -5,7 +5,6 @@
 //  Created by Igor Marcossi on 04/01/24.
 //
 
-import Popovers
 import SwiftUI
 
 struct PeakQuestion: Identifiable, Equatable {
