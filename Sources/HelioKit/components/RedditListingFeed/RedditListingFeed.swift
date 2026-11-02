@@ -243,17 +243,18 @@ struct RedditListingFeed<Header: View, Footer: View, S: Sorting>: View {
       .environment(\.defaultMinListRowHeight, 1)
       .toolbar {
         // Sort and the feed's options share a glass group; the subreddit's icon is its own.
-        if itemsManager.sorting != nil {
+        // On Mac they're in the window toolbar (`actions`).
+        if ScreenAction.showsInNavigationBar, itemsManager.sorting != nil {
           ToolbarItem(placement: .topBarTrailing) {
             FeedSortMenu(sorting: $itemsManager.sorting)
           }
         }
-        if let subreddit {
+        if ScreenAction.showsInNavigationBar, let subreddit {
           ToolbarItem(placement: .topBarTrailing) {
             FeedOptionsMenu(subId: subreddit.settingsKey, filters: shallowCachedFilters, selectedFilter: $itemsManager.selectedFilter)
           }
         }
-        if let sub = subreddit, let data = sub.data {
+        if ScreenAction.showsInNavigationBar, let sub = subreddit, let data = sub.data {
           ToolbarSpacer(.fixed, placement: .topBarTrailing)
           ToolbarItem(placement: .topBarTrailing) {
             Button {
@@ -300,6 +301,7 @@ struct RedditListingFeed<Header: View, Footer: View, S: Sorting>: View {
         } },
         canLoadMore: { itemsManager.canLoadMore },
         loadMore: { await itemsManager.loadMore() },
+        actions: actions(filters: shallowCachedFilters, compactPerSubreddit: compactPerSubreddit, compactByDefault: postLinkSettings.compactMode.enabled),
       ))
       .onChange(of: selectedAuthorization) { _, _ in
         Task { await refetch(clearItems: true) }
@@ -324,6 +326,30 @@ struct RedditListingFeed<Header: View, Footer: View, S: Sorting>: View {
         Task { await refetch() }
       }
     }
+  }
+}
+
+extension RedditListingFeed {
+  /// The sort, the subreddit's options and its info, as in the navigation bar.
+  private func actions(filters: [ShallowCachedFilter], compactPerSubreddit: [String: Bool], compactByDefault: Bool) -> [ScreenAction] {
+    var actions: [ScreenAction] = []
+    let manager = itemsManager
+    if manager.sorting != nil {
+      actions.append(.sortPosts(manager.sorting) { manager.sorting = $0 })
+    }
+    if let subreddit {
+      actions.append(.feedOptions(
+        compact: compactPerSubreddit[subreddit.id] ?? compactByDefault,
+        setCompact: { Defaults[.SubredditFeedDefSettings].compactPerSubreddit[subreddit.id] = $0 },
+        filters: filters,
+        selected: manager.selectedFilter,
+        select: { manager.selectedFilter = $0 },
+      ))
+      if subreddit.data != nil {
+        actions.append(.subredditInfo(subreddit, column: navColumn))
+      }
+    }
+    return actions
   }
 }
 

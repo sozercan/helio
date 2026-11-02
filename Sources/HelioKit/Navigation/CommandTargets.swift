@@ -18,7 +18,7 @@ final class CommandTargets {
   struct Target {
     /// `modal`: what covers the screens, such as a reply being written or a full-screen image or
     /// video. The commands must not act on the screens behind it, or close it by moving to another post.
-    enum Kind { case feed, post, subs, search, modal }
+    enum Kind { case feed, post, subs, search, profile, modal }
 
     var kind: Kind
     /// The posts split view's column it shows in.
@@ -36,6 +36,8 @@ final class CommandTargets {
     /// The post a post screen shows, for voting and replying.
     var post: Post?
     var reply: (() -> Void)?
+    /// The screen's own actions, for the menu bar and the Mac window toolbar.
+    var actions: [ScreenAction] = []
 
     func revealing(with proxy: ScrollViewProxy) -> Target {
       var target = self
@@ -62,10 +64,12 @@ final class CommandTargets {
     return id
   }
 
-  /// Replaces a registered target, such as when what it can do changes.
+  /// Replaces a registered target, as what its screen can do changes (its sort, its actions).
   func update(_ id: UUID, to target: Target) {
-    if let index = targets.firstIndex(where: { $0.id == id }) {
-      targets[index].target = target
+    guard let index = targets.firstIndex(where: { $0.id == id }) else { return }
+    targets[index].target = target
+    if postsFeed?.id == id {
+      postsFeed = (id, target)
     }
   }
 
@@ -136,6 +140,27 @@ final class CommandTargets {
   /// The post shown last, for voting and replying.
   var openPost: Target? {
     targets.last { $0.target.kind == .post && $0.target.post != nil }?.target
+  }
+
+  /// The actions of the screen shown last in `column` (nil: outside the posts split view). In
+  /// the posts tab, screens opened over a column's first one don't know their column: a post
+  /// is taken to be in the post column, anything else in the feed column.
+  func actions(in column: Router.Column?, postsTab: Bool = false) -> [ScreenAction] {
+    targets.last { entry in
+      let target = entry.target
+      let resolved = postsTab ? target.column ?? (target.kind == .post ? .post : .feed) : target.column
+      return resolved == column && !target.actions.isEmpty
+    }?.target.actions ?? []
+  }
+
+  /// The action with `id` of the screen shown last that has one.
+  func action(_ id: ScreenAction.ID) -> ScreenAction? {
+    for (_, target) in targets.reversed() {
+      if let action = target.actions.first(where: { $0.id == id }) {
+        return action
+      }
+    }
+    return nil
   }
 
   /// While a reply is being written, an image or video fills the screen, or a sheet such as
@@ -309,6 +334,12 @@ private struct CommandTargetModifier<Key: Equatable>: ViewModifier {
           CommandTargets.shared.unregister(registration)
         }
         registration = nil
+      }
+      // The actions show the screen's state, such as its sort: keep them current.
+      .onChange(of: target?.actions ?? []) {
+        if let registration, let target {
+          CommandTargets.shared.update(registration, to: target)
+        }
       }
   }
 }

@@ -223,7 +223,7 @@ struct PostView: View, Equatable {
         }
         // A context-menu preview isn't a screen the menu bar's commands act on.
         // Kept current when the page is handed a new Post for the same destination (after a refresh).
-        .commandTarget(isPreview ? nil : CommandTargets.Target(kind: .post, column: navColumn, refresh: updatePost, post: post, reply: { showReplyModal = true }), updatingWith: ObjectIdentifier(post))
+        .commandTarget(isPreview ? nil : CommandTargets.Target(kind: .post, column: navColumn, refresh: updatePost, post: post, reply: { showReplyModal = true }, actions: actions), updatingWith: ObjectIdentifier(post))
         .sheet(isPresented: $showReplyModal) {
           // Reloads the comments once the reply is posted, so it shows, and the post's details
           // with its comment count. A reply to the post is top level: reload the whole thread,
@@ -240,6 +240,19 @@ struct PostView: View, Equatable {
         }
       }
     }
+  }
+
+  /// The comment sort and the subreddit's info, as in the navigation bar.
+  private var actions: [ScreenAction] {
+    var actions: [ScreenAction] = [.sortComments(sort) { opt in
+      sort = opt
+      Defaults[.PostPageDefSettings].postSorts[post.id] = opt
+    }]
+    if subreddit.data != nil, !feedsAndSuch.contains(subreddit.id) {
+      // Like the navigation bar's button, which doesn't say where it's from.
+      actions.append(.subredditInfo(subreddit, column: nil))
+    }
+    return actions
   }
 
   /// The post's actions and the jump to the next comment, on glass. The jump button sits on the
@@ -325,6 +338,14 @@ private struct Toolbar: ToolbarContent {
   var column: Router.Column?
 
   var body: some ToolbarContent {
+    // On Mac these are in the window toolbar (`PostView.actions`).
+    if ScreenAction.showsInNavigationBar {
+      items
+    }
+  }
+
+  @ToolbarContentBuilder
+  private var items: some ToolbarContent {
     ToolbarItem(id: "postview-sort", placement: .topBarTrailing) {
       Menu {
         if !hideElements {

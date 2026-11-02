@@ -41,10 +41,12 @@ struct Me: View {
       }
       .readableWidth()
       .toolbar {
-        if RedditCredentialsManager.shared.validCredentials.count > 1 {
+        // On Mac it's in the window toolbar.
+        if ScreenAction.showsInNavigationBar, RedditCredentialsManager.shared.validCredentials.count > 1 {
           ToolbarItem(placement: .topBarLeading) { AccountSwitcherMenu() }
         }
       }
+      .commandTarget(CommandTargets.Target(kind: .profile, actions: [ScreenAction.switchAccount()].compactMap(\.self)))
       .attachViewControllerToRouter(tabID: .me)
       .injectInTabDestinations()
     }

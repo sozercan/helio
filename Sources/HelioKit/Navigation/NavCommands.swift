@@ -11,10 +11,25 @@ import SwiftUI
 struct NavCommands: Commands {
   private let targets = CommandTargets.shared
 
+  /// A screen action's menu. While no screen shown has the action, `placeholder`'s items show
+  /// disabled: always a submenu, as switching between a submenu and an item reorders the
+  /// menu's items on Mac, and a submenu can't be disabled there.
+  private func actionMenu(_ action: ScreenAction?, title: String, placeholder: ScreenAction? = nil) -> some View {
+    Menu(title) {
+      if case let .menu(entries) = (action ?? placeholder)?.content {
+        ScreenActionMenuItems(entries: entries)
+          .disabled(action == nil)
+      }
+    }
+    .disabled(action == nil)
+  }
+
   var body: some Commands {
     CommandGroup(replacing: .appSettings) {
       Button("Settings…", systemImage: "gearshape") { Nav.shared.activeTab = .settings }
         .keyboardShortcut(",")
+      // From any tab, not only Me, where the toolbar has it.
+      actionMenu(ScreenAction.switchAccount(), title: "Switch Account")
     }
 
     // Edit > Find. Not in place of the system's `.textEditing` items: on iPad that group never
@@ -33,6 +48,13 @@ struct NavCommands: Commands {
       Button("Refresh", systemImage: "arrow.clockwise") { targets.refresh() }
         .keyboardShortcut("r")
         .disabled(!targets.canRefresh)
+
+      // The feed's and the post's own menus, as in their toolbars. In this group: in a second
+      // group before the toolbar's items, their actions never run on Mac.
+      Divider()
+      actionMenu(targets.action(.sortPosts), title: "Sort Posts", placeholder: .sortPosts(SubListingSortOption?.none) { _ in })
+      actionMenu(targets.action(.feedOptions), title: "Feed Options", placeholder: .feedOptions(compact: false, setCompact: { _ in }, filters: [], selected: nil, select: { _ in }))
+      actionMenu(targets.action(.sortComments), title: "Sort Comments", placeholder: .sortComments(nil) { _ in })
     }
 
     CommandMenu("Go") {
@@ -50,6 +72,10 @@ struct NavCommands: Commands {
       Button("Back", systemImage: "chevron.backward") { Nav.back() }
         .keyboardShortcut("[")
         .disabled(!Nav.shared.activeRouter.canGoBack)
+
+      let info = targets.action(.subredditInfo)
+      Button(info?.title ?? "About Subreddit", systemImage: "info.circle") { info?.perform() }
+        .disabled(info == nil)
     }
 
     CommandMenu("Post") {

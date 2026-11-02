@@ -54,6 +54,7 @@ struct SubredditsStack: View {
             // Keyed by the whole destination: two comments from one post are different threads.
             RouterDestinationView(dest: post)
               .id(post)
+              .hidesNavigationBarOnMac(layout.showsColumns)
           } else {
             ContentUnavailableView("No Post Selected", systemImage: "doc.text.image", description: Text("Choose a post from the feed."))
           }
@@ -219,6 +220,18 @@ private extension View {
       ideal: hingeWidth ?? SplitLayout.idealFeedWidth,
       max: hingeWidth ?? SplitLayout.maxFeedWidth,
     )
+  }
+
+  /// Beside the feed on Mac, the open post needs no bar of its own under the window toolbar:
+  /// its actions are in that toolbar (`MacTabToolbar`), its subreddit is in its header, and at
+  /// the column's root there's no Back. Screens opened over it get their bar, with Back.
+  @ViewBuilder
+  func hidesNavigationBarOnMac(_ hidden: Bool) -> some View {
+    #if targetEnvironment(macCatalyst)
+      toolbar(hidden ? .hidden : .automatic, for: .navigationBar)
+    #else
+      self
+    #endif
   }
 
   /// The Mac window toolbar has the sidebar button (`MacTabToolbar`).
