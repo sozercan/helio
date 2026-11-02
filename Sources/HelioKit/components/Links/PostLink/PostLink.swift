@@ -58,7 +58,10 @@ extension View {
     let fadeReadPosts = theme.unseenType == .fade
     return self
       .padding(EdgeInsets(top: theme.innerPadding.vertical, leading: theme.innerPadding.horizontal, bottom: theme.innerPadding.vertical, trailing: theme.innerPadding.horizontal))
-      .background(PostLinkBG(theme: theme, stickied: post.data?.stickied, secondary: secondary))
+      .background {
+        PostLinkBG(theme: theme, stickied: post.data?.stickied, secondary: secondary)
+        OpenPostHighlight(postID: post.id, cornerRadius: theme.cornerRadius)
+      }
       .overlay(PostLinkGlowDot(unseenType: theme.unseenType, seen: seen, badge: false), alignment: .topTrailing)
       .geometryGroup()
       .contentShape(Rectangle())
@@ -131,6 +134,23 @@ struct PostLinkGlowDot: View, Equatable {
     .scaleEffect(seen ? 0.1 : 1)
     .opacity(seen ? 0 : 1)
     .allowsHitTesting(false)
+  }
+}
+
+/// Marks the feed's post that's open beside it in the posts split view, as a list marks its
+/// selection. Only the feed column has one.
+private struct OpenPostHighlight: View {
+  let postID: String
+  let cornerRadius: CGFloat
+  @Environment(\.navColumn) private var navColumn
+
+  var body: some View {
+    // Collapsed into one stack, the post covers the feed: nothing to mark.
+    if navColumn == .feed, Nav.shared[.posts].firstIsSidebarSelection, Nav.shared[.posts].postColumn.first?.id == postID {
+      RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+        .fill(Color.accentColor.opacity(0.12))
+        .allowsHitTesting(false)
+    }
   }
 }
 
