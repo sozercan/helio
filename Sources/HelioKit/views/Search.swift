@@ -191,11 +191,13 @@ struct Search: View {
               ForEach(resultsSubs) { sub in
                 SubredditLink(sub: sub)
                   .simultaneousGesture(TapGesture().onEnded { rememberSearch() })
+                  .listRowInsets(EdgeInsets())
               }
             case .user:
               ForEach(resultsUsers) { user in
                 UserLink(user: user)
                   .simultaneousGesture(TapGesture().onEnded { rememberSearch() })
+                  .listRowInsets(EdgeInsets())
               }
             case .post:
               if let dummyAllSub {

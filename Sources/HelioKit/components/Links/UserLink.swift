@@ -40,7 +40,9 @@ struct UserLink: View {
       .padding(.vertical, 14)
       .frame(maxWidth: .infinity, alignment: .leading)
       .themedListRowLikeBG()
-      .mask(RR(20, .black))
+      // A flat row in a list; a card where it's embedded in a post.
+      .if(noHPad) { $0.mask(RR(20, .black)) }
+      .if(!noHPad) { $0.hairlineRowSeparator() }
       .onTapGesture {
         Nav.to(.reddit(.user(user)))
       }

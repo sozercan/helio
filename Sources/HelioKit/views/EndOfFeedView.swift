@@ -23,16 +23,13 @@ struct EndOfFeedView: View {
         .lineLimit(4)
     }
     .padding()
-    .frame(maxWidth: .infinity, maxHeight: .infinity)
-    .background(.quaternary)
-    // At least 150 tall; taller when larger text needs it.
+    // At least 150 tall; taller when larger text needs it. Flat on the list, like the rows above.
     .frame(minWidth: 0, maxWidth: .infinity, minHeight: 150, alignment: .center)
-//    .fixedSize()
-    .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
+    .contentShape(Rectangle())
     .onTapGesture {
       self.handleTap()
     }
-    .listRowInsets(EdgeInsets(top: 8, leading: 12, bottom: 8, trailing: 12))
+    .listRowInsets(EdgeInsets())
 //    .padding(.horizontal, 24)
     .alert(isPresented: $showAlert) {
       Alert(

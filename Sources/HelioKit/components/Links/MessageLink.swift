@@ -35,7 +35,7 @@ struct MessageLink: View {
       .padding(.vertical, 12)
       .frame(maxWidth: .infinity, alignment: .topLeading)
       .themedListRowLikeBG()
-      .mask(RR(20, .black))
+      .hairlineRowSeparator()
       .compositingGroup()
       .opacity(!(data.new ?? false) ? 0.65 : 1)
       .contentShape(Rectangle())

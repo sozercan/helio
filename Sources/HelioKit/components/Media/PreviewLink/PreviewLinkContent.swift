@@ -101,8 +101,9 @@ struct PreviewLinkContentRaw: View, Equatable {
       }
       .frame(width: compact ? scaledCompactModeThumbSize() : 76, height: compact ? scaledCompactModeThumbSize() : 76)
       .clipped()
-      .mask(RR(12, Color.black))
-      .background(RR(12, Color.primary.opacity(0.1)))
+      // Concentric with the card: its 16 radius less the 6 padding. Alone in compact rows, 12.
+      .mask(RR(compact ? 12 : 10, Color.black))
+      .background(RR(compact ? 12 : 10, Color.primary.opacity(0.1)))
     }
     .padding(.vertical, compact ? 0 : 6)
     .padding(.leading, compact ? 0 : 10)
