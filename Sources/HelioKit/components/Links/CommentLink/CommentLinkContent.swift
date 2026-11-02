@@ -215,7 +215,7 @@ struct CommentLinkContent: View {
           .opacity(collapsed && !bars ? 0.5 : 1)
           .contentShape(Rectangle())
           .offset(x: offsetX)
-          .animation(draggingAnimation, value: offsetX)
+          .animation(motionAware(draggingAnimation), value: offsetX)
           .swipyUI(
             controlledDragAmount: $offsetX,
             controlledIsSource: false,
@@ -279,7 +279,7 @@ struct CommentLinkContent: View {
               }
               .accessibilityActions { CommentLinkActions(comment: comment, data: data) }
               .offset(x: offsetX)
-              .animation(draggingAnimation, value: offsetX)
+              .animation(motionAware(draggingAnimation), value: offsetX)
               .swipyUI(
                 offsetYAction: -15,
                 controlledDragAmount: $offsetX,
