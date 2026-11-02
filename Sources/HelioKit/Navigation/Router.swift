@@ -190,6 +190,10 @@ extension Router.NavDest {
   /// so `==` doesn't match the two.
   var subredditFeedName: String? {
     guard case let .reddit(.subFeed(sub)) = self else { return nil }
+    // The front page, Popular, All and Saved aren't subreddits, even if one shares their name.
+    if sub.data == nil, builtInFeedIDs.contains(sub.id) {
+      return "feed:\(sub.id)"
+    }
     return (sub.data?.display_name ?? sub.id).lowercased()
   }
 
@@ -201,3 +205,6 @@ extension Router.NavDest {
     return self == other
   }
 }
+
+/// The feeds known by a fixed id rather than a subreddit name.
+let builtInFeedIDs: Set<String> = ["home", "popular", "all", savedKeyword]

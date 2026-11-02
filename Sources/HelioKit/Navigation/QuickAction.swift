@@ -66,6 +66,10 @@ enum QuickAction: Equatable {
   /// The current account's cached subreddit with this name, as the sidebar shows it, so the
   /// sidebar marks it selected; a subreddit known only by name otherwise.
   static func subreddit(named name: String) -> Subreddit {
+    // The default feed can be the front page, Popular or All, not a subreddit of that name.
+    if builtInFeedIDs.contains(name) {
+      return Subreddit(id: name)
+    }
     let context = PersistenceController.shared.container.viewContext
     if let credentialID = Defaults[.GeneralDefSettings].redditCredentialSelectedID {
       let request = CachedSub.fetchRequest()

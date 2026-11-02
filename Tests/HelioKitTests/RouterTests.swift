@@ -41,6 +41,13 @@ struct RouterTests {
     #expect(!feed("pics").isSameFeed(as: .reddit(.subFeed(cached))))
   }
 
+  @Test func builtInFeedsDontMatchSubredditsOfTheSameName() throws {
+    let json = #"{"name": "t5_2qs0q", "id": "2qs0q", "display_name": "home", "url": "/r/home/", "public_description": ""}"#
+    let rHome = try Subreddit(data: JSONDecoder().decode(SubredditData.self, from: Data(json.utf8)))
+    #expect(!feed("home").isSameFeed(as: .reddit(.subFeed(rHome))))
+    #expect(QuickAction.subreddit(named: "home").data == nil)
+  }
+
   @Test func showingTheFeedRootClosesItsScreens() {
     let router = Router(id: "test")
     router.firstSelected = feed("apple")
