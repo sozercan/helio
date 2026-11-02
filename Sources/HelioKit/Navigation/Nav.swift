@@ -175,17 +175,27 @@ class Nav: Identifiable, Equatable {
   /// open from the column the link sits in, like other taps there; anything else, or a link in
   /// another tab, goes through the app's URL handling as before.
   static func openLink(_ url: URL, from column: Router.Column?) {
-    let appLink = appLink(for: url)
-    let dest: Router.NavDest? = switch parseRedditURL(appLink) {
+    let dest = linkDestination(for: url)
+    if let dest, Nav.shared.activeTab == .posts {
+      withAnimation { Nav.to(dest, from: column) }
+    } else if let dest {
+      // From another tab it starts over on the posts tab, as the app's link handling does.
+      withAnimation { Nav.fullTo(.posts, dest, true) }
+    } else {
+      // Not something the app opens (a wiki page, any other site): the page itself.
+      Nav.openURL(url)
+    }
+  }
+
+  /// The screen a link opens in the app: a post, a comment in its post, a subreddit or a user.
+  /// Nil for anything else (wiki pages, other sites), which opens as the page itself.
+  static func linkDestination(for url: URL) -> Router.NavDest? {
+    switch parseRedditURL(appLink(for: url)) {
     case let .post(postID, subID): .reddit(.post(Post(id: postID, subID: subID)))
+    case let .comment(commentID, postID, subID): .reddit(.postHighlighted(Post(id: postID, subID: subID), commentID))
     case let .subreddit(name): .reddit(.subFeed(Subreddit(id: name)))
     case let .user(username): .reddit(.user(User(id: username)))
     default: nil
-    }
-    if let dest, Nav.shared.activeTab == .posts {
-      withAnimation { Nav.to(dest, from: column) }
-    } else if let newURL = URL(string: appLink) {
-      Nav.openURL(newURL)
     }
   }
 

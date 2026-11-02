@@ -401,4 +401,16 @@ struct RedditLinkTests {
     let other = try #require(URL(string: "https://example.com/r/apple"))
     #expect(Nav.appLink(for: other) == other.absoluteString)
   }
+
+  @Test func commentLinksOpenTheirPostAndWikiLinksDont() throws {
+    let comment = try #require(URL(string: "https://old.reddit.com/r/apple/comments/abc123/a_title/def456/"))
+    guard case let .reddit(.postHighlighted(post, highlight)) = Nav.linkDestination(for: comment) else {
+      Issue.record("expected the comment in its post")
+      return
+    }
+    #expect(post.id == "abc123")
+    #expect(highlight == "def456")
+    let wiki = try #require(URL(string: "https://www.reddit.com/r/apple/wiki/index"))
+    #expect(Nav.linkDestination(for: wiki) == nil)
+  }
 }
