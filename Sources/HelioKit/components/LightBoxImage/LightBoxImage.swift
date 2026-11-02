@@ -63,6 +63,8 @@ struct LightBoxImage: View {
         LightBoxElementView(el: img, label: postTitle, onTap: toggleOverlay, doLiveText: doLiveText, showOverlay: showOverlay, isPinching: $isPinching, isZoomed: $isZoomed)
           .allowsHitTesting(selected)
           .accessibilityHidden(!selected)
+          // The page, which changes as VoiceOver users swipe through the gallery.
+          .accessibilityValue(imagesArr.count > 1 ? "Image \(index + 1) of \(imagesArr.count)" : "")
           .modifier(LightBoxPaging(pages: imagesArr.count, page: { page(to: activeIndex + $0) }))
           .scaleEffect(!selected ? 1 : interpolate([1, 0.9], true))
           .blur(radius: selected && loading ? 24 : 0)

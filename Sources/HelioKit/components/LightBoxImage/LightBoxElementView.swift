@@ -23,13 +23,31 @@ struct LightBoxElementView: View {
       URLImage(url: el.url, doLiveText: doLiveText, showOverlay: showOverlay)
         .scaledToFit()
     }
-    .accessibilityElement(children: .ignore)
-    .accessibilityLabel(label ?? "Image")
-    .accessibilityAddTraits(.isImage)
+    .modifier(LightBoxImageAccessibility(label: label ?? "Image", keepsLiveText: doLiveText))
     .id("\(el.id)\(altSize.width + altSize.height)")
     .frame(width: .screenW)
     .preferredColorScheme(.dark)
     .edgesIgnoringSafeArea(.all)
     .statusBar(hidden: true)
+  }
+}
+
+/// One labeled image for VoiceOver. With Live Text on, the image's recognized text and codes stay
+/// reachable inside it instead of being folded into the label.
+private struct LightBoxImageAccessibility: ViewModifier {
+  var label: String
+  var keepsLiveText: Bool
+
+  func body(content: Content) -> some View {
+    if keepsLiveText {
+      content
+        .accessibilityElement(children: .contain)
+        .accessibilityLabel(label)
+    } else {
+      content
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(label)
+        .accessibilityAddTraits(.isImage)
+    }
   }
 }

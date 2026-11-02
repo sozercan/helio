@@ -51,6 +51,7 @@ struct PreviewLinkContentRaw: View, Equatable {
       content
     }
     .buttonStyle(.plain)
+    .modifier(CompactLinkLabel(label: compact ? title ?? url.host() ?? url.absoluteString : nil))
     .contextMenu {
       Button {
         UIPasteboard.general.string = url.absoluteString
@@ -111,5 +112,18 @@ struct PreviewLinkContentRaw: View, Equatable {
     .frame(maxWidth: compact ? nil : .infinity, minHeight: compact ? nil : PreviewLinkContent.height)
     .background(compact ? nil : RR(16, Color.primary.opacity(0.1)))
     .contentShape(Rectangle())
+  }
+}
+
+/// Compact previews show only the image, so they name the link: its title, or where it goes.
+private struct CompactLinkLabel: ViewModifier {
+  var label: String?
+
+  func body(content: Content) -> some View {
+    if let label {
+      content.accessibilityLabel(label)
+    } else {
+      content
+    }
   }
 }
