@@ -40,7 +40,7 @@ struct CommentsSectionTheme: Codable, Hashable, Equatable {
 
 struct CommentTheme: Codable, Hashable, Equatable {
   enum CodingKeys: String, CodingKey {
-    case innerPadding, outerHPadding, repliesSpacing, indentCurve, indentColor, indentColors, cornerRadius, badge, bodyText, bodyAuthorSpacing, linespacing, bg, loadMoreInnerPadding, loadMoreText, loadMoreBackground, unseenDot
+    case innerPadding, outerHPadding, repliesSpacing, indentCurve, indentColor, indentColors, cornerRadius, badge, bodyText, quoteText, bodyAuthorSpacing, linespacing, bg, loadMoreInnerPadding, loadMoreText, loadMoreBackground, unseenDot
   }
 
   var innerPadding: ThemePadding
@@ -54,6 +54,8 @@ struct CommentTheme: Codable, Hashable, Equatable {
   var cornerRadius: CGFloat
   var badge: BadgeTheme
   var bodyText: ThemeText
+  /// Quoted text in the body's Markdown.
+  var quoteText: ColorSchemes<ThemeColor>
   var bodyAuthorSpacing: CGFloat
   var linespacing: CGFloat
   var bg: ColorSchemes<ThemeColor>
@@ -64,7 +66,7 @@ struct CommentTheme: Codable, Hashable, Equatable {
 
   var unseenDot: ColorSchemes<ThemeColor>
 
-  init(innerPadding: ThemePadding, outerHPadding: CGFloat, repliesSpacing: CGFloat, indentCurve: CGFloat, indentColor: ColorSchemes<ThemeColor>, indentColors: [ColorSchemes<ThemeColor>] = [], cornerRadius: CGFloat, badge: BadgeTheme, bodyText: ThemeText, bodyAuthorSpacing: CGFloat, linespacing: CGFloat, bg: ColorSchemes<ThemeColor>, loadMoreInnerPadding: ThemePadding, loadMoreText: ThemeText, loadMoreBackground: ColorSchemes<ThemeColor>, unseenDot: ColorSchemes<ThemeColor>) {
+  init(innerPadding: ThemePadding, outerHPadding: CGFloat, repliesSpacing: CGFloat, indentCurve: CGFloat, indentColor: ColorSchemes<ThemeColor>, indentColors: [ColorSchemes<ThemeColor>] = [], cornerRadius: CGFloat, badge: BadgeTheme, bodyText: ThemeText, quoteText: ColorSchemes<ThemeColor>, bodyAuthorSpacing: CGFloat, linespacing: CGFloat, bg: ColorSchemes<ThemeColor>, loadMoreInnerPadding: ThemePadding, loadMoreText: ThemeText, loadMoreBackground: ColorSchemes<ThemeColor>, unseenDot: ColorSchemes<ThemeColor>) {
     self.innerPadding = innerPadding
     self.outerHPadding = outerHPadding
     self.repliesSpacing = repliesSpacing
@@ -74,6 +76,7 @@ struct CommentTheme: Codable, Hashable, Equatable {
     self.cornerRadius = cornerRadius
     self.badge = badge
     self.bodyText = bodyText
+    self.quoteText = quoteText
     self.bodyAuthorSpacing = bodyAuthorSpacing
     self.linespacing = linespacing
     self.bg = bg
@@ -94,6 +97,7 @@ struct CommentTheme: Codable, Hashable, Equatable {
     try container.encodeIfPresent(cornerRadius, forKey: .cornerRadius)
     try container.encodeIfPresent(badge, forKey: .badge)
     try container.encodeIfPresent(bodyText, forKey: .bodyText)
+    try container.encodeIfPresent(quoteText, forKey: .quoteText)
     try container.encodeIfPresent(bodyAuthorSpacing, forKey: .bodyAuthorSpacing)
     try container.encodeIfPresent(linespacing, forKey: .linespacing)
     try container.encodeIfPresent(bg, forKey: .bg)
@@ -115,6 +119,7 @@ struct CommentTheme: Codable, Hashable, Equatable {
     self.cornerRadius = try container.decodeIfPresent(CGFloat.self, forKey: .cornerRadius) ?? t.cornerRadius
     self.badge = try container.decodeIfPresent(BadgeTheme.self, forKey: .badge) ?? t.badge
     self.bodyText = try container.decodeIfPresent(ThemeText.self, forKey: .bodyText) ?? t.bodyText
+    self.quoteText = try container.decodeIfPresent(ColorSchemes<ThemeColor>.self, forKey: .quoteText) ?? t.quoteText
     self.bodyAuthorSpacing = try container.decodeIfPresent(CGFloat.self, forKey: .bodyAuthorSpacing) ?? t.bodyAuthorSpacing
     self.linespacing = try container.decodeIfPresent(CGFloat.self, forKey: .linespacing) ?? t.linespacing
     self.bg = try container.decodeIfPresent(ColorSchemes<ThemeColor>.self, forKey: .bg) ?? t.bg

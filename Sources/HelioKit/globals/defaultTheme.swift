@@ -22,6 +22,8 @@ let themeFontTertiary = scheme("6E6F75", "8A8C93")
 let themeCellBG = scheme("FFFFFF", "000000")
 let themeBandColor = scheme("F2F3F7", "1A1A1A")
 let themeAccentColor = scheme("007AFF", "2399FF")
+/// Quoted text in posts and comments: #9294A0 on black, darker on white so it keeps 4.5:1 there too.
+let themeQuoteText = scheme("6B6E78", "9294A0")
 /// Comment depth colors, Apollo's "Rainbow" theme.
 let rainbowIndentColors: [ColorSchemes<ThemeColor>] = [
   scheme("F24336", "AF2E27"), scheme("FF922E", "B15610"), scheme("F9D141", "967727"), scheme("2D704C", "2D704C"),
@@ -73,6 +75,8 @@ struct ThemePalette {
   var flairBackground: ColorSchemes<ThemeColor>
   /// Links and highlights inside posts and comments, such as "load more".
   var accent: ColorSchemes<ThemeColor>
+  /// Quoted text in posts' and comments' Markdown.
+  var quoteText: ColorSchemes<ThemeColor>
   /// Hairlines: comment and list separators.
   var divider: ColorSchemes<ThemeColor>
   /// The background behind lists and feeds.
@@ -92,6 +96,7 @@ struct ThemePalette {
     band: themeBandColor,
     flairBackground: themeBandColor,
     accent: themeAccentColor,
+    quoteText: themeQuoteText,
     divider: defaultThemeDividerColor,
     background: defaultBG,
     listRow: listSectionBGTheme,
@@ -119,7 +124,10 @@ struct ThemePalette {
     palette.fontSecondary = highContrastPalette[themeFontSecondary] ?? themeFontSecondary
     palette.fontTertiary = highContrastPalette[themeFontTertiary] ?? themeFontTertiary
     palette.divider = highContrastPalette[defaultThemeDividerColor] ?? defaultThemeDividerColor
-    palette.accent = scheme("0040DD", "409CFF")
+    palette.quoteText = palette.fontSecondary
+    // Darker than iOS's Increase Contrast blue (#0040DD) and lighter in dark mode (#409CFF), so
+    // "load more" reaches 7:1 on its grey too.
+    palette.accent = scheme("003CD0", "62ADFF")
     // A hairline in the separator color sets posts apart: Apollo's band is about 1.2:1 on the
     // cells, and a band dark enough for 3:1 would be heavy.
     palette.feedDivider = .init(style: .line, thickness: 1, color: palette.divider)
@@ -207,6 +215,7 @@ extension HelioTheme {
         commentsDistance: 0,
         titleText: .init(size: 19, color: palette.fontPrimary, weight: .medium),
         bodyText: .init(size: 15, color: palette.fontPrimary),
+        quoteText: palette.quoteText,
         linespacing: 0,
         inlineFloatingPill: false,
       ),
@@ -221,6 +230,7 @@ extension HelioTheme {
           cornerRadius: 0,
           badge: palette.commentBadge,
           bodyText: .init(size: 15, color: palette.fontPrimary),
+          quoteText: palette.quoteText,
           bodyAuthorSpacing: 6,
           linespacing: 0,
           bg: palette.cellBG,
@@ -282,7 +292,7 @@ struct ThemePreset: Identifiable {
   static let highContrast = ThemePreset(theme: HelioTheme(palette: .highContrast, id: "highContrast", metadata: .init(
     name: "High Contrast",
     description: "Stronger text and separators, always on.",
-    color: .init(hex: "0040DD"),
+    color: .init(hex: "003CD0"),
     icon: "circle.lefthalf.filled",
     author: "Helio",
   )), modes: .lightAndDark)

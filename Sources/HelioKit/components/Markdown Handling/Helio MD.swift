@@ -8,10 +8,11 @@
 import MarkdownUI
 import SwiftUI
 
-public extension Theme {
-  /// Helio Markdown theme.
-  static func helioMarkdown(fontSize: CGFloat, lineSpacing: CGFloat = 0.2, textSelection: Bool = false) -> Theme {
-    Theme()
+extension Theme {
+  /// Helio Markdown theme. `quoteText` colors quoted text, the selected theme's in posts and comments.
+  static func helioMarkdown(fontSize: CGFloat, lineSpacing: CGFloat = 0.2, textSelection: Bool = false, quoteText: ColorSchemes<ThemeColor> = themeQuoteText) -> Theme {
+    let quoteText = quoteText.color()
+    return Theme()
       .text {
         FontSize(fontSize)
       }
@@ -88,7 +89,7 @@ public extension Theme {
             .fill(Color(rgba: 0x4244_4EFF))
             .relativeFrame(width: .em(0.2))
           configuration.label
-            .markdownTextStyle { ForegroundColor(blockquoteText) }
+            .markdownTextStyle { ForegroundColor(quoteText) }
             .relativePadding(.horizontal, length: .em(1))
         }
         .fixedSize(horizontal: false, vertical: true)
@@ -99,9 +100,6 @@ public extension Theme {
       }
   }
 }
-
-/// Quoted text: #9294A0 on black, darker on white so it keeps 4.5:1 there too.
-private let blockquoteText = Color(UIColor(light: UIColor(hex: "6B6E78"), dark: UIColor(hex: "9294A0")))
 
 private extension View {
   /// `TextSelectability` is read from the type (`static var allowsSelection`), so a single

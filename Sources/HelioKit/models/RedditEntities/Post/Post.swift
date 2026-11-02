@@ -22,10 +22,10 @@ extension Post {
     Self.prefix
   }
 
-  convenience init(data: T, sub: Subreddit? = nil, contentWidth: Double = .screenW, secondary: Bool = false, theme: HelioTheme? = nil, fetchAvatar: Bool = true) {
+  convenience init(data: T, sub: Subreddit? = nil, contentWidth: Double = .screenW, secondary: Bool = false, theme: HelioTheme? = nil, fetchAvatar: Bool = true, fetchLinkMetadata: Bool? = nil) {
     let theme = theme ?? InMemoryTheme.shared.currentTheme
     self.init(data: data, typePrefix: "\(Post.prefix)_")
-    setupHelioData(data: data, contentWidth: contentWidth, secondary: secondary, theme: theme, sub: sub, fetchAvatar: fetchAvatar)
+    setupHelioData(data: data, contentWidth: contentWidth, secondary: secondary, theme: theme, sub: sub, fetchAvatar: fetchAvatar, fetchLinkMetadata: fetchLinkMetadata)
   }
 
   convenience init(id: String, sub: Subreddit? = nil) {
@@ -74,6 +74,13 @@ extension Post {
     CachedDefaults[.SubredditFeedDefSettings].compactPerSubreddit[sub?.settingsKey ?? data.subreddit_id ?? ""] ?? CachedDefaults[.PostLinkDefSettings].compactMode.enabled
   }
 
+  /// Whether link previews download their page while the feed's page is laid out, ahead of
+  /// showing. A canvas feed shows none, so its posts' previews wait until they show, such as
+  /// when the post opens, instead of downloading every linked page.
+  static func fetchesLinkMetadata(_ data: PostData, sub: Subreddit?) -> Bool {
+    !PostLayout.isCanvas(sub?.id ?? data.subreddit_id ?? "", canvasSubreddits: CachedDefaults[.canvasSubreddits])
+  }
+
   func shouldUpdateAvatarFamily(fetchAvatar: Bool) -> Bool {
     if fetchAvatar {
       return true
@@ -86,22 +93,25 @@ extension Post {
 
   /// Without a `contentWidth` (refreshing a post, changing theme), keeps the width the post
   /// was last laid out for: the full window would be wrong in a split view's column.
-  func setupHelioData(data: PostData? = nil, contentWidth: Double? = nil, secondary: Bool = false, theme: HelioTheme, sub: Subreddit? = nil, fetchAvatar: Bool = true) {
+  /// Embedded posts take `fetchLinkMetadata` from the post they're in.
+  func setupHelioData(data: PostData? = nil, contentWidth: Double? = nil, secondary: Bool = false, theme: HelioTheme, sub: Subreddit? = nil, fetchAvatar: Bool = true, fetchLinkMetadata: Bool? = nil) {
     let updateAvatarFamily = shouldUpdateAvatarFamily(fetchAvatar: fetchAvatar)
     let lastWidth = self.helioData?.layoutWidth ?? 0
     let contentWidth = contentWidth ?? (lastWidth > 0 ? lastWidth : .screenW)
     let textSize = ContentTextScale.dynamicTypeSize
     if let data = data ?? self.data {
       let compact = Post.isCompact(data, sub: sub)
+      let fetchLinkMetadata = fetchLinkMetadata ?? Post.fetchesLinkMetadata(data, sub: sub)
       if self.helioData == nil {
         self.helioData = .init()
       }
+      self.helioData?.fetchesLinkMetadata = fetchLinkMetadata
 
       self.helioData?.permaURL = URL(string: "https://reddit.com\(data.permalink.urlEncoded)")
 
-      var extractedMedia = mediaExtractor(compact: compact, contentWidth: contentWidth, data, theme: theme)
+      var extractedMedia = mediaExtractor(compact: compact, contentWidth: contentWidth, data, theme: theme, fetchLinkMetadata: fetchLinkMetadata)
       // Extracting builds players, embedded posts and link previews, so a large row shares its media.
-      var extractedMediaForcedNormal = compact ? mediaExtractor(compact: false, contentWidth: contentWidth, data, theme: theme) : extractedMedia
+      var extractedMediaForcedNormal = compact ? mediaExtractor(compact: false, contentWidth: contentWidth, data, theme: theme, fetchLinkMetadata: fetchLinkMetadata) : extractedMedia
 
       switch extractedMedia {
       case let .streamable(streamable):

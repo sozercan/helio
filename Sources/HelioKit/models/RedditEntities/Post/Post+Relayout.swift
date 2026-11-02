@@ -56,12 +56,12 @@ extension Post {
       // Compact and large rows extract images and link previews differently, so a compact
       // change extracts those again.
       if (compactChanged && helioData.extractedMedia?.dependsOnCompact == true) || helioData.extractedMedia?.dependsOnWidth == true {
-        helioData.extractedMedia = mediaExtractor(compact: compact, contentWidth: contentWidth, data, theme: theme)
+        helioData.extractedMedia = mediaExtractor(compact: compact, contentWidth: contentWidth, data, theme: theme, fetchLinkMetadata: helioData.fetchesLinkMetadata)
       } else {
         helioData.extractedMedia = helioData.extractedMedia?.relayoutingParts(contentWidth: contentWidth, theme: theme)
       }
       if helioData.extractedMediaForcedNormal?.dependsOnWidth == true {
-        helioData.extractedMediaForcedNormal = mediaExtractor(compact: false, contentWidth: contentWidth, data, theme: theme)
+        helioData.extractedMediaForcedNormal = mediaExtractor(compact: false, contentWidth: contentWidth, data, theme: theme, fetchLinkMetadata: helioData.fetchesLinkMetadata)
       } else {
         helioData.extractedMediaForcedNormal = helioData.extractedMediaForcedNormal?.relayoutingParts(contentWidth: contentWidth, theme: theme)
       }

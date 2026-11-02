@@ -82,7 +82,8 @@ enum MediaExtractedType: Equatable {
 }
 
 /// ORDER MATTERS!
-func mediaExtractor(compact: Bool, contentWidth: Double = .screenW, _ data: PostData, theme: HelioTheme? = nil) -> MediaExtractedType? {
+/// Without `fetchLinkMetadata`, link previews download their page only once they show.
+func mediaExtractor(compact: Bool, contentWidth: Double = .screenW, _ data: PostData, theme: HelioTheme? = nil, fetchLinkMetadata: Bool = true) -> MediaExtractedType? {
   guard !data.is_self else { return nil }
 
   let contentWidth = contentWidth - ((theme?.postLinks.theme.innerPadding.horizontal ?? 0) * 2) - ((theme?.postLinks.theme.outerHPadding ?? 0) * 2)
@@ -91,7 +92,7 @@ func mediaExtractor(compact: Bool, contentWidth: Double = .screenW, _ data: Post
   // v.redd.it link with no `media`), which can't be played from here. Show the original.
   if let postEmbed = data.crosspost_parent_list?.first {
     // The outer post/page owns avatar registration for the complete embedded tree.
-    return .repost(Post(data: postEmbed, contentWidth: contentWidth, secondary: true, theme: theme, fetchAvatar: false))
+    return .repost(Post(data: postEmbed, contentWidth: contentWidth, secondary: true, theme: theme, fetchAvatar: false, fetchLinkMetadata: fetchLinkMetadata))
   }
 
   if let is_gallery = data.is_gallery, is_gallery, let galleryData = data.gallery_data?.items, let metadata = data.media_metadata {
@@ -227,13 +228,13 @@ func mediaExtractor(compact: Bool, contentWidth: Double = .screenW, _ data: Post
 
     default:
       if !data.is_self, let linkURL = URL(string: data.url) {
-        return .link(PreviewModel.shared(linkURL, compact: compact))
+        return .link(PreviewModel.shared(linkURL, compact: compact, fetch: fetchLinkMetadata))
       }
     }
   }
 
   if data.post_hint == "link" || !data.domain.isEmpty, let linkURL = URL(string: data.url) {
-    return .link(PreviewModel.shared(linkURL, compact: compact))
+    return .link(PreviewModel.shared(linkURL, compact: compact, fetch: fetchLinkMetadata))
   }
 
   return nil

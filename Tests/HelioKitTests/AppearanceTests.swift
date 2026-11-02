@@ -76,9 +76,30 @@ struct ThemePresetTests {
       #expect(contrast(bar.light, comment.light) >= 3)
       #expect(contrast(bar.dark, comment.dark) >= 3)
     }
+    // Quoted text in posts and comments.
+    for (quote, bg) in [(theme.posts.quoteText, cell), (theme.comments.theme.quoteText, comment)] {
+      #expect(contrast(quote.light, bg.light) >= 7)
+      #expect(contrast(quote.dark, bg.dark) >= 7)
+    }
+    // Comments' "load more" on its grey.
+    let loadMore = theme.comments.theme
+    #expect(contrast(loadMore.loadMoreText.color.light, loadMore.loadMoreBackground.light) >= 7)
+    #expect(contrast(loadMore.loadMoreText.color.dark, loadMore.loadMoreBackground.dark) >= 7)
     // Stronger than Apollo's.
     #expect(contrast(theme.postLinks.theme.bodyText.color.light, cell.light) > contrast(defaultTheme.postLinks.theme.bodyText.color.light, cell.light))
   }
+
+  /// Quotes and "load more" stay Apollo's in Apollo and True Black.
+  @Test func apolloAndTrueBlackKeepApollosQuotesAndAccent() {
+    for theme in [ThemePreset.apollo.theme, ThemePreset.trueBlack.theme] {
+      #expect(theme.posts.quoteText == apolloQuote)
+      #expect(theme.comments.theme.quoteText == apolloQuote)
+      #expect(theme.comments.theme.loadMoreText.color == themeAccentColor)
+    }
+    #expect(themeAccentColor == .init(light: .init(hex: "007AFF"), dark: .init(hex: "2399FF")))
+  }
+
+  private let apolloQuote = ColorSchemes<ThemeColor>(light: .init(hex: "6B6E78"), dark: .init(hex: "9294A0"))
 
   @Test func theSelectedThemeIsABuiltInOneAnImportedOneOrApollo() {
     var imported = defaultTheme

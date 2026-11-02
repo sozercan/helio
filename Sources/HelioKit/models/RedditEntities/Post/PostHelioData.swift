@@ -43,6 +43,9 @@ class PostHelioData: Hashable {
   /// The post page's layout, kept apart from the feed row's: side by side, the page and the row
   /// are in columns of different widths. Derived when the page draws (`Post.pageLayout`).
   @ObservationIgnored var pageLayout: PostPageLayout?
+  /// Whether the post's link previews download their page as soon as they're extracted, or only
+  /// once they show (`Post.fetchesLinkMetadata`).
+  @ObservationIgnored var fetchesLinkMetadata = true
   var linkMedia: PreviewModel?
   var videoMedia: SharedVideo?
   var postBodyAttr: NSAttributedString?

@@ -24,6 +24,8 @@ struct PreviewLinkContent: View {
   static let height: CGFloat = 88
   var body: some View {
     PreviewLinkContentRaw(compact: compact, imageReq: viewModel.imageReq, title: viewModel.title, description: viewModel.description, loading: viewModel.loading, url: url)
+      // A canvas post's preview waits until it shows, such as when the post opens.
+      .onAppear { viewModel.loadIfNeeded() }
   }
 }
 
