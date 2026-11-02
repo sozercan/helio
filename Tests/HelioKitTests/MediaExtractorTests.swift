@@ -197,13 +197,47 @@ struct DeferredLinkPreviewTests {
       Issue.record("expected a Streamable link")
       return
     }
-    #expect(helioData.deferredStreamable != nil)
+    #expect(helioData.deferredMedia != nil)
 
     // Stands in for the request, which the test doesn't make.
     var resolved = 0
-    helioData.deferredStreamable = { resolved += 1 }
-    helioData.resolveDeferredStreamable()
-    helioData.resolveDeferredStreamable()
+    helioData.deferredMedia = { resolved += 1 }
+    helioData.resolveDeferredMedia()
+    helioData.resolveDeferredMedia()
     #expect(resolved == 1)
+  }
+
+  /// Canvas shows no linked user, post, comment or subreddit, so each loads only once its media
+  /// shows, as on the post page; large and compact feeds load them as they're laid out.
+  @Test(arguments: [
+    "https://www.reddit.com/u/placeholder_user",
+    "https://www.reddit.com/r/apple/comments/abc123/a_title/",
+    "https://www.reddit.com/r/apple/comments/abc123/a_title/def456/",
+    "https://www.reddit.com/r/apple/",
+  ])
+  func aLinkedRedditEntityLoadsOnlyWhenItShows(url: String) throws {
+    let data = try postData(["url": url, "domain": "reddit.com"])
+    let eager = Post(data: data, contentWidth: 400, theme: defaultTheme, fetchAvatar: false, fetchLinkMetadata: true)
+    #expect(eager.helioData?.deferredMedia == nil)
+
+    let post = Post(data: data, contentWidth: 400, theme: defaultTheme, fetchAvatar: false, fetchLinkMetadata: false)
+    let helioData = try #require(post.helioData)
+    switch helioData.extractedMediaForcedNormal {
+    case .post, .comment, .user, .subreddit: break
+    default: Issue.record("expected a linked Reddit entity")
+    }
+    #expect(helioData.deferredMedia != nil)
+
+    // Stands in for the request, which the test doesn't make.
+    var resolved = 0
+    helioData.deferredMedia = { resolved += 1 }
+    helioData.resolveDeferredMedia()
+    helioData.resolveDeferredMedia()
+    #expect(resolved == 1)
+
+    // Refreshing the post once its media has shown, as its page does, loads it right away.
+    post.setupHelioData(theme: defaultTheme, fetchAvatar: false)
+    #expect(helioData.fetchesLinkMetadata)
+    #expect(helioData.deferredMedia == nil)
   }
 }

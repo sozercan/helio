@@ -44,7 +44,7 @@ struct ThemePresetTests {
     #expect(theme.comments.theme.indentColors == rainbowIndentColors)
   }
 
-  @Test func highContrastTextReachesAAAAndSeparators3To1() {
+  @Test func highContrastTextReachesAAAAndSeparators3To1() throws {
     let theme = ThemePreset.highContrast.theme
     let cell = theme.postLinks.theme.bg.color
     let badge = theme.postLinks.theme.badge
@@ -85,6 +85,12 @@ struct ThemePresetTests {
       #expect(contrast(quote.light, bg.light) >= 7)
       #expect(contrast(quote.dark, bg.dark) >= 7)
     }
+    // Links in posts and comments, which the app's shared accent color would draw at 4:1.
+    for (link, bg) in [(theme.posts.linkText, cell), (theme.comments.theme.linkText, comment)] {
+      let link = try #require(link)
+      #expect(contrast(link.light, bg.light) >= 7)
+      #expect(contrast(link.dark, bg.dark) >= 7)
+    }
     // Comments' "load more" on its grey.
     let loadMore = theme.comments.theme
     #expect(contrast(loadMore.loadMoreText.color.light, loadMore.loadMoreBackground.light) >= 7)
@@ -93,11 +99,14 @@ struct ThemePresetTests {
     #expect(contrast(theme.postLinks.theme.bodyText.color.light, cell.light) > contrast(defaultTheme.postLinks.theme.bodyText.color.light, cell.light))
   }
 
-  /// Quotes and "load more" stay Apollo's in Apollo and True Black.
+  /// Quotes, links and "load more" stay Apollo's in Apollo and True Black.
   @Test func apolloAndTrueBlackKeepApollosQuotesAndAccent() {
     for theme in [ThemePreset.apollo.theme, ThemePreset.trueBlack.theme] {
       #expect(theme.posts.quoteText == apolloQuote)
       #expect(theme.comments.theme.quoteText == apolloQuote)
+      // No link color: links keep the app's accent color.
+      #expect(theme.posts.linkText == nil)
+      #expect(theme.comments.theme.linkText == nil)
       #expect(theme.comments.theme.loadMoreText.color == themeAccentColor)
       #expect(theme.comments.theme.badge.subColor == theme.general.accentColor)
       #expect(theme.postLinks.theme.badge.statsText.color == themeFontSecondary)

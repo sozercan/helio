@@ -77,6 +77,9 @@ struct ThemePalette {
   var accent: ColorSchemes<ThemeColor>
   /// Quoted text in posts' and comments' Markdown.
   var quoteText: ColorSchemes<ThemeColor>
+  /// Links in posts' and comments' Markdown; `nil` keeps the app's accent color
+  /// (`general.accentColor`), which presets share.
+  var linkText: ColorSchemes<ThemeColor>?
   /// Hairlines: comment and list separators.
   var divider: ColorSchemes<ThemeColor>
   /// The background behind lists and feeds.
@@ -128,6 +131,7 @@ struct ThemePalette {
     // Darker than iOS's Increase Contrast blue (#0040DD) and lighter in dark mode (#409CFF), so
     // "load more" reaches 7:1 on its grey too.
     palette.accent = scheme("003CD0", "62ADFF")
+    palette.linkText = palette.accent
     // A hairline in the separator color sets posts apart: Apollo's band is about 1.2:1 on the
     // cells, and a band dark enough for 3:1 would be heavy.
     palette.feedDivider = .init(style: .line, thickness: 1, color: palette.divider)
@@ -216,6 +220,7 @@ extension HelioTheme {
         titleText: .init(size: 19, color: palette.fontPrimary, weight: .medium),
         bodyText: .init(size: 15, color: palette.fontPrimary),
         quoteText: palette.quoteText,
+        linkText: palette.linkText,
         linespacing: 0,
         inlineFloatingPill: false,
       ),
@@ -231,6 +236,7 @@ extension HelioTheme {
           badge: palette.commentBadge,
           bodyText: .init(size: 15, color: palette.fontPrimary),
           quoteText: palette.quoteText,
+          linkText: palette.linkText,
           bodyAuthorSpacing: 6,
           linespacing: 0,
           bg: palette.cellBG,

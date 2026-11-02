@@ -9,10 +9,11 @@ import MarkdownUI
 import SwiftUI
 
 extension Theme {
-  /// Helio Markdown theme. `quoteText` colors quoted text, the selected theme's in posts and comments.
-  static func helioMarkdown(fontSize: CGFloat, lineSpacing: CGFloat = 0.2, textSelection: Bool = false, quoteText: ColorSchemes<ThemeColor> = themeQuoteText) -> Theme {
+  /// Helio Markdown theme. `quoteText` colors quoted text and `linkText` links (else the app's
+  /// accent color), the selected theme's in posts and comments.
+  static func helioMarkdown(fontSize: CGFloat, lineSpacing: CGFloat = 0.2, textSelection: Bool = false, quoteText: ColorSchemes<ThemeColor> = themeQuoteText, linkText: ColorSchemes<ThemeColor>? = nil) -> Theme {
     let quoteText = quoteText.color()
-    return Theme()
+    let theme = Theme()
       .text {
         FontSize(fontSize)
       }
@@ -98,6 +99,9 @@ extension Theme {
         configuration.label
           .relativePadding(.horizontal, length: .em(isWideLayout ? 4 : 1))
       }
+    guard let linkText else { return theme }
+    let linkColor = linkText.color()
+    return theme.link { ForegroundColor(linkColor) }
   }
 }
 

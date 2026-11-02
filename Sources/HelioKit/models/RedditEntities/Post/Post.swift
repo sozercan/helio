@@ -74,9 +74,10 @@ extension Post {
     CachedDefaults[.SubredditFeedDefSettings].compactPerSubreddit[sub?.settingsKey ?? data.subreddit_id ?? ""] ?? CachedDefaults[.PostLinkDefSettings].compactMode.enabled
   }
 
-  /// Whether link previews download their page while the feed's page is laid out, ahead of
-  /// showing. A canvas feed shows none, so its posts' previews wait until they show, such as
-  /// when the post opens, instead of downloading every linked page.
+  /// Whether link previews download their page, and linked Reddit posts, comments, users and
+  /// subreddits load, while the feed's page is laid out, ahead of showing. A canvas feed shows
+  /// none, so its posts' previews wait until they show, such as when the post opens, instead of
+  /// downloading every linked page.
   static func fetchesLinkMetadata(_ data: PostData, sub: Subreddit?) -> Bool {
     !PostLayout.isCanvas(sub?.id ?? data.subreddit_id ?? "", canvasSubreddits: CachedDefaults[.canvasSubreddits])
   }
@@ -101,12 +102,12 @@ extension Post {
     let textSize = ContentTextScale.dynamicTypeSize
     if let data = data ?? self.data {
       let compact = Post.isCompact(data, sub: sub)
-      let fetchLinkMetadata = fetchLinkMetadata ?? Post.fetchesLinkMetadata(data, sub: sub)
+      let fetchLinkMetadata = fetchLinkMetadata ?? (self.helioData?.deferredMediaShown == true || Post.fetchesLinkMetadata(data, sub: sub))
       if self.helioData == nil {
         self.helioData = .init()
       }
       self.helioData?.fetchesLinkMetadata = fetchLinkMetadata
-      self.helioData?.deferredStreamable = nil
+      self.helioData?.deferredMedia = nil
 
       self.helioData?.permaURL = URL(string: "https://reddit.com\(data.permalink.urlEncoded)")
 
@@ -129,7 +130,14 @@ extension Post {
           if fetchLinkMetadata {
             resolve()
           } else {
-            self.helioData?.deferredStreamable = resolve
+            self.helioData?.deferredMedia = resolve
+          }
+        }
+      case .post, .comment, .user, .subreddit:
+        // Left unloaded by `mediaExtractor`; the large media the post page shows loads it.
+        if !fetchLinkMetadata {
+          self.helioData?.deferredMedia = { [weak self] in
+            self?.helioData?.extractedMediaForcedNormal?.loadLinkedEntity()
           }
         }
       default:

@@ -9,7 +9,7 @@ import Foundation
 
 struct PostTheme: Codable, Hashable, Equatable {
   enum CodingKeys: String, CodingKey {
-    case padding, spacing, badge, bg, commentsDistance, titleText, bodyText, quoteText, linespacing, inlineFloatingPill
+    case padding, spacing, badge, bg, commentsDistance, titleText, bodyText, quoteText, linkText, linespacing, inlineFloatingPill
   }
 
   var padding: ThemePadding
@@ -21,11 +21,13 @@ struct PostTheme: Codable, Hashable, Equatable {
   var bodyText: ThemeText
   /// Quoted text in the body's Markdown.
   var quoteText: ColorSchemes<ThemeColor>
+  /// Links in the body's Markdown; `nil` draws them in the app's accent color.
+  var linkText: ColorSchemes<ThemeColor>?
   var linespacing: CGFloat
   var inlineFloatingPill: Bool
 
   init(padding: ThemePadding, spacing: CGFloat, badge: BadgeTheme, bg: ThemeBG, commentsDistance: CGFloat, titleText: ThemeText, bodyText: ThemeText,
-       quoteText: ColorSchemes<ThemeColor>, linespacing: CGFloat, inlineFloatingPill: Bool)
+       quoteText: ColorSchemes<ThemeColor>, linkText: ColorSchemes<ThemeColor>? = nil, linespacing: CGFloat, inlineFloatingPill: Bool)
   {
     self.padding = padding
     self.spacing = spacing
@@ -35,6 +37,7 @@ struct PostTheme: Codable, Hashable, Equatable {
     self.titleText = titleText
     self.bodyText = bodyText
     self.quoteText = quoteText
+    self.linkText = linkText
     self.linespacing = linespacing
     self.inlineFloatingPill = inlineFloatingPill
   }
@@ -49,6 +52,7 @@ struct PostTheme: Codable, Hashable, Equatable {
     try container.encodeIfPresent(titleText, forKey: .titleText)
     try container.encodeIfPresent(bodyText, forKey: .bodyText)
     try container.encodeIfPresent(quoteText, forKey: .quoteText)
+    try container.encodeIfPresent(linkText, forKey: .linkText)
     try container.encodeIfPresent(linespacing, forKey: .linespacing)
     try container.encodeIfPresent(inlineFloatingPill, forKey: .inlineFloatingPill)
   }
@@ -64,6 +68,7 @@ struct PostTheme: Codable, Hashable, Equatable {
     self.titleText = try container.decodeIfPresent(ThemeText.self, forKey: .titleText) ?? t.titleText
     self.bodyText = try container.decodeIfPresent(ThemeText.self, forKey: .bodyText) ?? t.bodyText
     self.quoteText = try container.decodeIfPresent(ColorSchemes<ThemeColor>.self, forKey: .quoteText) ?? t.quoteText
+    self.linkText = try container.decodeIfPresent(ColorSchemes<ThemeColor>.self, forKey: .linkText)
     self.linespacing = try container.decodeIfPresent(CGFloat.self, forKey: .linespacing) ?? t.linespacing
     self.inlineFloatingPill = try container.decodeIfPresent(Bool.self, forKey: .inlineFloatingPill) ?? t.inlineFloatingPill
   }

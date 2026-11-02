@@ -81,8 +81,27 @@ enum MediaExtractedType: Equatable {
   case user(EntityExtracted<UserData, AnyHashable>?)
 }
 
+extension MediaExtractedType {
+  /// Starts loading the post, comment, user or subreddit a post links to.
+  func loadLinkedEntity() {
+    switch self {
+    case let .post(extracted): extracted?.entity.fetchItself()
+    case let .comment(extracted): extracted?.entity.fetchItself()
+    case let .user(extracted): extracted?.entity.fetchItself()
+    case let .subreddit(extracted):
+      if let sub = extracted?.entity {
+        Task(priority: .utility) {
+          await sub.loadIfNeeded()
+        }
+      }
+    default: break
+    }
+  }
+}
+
 /// ORDER MATTERS!
-/// Without `fetchLinkMetadata`, link previews download their page only once they show.
+/// Without `fetchLinkMetadata`, link previews download their page, and linked Reddit posts,
+/// comments, users and subreddits load, only once they show (`PostHelioData.deferredMedia`).
 func mediaExtractor(compact: Bool, contentWidth: Double = .screenW, _ data: PostData, theme: HelioTheme? = nil, fetchLinkMetadata: Bool = true) -> MediaExtractedType? {
   guard !data.is_self else { return nil }
 
@@ -191,6 +210,12 @@ func mediaExtractor(compact: Bool, contentWidth: Double = .screenW, _ data: Post
   }
 
   let pathComponents = urlComponents.path.components(separatedBy: "/").filter { !$0.isEmpty }
+  func linked(_ media: MediaExtractedType) -> MediaExtractedType {
+    if fetchLinkMetadata {
+      media.loadLinkedEntity()
+    }
+    return media
+  }
 
   if urlComponents.host?.hasSuffix("reddit.com") == true, pathComponents.count > 1 {
     switch pathComponents[0] {
@@ -201,29 +226,19 @@ func mediaExtractor(compact: Bool, contentWidth: Double = .screenW, _ data: Post
         if pathComponents.count >= 6 {
           let commentId = pathComponents[5]
           let comment = Comment(id: commentId, typePrefix: Comment.prefix)
-          comment.fetchItself()
-          let entityExtracted = EntityExtracted(subredditID: subredditName, postID: postId, commentID: commentId, entity: comment)
-          return .comment(entityExtracted)
+          return linked(.comment(EntityExtracted(subredditID: subredditName, postID: postId, commentID: commentId, entity: comment)))
         }
         let post = Post(id: postId, typePrefix: Post.prefix)
-        post.fetchItself()
-        let entityExtracted = EntityExtracted(subredditID: subredditName, postID: postId, entity: post)
-        return .post(entityExtracted)
+        return linked(.post(EntityExtracted(subredditID: subredditName, postID: postId, entity: post)))
 //        return .post(id: postId, subreddit: subredditName)
       }
       let sub = Subreddit(id: subredditName)
-      Task(priority: .utility) {
-        await sub.loadIfNeeded()
-      }
-      let entityExtracted = EntityExtracted(subredditID: subredditName, entity: sub)
-      return .subreddit(entityExtracted)
+      return linked(.subreddit(EntityExtracted(subredditID: subredditName, entity: sub)))
 
     case "user", "u":
       let username = pathComponents[1]
       let user = User(id: username, typePrefix: User.prefix)
-      user.fetchItself()
-      let entityExtracted = EntityExtracted(userID: username, entity: user)
-      return .user(entityExtracted)
+      return linked(.user(EntityExtracted(userID: username, entity: user)))
 //      return .user(username: username)
 
     default:
