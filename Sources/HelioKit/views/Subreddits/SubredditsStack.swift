@@ -43,21 +43,6 @@ struct SubredditsStack: View {
           .readableWidth()
           .injectInTabDestinations()
           .hidesSidebarToggleOnMac()
-          .task(priority: .background) {
-            if !loaded {
-              // MARK: Route to default feed
-
-              // Skipped when a feed is already chosen, such as by a Home Screen quick action.
-              if behaviorDefSettings.preferenceDefaultFeed != "subList", router.firstSelected == nil { // we are in subList, can ignore
-                let tempSubreddit = QuickAction.subreddit(named: behaviorDefSettings.preferenceDefaultFeed)
-                router.firstSelected = .reddit(.subFeed(tempSubreddit))
-              }
-
-              withAnimation {
-                loaded = true
-              }
-            }
-          }
       }
       .environment(\.navColumn, .feed)
       .columnContentWidth()
@@ -80,6 +65,23 @@ struct SubredditsStack: View {
       .columnContentWidth()
     }
     .navigationSplitViewStyle(.balanced)
+    // On the split view, not the feed column: collapsed, the subs list shows first and the feed
+    // column's tasks don't run, which would leave the default feed unopened.
+    .task(priority: .background) {
+      if !loaded {
+        // MARK: Route to default feed
+
+        // Skipped when a feed is already chosen, such as by a Home Screen quick action.
+        if behaviorDefSettings.preferenceDefaultFeed != "subList", router.firstSelected == nil { // we are in subList, can ignore
+          let tempSubreddit = QuickAction.subreddit(named: behaviorDefSettings.preferenceDefaultFeed)
+          router.firstSelected = .reddit(.subFeed(tempSubreddit))
+        }
+
+        withAnimation {
+          loaded = true
+        }
+      }
+    }
     // Too narrow for the feed and a post side by side (a narrow iPad or Mac window), the split view
     // collapses into one stack as it does in compact width; across a hinge it never does.
     .environment(\.horizontalSizeClass, layout.showsColumns ? .regular : .compact)

@@ -84,6 +84,7 @@ struct PostContent: View, Equatable {
                 if !(data.selftext?.isEmpty ?? true) {
                   HStack {
                     Markdown(MarkdownUtil.markdownContent(data.selftext ?? "", showSpoiler: showSpoiler))
+                      .opensLinksInItsColumn()
                       .markdownTheme(.helioMarkdown(fontSize: ContentTextScale.size(selectedTheme.posts.bodyText.size, dynamicTypeSize: dynamicTypeSize), lineSpacing: selectedTheme.posts.linespacing, textSelection: true))
                       .fixedSize(horizontal: false, vertical: true)
 

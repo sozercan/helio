@@ -214,3 +214,22 @@ class Nav: Identifiable, Equatable {
     }
   }
 }
+
+extension View {
+  /// Links in Markdown text open from the column the text is in, like the app's other taps there
+  /// (instead of through the app's URL handling, which doesn't know the column).
+  func opensLinksInItsColumn() -> some View {
+    modifier(ColumnLinkOpener())
+  }
+}
+
+private struct ColumnLinkOpener: ViewModifier {
+  @Environment(\.navColumn) private var navColumn
+
+  func body(content: Content) -> some View {
+    content.environment(\.openURL, OpenURLAction { url in
+      Nav.openLink(url, from: navColumn)
+      return .handled
+    })
+  }
+}
