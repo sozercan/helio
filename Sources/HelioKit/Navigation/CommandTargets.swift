@@ -101,7 +101,8 @@ final class CommandTargets {
       focus()
     } else {
       searchFocusPending = true
-      // On the Search tab already, this also closes the screens opened from it.
+      // Back to the search itself, not a result left open there.
+      nav[.search].fullPath = []
       nav.activeTab = .search
     }
   }
@@ -124,8 +125,15 @@ final class CommandTargets {
   static func windowPresentsSomething() -> Bool {
     guard Thread.isMainThread else { return false }
     return MainActor.assumeIsolated {
-      guard let presented = UIApplication.shared.firstKeyWindow?.rootViewController?.presentedViewController else { return false }
-      return !(presented is UISearchController)
+      // Up the whole chain: a share sheet can sit on an active search's controller.
+      var presented = UIApplication.shared.firstKeyWindow?.rootViewController?.presentedViewController
+      while let controller = presented {
+        if !(controller is UISearchController) {
+          return true
+        }
+        presented = controller.presentedViewController
+      }
+      return false
     }
   }
 
@@ -181,7 +189,7 @@ final class CommandTargets {
         await loadMore()
         // Not if the user has moved on while the page loaded: to another tab, feed or screen, or
         // to a reply or a full-screen image.
-        guard stillShown(), postsFeed?.id == feed.id, router.fullPath == path, !showsModal else { return }
+        guard stillShown(), postsFeed?.id == feed.id, router.fullPath == path, !showsModal, !Self.windowPresentsSomething() else { return }
         if adjacentPost(offset, in: router) != nil {
           openLoadedPost(offset, in: router)
           return

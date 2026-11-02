@@ -60,7 +60,6 @@ extension View {
       .padding(EdgeInsets(top: theme.innerPadding.vertical, leading: theme.innerPadding.horizontal, bottom: theme.innerPadding.vertical, trailing: theme.innerPadding.horizontal))
       .background {
         PostLinkBG(theme: theme, stickied: post.data?.stickied, secondary: secondary)
-        OpenPostHighlight(postID: post.id, cornerRadius: theme.cornerRadius)
       }
       .overlay(PostLinkGlowDot(unseenType: theme.unseenType, seen: seen, badge: false), alignment: .topTrailing)
       .geometryGroup()
@@ -68,6 +67,8 @@ extension View {
       .compositingGroup()
 //      .brightness(isOpen.wrappedValue ? 0.075 : 0)
       .opacity(fadeReadPosts && seen ? theme.unseenFadeOpacity : 1)
+      // Outside the read-post fade: opening a post marks it read, which mustn't hide its mark.
+      .overlay { OpenPostHighlight(postID: post.id, cornerRadius: theme.cornerRadius) }
       .contextMenu(menuItems: {
         PostLinkContext(post: post)
 
