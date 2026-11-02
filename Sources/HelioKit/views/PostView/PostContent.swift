@@ -27,9 +27,12 @@ struct PostContent: View, Equatable {
   @Environment(\.useTheme) private var selectedTheme
   @Environment(\.contentWidth) private var contentWidth
 
+  @Environment(\.navColumn) private var navColumn
+
   func openSubreddit() {
     if let subName = post.data?.subreddit {
-      Nav.to(.reddit(.subFeed(Subreddit(id: subName))))
+      // From the column the post is in: a post at the feed column's root opens it there.
+      Nav.to(.reddit(.subFeed(Subreddit(id: subName))), from: navColumn)
     }
   }
 

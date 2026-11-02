@@ -412,5 +412,8 @@ struct RedditLinkTests {
     #expect(highlight == "def456")
     let wiki = try #require(URL(string: "https://www.reddit.com/r/apple/wiki/index"))
     #expect(Nav.linkDestination(for: wiki) == nil)
+    // A subreddit's comments listing has no post id: opened as the page, not a crash.
+    let listing = try #require(URL(string: "https://www.reddit.com/r/apple/comments/"))
+    #expect(Nav.linkDestination(for: listing) == nil)
   }
 }

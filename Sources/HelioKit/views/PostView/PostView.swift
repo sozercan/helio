@@ -29,6 +29,7 @@ struct PostView: View, Equatable {
   @Environment(\.globalLoaderStart) private var globalLoaderStart
   @Environment(\.contentWidth) private var contentWidth
   @State private var ignoreSpecificComment = false
+  @Environment(\.navColumn) private var navColumn
   @State private var hideElements = true
   @State private var sort: CommentSortOption
   @State private var commentsLoad = CommentsLoad()
@@ -153,7 +154,7 @@ struct PostView: View, Equatable {
         .navigationBarTitleDisplayMode(.inline)
         // Not `relayoutPosts`: the page lays its media out on its own (`Post.pageLayout`), and
         // relaying out the post would fight its feed row when the two are side by side.
-        .toolbar { Toolbar(hideElements: hideElements, subreddit: subreddit, post: post, sort: $sort) }
+        .toolbar { Toolbar(hideElements: hideElements, subreddit: subreddit, post: post, sort: $sort, column: navColumn) }
         .onChange(of: sort) { _ in
           updatePost()
         }
@@ -283,6 +284,8 @@ private struct Toolbar: ToolbarContent {
   var subreddit: Subreddit
   var post: Post
   @Binding var sort: CommentSortOption
+  /// The column the post is in, where its subreddit's info opens.
+  var column: Router.Column?
 
   var body: some ToolbarContent {
     ToolbarItem(id: "postview-sort", placement: .topBarTrailing) {
@@ -309,7 +312,7 @@ private struct Toolbar: ToolbarContent {
 
       ToolbarItem(id: "postview-sub", placement: .topBarTrailing) {
         Button {
-          Nav.to(.reddit(.subInfo(subreddit)))
+          Nav.to(.reddit(.subInfo(subreddit)), from: column)
         } label: {
           SubredditIcon(subredditIconKit: data.subredditIconKit)
         }
