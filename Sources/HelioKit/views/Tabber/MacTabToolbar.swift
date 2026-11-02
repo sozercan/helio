@@ -75,6 +75,7 @@
     private func observeActions() {
       withObservationTracking {
         _ = CommandTargets.shared.targets
+        _ = Nav.shared.presentingSheet
       } onChange: { [weak self] in
         Task { @MainActor in
           self?.syncItems()
@@ -119,8 +120,19 @@
       for item in toolbar.items {
         if let action = actions[item.itemIdentifier] {
           configure(item, for: action)
+          // Like the menu bar's: not while a reply or a sheet covers the screens, which the
+          // reply sheet leaves clickable around it. Toolbar validation would re-enable an item
+          // with a target and action, so these set their state themselves.
+          item.autovalidates = false
+          item.isEnabled = !Self.screensCovered
         }
       }
+    }
+
+    /// A reply, a full-screen viewer or an app sheet covers the screens (the observable part of
+    /// `CommandTargets.isCovered()`, so the toolbar updates when it changes).
+    private static var screensCovered: Bool {
+      CommandTargets.shared.showsModal || Nav.shared.presentingSheet != nil
     }
 
     private func configure(_ item: NSToolbarItem, for action: ScreenAction) {
@@ -151,6 +163,7 @@
     }
 
     @objc private func actionPicked(_ sender: NSToolbarItem) {
+      guard !Self.screensCovered else { return }
       actions[sender.itemIdentifier]?.perform()
     }
 
