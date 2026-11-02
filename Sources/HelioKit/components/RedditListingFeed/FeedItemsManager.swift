@@ -244,9 +244,11 @@ class FeedItemsManager<S> {
     }
   }
 
+  /// Loads the next page near the end, and prefetches the media of the rows around `entity`
+  /// unless `prefetchMedia` is off (the canvas loads only the thumbnails on screen).
   /// On the main actor, like the rows calling it: rows appearing together must not each start
   /// loading the next page.
-  func elementAppeared(entity: RedditEntityType) {
+  func elementAppeared(entity: RedditEntityType, prefetchMedia: Bool = true) {
     guard let index = indexByID[entity.id] else { return }
     if !entities.isEmpty, index >= entities.count - 7 {
       if currentTask != nil, currentTaskIsReload {
@@ -255,6 +257,7 @@ class FeedItemsManager<S> {
         startFetch(loadingMore: true)
       }
     }
+    guard prefetchMedia else { return }
 
     let start = index - prefetchRange < 0 ? 0 : index - prefetchRange
     let end = index + (prefetchRange + 1) > entities.count ? entities.count : index + (prefetchRange + 1)

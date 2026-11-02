@@ -65,6 +65,9 @@ extension Defaults.Keys {
   /// Its own key: a new field in an existing settings struct would fail to decode stored values.
   static let contentTextSizeAdjustment = Key<Int>("contentTextSizeAdjustment", default: 0)
 
+  /// Subreddits whose feed is a canvas of thumbnails (`PostLayout.canvas`), by subreddit id.
+  static let canvasSubreddits = Key<Set<String>>("canvasSubreddits", default: [])
+
   /// When each account's subscriptions and multis were last synced at launch, by credential id
   /// and user name.
   static let subsSyncedAt = Key<[String: Date]>("subsSyncedAt", default: [:])

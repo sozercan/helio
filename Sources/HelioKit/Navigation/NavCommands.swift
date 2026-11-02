@@ -66,7 +66,7 @@ struct NavCommands: Commands {
       // group before the toolbar's items, their actions never run on Mac.
       Divider()
       actionMenu(screenAction(.sortPosts), title: "Sort Posts", placeholder: .sortPosts(SubListingSortOption?.none) { _ in })
-      actionMenu(screenAction(.feedOptions), title: "Feed Options", placeholder: .feedOptions(compact: false, setCompact: { _ in }, filters: [], selected: nil, select: { _ in }))
+      actionMenu(screenAction(.feedOptions), title: "Feed Options", placeholder: .feedOptions(layout: .large, setLayout: { _ in }, filters: [], selected: nil, select: { _ in }))
       actionMenu(screenAction(.sortComments), title: "Sort Comments", placeholder: .sortComments(nil) { _ in })
     }
 

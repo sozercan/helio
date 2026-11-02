@@ -55,6 +55,7 @@ struct RedditListingFeed<Header: View, Footer: View, S: Sorting>: View {
 
   @Default(.PostLinkDefSettings) private var postLinkDefSettings
   @Default(.SubredditFeedDefSettings) private var feedDefSettings
+  @Default(.canvasSubreddits) private var canvasSubreddits
 
   func refetch(clearItems: Bool = false) async {
     //    if let subreddit, !feedsAndSuch.contains(subreddit.id) {
@@ -85,6 +86,7 @@ struct RedditListingFeed<Header: View, Footer: View, S: Sorting>: View {
     let isThereDivider = selectedTheme.postLinks.divider.style != .no
     let paddingH = selectedTheme.postLinks.theme.outerHPadding
     let paddingV = selectedTheme.postLinks.spacing / (isThereDivider ? 4 : 2)
+    let canvas = subreddit.map { canvasSubreddits.contains($0.id) } ?? false
     GeometryReader { geo in
       List {
         header()
@@ -104,8 +106,14 @@ struct RedditListingFeed<Header: View, Footer: View, S: Sorting>: View {
             Text("Nothing around here :(")
               .frame(maxWidth: .infinity)
           case .error, .endOfFeed, .items, .onlyReadPosts:
+            if canvas {
+              Section {
+                canvasRows(grid: canvasGrid(geo), settings: postLinkSettings)
+              }
+            }
             Section {
-              ForEach(itemsManager.entities) { el in
+              // In a canvas, the posts are its tiles instead.
+              ForEach(canvas ? [] : itemsManager.entities) { el in
                 Group {
                   switch el {
                   case let .post(post):
@@ -301,7 +309,7 @@ struct RedditListingFeed<Header: View, Footer: View, S: Sorting>: View {
         } },
         canLoadMore: { itemsManager.canLoadMore },
         loadMore: { await itemsManager.loadMore() },
-        actions: actions(filters: shallowCachedFilters, compactPerSubreddit: compactPerSubreddit, compactByDefault: postLinkSettings.compactMode.enabled),
+        actions: actions(filters: shallowCachedFilters, compactPerSubreddit: compactPerSubreddit, compactByDefault: postLinkSettings.compactMode.enabled, canvasSubreddits: canvasSubreddits),
       ))
       .onChange(of: selectedAuthorization) { _, _ in
         Task { await refetch(clearItems: true) }
@@ -330,8 +338,42 @@ struct RedditListingFeed<Header: View, Footer: View, S: Sorting>: View {
 }
 
 extension RedditListingFeed {
+  /// The canvas's grid for the feed's width, around the iPhone Duo's hinge when it crosses the
+  /// feed (the feed column of the posts tab ends at it; other screens span it).
+  private func canvasGrid(_ geo: GeometryProxy) -> CanvasGrid {
+    var division: ClosedRange<CGFloat>?
+    if let frame = WindowMetrics.shared.divisionFrame, frame.height > frame.width {
+      let minX = geo.frame(in: .global).minX
+      division = (frame.minX - minX) ... (frame.maxX - minX)
+    }
+    return CanvasGrid(width: contentWidth, division: division)
+  }
+
+  /// The feed's posts as rows of canvas tiles. Tiles load their thumbnails as they show, without
+  /// prefetching the media of the posts around them.
+  @ViewBuilder
+  private func canvasRows(grid: CanvasGrid, settings: PostLinkDefSettings) -> some View {
+    let posts = itemsManager.entities.compactMap { entity -> Post? in
+      if case let .post(post) = entity {
+        post
+      } else {
+        nil
+      }
+    }
+    ForEach(grid.rows(posts), id: \.first?.id) { row in
+      CanvasRow(posts: row, grid: grid) { post in
+        if let sub = post.helioData?.subreddit ?? subreddit {
+          CanvasTile(post: post, sub: sub, size: grid.tileSize, theme: selectedTheme.postLinks.theme, showSub: showSubInPosts, blurNSFW: settings.blurNSFW, readOnScroll: settings.readOnScroll)
+            .equatable()
+            .onAppear { itemsManager.elementAppeared(entity: .post(post), prefetchMedia: false) }
+        }
+      }
+      .listRowInsets(EdgeInsets(top: 0, leading: 0, bottom: CanvasGrid.spacing, trailing: 0))
+    }
+  }
+
   /// The sort, the subreddit's options and its info, as in the navigation bar.
-  private func actions(filters: [ShallowCachedFilter], compactPerSubreddit: [String: Bool], compactByDefault: Bool) -> [ScreenAction] {
+  private func actions(filters: [ShallowCachedFilter], compactPerSubreddit: [String: Bool], compactByDefault: Bool, canvasSubreddits: Set<String>) -> [ScreenAction] {
     var actions: [ScreenAction] = []
     let manager = itemsManager
     if manager.sorting != nil {
@@ -339,8 +381,8 @@ extension RedditListingFeed {
     }
     if let subreddit {
       actions.append(.feedOptions(
-        compact: compactPerSubreddit[subreddit.settingsKey] ?? compactByDefault,
-        setCompact: { Defaults[.SubredditFeedDefSettings].compactPerSubreddit[subreddit.settingsKey] = $0 },
+        layout: PostLayout.of(subreddit.settingsKey, compactPerSubreddit: compactPerSubreddit, compactByDefault: compactByDefault, canvasSubreddits: canvasSubreddits),
+        setLayout: { $0.save(for: subreddit.settingsKey) },
         filters: filters,
         selected: manager.selectedFilter,
         select: { manager.selectedFilter = $0 },
@@ -384,7 +426,7 @@ private struct FeedSortMenu<S: Sorting>: View {
   }
 }
 
-/// The feed's flair filter and its compact-posts switch. The icon fills while a filter is on.
+/// The feed's flair filter and its post layout. The icon fills while a filter is on.
 private struct FeedOptionsMenu: View {
   var subId: String
   var filters: [ShallowCachedFilter]
@@ -397,12 +439,13 @@ private struct FeedOptionsMenu: View {
 
   @Default(.SubredditFeedDefSettings) private var subredditFeedDefSettings
   @Default(.PostLinkDefSettings) private var postLinkDefSettings
+  @Default(.canvasSubreddits) private var canvasSubreddits
 
-  private var compact: Binding<Bool> {
+  private var layout: Binding<PostLayout> {
     Binding {
-      subredditFeedDefSettings.compactPerSubreddit[subId] ?? postLinkDefSettings.compactMode.enabled
+      PostLayout.of(subId, compactPerSubreddit: subredditFeedDefSettings.compactPerSubreddit, compactByDefault: postLinkDefSettings.compactMode.enabled, canvasSubreddits: canvasSubreddits)
     } set: {
-      subredditFeedDefSettings.compactPerSubreddit[subId] = $0
+      $0.save(for: subId)
     }
   }
 
@@ -410,7 +453,13 @@ private struct FeedOptionsMenu: View {
     let flairs = filters.filter { $0.type == .flair }
     let custom = filters.filter { $0.type == .custom }
     Menu {
-      Toggle("Compact posts", systemImage: "rectangle.compress.vertical", isOn: compact)
+      Picker("Post Layout", selection: layout) {
+        ForEach(PostLayout.allCases) { layout in
+          Label(layout.title, systemImage: layout.systemImage)
+            .tag(layout)
+        }
+      }
+      .pickerStyle(.inline)
       // Also while a filter is on, so it can be cleared even after a refresh dropped its flair.
       if !flairs.isEmpty || !custom.isEmpty || selectedFilter != nil {
         // Tagged by the filter's kind and text, not the whole filter: a background refresh can

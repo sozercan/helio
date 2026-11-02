@@ -49,18 +49,18 @@ extension View {
           .modifier(OpenPostSelectedTrait(postID: post.id, marks: !secondary))
           .accessibilityHint("Opens the post")
           .accessibilityAction(.default, open)
-          .accessibilityActions { PostAccessibilityActions(post: post) }
+          .accessibilityActions { PostMenuItems(post: post) }
       }
   }
 }
 
-/// The post's context menu, as VoiceOver actions.
-private struct PostAccessibilityActions: View {
+/// The post's context menu items: its swipe actions and Share. Also its VoiceOver actions.
+struct PostMenuItems: View {
   var post: Post
 
   var body: some View {
     PostLinkContext(post: post)
-    Button("Share") {
+    Button("Share", systemImage: "square.and.arrow.up") {
       if let permalink = post.data?.permalink {
         ShareUtils.shareItem(item: "https://reddit.com\(permalink.escape.urlEncoded)")
       }

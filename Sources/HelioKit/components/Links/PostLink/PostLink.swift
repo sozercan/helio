@@ -145,21 +145,29 @@ struct PostLinkGlowDot: View, Equatable {
 
 /// Marks the feed's post that's open beside it in the posts split view, as a list marks its
 /// selection. Only the feed column has one.
-private struct OpenPostHighlight: View {
+struct OpenPostHighlight: View {
   let postID: String
   let cornerRadius: CGFloat
+  /// An outline instead of a tint, for canvas tiles: a tint barely shows over a picture.
+  var outline = false
   @Environment(\.navColumn) private var navColumn
 
   var body: some View {
     // Collapsed into one stack, the post covers the feed: nothing to mark.
     if isOpenBesideFeed(postID: postID, column: navColumn) {
-      // The tint alone is faint (about 1.2:1 on white), so a bar in the accent color marks it too.
-      RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
-        .fill(Color.accentColor.opacity(0.12))
-        .overlay(alignment: .leading) {
-          Rectangle().fill(Color.accentColor).frame(width: 3)
+      let shape = RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+      Group {
+        if outline {
+          shape.strokeBorder(Color.accentColor, lineWidth: 3)
+        } else {
+          // The tint alone is faint (about 1.2:1 on white), so a bar in the accent color marks it too.
+          shape.fill(Color.accentColor.opacity(0.12))
+            .overlay(alignment: .leading) {
+              Rectangle().fill(Color.accentColor).frame(width: 3)
+            }
         }
-        .allowsHitTesting(false)
+      }
+      .allowsHitTesting(false)
     }
   }
 }

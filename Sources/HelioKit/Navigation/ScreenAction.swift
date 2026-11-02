@@ -112,9 +112,11 @@ extension ScreenAction {
     return ScreenAction(id: .sortPosts, title: "Sort Posts", systemImage: sorting?.meta.icon ?? "arrow.up.arrow.down", content: .menu(flat + nested))
   }
 
-  /// A subreddit feed's compact-posts switch and its flair filter.
-  static func feedOptions(compact: Bool, setCompact: @escaping (Bool) -> Void, filters: [ShallowCachedFilter], selected: ShallowCachedFilter?, select: @escaping (ShallowCachedFilter?) -> Void) -> ScreenAction {
-    var entries: [Entry] = [.choice("Compact Posts", systemImage: "rectangle.compress.vertical", isOn: compact) { setCompact(!compact) }]
+  /// A subreddit feed's post layout and its flair filter.
+  static func feedOptions(layout: PostLayout, setLayout: @escaping (PostLayout) -> Void, filters: [ShallowCachedFilter], selected: ShallowCachedFilter?, select: @escaping (ShallowCachedFilter?) -> Void) -> ScreenAction {
+    var entries: [Entry] = [.section(nil, PostLayout.allCases.map { option in
+      .choice(option.title, systemImage: option.systemImage, isOn: layout == option) { setLayout(option) }
+    })]
     // Each flair once: the cache can hold the same text in different colors.
     var seen = Set<String>()
     let shown = (filters.filter { $0.type == .flair } + filters.filter { $0.type == .custom })

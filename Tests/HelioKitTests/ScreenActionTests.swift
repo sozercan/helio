@@ -84,13 +84,13 @@ struct ScreenActionTests {
       }
       return nil
     }
-    let duplicated = ScreenAction.feedOptions(compact: false, setCompact: { _ in }, filters: [flair("News", .flair, color: "#ff0000"), flair("News", .flair, color: "#00ff00")], selected: nil, select: { _ in })
+    let duplicated = ScreenAction.feedOptions(layout: .large, setLayout: { _ in }, filters: [flair("News", .flair, color: "#ff0000"), flair("News", .flair, color: "#00ff00")], selected: nil, select: { _ in })
     #expect(flairChoices(duplicated) == ["All Posts", "News"])
     // A refresh made the selected flair moderator-only, so no flair is listed, but it's still on.
     let selected = flair("News", .modFlair)
-    let filtered = ScreenAction.feedOptions(compact: false, setCompact: { _ in }, filters: [selected], selected: selected, select: { _ in })
+    let filtered = ScreenAction.feedOptions(layout: .large, setLayout: { _ in }, filters: [selected], selected: selected, select: { _ in })
     #expect(flairChoices(filtered) == ["All Posts"])
-    let unfiltered = ScreenAction.feedOptions(compact: false, setCompact: { _ in }, filters: [selected], selected: nil, select: { _ in })
+    let unfiltered = ScreenAction.feedOptions(layout: .large, setLayout: { _ in }, filters: [selected], selected: nil, select: { _ in })
     #expect(flairChoices(unfiltered) == nil)
   }
 
