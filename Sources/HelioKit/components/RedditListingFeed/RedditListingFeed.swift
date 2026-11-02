@@ -128,7 +128,9 @@ struct RedditListingFeed<Header: View, Footer: View, S: Sorting>: View {
                         .listRowInsets(EdgeInsets(top: 0, leading: 0, bottom: 0, trailing: 0))
                       }
                     }
-                  case let .subreddit(sub): SubredditLink(sub: sub)
+                  case let .subreddit(sub):
+                    SubredditLink(sub: sub)
+                      .listRowInsets(EdgeInsets())
                   case .multi: EmptyView()
                   case let .comment(comment):
                     VStack(spacing: 8) {
@@ -149,19 +151,13 @@ struct RedditListingFeed<Header: View, Footer: View, S: Sorting>: View {
                       }
                     }
                     .listRowInsets(EdgeInsets(top: paddingV, leading: paddingH, bottom: paddingV, trailing: paddingH))
-                  case let .user(user): UserLink(user: user)
+                  case let .user(user):
+                    UserLink(user: user)
+                      .listRowInsets(EdgeInsets())
                   case let .message(message):
-                    let isThereDivider = selectedTheme.postLinks.divider.style != .no
-                    let paddingH = selectedTheme.postLinks.theme.outerHPadding
-                    let paddingV = selectedTheme.postLinks.spacing / (isThereDivider ? 4 : 2)
+                    // Flat, full-width rows with hairlines between them, like comments.
                     MessageLink(message: message)
-                      .listRowInsets(EdgeInsets(top: paddingV, leading: paddingH, bottom: paddingV, trailing: paddingH))
-
-                    if isThereDivider {
-                      NiceDivider(divider: selectedTheme.postLinks.divider)
-                        .id("\(message.id)-divider")
-                        .listRowInsets(EdgeInsets(top: 0, leading: 0, bottom: 0, trailing: 0))
-                    }
+                      .listRowInsets(EdgeInsets())
                   }
                 }
                 .onAppear { itemsManager.elementAppeared(entity: el) }
