@@ -22,6 +22,8 @@ struct PostContent: View, Equatable {
   @State private var collapsed = false
   @State private var showSpoiler = false
   @Default(.PostPageDefSettings) private var defSettings
+  // Markdown sets its own font sizes, so bodies scale by passing a scaled size in.
+  @Environment(\.dynamicTypeSize) private var dynamicTypeSize
   @Environment(\.useTheme) private var selectedTheme
 
   func openSubreddit() {
@@ -76,7 +78,7 @@ struct PostContent: View, Equatable {
                 if !(data.selftext?.isEmpty ?? true) {
                   HStack {
                     Markdown(MarkdownUtil.markdownContent(data.selftext ?? "", showSpoiler: showSpoiler))
-                      .markdownTheme(.helioMarkdown(fontSize: selectedTheme.posts.bodyText.size, lineSpacing: selectedTheme.posts.linespacing, textSelection: true))
+                      .markdownTheme(.helioMarkdown(fontSize: ContentTextScale.size(selectedTheme.posts.bodyText.size, dynamicTypeSize: dynamicTypeSize), lineSpacing: selectedTheme.posts.linespacing, textSelection: true))
                       .fixedSize(horizontal: false, vertical: true)
 
                     Spacer()

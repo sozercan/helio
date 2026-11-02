@@ -264,7 +264,7 @@ struct CommentLinkContent: View {
                   } else {
                     HStack {
                       Markdown(MarkdownUtil.markdownContent(body, showSpoiler: showSpoiler))
-                        .markdownTheme(.helioMarkdown(fontSize: theme.theme.bodyText.size, lineSpacing: theme.theme.linespacing, textSelection: selectable))
+                        .markdownTheme(.helioMarkdown(fontSize: ContentTextScale.size(theme.theme.bodyText.size, dynamicTypeSize: dynamicTypeSize), lineSpacing: theme.theme.linespacing, textSelection: selectable))
                         .fixedSize(horizontal: false, vertical: true)
 
                       if MarkdownUtil.containsSpoiler(body) {
