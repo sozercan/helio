@@ -112,6 +112,13 @@ struct SubredditsStack: View {
             .id("\(post.id)-post-first-tab")
             .attachViewControllerToRouter(tabID: .posts)
         }
+      case let .reddit(.postHighlighted(post, highlightID)):
+        // A comment link opened before a feed was chosen (from Me or Search).
+        if let sub = post.helioData?.subreddit {
+          PostView(post: post, subreddit: sub, highlightID: highlightID)
+            .id("\(post.id)-\(highlightID)-post-first-tab")
+            .attachViewControllerToRouter(tabID: .posts)
+        }
       case let .reddit(.user(user)):
         UserView(user: user)
           .id("\(user.id)-user-first-tab")
