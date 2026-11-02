@@ -73,25 +73,31 @@ struct CommentLinkMore: View {
       .commentDepthBar(bars ? data.depth ?? 0 : nil, theme: theme.theme, top: 8, bottom: 8, separator: true)
       .background(selectedTheme.comments.theme.bg())
       .contentShape(Rectangle())
-      .onTapGesture {
-        if let postFullname {
+      .onTapGesture { loadMore(parentElement) }
+      // One button for VoiceOver, instead of its separate words.
+      .accessibilityElement(children: .ignore)
+      .accessibilityLabel(loadMoreLoading ? "Loading more replies" : "Load \(count) more replies")
+      .accessibilityAddTraits(.isButton)
+      .accessibilityAction { loadMore(parentElement) }
+      .allowsHitTesting(!loadMoreLoading)
+      .id("\(comment.id)-more")
+    }
+  }
+
+  private func loadMore(_ parentElement: CommentParentElement) {
+    guard let postFullname, !loadMoreLoading else { return }
+    withAnimation(spring) {
+      loadMoreLoading = true
+    }
+    Task(priority: .userInitiated) {
+      await comment.loadChildren(parent: parentElement, postFullname: postFullname, avatarSize: selectedTheme.comments.theme.badge.avatar.size, post: post)
+      await MainActor.run {
+        doThisAfter(0.5) {
           withAnimation(spring) {
-            loadMoreLoading = true
-          }
-          Task(priority: .userInitiated) {
-            await comment.loadChildren(parent: parentElement, postFullname: postFullname, avatarSize: selectedTheme.comments.theme.badge.avatar.size, post: post)
-            await MainActor.run {
-              doThisAfter(0.5) {
-                withAnimation(spring) {
-                  loadMoreLoading = false
-                }
-              }
-            }
+            loadMoreLoading = false
           }
         }
       }
-      .allowsHitTesting(!loadMoreLoading)
-      .id("\(comment.id)-more")
     }
   }
 }
