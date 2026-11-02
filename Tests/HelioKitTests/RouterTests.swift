@@ -391,3 +391,14 @@ struct ReadableWidthTests {
     #expect(ReadableWidth.contentWidth(column: 1200, hasDivision: true) == 1200)
   }
 }
+
+struct RedditLinkTests {
+  @Test func webLinksBecomeAppLinks() throws {
+    for host in ["reddit.com", "www.reddit.com", "old.reddit.com"] {
+      let url = try #require(URL(string: "https://\(host)/r/apple/comments/abc123/a_title/"))
+      #expect(parseRedditURL(Nav.appLink(for: url)) == .post(id: "abc123", subreddit: "apple"))
+    }
+    let other = try #require(URL(string: "https://example.com/r/apple"))
+    #expect(Nav.appLink(for: other) == other.absoluteString)
+  }
+}

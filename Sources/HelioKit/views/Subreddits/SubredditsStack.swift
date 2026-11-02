@@ -178,13 +178,14 @@ struct SplitLayout: Equatable {
 private extension View {
   /// The feed column ends at the hinge when there's one (and no sidebar before it), else it
   /// takes a phone-like width.
-  @ViewBuilder
+  /// One modifier either way, so folding or unfolding doesn't rebuild the feed's stack (and lose
+  /// its pages, filter and scroll position): at a hinge, all three widths are the hinge's.
   func feedColumnWidth(_ hingeWidth: CGFloat?) -> some View {
-    if let hingeWidth {
-      navigationSplitViewColumnWidth(hingeWidth)
-    } else {
-      navigationSplitViewColumnWidth(min: SplitLayout.minFeedWidth, ideal: SplitLayout.idealFeedWidth, max: SplitLayout.maxFeedWidth)
-    }
+    navigationSplitViewColumnWidth(
+      min: hingeWidth ?? SplitLayout.minFeedWidth,
+      ideal: hingeWidth ?? SplitLayout.idealFeedWidth,
+      max: hingeWidth ?? SplitLayout.maxFeedWidth,
+    )
   }
 
   /// The Mac window toolbar has the sidebar button (`MacTabToolbar`).

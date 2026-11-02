@@ -175,7 +175,8 @@ class Nav: Identifiable, Equatable {
   /// open from the column the link sits in, like other taps there; anything else, or a link in
   /// another tab, goes through the app's URL handling as before.
   static func openLink(_ url: URL, from column: Router.Column?) {
-    let dest: Router.NavDest? = switch parseRedditURL(url.absoluteString) {
+    let appLink = appLink(for: url)
+    let dest: Router.NavDest? = switch parseRedditURL(appLink) {
     case let .post(postID, subID): .reddit(.post(Post(id: postID, subID: subID)))
     case let .subreddit(name): .reddit(.subFeed(Subreddit(id: name)))
     case let .user(username): .reddit(.user(User(id: username)))
@@ -183,9 +184,15 @@ class Nav: Identifiable, Equatable {
     }
     if let dest, Nav.shared.activeTab == .posts {
       withAnimation { Nav.to(dest, from: column) }
-    } else if let newURL = URL(string: url.absoluteString.replacingOccurrences(of: "https://reddit.com/", with: "helioapp://")) {
+    } else if let newURL = URL(string: appLink) {
       Nav.openURL(newURL)
     }
+  }
+
+  /// A Reddit web link (with `www.`, `old.` or neither) as an app link, which the parser reads;
+  /// any other link unchanged.
+  static func appLink(for url: URL) -> String {
+    url.absoluteString.replacingOccurrences(of: #"^https?://(www\.|old\.)?reddit\.com/"#, with: "helioapp://", options: .regularExpression)
   }
 
   static func openURL(_ url: URL) {
