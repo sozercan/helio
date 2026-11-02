@@ -18,7 +18,7 @@ perf stalls head --from post_open --to cscroll_end
 perf callers head _swift_getKeyPath
 ```
 
-Results go to `$HELIO_PERF_DIR` (default `$TMPDIR/helio-perf`)`/<label>`: `build.log`, `run<n>.log`, `summary.json` and, when profiled, `run<n>.trace`. Runs use the simulator in `$HELIO_PERF_SIMULATOR`, or a "Helio Perf" iPhone the tool creates, so other simulators aren't disturbed.
+Results go to `$HELIO_PERF_DIR` (default `$TMPDIR/helio-perf`)`/<label>`: `build.log`, `run<n>.log`, `summary.json` and, when profiled, `run<n>.trace`. Runs use the simulator in `$HELIO_PERF_SIMULATOR`, or a "Helio Perf" iPhone the tool creates, so other simulators aren't disturbed. For an iPhone Duo run, create a Duo simulator (`xcrun simctl create "Helio Perf Duo" com.apple.CoreSimulator.SimDeviceType.iPhone-Duo <Duo runtime>`) and pass its UDID in `HELIO_PERF_SIMULATOR`. It boots folded, the narrow display with the side tab bar; the simulator can't unfold it from the command line, so only the folded layout is measured.
 
 ## How a run works
 
