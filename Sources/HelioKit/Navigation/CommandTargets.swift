@@ -162,13 +162,24 @@ final class CommandTargets {
     guard needsNextPage(offset, in: router), let feed = postsFeed, let loadMore = feed.target.loadMore else { return nil }
     let path = router.fullPath
     return Task { @MainActor in
-      await loadMore()
-      // Not if the user has moved on while the page loaded: to another tab, feed or screen, or
-      // to a reply or a full-screen image.
-      guard stillShown(), postsFeed?.id == feed.id, router.fullPath == path, !showsModal else { return }
-      openLoadedPost(offset, in: router)
+      // A page can hold no posts (Saved mixes in comments), so keep paging, a few pages at most,
+      // until one arrives or the feed can't load more.
+      for _ in 0 ..< Self.maxPagesPerStep {
+        await loadMore()
+        // Not if the user has moved on while the page loaded: to another tab, feed or screen, or
+        // to a reply or a full-screen image.
+        guard stillShown(), postsFeed?.id == feed.id, router.fullPath == path, !showsModal else { return }
+        if adjacentPost(offset, in: router) != nil {
+          openLoadedPost(offset, in: router)
+          return
+        }
+        guard feed.target.canLoadMore?() == true else { return }
+      }
     }
   }
+
+  /// How many pages Next Post loads looking for a post before it stops.
+  static let maxPagesPerStep = 3
 
   private func openLoadedPost(_ offset: Int, in router: Router) {
     guard let post = adjacentPost(offset, in: router) else { return }

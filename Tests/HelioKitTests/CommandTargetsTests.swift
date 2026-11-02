@@ -147,6 +147,35 @@ struct AdjacentPostTests {
     #expect(router.postColumn.first?.id == more.id)
   }
 
+  @Test func nextKeepsPagingPastPagesWithoutPosts() async {
+    let targets = CommandTargets()
+    var loaded = feed
+    var pages = 0
+    let more = Post(id: "d", subID: "apple")
+    // Saved can return a page of comments only: the first load adds no post.
+    let registration = targets.register(.init(kind: .feed, column: .feed, posts: { loaded }, canLoadMore: { true }, loadMore: {
+      pages += 1
+      if pages == 2 {
+        loaded.append(more)
+      }
+    }))
+    targets.unregister(registration)
+    let router = router(open: 2, columns: false)
+    await targets.openAdjacentPost(1, in: router)?.value
+    #expect(pages == 2)
+    #expect(router.postColumn.first?.id == more.id)
+  }
+
+  @Test func nextStopsPagingAfterAFewEmptyPages() async {
+    let targets = CommandTargets()
+    var pages = 0
+    let registration = targets.register(.init(kind: .feed, column: .feed, posts: { feed }, canLoadMore: { true }, loadMore: { pages += 1 }))
+    targets.unregister(registration)
+    let router = router(open: 2, columns: false)
+    await targets.openAdjacentPost(1, in: router)?.value
+    #expect(pages == CommandTargets.maxPagesPerStep)
+  }
+
   @Test func nextStopsAtTheEndOfTheFeed() {
     let targets = CommandTargets()
     _ = targets.register(.init(kind: .feed, column: .feed, posts: { feed }, canLoadMore: { false }, loadMore: {}))
