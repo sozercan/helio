@@ -228,6 +228,8 @@ struct LightBoxImage: View {
         }
       }
     }
+    // It covers the post: the menu bar's Post commands mustn't move off it underneath.
+    .commandTarget(CommandTargets.Target(kind: .modal))
     .transition(.opacity)
   }
 }

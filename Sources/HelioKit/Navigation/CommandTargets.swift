@@ -16,8 +16,9 @@ final class CommandTargets {
   static let shared = CommandTargets()
 
   struct Target {
-    /// `composer`: a reply being written, which the Post commands must not dismiss.
-    enum Kind { case feed, post, subs, search, composer }
+    /// `modal`: what covers the screens, such as a reply being written or a full-screen image or
+    /// video. The commands must not act on the screens behind it, or close it by moving to another post.
+    enum Kind { case feed, post, subs, search, modal }
 
     var kind: Kind
     /// The posts split view's column it shows in.
@@ -108,20 +109,21 @@ final class CommandTargets {
     targets.last { $0.target.kind == .post && $0.target.post != nil }?.target
   }
 
-  /// While a reply is being written, or a sheet such as the theme editor shows, the Post
-  /// commands would act on the screen behind it, and moving to another post would close the reply.
-  func postCommandsSuspended(nav: Nav = .shared) -> Bool {
-    nav.presentingSheet != nil || isComposing
+  /// While a reply is being written, an image or video fills the screen, or a sheet such as
+  /// sign-in shows, Find and the Post commands would act on the screen behind it, and moving to
+  /// another post would close it.
+  func isCovered(nav: Nav = .shared) -> Bool {
+    nav.presentingSheet != nil || showsModal
   }
 
-  var isComposing: Bool {
-    targets.contains { $0.target.kind == .composer }
+  var showsModal: Bool {
+    targets.contains { $0.target.kind == .modal }
   }
 
   /// Whether Next or Previous Post can move from the post the posts tab's feed has open: to
   /// another loaded post, or past the last one when the feed has another page.
   func canOpenAdjacentPost(_ offset: Int, nav: Nav = .shared) -> Bool {
-    guard nav.activeTab == .posts, !postCommandsSuspended(nav: nav) else { return false }
+    guard nav.activeTab == .posts, !isCovered(nav: nav) else { return false }
     return canOpenAdjacentPost(offset, in: nav[.posts])
   }
 
@@ -146,21 +148,24 @@ final class CommandTargets {
   /// Opens the post `offset` places from the open one in the post column and scrolls the feed to it.
   func openAdjacentPost(_ offset: Int, nav: Nav = .shared) {
     guard canOpenAdjacentPost(offset, nav: nav) else { return }
-    openAdjacentPost(offset, in: nav[.posts])
+    openAdjacentPost(offset, in: nav[.posts]) { nav.activeTab == .posts && nav.presentingSheet == nil }
   }
 
   /// Past the loaded posts, loads the feed's next page first and returns the task doing so.
+  /// `stillShown` tells whether the posts tab is still the one on screen once the page arrives.
   @discardableResult
-  func openAdjacentPost(_ offset: Int, in router: Router) -> Task<Void, Never>? {
+  func openAdjacentPost(_ offset: Int, in router: Router, stillShown: @escaping () -> Bool = { true }) -> Task<Void, Never>? {
     guard adjacentPost(offset, in: router) == nil else {
       openLoadedPost(offset, in: router)
       return nil
     }
-    guard needsNextPage(offset, in: router), let id = Self.feedPostID(in: router), let loadMore = postsFeed?.target.loadMore else { return nil }
+    guard needsNextPage(offset, in: router), let feed = postsFeed, let loadMore = feed.target.loadMore else { return nil }
+    let path = router.fullPath
     return Task { @MainActor in
       await loadMore()
-      // Not if the user has moved on or started a reply while the page loaded.
-      guard Self.feedPostID(in: router) == id, !postCommandsSuspended() else { return }
+      // Not if the user has moved on while the page loaded: to another tab, feed or screen, or
+      // to a reply or a full-screen image.
+      guard stillShown(), postsFeed?.id == feed.id, router.fullPath == path, !showsModal else { return }
       openLoadedPost(offset, in: router)
     }
   }

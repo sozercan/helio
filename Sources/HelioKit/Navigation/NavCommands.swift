@@ -21,8 +21,10 @@ struct NavCommands: Commands {
     // shows, so neither does its shortcut.
     CommandGroup(after: .pasteboard) {
       Divider()
+      // Not the screen behind a reply, a full-screen image or a sheet.
       Button("Find…", systemImage: "magnifyingglass") { targets.find() }
         .keyboardShortcut("f")
+        .disabled(targets.isCovered())
     }
 
     // The top of the View menu.
@@ -59,8 +61,8 @@ struct NavCommands: Commands {
 
       Divider()
 
-      // Not the post behind a reply being written.
-      let post = targets.postCommandsSuspended() ? nil : targets.openPost
+      // Not the post behind a reply being written or a full-screen image.
+      let post = targets.isCovered() ? nil : targets.openPost
       Button(post?.post?.data?.likes == true ? "Remove Upvote" : "Upvote", systemImage: "arrow.up") {
         if let post = post?.post {
           Task { _ = await post.vote(.up) }

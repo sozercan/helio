@@ -254,7 +254,7 @@ struct ReplyModal<Content: View>: View {
       .navigationTitle(title)
     }
     // Keeps the menu bar's Post commands from moving off the post, which would close the reply.
-    .commandTarget(CommandTargets.Target(kind: .composer))
+    .commandTarget(CommandTargets.Target(kind: .modal))
     // A blurry theme gets the system's glass sheet; only an opaque theme color replaces it.
     .if(!selectedTheme.general.modalsBG.blurry) { $0.presentationBackground(selectedTheme.general.modalsBG.color()) }
     .presentationDetents([.large, .fraction(0.75), .medium, collapsedPresentation], selection: $selection)

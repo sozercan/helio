@@ -175,10 +175,44 @@ struct AdjacentPostTests {
     var loaded = feed
     _ = targets.register(.init(kind: .feed, column: .feed, posts: { loaded }, canLoadMore: { true }, loadMore: {
       loaded.append(Post(id: "d", subID: "apple"))
-      _ = targets.register(.init(kind: .composer))
+      _ = targets.register(.init(kind: .modal))
     }))
     let router = router(open: 2, columns: false)
     await targets.openAdjacentPost(1, in: router)?.value
+    #expect(router.postColumn.first?.id == feed[2].id)
+  }
+
+  @Test func aScreenOpenedOverThePostWhileThePageLoadsStays() async {
+    let targets = CommandTargets()
+    var loaded = feed
+    let router = router(open: 2, columns: true)
+    _ = targets.register(.init(kind: .feed, column: .feed, posts: { loaded }, canLoadMore: { true }, loadMore: {
+      loaded.append(Post(id: "d", subID: "apple"))
+      router.navigateTo(profile, from: .post)
+    }))
+    await targets.openAdjacentPost(1, in: router)?.value
+    #expect(router.fullPath == [home, .reddit(.post(feed[2])), profile])
+  }
+
+  @Test func anotherFeedChosenWhileThePageLoadsKeepsThePost() async {
+    let targets = CommandTargets()
+    var loaded = feed
+    _ = targets.register(.init(kind: .feed, column: .feed, posts: { loaded }, canLoadMore: { true }, loadMore: {
+      loaded.append(Post(id: "d", subID: "apple"))
+      // Another feed showing the same posts, with the same post open.
+      _ = targets.register(.init(kind: .feed, column: .feed, posts: { loaded }))
+    }))
+    let router = router(open: 2, columns: true)
+    await targets.openAdjacentPost(1, in: router)?.value
+    #expect(router.postColumn.first?.id == feed[2].id)
+  }
+
+  @Test func aPageThatArrivesAfterLeavingThePostsTabDoesntOpenAPost() async {
+    let targets = CommandTargets()
+    var loaded = feed
+    _ = targets.register(.init(kind: .feed, column: .feed, posts: { loaded }, canLoadMore: { true }, loadMore: { loaded.append(Post(id: "d", subID: "apple")) }))
+    let router = router(open: 2, columns: true)
+    await targets.openAdjacentPost(1, in: router, stillShown: { false })?.value
     #expect(router.postColumn.first?.id == feed[2].id)
   }
 
@@ -190,17 +224,21 @@ struct AdjacentPostTests {
   }
 }
 
-struct ComposerTests {
-  @Test func aReplyBeingWrittenSuspendsThePostCommands() {
+struct ModalTests {
+  /// A reply being written, or a full-screen image or video.
+  @Test func aModalSuspendsThePostCommands() {
     let targets = CommandTargets()
     _ = targets.register(.init(kind: .post, post: Post(id: "a", subID: "apple")))
-    #expect(!targets.isComposing)
-    let reply = targets.register(.init(kind: .composer))
-    #expect(targets.isComposing)
-    // A composer isn't a post, refresh or search target.
+    #expect(!targets.showsModal)
+    let reply = targets.register(.init(kind: .modal))
+    #expect(targets.showsModal)
+    // Find and the Post commands are off while it shows.
+    #expect(targets.isCovered())
+    // A modal isn't a post, refresh or search target.
     #expect(targets.openPost?.post != nil)
+    #expect(!targets.canRefresh)
     targets.unregister(reply)
-    #expect(!targets.isComposing)
+    #expect(!targets.showsModal)
   }
 }
 
