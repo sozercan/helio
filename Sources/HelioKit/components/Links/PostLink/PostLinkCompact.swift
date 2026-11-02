@@ -126,7 +126,6 @@ struct PostLinkCompact: View, Equatable, Identifiable {
                 Tag(subredditIconKit: nil, text: "r/\(subName)")
               }
               .buttonStyle(.plain)
-              .hoverEffect(.highlight)
             }
           }
           .frame(maxWidth: .infinity, alignment: .topLeading)
