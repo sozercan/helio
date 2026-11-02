@@ -237,7 +237,7 @@ struct RedditListingFeed<Header: View, Footer: View, S: Sorting>: View {
       // In the toolbar (the default in a split view's detail on iOS 26+), closing search
       // re-focuses it as soon as the dismiss animation ends.
       .if(!disableSearch) { $0.searchable(text: $itemsManager.searchQuery.value, isPresented: $searchPresented, placement: .navigationBarDrawer(displayMode: .automatic)).searchFocused($searchFocused) }
-      .scrollIndicators(.never)
+      .touchScrollIndicators(.never)
       .listStyle(.plain)
       .navigationTitle(title)
       .environment(\.defaultMinListRowHeight, 1)

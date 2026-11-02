@@ -250,7 +250,7 @@ struct Subreddits: View, Equatable {
           Color(uiColor: .systemBackground).ignoresSafeArea()
         }
       }
-      .scrollIndicators(.hidden)
+      .touchScrollIndicators(.hidden)
       .listStyle(.sidebar)
       .scrollDismissesKeyboard(.immediately)
       .loader(!loaded && subreddits.isEmpty)

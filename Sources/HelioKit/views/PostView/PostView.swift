@@ -170,7 +170,7 @@ struct PostView: View, Equatable {
           }
           .listRowSeparator(.hidden)
         }
-        .scrollIndicators(.never)
+        .touchScrollIndicators(.never)
         .themedListBG(selectedTheme.posts.bg)
         .transition(.opacity)
         .environment(\.defaultMinListRowHeight, 1)
