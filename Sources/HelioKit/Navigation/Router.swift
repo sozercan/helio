@@ -59,7 +59,7 @@ class Router: Hashable, Equatable, Identifiable {
     get { fullPath.first }
     set {
       if let newValue {
-        if fullPath.first != newValue {
+        if !(fullPath.first?.isSameFeed(as: newValue) ?? false) {
           fullPath = [newValue]
         }
       } else {
@@ -164,6 +164,11 @@ class Router: Hashable, Equatable, Identifiable {
     }
   }
 
+  /// Shows `dest` with nothing stacked on it, even when it's the feed already selected.
+  func showFeedRoot(_ dest: NavDest) {
+    fullPath = [fullPath.first.flatMap { $0.isSameFeed(as: dest) ? $0 : nil } ?? dest]
+  }
+
   enum CodingKeys: String, CodingKey {
     case id, firstSelected, path
   }
@@ -176,5 +181,23 @@ class Router: Hashable, Equatable, Identifiable {
     hasher.combine(id)
     hasher.combine(firstSelected)
     hasher.combine(path)
+  }
+}
+
+extension Router.NavDest {
+  /// The subreddit feed this shows, by lowercased name. A subreddit known only by name (a quick
+  /// action, the default feed) has its name as id, while the sidebar's cached one has Reddit's id,
+  /// so `==` doesn't match the two.
+  var subredditFeedName: String? {
+    guard case let .reddit(.subFeed(sub)) = self else { return nil }
+    return (sub.data?.display_name ?? sub.id).lowercased()
+  }
+
+  /// Whether both show the same feed, matching subreddits by name.
+  func isSameFeed(as other: Router.NavDest) -> Bool {
+    if let name = subredditFeedName, let otherName = other.subredditFeedName {
+      return name == otherName
+    }
+    return self == other
   }
 }

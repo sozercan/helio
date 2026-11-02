@@ -12,6 +12,12 @@ struct MessageTests {
     #expect(getPostId(from: "https://www.reddit.com/r/apple/comments/abc123/") == "abc123")
   }
 
+  @Test func findsTheRouteAfterTheSubreddit() {
+    // A subreddit named "comments" isn't the comments route.
+    #expect(getPostId(from: "/r/comments/comments/abc123/a_title/") == "abc123")
+    #expect(getPostId(from: "https://www.reddit.com/comments/abc123/") == "abc123")
+  }
+
   @Test func rejectsLinksWithoutAPostId() {
     #expect(getPostId(from: "") == nil)
     #expect(getPostId(from: "/r/apple") == nil)
@@ -42,6 +48,19 @@ struct MessageTests {
       return
     }
     #expect(highlight == "t1_r2")
+  }
+
+  @Test func messageNamesAreNotHighlighted() throws {
+    // A message with a comment link but only its own t4_ name opens the post unhighlighted.
+    let data = try decode("""
+    {"id": "m1", "name": "t4_m1", "subreddit": "apple", "parent_id": null,
+     "context": "/r/apple/comments/abc123/t/c9/?context=3"}
+    """)
+    guard case let .reddit(.post(post)) = data.commentDestination else {
+      Issue.record("expected an unhighlighted post")
+      return
+    }
+    #expect(post.id == "abc123")
   }
 
   @Test func privateMessagesHaveNoPost() throws {

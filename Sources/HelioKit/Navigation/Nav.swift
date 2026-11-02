@@ -125,12 +125,18 @@ class Nav: Identifiable, Equatable {
     routers[tab]?.navigateTo(dest, reset)
   }
 
-  func selectFeed(_ dest: Router.NavDest) {
+  /// With `popToFeed`, screens opened from the feed are closed even when it's already selected,
+  /// so the feed itself shows (a Home Screen quick action asks for the feed, not what's on it).
+  func selectFeed(_ dest: Router.NavDest, popToFeed: Bool = false) {
     if activeTab != .posts {
       _suppressNextSameTabReset = true
       activeTab = .posts
     }
-    self[.posts].firstSelected = dest
+    if popToFeed {
+      self[.posts].showFeedRoot(dest)
+    } else {
+      self[.posts].firstSelected = dest
+    }
   }
 
   subscript(tab: TabIdentifier) -> Router {

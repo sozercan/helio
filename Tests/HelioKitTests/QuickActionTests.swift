@@ -2,6 +2,8 @@ import Testing
 import UIKit
 @testable import HelioKit
 
+/// Serialized: the actions drive the shared `Nav`, which parallel tests would race on.
+@Suite(.serialized)
 struct QuickActionTests {
   @Test func listsSearchSavedAndTheFirstFavoritesOnce() {
     let list = QuickAction.list(favorites: ["apple", "Apple", " ", "pics", "swift"])
@@ -35,8 +37,25 @@ struct QuickActionTests {
     let nav = Nav.shared
     nav[.posts].firstSelected = .reddit(.subFeed(Subreddit(id: "pics")))
     nav[.posts].navigateTo(.reddit(.user(User(id: "someone"))))
-    QuickAction.subreddit("apple").perform(on: nav)
+    QuickAction.subreddit("apple").perform(on: nav) { Subreddit(id: $0) }
     #expect(nav.activeTab == .posts)
     #expect(nav[.posts].fullPath == [.reddit(.subFeed(Subreddit(id: "apple")))])
+  }
+
+  @Test func subredditActionClosesScreensOnTheSameFeed() {
+    let nav = Nav.shared
+    nav[.posts].firstSelected = .reddit(.subFeed(Subreddit(id: "apple")))
+    nav[.posts].navigateTo(.reddit(.user(User(id: "someone"))))
+    QuickAction.subreddit("apple").perform(on: nav) { Subreddit(id: $0) }
+    #expect(nav[.posts].fullPath == [.reddit(.subFeed(Subreddit(id: "apple")))])
+  }
+
+  @Test func searchActionOpensSearchAtItsRoot() {
+    let nav = Nav.shared
+    nav.activeTab = .posts
+    nav[.search].navigateTo(.reddit(.user(User(id: "someone"))))
+    QuickAction.search.perform(on: nav) { Subreddit(id: $0) }
+    #expect(nav.activeTab == .search)
+    #expect(nav[.search].fullPath.isEmpty)
   }
 }

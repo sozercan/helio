@@ -64,8 +64,9 @@ struct AlphabetJumper: View {
     .accessibilityAdjustableAction { direction in
       guard !letters.isEmpty else { return }
       switch direction {
-      case .increment: accessibilityIndex = min(accessibilityIndex + 1, letters.count - 1)
-      case .decrement: accessibilityIndex = max(accessibilityIndex - 1, 0)
+      // Clamped both ways: the list may have shrunk since the index was last set.
+      case .increment: accessibilityIndex = min(max(accessibilityIndex + 1, 0), letters.count - 1)
+      case .decrement: accessibilityIndex = min(max(accessibilityIndex - 1, 0), letters.count - 1)
       @unknown default: return
       }
       scrollTo(letters[accessibilityIndex])

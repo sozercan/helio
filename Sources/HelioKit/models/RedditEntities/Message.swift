@@ -74,8 +74,10 @@ extension MessageData {
     guard let subreddit, let context, let postID = getPostId(from: context) else { return nil }
     let post = Post(id: postID, subID: subreddit)
     // Replies to a post highlight the reply itself; replies to a comment, the comment.
-    let parentComment = parent_id.flatMap { $0.hasPrefix("t3_") ? nil : $0 }
-    if let highlightID = parentComment ?? name {
+    // Only comment fullnames (t1_) can be highlighted: a message's own name (t4_) can't.
+    let parentComment = parent_id.flatMap { $0.hasPrefix("t1_") ? $0 : nil }
+    let ownComment = name.flatMap { $0.hasPrefix("t1_") ? $0 : nil }
+    if let highlightID = parentComment ?? ownComment {
       return .reddit(.postHighlighted(post, highlightID))
     }
     return .reddit(.post(post))
@@ -86,6 +88,13 @@ extension MessageData {
 func getPostId(from urlString: String) -> String? {
   let path = urlString.split(separator: "?", maxSplits: 1, omittingEmptySubsequences: false).first ?? ""
   let parts = path.split(separator: "/")
-  guard let comments = parts.firstIndex(of: "comments"), comments + 1 < parts.count else { return nil }
+  // The route follows the subreddit (`/r/<sub>/comments/<id>`), so a subreddit named "comments"
+  // isn't mistaken for it. Short links without a subreddit (`/comments/<id>`) start with it.
+  let comments: Int? = if let r = parts.firstIndex(of: "r"), r + 2 < parts.count {
+    parts[r + 2] == "comments" ? r + 2 : nil
+  } else {
+    parts.firstIndex(of: "comments")
+  }
+  guard let comments, comments + 1 < parts.count else { return nil }
   return String(parts[comments + 1])
 }

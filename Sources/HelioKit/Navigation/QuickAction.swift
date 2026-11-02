@@ -50,13 +50,32 @@ enum QuickAction: Equatable {
     }
   }
 
-  /// Opens the action's tab or feed.
-  func perform(on nav: Nav = .shared) {
+  /// Opens the action's tab or feed at its root, closing screens left open on it.
+  func perform(on nav: Nav = .shared, subreddit: (String) -> Subreddit = QuickAction.subreddit(named:)) {
     switch self {
-    case .search: nav.activeTab = .search
-    case .saved: nav.selectFeed(.reddit(.subFeed(Subreddit(id: savedKeyword))))
-    case let .subreddit(name): nav.selectFeed(.reddit(.subFeed(Subreddit(id: name))))
+    case .search:
+      nav[.search].fullPath = []
+      if nav.activeTab != .search {
+        nav.activeTab = .search
+      }
+    case .saved: nav.selectFeed(.reddit(.subFeed(Subreddit(id: savedKeyword))), popToFeed: true)
+    case let .subreddit(name): nav.selectFeed(.reddit(.subFeed(subreddit(name))), popToFeed: true)
     }
+  }
+
+  /// The current account's cached subreddit with this name, as the sidebar shows it, so the
+  /// sidebar marks it selected; a subreddit known only by name otherwise.
+  static func subreddit(named name: String) -> Subreddit {
+    let context = PersistenceController.shared.container.viewContext
+    if let credentialID = Defaults[.GeneralDefSettings].redditCredentialSelectedID {
+      let request = CachedSub.fetchRequest()
+      request.predicate = NSPredicate(format: "helioCredentialID == %@ AND display_name =[c] %@", credentialID as CVarArg, name)
+      request.fetchLimit = 1
+      if let cached = try? context.fetch(request).first {
+        return Subreddit(data: SubredditData(entity: cached))
+      }
+    }
+    return Subreddit(id: name)
   }
 
   /// Replaces the app's quick actions with the current account's favorites, as the subs list

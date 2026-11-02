@@ -131,7 +131,7 @@ struct Subreddits: View, Equatable {
               let foundSubs = Array(Array(subreddits.filter { ($0.display_name ?? "").lowercased().contains(searchText.lowercased()) }).enumerated())
               ForEach(foundSubs, id: \.self.element.uuid) { _, cachedSub in
                 let sub = Subreddit(data: SubredditData(entity: cachedSub))
-                SubItem(isActive: Router.NavDest.reddit(.subFeed(sub)) == firstDestination, sub: sub, cachedSub: cachedSub, action: selectSub)
+                SubItem(isActive: firstDestination?.isSameFeed(as: .reddit(.subFeed(sub))) ?? false, sub: sub, cachedSub: cachedSub, action: selectSub)
               }
             }
 
@@ -142,7 +142,7 @@ struct Subreddits: View, Equatable {
                 let favs = Array(favs.sorted(by: { x, y in (x.display_name?.lowercased() ?? "a") < (y.display_name?.lowercased() ?? "a") }).enumerated())
                 ForEach(favs, id: \.self.element) { _, cachedSub in
                   let sub = Subreddit(data: SubredditData(entity: cachedSub))
-                  SubItem(isActive: Router.NavDest.reddit(.subFeed(sub)) == firstDestination, sub: sub, cachedSub: cachedSub, action: selectSub)
+                  SubItem(isActive: firstDestination?.isSameFeed(as: .reddit(.subFeed(sub))) ?? false, sub: sub, cachedSub: cachedSub, action: selectSub)
                     .id("\(cachedSub.uuid ?? "")-fav")
                 }
                 .onDelete(perform: deleteFromFavorites)
@@ -154,7 +154,7 @@ struct Subreddits: View, Equatable {
                 let subs = Array(subreddits.filter(\.user_is_subscriber).sorted(by: { x, y in (x.display_name?.lowercased() ?? "a") < (y.display_name?.lowercased() ?? "a") }).enumerated())
                 ForEach(subs, id: \.self.element) { _, cachedSub in
                   let sub = Subreddit(data: SubredditData(entity: cachedSub))
-                  SubItem(isActive: Router.NavDest.reddit(.subFeed(sub)) == firstDestination, sub: sub, cachedSub: cachedSub, action: selectSub)
+                  SubItem(isActive: firstDestination?.isSameFeed(as: .reddit(.subFeed(sub))) ?? false, sub: sub, cachedSub: cachedSub, action: selectSub)
                 }
               }
 
@@ -167,7 +167,7 @@ struct Subreddits: View, Equatable {
                     }).enumerated())
                     ForEach(subs, id: \.self.element.uuid) { _, cachedSub in
                       let sub = Subreddit(data: SubredditData(entity: cachedSub))
-                      SubItem(isActive: Router.NavDest.reddit(.subFeed(sub)) == firstDestination, sub: sub, cachedSub: cachedSub, action: selectSub)
+                      SubItem(isActive: firstDestination?.isSameFeed(as: .reddit(.subFeed(sub))) ?? false, sub: sub, cachedSub: cachedSub, action: selectSub)
                     }
                     .onDelete(perform: { i in
                       deleteFromList(at: i, letter: letter)

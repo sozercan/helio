@@ -28,7 +28,8 @@ struct MessageLink: View {
               Text("from **\(sender)**").fontSize(14).opacity(0.75)
             }
           }
-          Text((data.body ?? "").md()).lineLimit(2).fontSize(15).opacity(0.75)
+          // Messages that open nothing show their whole body: there's nowhere else to read it.
+          Text((data.body ?? "").md()).lineLimit(destination == nil ? nil : 2).fontSize(15).opacity(0.75)
         }
       }
       .padding(.horizontal, 16)

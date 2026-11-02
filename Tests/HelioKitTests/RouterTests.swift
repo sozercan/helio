@@ -1,3 +1,4 @@
+import Foundation
 import Testing
 @testable import HelioKit
 
@@ -25,6 +26,27 @@ struct RouterTests {
     router.navigateTo(post)
     router.firstSelected = feed("apple")
     #expect(router.fullPath == [feed("apple"), post])
+  }
+
+  @Test func aSubredditKnownByNameIsTheSameFeedAsItsCachedCopy() throws {
+    // The sidebar's cached subreddit has Reddit's id; a quick action knows only the name.
+    let json = #"{"name": "t5_2qh1f", "id": "2qh1f", "display_name": "Apple", "url": "/r/Apple/", "public_description": ""}"#
+    let cached = try Subreddit(data: JSONDecoder().decode(SubredditData.self, from: Data(json.utf8)))
+    let router = Router(id: "test")
+    router.firstSelected = .reddit(.subFeed(cached))
+    router.navigateTo(post)
+    router.firstSelected = feed("apple")
+    #expect(router.fullPath.count == 2)
+    #expect(feed("apple").isSameFeed(as: .reddit(.subFeed(cached))))
+    #expect(!feed("pics").isSameFeed(as: .reddit(.subFeed(cached))))
+  }
+
+  @Test func showingTheFeedRootClosesItsScreens() {
+    let router = Router(id: "test")
+    router.firstSelected = feed("apple")
+    router.navigateTo(post)
+    router.showFeedRoot(feed("apple"))
+    #expect(router.fullPath == [feed("apple")])
   }
 
   @Test func clearingTheSelectionEmptiesThePath() {

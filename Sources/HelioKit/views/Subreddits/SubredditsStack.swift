@@ -79,7 +79,7 @@ struct SubredditsStack: View {
 
             // Skipped when a feed is already chosen, such as by a Home Screen quick action.
             if behaviorDefSettings.preferenceDefaultFeed != "subList", router.firstSelected == nil { // we are in subList, can ignore
-              let tempSubreddit = Subreddit(id: behaviorDefSettings.preferenceDefaultFeed)
+              let tempSubreddit = QuickAction.subreddit(named: behaviorDefSettings.preferenceDefaultFeed)
               router.firstSelected = .reddit(.subFeed(tempSubreddit))
             }
 
