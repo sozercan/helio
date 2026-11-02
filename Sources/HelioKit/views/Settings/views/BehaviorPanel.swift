@@ -18,7 +18,6 @@ struct BehaviorPanel: View {
   @Default(.SubredditFeedDefSettings) var subredditFeedDefSettings
   @Default(.GeneralDefSettings) var generalDefSettings
   @Default(.VideoDefSettings) var videoDefSettings
-  @Default(.showFloatingFeedMenu) var showFloatingFeedMenu
 
   @Environment(\.useTheme) private var theme
   @State private var imageAnalyzerSupport: Bool = true
@@ -89,7 +88,6 @@ struct BehaviorPanel: View {
           Toggle("Blur NSFW in opened posts", isOn: $postPageDefSettings.blurNSFW)
           Toggle("Blur NSFW", isOn: $postLinkDefSettings.blurNSFW)
           Toggle("Save sort per subreddit", isOn: $subredditFeedDefSettings.perSubredditSort)
-          Toggle("Show floating feed button", isOn: $showFloatingFeedMenu)
           Toggle("Open media from feed", isOn: $postLinkDefSettings.isMediaTappable)
 
           Menu {

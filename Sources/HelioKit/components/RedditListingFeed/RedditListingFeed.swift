@@ -238,52 +238,29 @@ struct RedditListingFeed<Header: View, Footer: View, S: Sorting>: View {
       .navigationTitle(title)
       .environment(\.defaultMinListRowHeight, 1)
       .toolbar {
-        // An empty item still draws a glass button on iOS 26, so feeds without a sort or a
-        // subreddit (such as a user's) get none.
-        if itemsManager.sorting != nil || subreddit?.data != nil {
+        // Sort and the feed's options share a glass group; the subreddit's icon is its own.
+        if itemsManager.sorting != nil {
           ToolbarItem(placement: .topBarTrailing) {
-            HStack {
-              if let currSort = itemsManager.sorting {
-                Menu {
-                  ForEach(Array(S.allCases), id: \.self) { opt in
-                    if let children = opt.meta.children {
-                      Menu {
-                        ForEach(children, id: \.self.meta.apiValue) { child in
-                          if let val = child.valueWithParent as? S {
-                            Button(child.meta.label, systemImage: child.meta.icon) {
-                              itemsManager.sorting = val
-                            }
-                          }
-                        }
-                      } label: {
-                        Label(opt.meta.label, systemImage: opt.meta.icon)
-                      }
-                    } else {
-                      Button(opt.meta.label, systemImage: opt.meta.icon) {
-                        itemsManager.sorting = opt
-                      }
-                    }
-                  }
-                } label: {
-                  Image(systemName: currSort.meta.icon)
-                    .foregroundStyle(Color.accentColor)
-                    .fontSize(17, .bold)
-                }
-              }
-              //          .disabled(subreddit.id == "saved")
-              //        }
-              if let sub = subreddit, let data = sub.data {
-                Button {
-                  Nav.to(.reddit(.subInfo(sub)))
-                } label: {
-                  SubredditIcon(subredditIconKit: data.subredditIconKit)
-                }
-              }
+            FeedSortMenu(sorting: $itemsManager.sorting)
+          }
+        }
+        if let subreddit {
+          ToolbarItem(placement: .topBarTrailing) {
+            FeedOptionsMenu(subId: subreddit.id, filters: shallowCachedFilters, selectedFilter: $itemsManager.selectedFilter)
+          }
+        }
+        if let sub = subreddit, let data = sub.data {
+          ToolbarSpacer(.fixed, placement: .topBarTrailing)
+          ToolbarItem(placement: .topBarTrailing) {
+            Button {
+              Nav.to(.reddit(.subInfo(sub)))
+            } label: {
+              SubredditIcon(subredditIconKit: data.subredditIconKit)
             }
+            .accessibilityLabel("About r/\(data.display_name ?? sub.id)")
           }
         }
       }
-      .floatingMenu(subId: subreddit?.id, filters: shallowCachedFilters, selectedFilter: $itemsManager.selectedFilter)
       .relayoutPosts({ itemsManager.entities.compactMap {
         if case let .post(post) = $0 {
           post
@@ -316,5 +293,77 @@ struct RedditListingFeed<Header: View, Footer: View, S: Sorting>: View {
         Task { await refetch() }
       }
     }
+  }
+}
+
+/// The feed's sort, with a checkmark on the current one. Top's time ranges are a submenu.
+private struct FeedSortMenu<S: Sorting>: View {
+  @Binding var sorting: S?
+
+  var body: some View {
+    Menu {
+      Picker("Sort", selection: $sorting) {
+        ForEach(Array(S.allCases).filter { $0.meta.children == nil }, id: \.self) { opt in
+          Label(opt.meta.label, systemImage: opt.meta.icon)
+            .tag(Optional(opt))
+        }
+      }
+      ForEach(Array(S.allCases).filter { $0.meta.children != nil }, id: \.self) { opt in
+        Picker(selection: $sorting) {
+          ForEach(opt.meta.children ?? [], id: \.self.meta.apiValue) { child in
+            if let val = child.valueWithParent as? S {
+              Label(child.meta.label, systemImage: child.meta.icon)
+                .tag(Optional(val))
+            }
+          }
+        } label: {
+          Label(opt.meta.label, systemImage: opt.meta.icon)
+        }
+        .pickerStyle(.menu)
+      }
+    } label: {
+      Label("Sort", systemImage: sorting?.meta.icon ?? "arrow.up.arrow.down")
+    }
+  }
+}
+
+/// The feed's flair filter and its compact-posts switch. The icon fills while a filter is on.
+private struct FeedOptionsMenu: View {
+  var subId: String
+  var filters: [ShallowCachedFilter]
+  @Binding var selectedFilter: ShallowCachedFilter?
+
+  @Default(.SubredditFeedDefSettings) private var subredditFeedDefSettings
+  @Default(.PostLinkDefSettings) private var postLinkDefSettings
+
+  private var compact: Binding<Bool> {
+    Binding {
+      subredditFeedDefSettings.compactPerSubreddit[subId] ?? postLinkDefSettings.compactMode.enabled
+    } set: {
+      subredditFeedDefSettings.compactPerSubreddit[subId] = $0
+    }
+  }
+
+  var body: some View {
+    let flairs = filters.filter { $0.type == .flair }
+    let custom = filters.filter { $0.type == .custom }
+    Menu {
+      Toggle("Compact posts", systemImage: "rectangle.compress.vertical", isOn: compact)
+      if !flairs.isEmpty || !custom.isEmpty {
+        Picker("Flair", selection: $selectedFilter) {
+          Label("All posts", systemImage: "square.stack")
+            .tag(ShallowCachedFilter?.none)
+          ForEach(flairs + custom) { filter in
+            Text(filter.text)
+              .tag(Optional(filter))
+          }
+        }
+        .pickerStyle(.inline)
+      }
+    } label: {
+      Label("Filter", systemImage: selectedFilter == nil ? "line.3.horizontal.decrease" : "line.3.horizontal.decrease.circle.fill")
+    }
+    .accessibilityLabel("Filter and view options")
+    .accessibilityValue(selectedFilter.map { "Showing \($0.text)" } ?? "")
   }
 }
