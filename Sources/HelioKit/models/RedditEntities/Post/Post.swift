@@ -90,6 +90,7 @@ extension Post {
     let updateAvatarFamily = shouldUpdateAvatarFamily(fetchAvatar: fetchAvatar)
     let lastWidth = self.helioData?.layoutWidth ?? 0
     let contentWidth = contentWidth ?? (lastWidth > 0 ? lastWidth : .screenW)
+    let textSize = ContentTextScale.dynamicTypeSize
     if let data = data ?? self.data {
       let compact = Post.isCompact(data, sub: sub)
       if self.helioData == nil {
@@ -121,8 +122,9 @@ extension Post {
 
                   // The post may have been laid out again for another width since.
                   let width = self.helioData?.layoutWidth ?? contentWidth
-                  self.helioData?.postDimensions = getPostDimensions(post: self, helioData: self.helioData, columnWidth: width, secondary: secondary, rawTheme: theme, subId: sub?.id)
-                  self.helioData?.postDimensionsForcedNormal = getPostDimensions(post: self, helioData: self.helioData, columnWidth: width, secondary: secondary, rawTheme: theme, compact: false)
+                  let textSize = self.helioData?.layoutDynamicTypeSize ?? textSize
+                  self.helioData?.postDimensions = getPostDimensions(post: self, helioData: self.helioData, columnWidth: width, secondary: secondary, rawTheme: theme, subId: sub?.id, dynamicTypeSize: textSize)
+                  self.helioData?.postDimensionsForcedNormal = getPostDimensions(post: self, helioData: self.helioData, columnWidth: width, secondary: secondary, rawTheme: theme, compact: false, dynamicTypeSize: textSize)
                 }
               }
             }
@@ -135,14 +137,15 @@ extension Post {
       self.helioData?.extractedMedia = extractedMedia
       self.helioData?.extractedMediaForcedNormal = extractedMediaForcedNormal
 
-      self.helioData?.postDimensions = getPostDimensions(post: self, helioData: self.helioData, columnWidth: contentWidth, secondary: secondary, rawTheme: theme, subId: sub?.id)
-      self.helioData?.postDimensionsForcedNormal = getPostDimensions(post: self, helioData: self.helioData, columnWidth: contentWidth, secondary: secondary, rawTheme: theme, compact: false)
+      self.helioData?.postDimensions = getPostDimensions(post: self, helioData: self.helioData, columnWidth: contentWidth, secondary: secondary, rawTheme: theme, subId: sub?.id, dynamicTypeSize: textSize)
+      self.helioData?.postDimensionsForcedNormal = getPostDimensions(post: self, helioData: self.helioData, columnWidth: contentWidth, secondary: secondary, rawTheme: theme, compact: false, dynamicTypeSize: textSize)
       self.helioData?.layoutWidth = contentWidth
+      self.helioData?.layoutDynamicTypeSize = textSize
       self.helioData?.layoutWindowHeight = .screenH
       self.helioData?.layoutSecondary = secondary
       self.helioData?.layoutCompact = compact
 
-      self.helioData?.titleAttr = createTitleTagsAttrString(titleTheme: theme.postLinks.theme.titleText, postData: data, textColor: theme.postLinks.theme.titleText.color.uiColor())
+      self.helioData?.titleAttr = createTitleTagsAttrString(titleTheme: theme.postLinks.theme.titleText, postData: data, textColor: theme.postLinks.theme.titleText.color.uiColor(), dynamicTypeSize: textSize)
 
       if let sub {
         self.helioData?.subreddit = sub

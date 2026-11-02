@@ -16,9 +16,10 @@ struct PrependTag: Hashable, Equatable {
   let textColor: UIColor
 }
 
-func createTitleTagsAttrString(titleTheme: ThemeText, postData: PostData, textColor: UIColor) -> NSAttributedString {
-  let tagFont = UIFont.systemFont(ofSize: Double(((titleTheme.size - 2) * 100) / 120), weight: .semibold)
-  let titleFont = UIFont.systemFont(ofSize: titleTheme.size, weight: titleTheme.weight.ut)
+/// The feed title with its tags, in fonts scaled for `dynamicTypeSize` like `getPostDimensions` measures them.
+func createTitleTagsAttrString(titleTheme: ThemeText, postData: PostData, textColor: UIColor, dynamicTypeSize: DynamicTypeSize = ContentTextScale.dynamicTypeSize) -> NSAttributedString {
+  let tagFont = ContentTextScale.font(ofSize: Double(((titleTheme.size - 2) * 100) / 120), weight: .semibold, relativeTo: .title, dynamicTypeSize: dynamicTypeSize)
+  let titleFont = ContentTextScale.font(ofSize: titleTheme.size, weight: titleTheme.weight.ut, relativeTo: .title, dynamicTypeSize: dynamicTypeSize)
   let titleTagsImages = getTagsFromTitle(postData).compactMap { createTagImage(withTitle: $0.label, textColor: $0.textColor, backgroundColor: $0.bgColor, font: tagFont) }
 
   let attrTitle = NSMutableAttributedString(string: postData.title, attributes: [.font: titleFont, .foregroundColor: textColor])
@@ -104,7 +105,12 @@ private func titleColored(_ attrString: NSAttributedString, title: String, color
 
 struct Prepend: UIViewRepresentable, Equatable {
   static func == (lhs: Prepend, rhs: Prepend) -> Bool {
-    lhs.title == rhs.title && lhs.size == rhs.size && lhs.color == rhs.color && lhs.fontWeight == rhs.fontWeight
+    lhs.attrString === rhs.attrString && lhs.title == rhs.title && lhs.size == rhs.size && lhs.color == rhs.color && lhs.fontWeight == rhs.fontWeight
+  }
+
+  final class Coordinator {
+    /// The string the label shows, before coloring: a new one (another text size) replaces it.
+    var attrString: NSAttributedString?
   }
 
   var attrString: NSAttributedString
@@ -113,13 +119,19 @@ struct Prepend: UIViewRepresentable, Equatable {
   var color: UIColor
   var size: CGSize
 
+  func makeCoordinator() -> Coordinator {
+    Coordinator()
+  }
+
   func makeUIView(context: Context) -> SwiftyLabel {
-    buildTitleWithTags(attrString: attrString, title: title, color: color, size: size)
+    context.coordinator.attrString = attrString
+    return buildTitleWithTags(attrString: attrString, title: title, color: color, size: size)
   }
 
   func updateUIView(_ uiLabel: SwiftyLabel, context: Context) {
     let current = uiLabel.attributedText.flatMap { $0.length > 0 ? $0.attribute(.foregroundColor, at: 0, effectiveRange: nil) as? UIColor : nil }
-    if current != color {
+    if current != color || context.coordinator.attrString !== attrString {
+      context.coordinator.attrString = attrString
       uiLabel.attributedText = titleColored(attrString, title: title, color: color)
     }
 //    if size != uiLabel.frame.size { uiLabel.frame.size = size }

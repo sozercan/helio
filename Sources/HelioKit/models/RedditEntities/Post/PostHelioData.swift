@@ -35,6 +35,8 @@ class PostHelioData: Hashable {
   var layoutSecondary = false
   /// Whether the row was laid out as compact.
   var layoutCompact: Bool?
+  /// The text size the title was drawn and measured for (see `ContentTextScale`).
+  var layoutDynamicTypeSize: DynamicTypeSize?
   var titleAttr: NSAttributedString?
   var linkMedia: PreviewModel?
   var videoMedia: SharedVideo?

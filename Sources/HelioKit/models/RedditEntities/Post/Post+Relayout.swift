@@ -37,26 +37,31 @@ extension MediaExtractedType {
 
 extension Post {
   /// Recomputes media requests and row sizes for a new column width, window height (window
-  /// resized, iPhone Duo folded or unfolded), presentation or compact mode. Does nothing if the
-  /// post was already laid out for all four.
+  /// resized, iPhone Duo folded or unfolded), presentation, compact mode or text size. Does
+  /// nothing if the post was already laid out for all five.
   func relayout(contentWidth: Double, theme: HelioTheme, secondary: Bool = false) {
     guard let helioData, let data, contentWidth > 0 else { return }
     let windowHeight = Double.screenH
+    let textSize = ContentTextScale.dynamicTypeSize
     let sub = helioData.subreddit
     let compact = Post.isCompact(data, sub: sub)
     let compactChanged = helioData.layoutCompact != compact
-    guard helioData.layoutWidth != contentWidth || helioData.layoutWindowHeight != windowHeight || helioData.layoutSecondary != secondary || compactChanged else { return }
-    // Compact and large rows extract images and link previews differently, so a compact
-    // change extracts those again.
-    if (compactChanged && helioData.extractedMedia?.dependsOnCompact == true) || helioData.extractedMedia?.dependsOnWidth == true {
-      helioData.extractedMedia = mediaExtractor(compact: compact, contentWidth: contentWidth, data, theme: theme)
-    } else {
-      helioData.extractedMedia = helioData.extractedMedia?.relayoutingParts(contentWidth: contentWidth, theme: theme)
-    }
-    if helioData.extractedMediaForcedNormal?.dependsOnWidth == true {
-      helioData.extractedMediaForcedNormal = mediaExtractor(compact: false, contentWidth: contentWidth, data, theme: theme)
-    } else {
-      helioData.extractedMediaForcedNormal = helioData.extractedMediaForcedNormal?.relayoutingParts(contentWidth: contentWidth, theme: theme)
+    let mediaChanged = helioData.layoutWidth != contentWidth || helioData.layoutWindowHeight != windowHeight || helioData.layoutSecondary != secondary || compactChanged
+    let textSizeChanged = helioData.layoutDynamicTypeSize != textSize
+    guard mediaChanged || textSizeChanged else { return }
+    if mediaChanged {
+      // Compact and large rows extract images and link previews differently, so a compact
+      // change extracts those again.
+      if (compactChanged && helioData.extractedMedia?.dependsOnCompact == true) || helioData.extractedMedia?.dependsOnWidth == true {
+        helioData.extractedMedia = mediaExtractor(compact: compact, contentWidth: contentWidth, data, theme: theme)
+      } else {
+        helioData.extractedMedia = helioData.extractedMedia?.relayoutingParts(contentWidth: contentWidth, theme: theme)
+      }
+      if helioData.extractedMediaForcedNormal?.dependsOnWidth == true {
+        helioData.extractedMediaForcedNormal = mediaExtractor(compact: false, contentWidth: contentWidth, data, theme: theme)
+      } else {
+        helioData.extractedMediaForcedNormal = helioData.extractedMediaForcedNormal?.relayoutingParts(contentWidth: contentWidth, theme: theme)
+      }
     }
     // Extracting a repost again would build a new embedded post, losing its votes and
     // previews, so lay the existing one out instead.
@@ -65,19 +70,24 @@ extension Post {
         embedded.relayout(contentWidth: contentWidth, theme: theme, secondary: true)
       }
     }
-    helioData.postDimensions = getPostDimensions(post: self, helioData: helioData, columnWidth: contentWidth, secondary: secondary, rawTheme: theme, subId: sub?.id)
-    helioData.postDimensionsForcedNormal = getPostDimensions(post: self, helioData: helioData, columnWidth: contentWidth, secondary: secondary, rawTheme: theme, compact: false)
+    // The title is drawn into a frame its measured size, in fonts scaled for the text size.
+    if textSizeChanged {
+      helioData.titleAttr = createTitleTagsAttrString(titleTheme: theme.postLinks.theme.titleText, postData: data, textColor: theme.postLinks.theme.titleText.color.uiColor(), dynamicTypeSize: textSize)
+    }
+    helioData.postDimensions = getPostDimensions(post: self, helioData: helioData, columnWidth: contentWidth, secondary: secondary, rawTheme: theme, subId: sub?.id, dynamicTypeSize: textSize)
+    helioData.postDimensionsForcedNormal = getPostDimensions(post: self, helioData: helioData, columnWidth: contentWidth, secondary: secondary, rawTheme: theme, compact: false, dynamicTypeSize: textSize)
     helioData.layoutWidth = contentWidth
     helioData.layoutWindowHeight = windowHeight
     helioData.layoutSecondary = secondary
     helioData.layoutCompact = compact
+    helioData.layoutDynamicTypeSize = textSize
   }
 }
 
 extension View {
   /// Re-lays out `posts` when the column width or window height changes (media height is
   /// capped by the window's), after it has settled: resizing a Mac window changes it every frame.
-  /// Also when compact mode is switched, which changes every row's size.
+  /// Also when compact mode or the text size is switched, which change every row's size.
   func relayoutPosts(_ posts: @escaping () -> [Post], contentWidth: Double, theme: HelioTheme) -> some View {
     modifier(RelayoutPostsModifier(posts: posts, contentWidth: contentWidth, theme: theme))
   }
@@ -90,9 +100,15 @@ private struct RelayoutPostsModifier: ViewModifier {
 
   @Default(.SubredditFeedDefSettings) private var feedDefSettings
   @Default(.PostLinkDefSettings) private var postLinkDefSettings
+  @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
   func body(content: Content) -> some View {
     content
+      // Titles are drawn at a measured size, so a new text size measures them again.
+      .onChange(of: dynamicTypeSize) { _, size in
+        ContentTextScale.dynamicTypeSize = size
+        posts().forEach { $0.relayout(contentWidth: contentWidth, theme: theme) }
+      }
       .task(id: [contentWidth, Double.screenH]) {
         try? await Task.sleep(for: .milliseconds(250))
         guard !Task.isCancelled else { return }

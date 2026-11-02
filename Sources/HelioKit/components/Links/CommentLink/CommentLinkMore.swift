@@ -65,7 +65,7 @@ struct CommentLinkMore: View {
         .padding(.top, data.depth == 0 ? 0 : theme.theme.repliesSpacing)
         .padding(.vertical, max(0, theme.theme.innerPadding.vertical - (data.depth == 0 ? theme.theme.cornerRadius : 0)))
         .compositingGroup()
-        .fontSize(selectedTheme.comments.theme.loadMoreText.size, selectedTheme.comments.theme.loadMoreText.weight.t)
+        .contentFont(selectedTheme.comments.theme.loadMoreText.size, selectedTheme.comments.theme.loadMoreText.weight.t, relativeTo: .detail)
         .foregroundColor(selectedTheme.comments.theme.loadMoreText.color())
       }
       .padding(.horizontal, bars ? 0 : horPad)
