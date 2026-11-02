@@ -263,7 +263,12 @@ struct Search: View {
           searchViewLoaded = true
           searchPresented = true
         }
+        // Find, chosen where no search field showed.
+        if CommandTargets.shared.takeSearchFocusRequest() {
+          searchPresented = true
+        }
       }
+      .commandTarget(CommandTargets.Target(kind: .search, focusSearch: { searchPresented = true }))
       // Opening the tab starts a search, like the system's search tabs, unless one is showing.
       // The Search quick action asks for the field even when Search shows or keeps a query.
       .onChange(of: Nav.shared.searchFocusRequest) {

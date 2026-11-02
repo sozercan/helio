@@ -33,6 +33,8 @@ struct PostView: View, Equatable {
   @State private var hideElements = true
   @State private var sort: CommentSortOption
   @State private var commentsLoad = CommentsLoad()
+  /// The reply sheet opened by the menu bar's Reply; the post's bar has its own.
+  @State private var showReplyModal = false
 
   @SilentState private var topVisibleCommentId: String? = nil
   @SilentState private var previousScrollTarget: String? = nil
@@ -186,6 +188,11 @@ struct PostView: View, Equatable {
           Task(priority: .utility) {
             await subreddit.loadIfNeeded()
           }
+        }
+        // A context-menu preview isn't a screen the menu bar's commands act on.
+        .commandTarget(isPreview ? nil : CommandTargets.Target(kind: .post, column: navColumn, refresh: updatePost, post: post, reply: { showReplyModal = true }))
+        .sheet(isPresented: $showReplyModal) {
+          ReplyModalPost(post: post)
         }
         .onPreferenceChange(CommentUtils.AnchorsKey.self) { anchors in
           Task(priority: .background) {

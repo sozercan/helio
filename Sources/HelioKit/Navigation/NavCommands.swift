@@ -5,30 +5,78 @@
 
 import SwiftUI
 
-/// Menu bar items and keyboard shortcuts for moving between tabs on Mac and on iPad with a
-/// hardware keyboard.
+/// Menu bar items and keyboard shortcuts on Mac and on iPad with a hardware keyboard: the tabs,
+/// Back, Refresh and Find, and the open post's. Shortcuts all take Command, so none of them
+/// takes a key from a text field; the arrows also take Option, which text fields don't use.
 struct NavCommands: Commands {
+  private let targets = CommandTargets.shared
+
   var body: some Commands {
     CommandGroup(replacing: .appSettings) {
-      Button("Settings…") { Nav.shared.activeTab = .settings }
+      Button("Settings…", systemImage: "gearshape") { Nav.shared.activeTab = .settings }
         .keyboardShortcut(",")
     }
 
+    // Edit > Find. Not in place of the system's `.textEditing` items: on iPad that group never
+    // shows, so neither does its shortcut.
+    CommandGroup(after: .pasteboard) {
+      Divider()
+      Button("Find…", systemImage: "magnifyingglass") { targets.find() }
+        .keyboardShortcut("f")
+    }
+
+    // The top of the View menu.
+    CommandGroup(before: .toolbar) {
+      Button("Refresh", systemImage: "arrow.clockwise") { targets.refresh() }
+        .keyboardShortcut("r")
+        .disabled(!targets.canRefresh)
+    }
+
     CommandMenu("Go") {
-      Button("Posts") { Nav.shared.activeTab = .posts }
+      Button("Posts", systemImage: "doc.text.image") { Nav.shared.activeTab = .posts }
         .keyboardShortcut("1")
-      Button("Inbox") { Nav.shared.activeTab = .inbox }
+      Button("Inbox", systemImage: "bell") { Nav.shared.activeTab = .inbox }
         .keyboardShortcut("2")
-      Button("Me") { Nav.shared.activeTab = .me }
+      Button("Me", systemImage: "person") { Nav.shared.activeTab = .me }
         .keyboardShortcut("3")
-      Button("Search") { Nav.shared.activeTab = .search }
+      Button("Search", systemImage: "magnifyingglass") { Nav.shared.activeTab = .search }
         .keyboardShortcut("4")
 
       Divider()
 
-      Button("Back") { Nav.back() }
+      Button("Back", systemImage: "chevron.backward") { Nav.back() }
         .keyboardShortcut("[")
         .disabled(!Nav.shared.activeRouter.canGoBack)
+    }
+
+    CommandMenu("Post") {
+      Button("Previous Post", systemImage: "chevron.up") { targets.openAdjacentPost(-1) }
+        .keyboardShortcut(.upArrow, modifiers: [.command, .option])
+        .disabled(targets.adjacentPost(-1) == nil)
+      Button("Next Post", systemImage: "chevron.down") { targets.openAdjacentPost(1) }
+        .keyboardShortcut(.downArrow, modifiers: [.command, .option])
+        .disabled(targets.adjacentPost(1) == nil)
+
+      Divider()
+
+      let post = targets.openPost
+      Button(post?.post?.data?.likes == true ? "Remove Upvote" : "Upvote", systemImage: "arrow.up") {
+        if let post = post?.post {
+          Task { _ = await post.vote(.up) }
+        }
+      }
+      .keyboardShortcut("u", modifiers: [.command, .shift])
+      .disabled(post?.post?.data == nil)
+      Button(post?.post?.data?.likes == false ? "Remove Downvote" : "Downvote", systemImage: "arrow.down") {
+        if let post = post?.post {
+          Task { _ = await post.vote(.down) }
+        }
+      }
+      .keyboardShortcut("d", modifiers: [.command, .shift])
+      .disabled(post?.post?.data == nil)
+      Button("Reply", systemImage: "arrowshape.turn.up.left") { post?.reply?() }
+        .keyboardShortcut("r", modifiers: [.command, .shift])
+        .disabled(post?.reply == nil || post?.post?.data == nil)
     }
   }
 }

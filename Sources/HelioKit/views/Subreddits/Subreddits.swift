@@ -48,6 +48,8 @@ struct Subreddits: View, Equatable {
 //    private var multis: FetchedResults<CachedMulti>
 
   @State private var searchText: String = ""
+  /// The search field's state, which the menu bar's Find sets.
+  @State private var searchPresented = false
 
   //  @Default(.likedButNotSubbed) private var likedButNotSubbed // subreddits that a user likes but is not subscribed to so they wont be in subsDict
   @Default(.AppearanceDefSettings) private var appearanceDefSettings
@@ -197,7 +199,8 @@ struct Subreddits: View, Equatable {
       .listStyle(.sidebar)
       .scrollDismissesKeyboard(.immediately)
       .loader(!loaded && subreddits.isEmpty)
-      .subsSearchAndEdit($searchText)
+      .subsSearchAndEdit($searchText, isPresented: $searchPresented)
+      .commandTarget(CommandTargets.Target(kind: .subs, refresh: { Task { await refresh() } }, focusSearch: { searchPresented = true }))
       .overlay(alignment: .trailing) {
         // Without the sidebar's own shade, a hairline marks where the posts start.
         if usesWindowBackground {
@@ -211,17 +214,19 @@ struct Subreddits: View, Equatable {
         AlphabetJumper(letters: searchText.isEmpty && !appearanceDefSettings.disableAlphabetLettersSectionsInSubsList ? sections.keys.sorted() : [], proxy: proxy)
       }
       #endif
-      .refreshable {
-        Task(priority: .utility) {
-          await updatePostsInBox(force: true)
-        }
-        Task(priority: .utility) {
-          _ = await RedditAPI.shared.fetchMyMultis()
-        }
-        _ = await RedditAPI.shared.fetchSubsAndSyncCoreData()
-      }
+      .refreshable { await refresh() }
       .navigationTitle("Subs")
     }
+  }
+
+  private func refresh() async {
+    Task(priority: .utility) {
+      await updatePostsInBox(force: true)
+    }
+    Task(priority: .utility) {
+      _ = await RedditAPI.shared.fetchMyMultis()
+    }
+    _ = await RedditAPI.shared.fetchSubsAndSyncCoreData()
   }
 
   func deleteFromFavorites(at offsets: IndexSet) {
@@ -256,12 +261,12 @@ private extension View {
   /// that bar floats over the rows, which show through behind it, so the list gets a plain
   /// header above it instead.
   @ViewBuilder
-  func subsSearchAndEdit(_ searchText: Binding<String>) -> some View {
+  func subsSearchAndEdit(_ searchText: Binding<String>, isPresented: Binding<Bool>) -> some View {
     #if targetEnvironment(macCatalyst)
-      safeAreaInset(edge: .top, spacing: 0) { MacSubsHeader(searchText: searchText) }
+      safeAreaInset(edge: .top, spacing: 0) { MacSubsHeader(searchText: searchText, focusRequested: isPresented) }
         .toolbar(.hidden, for: .navigationBar)
     #else
-      searchable(text: searchText, prompt: "Search my subreddits")
+      searchable(text: searchText, isPresented: isPresented, prompt: "Search my subreddits")
         .toolbar {
           ToolbarItem(placement: .navigationBarTrailing) {
             EditButton()
@@ -274,6 +279,9 @@ private extension View {
 #if targetEnvironment(macCatalyst)
   private struct MacSubsHeader: View {
     @Binding var searchText: String
+    /// Set by the menu bar's Find: focuses the field.
+    @Binding var focusRequested: Bool
+    @FocusState private var focused: Bool
 
     var body: some View {
       HStack(spacing: 10) {
@@ -281,6 +289,13 @@ private extension View {
           Image(systemName: "magnifyingglass")
             .foregroundStyle(.secondary)
           TextField("Search my subreddits", text: $searchText)
+            .focused($focused)
+            .onChange(of: focusRequested) { _, requested in
+              if requested {
+                focused = true
+                focusRequested = false
+              }
+            }
             .textFieldStyle(.plain)
             // The capsule is the field; a focus ring inside it would be a second outline.
             .focusEffectDisabled()

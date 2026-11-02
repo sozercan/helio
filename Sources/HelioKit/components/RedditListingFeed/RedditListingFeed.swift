@@ -44,6 +44,8 @@ struct RedditListingFeed<Header: View, Footer: View, S: Sorting>: View {
   @SilentState private var fetchedFilters: Bool = false
 
   @State private var itemsManager: FeedItemsManager<S>
+  /// The search field's state, which the menu bar's Find sets.
+  @State private var searchPresented = false
 
   @Environment(\.useTheme) private var selectedTheme
   @Environment(\.contentWidth) private var contentWidth
@@ -232,7 +234,7 @@ struct RedditListingFeed<Header: View, Footer: View, S: Sorting>: View {
       .themedListBG(theme)
       // In the toolbar (the default in a split view's detail on iOS 26+), closing search
       // re-focuses it as soon as the dismiss animation ends.
-      .if(!disableSearch) { $0.searchable(text: $itemsManager.searchQuery.value, placement: .navigationBarDrawer(displayMode: .automatic)) }
+      .if(!disableSearch) { $0.searchable(text: $itemsManager.searchQuery.value, isPresented: $searchPresented, placement: .navigationBarDrawer(displayMode: .automatic)) }
       .scrollIndicators(.never)
       .listStyle(.plain)
       .navigationTitle(title)
@@ -279,6 +281,19 @@ struct RedditListingFeed<Header: View, Footer: View, S: Sorting>: View {
       }
       //    .onChange(of: itemsManager.selectedFilter) { searchEnabled = $1?.type != .custom }
       .refreshable { await refetch() }
+      .feedCommandTarget(CommandTargets.Target(
+        kind: .feed,
+        column: navColumn,
+        refresh: { Task { await refetch() } },
+        focusSearch: disableSearch ? nil : { searchPresented = true },
+        posts: { itemsManager.entities.compactMap {
+          if case let .post(post) = $0 {
+            post
+          } else {
+            nil
+          }
+        } },
+      ))
       .onChange(of: selectedAuthorization) { _, _ in
         Task { await refetch(clearItems: true) }
       }
