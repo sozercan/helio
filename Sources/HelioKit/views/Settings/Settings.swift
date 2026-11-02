@@ -59,6 +59,11 @@ struct Settings: View {
       .readableWidth()
       .attachViewControllerToRouter(tabID: .settings)
       .injectInTabDestinations()
+      #if targetEnvironment(macCatalyst)
+        // Like a Mac settings window's title: small, over the centered panes, not a large
+        // title at the window's leading edge.
+        .navigationBarTitleDisplayMode(.inline)
+      #endif
     }
   }
 }
