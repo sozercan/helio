@@ -43,15 +43,16 @@ enum Simulator {
       .sorted { a, b in
         isGeneral(a) == isGeneral(b) ? version(a).lexicographicallyPrecedes(version(b)) : !isGeneral(a)
       }
-    guard let runtime = ios.last, let runtimeID = runtime["identifier"] as? String else {
-      return nil
+    // Best first, and the first that runs a regular iPhone: the benchmark measures that layout,
+    // and a runtime can support only iPhone Duo (iOS 27.1 on the xcode-27 image).
+    for runtime in ios.reversed() {
+      guard let runtimeID = runtime["identifier"] as? String else { continue }
+      let iPhones = (runtime["supportedDeviceTypes"] as? [[String: Any]] ?? [])
+        .filter { $0["productFamily"] as? String == "iPhone" && !(($0["name"] as? String) ?? "").contains("Duo") }
+        .compactMap { $0["identifier"] as? String }
+      guard let deviceType = iPhones.first(where: { $0.hasSuffix(".iPhone-17") }) ?? iPhones.last else { continue }
+      return shell(["xcrun", "simctl", "create", name, deviceType, runtimeID]).output.trimmingCharacters(in: .whitespacesAndNewlines)
     }
-    let iPhones = (runtime["supportedDeviceTypes"] as? [[String: Any]] ?? [])
-      .filter { $0["productFamily"] as? String == "iPhone" }
-      .compactMap { $0["identifier"] as? String }
-    guard let deviceType = iPhones.first(where: { $0.hasSuffix(".iPhone-17") }) ?? iPhones.last else {
-      fail("no iPhone device type for \(runtimeID)")
-    }
-    return shell(["xcrun", "simctl", "create", name, deviceType, runtimeID]).output.trimmingCharacters(in: .whitespacesAndNewlines)
+    return nil
   }
 }
