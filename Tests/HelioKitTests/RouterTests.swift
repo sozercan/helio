@@ -417,3 +417,27 @@ struct RedditLinkTests {
     #expect(Nav.linkDestination(for: listing) == nil)
   }
 }
+
+struct LaunchFeedTests {
+  private let home = Router.NavDest.reddit(.subFeed(Subreddit(id: "home")))
+
+  @Test func wideLayoutsOpenHomeInsteadOfAnEmptyFeedColumn() {
+    #expect(SubredditsStack.launchFeed(defaultFeed: "subList", showsColumns: true, current: nil) == home)
+  }
+
+  @Test func aStackStillOpensOnTheSubsList() {
+    #expect(SubredditsStack.launchFeed(defaultFeed: "subList", showsColumns: false, current: nil) == nil)
+  }
+
+  @Test func theDefaultLaunchFeedWinsOverHome() {
+    let popular = Router.NavDest.reddit(.subFeed(Subreddit(id: "popular")))
+    #expect(SubredditsStack.launchFeed(defaultFeed: "popular", showsColumns: true, current: nil) == popular)
+    #expect(SubredditsStack.launchFeed(defaultFeed: "popular", showsColumns: false, current: nil) == popular)
+  }
+
+  @Test func aFeedAlreadyChosenStays() {
+    let chosen = Router.NavDest.reddit(.subFeed(Subreddit(id: "pics")))
+    #expect(SubredditsStack.launchFeed(defaultFeed: "subList", showsColumns: true, current: chosen) == nil)
+    #expect(SubredditsStack.launchFeed(defaultFeed: "popular", showsColumns: false, current: chosen) == nil)
+  }
+}

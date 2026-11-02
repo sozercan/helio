@@ -25,57 +25,80 @@ struct SubItemButton: View, Equatable {
   }
 }
 
+/// A subreddit's row in the subs list, which the list selects (`tag`) to open its feed. In the
+/// sidebar the list draws the selection; in a stack the row marks it while the feed opens.
 struct SubItem: View, Equatable {
   static func == (lhs: SubItem, rhs: SubItem) -> Bool {
-    lhs.sub == rhs.sub && lhs.isActive == rhs.isActive
+    lhs.sub == rhs.sub && lhs.isActive == rhs.isActive && lhs.inSidebar == rhs.inSidebar
   }
 
   var isActive: Bool
+  var inSidebar: Bool
   var sub: Subreddit
   var cachedSub: CachedSub
-  var action: (Subreddit) -> Void
-//  @Default(.likedButNotSubbed) private var likedButNotSubbed
+  /// Opens the subreddit's feed, for the context menu.
+  var open: () -> Void
+  /// A selected sidebar row has the accent behind it.
+  @Environment(\.backgroundProminence) private var prominence
+  @Environment(\.useTheme) private var theme
 
   func favoriteToggle() {
-//    guard let sub = sub else { return }
-//    if likedButNotSubbed.contains(sub) {
-//      _ = sub.localFavoriteToggle()
-//    } else {
     sub.favoriteToggle(entity: cachedSub)
-//    }
   }
 
   var body: some View {
     if let data = sub.data {
       let favorite = cachedSub.user_has_favorited
-//      let localFav = likedButNotSubbed.contains(sub)
-//      let isActive = selectedSub == .reddit(.subFeed(sub))
-      WListButton(showArrow: !isWideLayout, active: isActive) {
-        action(sub)
-      } label: {
-        HStack {
-          Label {
-            Text(data.display_name ?? "")
-              .foregroundStyle(isActive ? .white : .primary)
-          } icon: {
-            SubredditIcon(subredditIconKit: data.subredditIconKit)
-          }
+      let name = data.display_name ?? sub.id
+      HStack {
+        Label {
+          Text(name)
+        } icon: {
+          SubredditIcon(subredditIconKit: data.subredditIconKit)
+        }
 
-          Spacer()
+        Spacer()
 
-          // A gesture inside the row button's label, which VoiceOver reads as one element:
-          // VoiceOver gets the toggle as an action of the row instead.
-          Image(systemName: "star.fill")
-            .foregroundColor(favorite ? Color.accentColor : .gray.opacity(0.3))
-            .highPriorityGesture(TapGesture().onEnded(favoriteToggle))
-            .accessibilityHidden(true)
+        // VoiceOver gets the toggle as an action of the row instead.
+        Button(favorite ? "Remove from Favorites" : "Add to Favorites", systemImage: "star.fill", action: favoriteToggle)
+          .labelStyle(.iconOnly)
+          .buttonStyle(.borderless)
+          .foregroundStyle(starColor(favorite: favorite))
+          .accessibilityHidden(true)
+
+        if !inSidebar {
+          Image(systemName: "chevron.right")
+            .fontSize(14, .semibold)
+            .opacity(0.35)
+            .foregroundStyle(.primary)
+        }
+      }
+      .contentShape(Rectangle())
+      // In a stack, the theme's row, marked while its feed opens.
+      .if(!inSidebar) { $0.listRowBackground(ThemedForegroundBG(theme: theme.lists.foreground, active: isActive)) }
+      .contextMenu {
+        Button("Open", systemImage: "arrow.forward", action: open)
+        Button(favorite ? "Remove from Favorites" : "Add to Favorites", systemImage: favorite ? "star.slash" : "star", action: favoriteToggle)
+        Button("Share", systemImage: "square.and.arrow.up") {
+          ShareUtils.shareItem(item: "https://reddit.com/r/\(name)")
+        }
+        Divider()
+        Button("Unsubscribe", systemImage: "minus.circle", role: .destructive) {
+          sub.subscribeToggle(optimistic: true)
         }
       }
       .accessibilityValue(favorite ? "Favorite" : "")
       .accessibilityAction(named: favorite ? "Remove from Favorites" : "Add to Favorites", favoriteToggle)
-
     } else {
       Text("Error")
+    }
+  }
+
+  private func starColor(favorite: Bool) -> Color {
+    if prominence == .increased {
+      favorite ? .white : .white.opacity(0.4)
+    } else {
+      favorite ? .accentColor : .gray.opacity(0.3)
     }
   }
 }

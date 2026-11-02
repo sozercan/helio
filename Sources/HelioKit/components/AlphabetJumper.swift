@@ -72,7 +72,8 @@ struct AlphabetJumper: View {
       scrollTo(letters[accessibilityIndex])
     }
     .accessibilityHidden(letters.isEmpty)
-    .frame(height: .screenH, alignment: .trailing)
+    // Centered on the list it's over, such as the sidebar column, not on the window.
+    .frame(maxHeight: .infinity, alignment: .trailing)
     .ignoresSafeArea()
     .foregroundStyle(Color.accentColor)
   }

@@ -20,17 +20,20 @@ import SwiftUI
 
 struct Subreddits: View, Equatable {
   static func == (lhs: Subreddits, rhs: Subreddits) -> Bool {
-    lhs.loaded == rhs.loaded && lhs.currentCredentialID == rhs.currentCredentialID
+    lhs.loaded == rhs.loaded && lhs.currentCredentialID == rhs.currentCredentialID && lhs.inSidebar == rhs.inSidebar
   }
 
-//  @State
+  /// The feed shown beside the list, which the list shows as its selection.
   @Binding var firstDestination: Router.NavDest?
   var loaded: Bool
   var currentCredentialID: UUID
-  init(firstDestination: Binding<Router.NavDest?>, loaded: Bool, currentCredentialID: UUID) {
+  /// Shown as the split view's sidebar, beside the feed, rather than as the first screen of a stack.
+  var inSidebar: Bool
+  init(firstDestination: Binding<Router.NavDest?>, loaded: Bool, currentCredentialID: UUID, inSidebar: Bool) {
     self.currentCredentialID = currentCredentialID
     self._firstDestination = firstDestination
     self.loaded = loaded
+    self.inSidebar = inSidebar
     self._subreddits = FetchRequest<CachedSub>(sortDescriptors: [NSSortDescriptor(key: "display_name", ascending: true)], predicate: NSPredicate(format: "helioCredentialID == %@", currentCredentialID as CVarArg), animation: .default)
     self._multis = FetchRequest<CachedMulti>(sortDescriptors: [NSSortDescriptor(key: "display_name", ascending: true)], predicate: NSPredicate(format: "helioCredentialID == %@", currentCredentialID as CVarArg), animation: .default)
   }
@@ -56,8 +59,22 @@ struct Subreddits: View, Equatable {
     }
   }
 
-  func selectSub(_ sub: Subreddit) {
-    firstDestination = .reddit(.subFeed(sub))
+  /// A subreddit's row, tagged with its feed so the list's selection opens it.
+  private func subItem(_ cachedSub: CachedSub) -> some View {
+    let sub = Subreddit(data: SubredditData(entity: cachedSub))
+    let dest = Router.NavDest.reddit(.subFeed(sub))
+    return SubItem(isActive: firstDestination?.isSameFeed(as: dest) ?? false, inSidebar: inSidebar, sub: sub, cachedSub: cachedSub) {
+      firstDestination = dest
+    }
+    .tag(dest)
+  }
+
+  /// A feed's tile, selected while its feed shows.
+  private func feedTile(_ label: String, icon: String, color: Color, id: String) -> some View {
+    let dest = Router.NavDest.reddit(.subFeed(Subreddit(id: id)))
+    return ListBigBtn(icon: icon, iconColor: color, label: label, selected: dest == firstDestination) {
+      firstDestination = dest
+    }
   }
 
   var body: some View {
@@ -66,22 +83,12 @@ struct Subreddits: View, Equatable {
         if searchText == "" {
           VStack(spacing: 12) {
             HStack(spacing: 12) {
-              ListBigBtn(icon: "house.circle.fill", iconColor: .blue, label: "Home") {
-                firstDestination = .reddit(.subFeed(Subreddit(id: "home")))
-              }
-
-              ListBigBtn(icon: "chart.line.uptrend.xyaxis.circle.fill", iconColor: .red, label: "Popular") {
-                firstDestination = .reddit(.subFeed(Subreddit(id: "popular")))
-              }
+              feedTile("Home", icon: "house.circle.fill", color: .blue, id: "home")
+              feedTile("Popular", icon: "chart.line.uptrend.xyaxis.circle.fill", color: .red, id: "popular")
             }
             HStack(spacing: 12) {
-              ListBigBtn(icon: "signpost.right.and.left.circle.fill", iconColor: .orange, label: "All") {
-                firstDestination = .reddit(.subFeed(Subreddit(id: "all")))
-              }
-
-              ListBigBtn(icon: "bookmark.circle.fill", iconColor: .green, label: "Saved") {
-                firstDestination = .reddit(.subFeed(Subreddit(id: savedKeyword)))
-              }
+              feedTile("All", icon: "signpost.right.and.left.circle.fill", color: .orange, id: "all")
+              feedTile("Saved", icon: "bookmark.circle.fill", color: .green, id: savedKeyword)
             }
           }
           .environment(\.isInSidebar, false)
@@ -114,7 +121,8 @@ struct Subreddits: View, Equatable {
               ScrollView(.horizontal) {
                 HStack(spacing: 16) {
                   ForEach(multis) { multi in
-                    MultiLink(multi: Multi(data: MultiData(entity: multi)))
+                    let multi = Multi(data: MultiData(entity: multi))
+                    MultiLink(multi: multi, selected: firstDestination == .reddit(.multiFeed(multi)))
                   }
                 }
                 .padding(.horizontal, 16)
@@ -130,8 +138,7 @@ struct Subreddits: View, Equatable {
             Section("Found subs") {
               let foundSubs = Array(Array(subreddits.filter { ($0.display_name ?? "").lowercased().contains(searchText.lowercased()) }).enumerated())
               ForEach(foundSubs, id: \.self.element.uuid) { _, cachedSub in
-                let sub = Subreddit(data: SubredditData(entity: cachedSub))
-                SubItem(isActive: firstDestination?.isSameFeed(as: .reddit(.subFeed(sub))) ?? false, sub: sub, cachedSub: cachedSub, action: selectSub)
+                subItem(cachedSub)
               }
             }
 
@@ -141,8 +148,7 @@ struct Subreddits: View, Equatable {
               Section("Favorites") {
                 let favs = Array(favs.sorted(by: { x, y in (x.display_name?.lowercased() ?? "a") < (y.display_name?.lowercased() ?? "a") }).enumerated())
                 ForEach(favs, id: \.self.element) { _, cachedSub in
-                  let sub = Subreddit(data: SubredditData(entity: cachedSub))
-                  SubItem(isActive: firstDestination?.isSameFeed(as: .reddit(.subFeed(sub))) ?? false, sub: sub, cachedSub: cachedSub, action: selectSub)
+                  subItem(cachedSub)
                     .id("\(cachedSub.uuid ?? "")-fav")
                 }
                 .onDelete(perform: deleteFromFavorites)
@@ -153,8 +159,7 @@ struct Subreddits: View, Equatable {
               Section("Subs") {
                 let subs = Array(subreddits.filter(\.user_is_subscriber).sorted(by: { x, y in (x.display_name?.lowercased() ?? "a") < (y.display_name?.lowercased() ?? "a") }).enumerated())
                 ForEach(subs, id: \.self.element) { _, cachedSub in
-                  let sub = Subreddit(data: SubredditData(entity: cachedSub))
-                  SubItem(isActive: firstDestination?.isSameFeed(as: .reddit(.subFeed(sub))) ?? false, sub: sub, cachedSub: cachedSub, action: selectSub)
+                  subItem(cachedSub)
                 }
               }
 
@@ -166,8 +171,7 @@ struct Subreddits: View, Equatable {
                       (x.display_name?.lowercased() ?? "a") < (y.display_name?.lowercased() ?? "a")
                     }).enumerated())
                     ForEach(subs, id: \.self.element.uuid) { _, cachedSub in
-                      let sub = Subreddit(data: SubredditData(entity: cachedSub))
-                      SubItem(isActive: firstDestination?.isSameFeed(as: .reddit(.subFeed(sub))) ?? false, sub: sub, cachedSub: cachedSub, action: selectSub)
+                      subItem(cachedSub)
                     }
                     .onDelete(perform: { i in
                       deleteFromList(at: i, letter: letter)
@@ -178,10 +182,12 @@ struct Subreddits: View, Equatable {
             }
           }
         }
-        .themedListSection(disable: usesWindowBackground)
+        // A sidebar's rows are the system's, which draw its selection.
+        .themedListSection(disable: usesWindowBackground || inSidebar)
       }
       .environment(\.isInSidebar, true)
-      .themedListBG(selectedTheme.lists.bg, disable: usesWindowBackground)
+      // On iPad, the sidebar's own material instead of the theme's background.
+      .themedListBG(selectedTheme.lists.bg, disable: usesWindowBackground || inSidebar, keepSystemBackground: inSidebar && !usesWindowBackground)
       .background {
         if usesWindowBackground {
           Color(uiColor: .systemBackground).ignoresSafeArea()
@@ -198,12 +204,13 @@ struct Subreddits: View, Equatable {
           Color(uiColor: .separator).frame(width: 1).ignoresSafeArea()
         }
       }
-      .overlay(
-        // Only while the list shows its letter sections: filtered or without them, there's
-        // nothing for a letter to scroll to.
-        AlphabetJumper(letters: searchText.isEmpty && !appearanceDefSettings.disableAlphabetLettersSectionsInSubsList ? sections.keys.sorted() : [], proxy: proxy),
-        alignment: .trailing,
-      )
+      #if !targetEnvironment(macCatalyst)
+      // A touch control: on Mac, the pointer scrolls. Only while the list shows its letter
+      // sections: filtered or without them, there's nothing for a letter to scroll to.
+      .overlay(alignment: .trailing) {
+        AlphabetJumper(letters: searchText.isEmpty && !appearanceDefSettings.disableAlphabetLettersSectionsInSubsList ? sections.keys.sorted() : [], proxy: proxy)
+      }
+      #endif
       .refreshable {
         Task(priority: .utility) {
           await updatePostsInBox(force: true)

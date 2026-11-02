@@ -9,6 +9,8 @@ import SwiftUI
 
 struct MultiLink: View {
   var multi: Multi
+  /// Its feed shows: the subs list's selection.
+  var selected = false
   @State private var subs: [Subreddit] = []
 
   var body: some View {
@@ -25,9 +27,14 @@ struct MultiLink: View {
             .scaledToFill()
             .frame(width: 72, height: 72)
             .mask(Circle())
+            .overlay {
+              if selected {
+                Circle().strokeBorder(Color.accentColor, lineWidth: 2)
+              }
+            }
         }
         Text(multi.data?.display_name ?? "")
-          .foregroundColor(.primary)
+          .foregroundStyle(selected ? Color.accentColor : .primary)
           .fontSize(15, .medium)
       }
       .multilineTextAlignment(.center)
@@ -35,6 +42,7 @@ struct MultiLink: View {
     } primaryAction: {
       Nav.selectFeed(.reddit(.multiFeed(multi)))
     }
+    .accessibilityAddTraits(selected ? .isSelected : [])
     .onAppear {
       if subs.isEmpty {
         subs = multi.data?.subreddits?.compactMap { sub in

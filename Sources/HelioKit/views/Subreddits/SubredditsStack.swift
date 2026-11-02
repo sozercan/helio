@@ -30,7 +30,7 @@ struct SubredditsStack: View {
     let layout = SplitLayout(sizeClass: horizontalSizeClass, frame: frame, division: WindowMetrics.shared.divisionFrame)
     NavigationSplitView(columnVisibility: $columnVisibility, preferredCompactColumn: compactColumn) {
       if let redditCredentialSelectedID = generalDefSettings.redditCredentialSelectedID {
-        Subreddits(firstDestination: $router.firstSelected, loaded: loaded, currentCredentialID: redditCredentialSelectedID)
+        Subreddits(firstDestination: sidebarSelection(showsColumns: layout.showsColumns), loaded: loaded, currentCredentialID: redditCredentialSelectedID, inSidebar: layout.showsColumns)
           .id("subreddits-list-\(redditCredentialSelectedID)")
           .attachViewControllerToRouter(tabID: .posts)
           // A post opened from the sidebar's saved posts replaces the open one.
@@ -69,12 +69,8 @@ struct SubredditsStack: View {
     // column's tasks don't run, which would leave the default feed unopened.
     .task(priority: .background) {
       if !loaded {
-        // MARK: Route to default feed
-
-        // Skipped when a feed is already chosen, such as by a Home Screen quick action.
-        if behaviorDefSettings.preferenceDefaultFeed != "subList", router.firstSelected == nil { // we are in subList, can ignore
-          let tempSubreddit = QuickAction.subreddit(named: behaviorDefSettings.preferenceDefaultFeed)
-          router.firstSelected = .reddit(.subFeed(tempSubreddit))
+        if let feed = Self.launchFeed(defaultFeed: behaviorDefSettings.preferenceDefaultFeed, showsColumns: layout.showsColumns, current: router.firstSelected) {
+          router.firstSelected = feed
         }
 
         withAnimation {
@@ -91,6 +87,29 @@ struct SubredditsStack: View {
     }
     .onChange(of: layout.fitsSidebar, initial: true) { _, fits in
       columnVisibility = fits ? .all : .doubleColumn
+    }
+  }
+
+  /// The feed the posts tab opens on: the default launch feed, else Home where the feed shows
+  /// beside the subs list, which would otherwise leave the feed column empty. Nil keeps a feed
+  /// already chosen, such as by a Home Screen quick action, or opens on the subs list.
+  static func launchFeed(defaultFeed: String, showsColumns: Bool, current: Router.NavDest?) -> Router.NavDest? {
+    guard current == nil else { return nil }
+    if defaultFeed != "subList" {
+      return .reddit(.subFeed(QuickAction.subreddit(named: defaultFeed)))
+    }
+    return showsColumns ? .reddit(.subFeed(Subreddit(id: "home"))) : nil
+  }
+
+  /// The subs list's selection. Beside the feed, the list can't clear it (as a Command-click
+  /// would on Mac), which would empty the feed column; in a stack, Back clears it.
+  private func sidebarSelection(showsColumns: Bool) -> Binding<Router.NavDest?> {
+    Binding {
+      router.firstSelected
+    } set: { dest in
+      if dest != nil || !showsColumns {
+        router.firstSelected = dest
+      }
     }
   }
 
