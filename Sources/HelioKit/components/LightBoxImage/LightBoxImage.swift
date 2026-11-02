@@ -45,6 +45,13 @@ struct LightBoxImage: View {
     }
   }
 
+  func close() {
+    withAnimation(.easeOut) {
+      appearBlack = false
+    }
+    dismiss()
+  }
+
   /// Shows image `index`, for VoiceOver, which can't drag between them.
   func page(to index: Int) {
     let index = min(imagesArr.count - 1, max(0, index))
@@ -139,17 +146,13 @@ struct LightBoxImage: View {
         LightBoxOverlay(postTitle: postTitle, badgeKit: badgeKit, avatarImageRequest: avatarImageRequest, opacity: !showOverlay || isPinching ? 0 : interpolate([1, 0], false), imagesArr: imagesArr, activeIndex: activeIndex, loading: $loading, done: $done)
       }
     }
+    // Taps on the image show or hide the controls; Close, Escape or a swipe closes it.
     .background(
       !appearBlack
         ? nil
         : Color.black
         .opacity(interpolate([1, 0], false))
-        .onTapGesture {
-          withAnimation(.easeOut) {
-            appearBlack = false
-          }
-        }
-        .allowsHitTesting(appearBlack)
+        .allowsHitTesting(false)
         .transition(.opacity),
     )
     .overlay {
@@ -169,10 +172,26 @@ struct LightBoxImage: View {
       }
     }
     .ignoresSafeArea(edges: .all)
+    .overlay(alignment: .topTrailing) {
+      let chromeOpacity = !showOverlay || isPinching ? 0 : interpolate([1, 0], false)
+      Button("Close", systemImage: "xmark", action: close)
+        .labelStyle(.iconOnly)
+        .fontSize(17, .semibold)
+        .frame(width: 44, height: 44)
+        .contentShape(Circle())
+        .buttonStyle(.plain)
+        .foregroundStyle(.white)
+        .glassEffect(.regular.interactive(), in: Circle())
+        .keyboardShortcut(.cancelAction)
+        .padding(.horizontal, 16)
+        .padding(.top, 8)
+        .opacity(chromeOpacity)
+        .allowsHitTesting(chromeOpacity != 0)
+    }
     .compositingGroup()
     .opacity(appearContent ? 1 : 0)
     // VoiceOver's scrub gesture closes it, since it can't drag it away.
-    .accessibilityAction(.escape) { dismiss() }
+    .accessibilityAction(.escape) { close() }
     .onChange(of: done) { val in
       if val {
         doThisAfter(0.5) {
