@@ -18,16 +18,25 @@ struct ContentTextScaleTests {
     let small = ContentTextScale.size(17, dynamicTypeSize: .xSmall)
     let large = ContentTextScale.size(17, dynamicTypeSize: .xxxLarge)
     let accessibility = ContentTextScale.size(17, dynamicTypeSize: .accessibility2)
-    #expect(small < 17)
-    #expect(large > 17)
-    #expect(accessibility > large)
-    // Titles and bodies wrap, so they keep growing.
-    #expect(ContentTextScale.size(17, dynamicTypeSize: .accessibility5) > accessibility)
+    #if targetEnvironment(macCatalyst)
+      // Mac Catalyst has no Dynamic Type: sizes stay as laid out.
+      #expect([small, large, accessibility] == [17, 17, 17])
+    #else
+      #expect(small < 17)
+      #expect(large > 17)
+      #expect(accessibility > large)
+      // Titles and bodies wrap, so they keep growing.
+      #expect(ContentTextScale.size(17, dynamicTypeSize: .accessibility5) > accessibility)
+    #endif
   }
 
   @Test func metaLinesStopGrowingAtTheirMaximum() {
     let maximum = ContentTextScale.size(13, relativeTo: .meta, dynamicTypeSize: ContentTextScale.Role.meta.maximum)
-    #expect(maximum > ContentTextScale.size(13, relativeTo: .meta, dynamicTypeSize: .xxxLarge))
+    #if targetEnvironment(macCatalyst)
+      #expect(maximum == 13)
+    #else
+      #expect(maximum > ContentTextScale.size(13, relativeTo: .meta, dynamicTypeSize: .xxxLarge))
+    #endif
     #expect(ContentTextScale.size(13, relativeTo: .meta, dynamicTypeSize: .accessibility5) == maximum)
   }
 }
@@ -58,10 +67,16 @@ struct DynamicTypeRelayoutTests {
     post.relayout(contentWidth: 400, theme: theme)
     let largeTitle = try #require(post.helioData?.postDimensions.titleSize)
     let largeAttr = try #require(post.helioData?.titleAttr)
-    #expect(largeTitle.height > defaultTitle.height)
     #expect(largeAttr !== defaultAttr)
     let font = try #require(largeAttr.attribute(.font, at: 0, effectiveRange: nil) as? UIFont)
-    #expect(font.pointSize > theme.postLinks.theme.titleText.size)
+    #if targetEnvironment(macCatalyst)
+      // No Dynamic Type on Mac: the title is laid out again at the same size.
+      #expect(largeTitle == defaultTitle)
+      #expect(font.pointSize == theme.postLinks.theme.titleText.size)
+    #else
+      #expect(largeTitle.height > defaultTitle.height)
+      #expect(font.pointSize > theme.postLinks.theme.titleText.size)
+    #endif
     #expect(post.helioData?.layoutDynamicTypeSize == .accessibility2)
 
     ContentTextScale.dynamicTypeSize = .large
