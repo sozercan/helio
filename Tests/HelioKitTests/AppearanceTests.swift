@@ -131,9 +131,14 @@ struct ThemePresetTests {
 }
 
 struct TextSizeAdjustmentTests {
+  /// Mac Catalyst has no Dynamic Type, so it starts from the default size whatever it's given.
   @Test func noAdjustmentKeepsTheSystemSize() {
     for size in DynamicTypeSize.allCases {
-      #expect(ContentTextScale.adjusted(size, by: 0) == size)
+      #if targetEnvironment(macCatalyst)
+        #expect(ContentTextScale.adjusted(size, by: 0) == .large)
+      #else
+        #expect(ContentTextScale.adjusted(size, by: 0) == size)
+      #endif
     }
   }
 
@@ -141,12 +146,21 @@ struct TextSizeAdjustmentTests {
     #expect(ContentTextScale.adjusted(.large, by: 1) == .xLarge)
     #expect(ContentTextScale.adjusted(.large, by: -3) == .xSmall)
     #expect(ContentTextScale.adjusted(.large, by: 5) == .accessibility2)
-    #expect(ContentTextScale.adjusted(.xxxLarge, by: 2) == .accessibility2)
+    #if targetEnvironment(macCatalyst)
+      #expect(ContentTextScale.adjusted(.xxxLarge, by: 2) == .xxLarge)
+    #else
+      #expect(ContentTextScale.adjusted(.xxxLarge, by: 2) == .accessibility2)
+    #endif
   }
 
   @Test func adjustmentStaysWithinDynamicTypeAndItsRange() {
     #expect(ContentTextScale.adjusted(.small, by: -3) == .xSmall)
-    #expect(ContentTextScale.adjusted(.accessibility4, by: 5) == .accessibility5)
+    #if targetEnvironment(macCatalyst)
+      // From the default size, the slider's largest step stops short of the largest size.
+      #expect(ContentTextScale.adjusted(.accessibility4, by: 5) == .accessibility2)
+    #else
+      #expect(ContentTextScale.adjusted(.accessibility4, by: 5) == .accessibility5)
+    #endif
     // Out-of-range stored values are clamped to the slider's range.
     #expect(ContentTextScale.adjusted(.large, by: 40) == ContentTextScale.adjusted(.large, by: ContentTextScale.adjustmentRange.upperBound))
     #expect(ContentTextScale.adjusted(.large, by: -40) == .xSmall)
