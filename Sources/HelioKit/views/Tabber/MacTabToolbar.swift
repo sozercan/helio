@@ -18,10 +18,9 @@
   /// Mac apps, instead of SwiftUI's button inside the subs list.
   final class MacTabToolbar: NSObject, NSToolbarDelegate {
     private static let tabsID = NSToolbarItem.Identifier("helio.tabs")
-    private static let tabs: [(Nav.TabIdentifier, String)] = [
-      (.posts, "Posts"), (.inbox, "Inbox"), (.me, "Me"), (.search, "Search"), (.settings, "Settings"),
-    ]
+    private static let tabs: [Nav.TabIdentifier] = [.posts, .inbox, .me, .search, .settings]
 
+    private var titles: [Nav.TabIdentifier: String] = [.posts: "Posts", .inbox: "Inbox", .me: "Me", .search: "Search", .settings: "Settings"]
     private var group: NSToolbarItemGroup?
     private weak var toolbar: NSToolbar?
 
@@ -38,10 +37,20 @@
       titlebar.titleVisibility = .hidden
     }
 
+    /// Shows the tab's title, which for Me can be the username.
+    func setTitle(_ title: String, for tab: Nav.TabIdentifier) {
+      guard titles[tab] != title else { return }
+      titles[tab] = title
+      if let index = Self.tabs.firstIndex(of: tab), let group, group.subitems.indices.contains(index) {
+        group.subitems[index].title = title
+        group.subitems[index].label = title
+      }
+    }
+
     /// Shows `tab` as selected, for tab changes made elsewhere (menu commands, links), and the
     /// sidebar button only where there's a sidebar.
     func select(_ tab: Nav.TabIdentifier) {
-      if let index = Self.tabs.firstIndex(where: { $0.0 == tab }), group?.selectedIndex != index {
+      if let index = Self.tabs.firstIndex(of: tab), group?.selectedIndex != index {
         group?.selectedIndex = index
       }
       guard let toolbar else { return }
@@ -55,7 +64,7 @@
 
     @objc private func tabPicked(_ sender: NSToolbarItemGroup) {
       guard Self.tabs.indices.contains(sender.selectedIndex) else { return }
-      Nav.shared.activeTab = Self.tabs[sender.selectedIndex].0
+      Nav.shared.activeTab = Self.tabs[sender.selectedIndex]
     }
 
     func toolbarDefaultItemIdentifiers(_ toolbar: NSToolbar) -> [NSToolbarItem.Identifier] {
@@ -70,7 +79,7 @@
       guard itemIdentifier == Self.tabsID else { return nil }
       let group = NSToolbarItemGroup(
         itemIdentifier: itemIdentifier,
-        titles: Self.tabs.map(\.1),
+        titles: Self.tabs.map { titles[$0] ?? "" },
         selectionMode: .selectOne,
         labels: nil,
         target: self,
@@ -82,7 +91,7 @@
           group.role = .tabs
         }
       #endif
-      group.selectedIndex = Self.tabs.firstIndex { $0.0 == Nav.shared.activeTab } ?? 0
+      group.selectedIndex = Self.tabs.firstIndex(of: Nav.shared.activeTab) ?? 0
       self.group = group
       return group
     }
