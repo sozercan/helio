@@ -16,6 +16,9 @@ struct MessageTests {
     // A subreddit named "comments" isn't the comments route.
     #expect(getPostId(from: "/r/comments/comments/abc123/a_title/") == "abc123")
     #expect(getPostId(from: "https://www.reddit.com/comments/abc123/") == "abc123")
+    // Ids and titles that happen to read "r" or "comments" aren't routes.
+    #expect(getPostId(from: "/comments/r/title/c1/") == "r")
+    #expect(getPostId(from: "/r/apple/comments/abc123/r/c1/") == "abc123")
   }
 
   @Test func rejectsLinksWithoutAPostId() {

@@ -86,15 +86,17 @@ extension MessageData {
 
 /// The post id in a comment's permalink, such as `/r/apple/comments/abc123/title/def456/?context=3`.
 func getPostId(from urlString: String) -> String? {
-  let path = urlString.split(separator: "?", maxSplits: 1, omittingEmptySubsequences: false).first ?? ""
-  let parts = path.split(separator: "/")
-  // The route follows the subreddit (`/r/<sub>/comments/<id>`), so a subreddit named "comments"
-  // isn't mistaken for it. Short links without a subreddit (`/comments/<id>`) start with it.
-  let comments: Int? = if let r = parts.firstIndex(of: "r"), r + 2 < parts.count {
-    parts[r + 2] == "comments" ? r + 2 : nil
-  } else {
-    parts.firstIndex(of: "comments")
+  // The path alone, from a full URL or a bare permalink, without the query.
+  let path = URLComponents(string: urlString)?.path ?? String(urlString.split(separator: "?").first ?? "")
+  let parts = path.split(separator: "/").map(String.init)
+  // The route is read from the path's start: `/r/<sub>/comments/<id>` (or `/user/<name>/…`), or a
+  // short `/comments/<id>`. A subreddit, title or id that happens to be "r" or "comments" isn't
+  // taken for it.
+  let comments: Int? = switch parts.first {
+  case "r", "u", "user": parts.count > 2 && parts[2] == "comments" ? 2 : nil
+  case "comments": 0
+  default: nil
   }
   guard let comments, comments + 1 < parts.count else { return nil }
-  return String(parts[comments + 1])
+  return parts[comments + 1]
 }
