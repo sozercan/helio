@@ -24,155 +24,125 @@ struct PostFloatingPill: View {
     postsInBox.contains { $0.id == post.id }
   }
 
+  private var boxLabel: String {
+    thisPinnedPost ? "Remove from Posts Box" : "Add to Posts Box"
+  }
+
+  private var boxIcon: String {
+    thisPinnedPost ? "shippingbox.and.arrow.backward.fill" : "shippingbox"
+  }
+
+  private func togglePostsBox(_ data: PostData) {
+    if thisPinnedPost {
+      withAnimation(spring) {
+        postsInBox = postsInBox.filter { $0.id != post.id }
+      }
+      withAnimation(nil) {
+        showRemovedToast.toggle()
+      }
+    } else {
+      var subIcon: String?
+      if let subData = subreddit.data {
+        let communityIcon = subData.community_icon?.split(separator: "?") ?? []
+        subIcon = (subData.icon_img ?? "").isEmpty ? !communityIcon.isEmpty ? String(communityIcon[0]) : "" : subData.icon_img
+      }
+      let newPostInBox = PostInBox(
+        id: data.id, fullname: data.name,
+        title: data.title, body: data.selftext ?? "",
+        subredditIconURL: subIcon, img: nil,
+        subredditName: data.subreddit, authorName: data.author,
+        score: data.ups, commentsCount: data.num_comments,
+        createdAt: data.created, lastUpdatedAt: Date().timeIntervalSince1970,
+      )
+      withAnimation(spring) {
+        postsInBox.append(newPostInBox)
+      }
+      withAnimation(nil) {
+        showAddedToast.toggle()
+      }
+    }
+  }
+
+  /// The box icon alone doesn't say what it does: the pointer and a long press name it.
+  private func postsBoxButton(_ data: PostData) -> some View {
+    LightBoxButton(icon: boxIcon, label: boxLabel) { togglePostsBox(data) }
+      .help(boxLabel)
+      .contextMenu {
+        Button(boxLabel, systemImage: boxIcon) { togglePostsBox(data) }
+      }
+  }
+
   var body: some View {
     Group {
       if let data = post.data {
         let permalink = "https://reddit.com\(data.permalink.urlEncoded)"
 
         if !selectedTheme.posts.inlineFloatingPill {
-          Group {
-            HStack(spacing: 2) {
-              Group {
-                HStack(spacing: -12) {
-                  LightBoxButton(icon: "square.and.arrow.up.fill", label: "Share") {
-                    ShareUtils.shareItem(item: permalink)
-                  }
-
-                  LightBoxButton(icon: !thisPinnedPost ? "shippingbox" : "shippingbox.and.arrow.backward.fill", label: thisPinnedPost ? "Remove from Posts Box" : "Add to Posts Box") {
-                    if thisPinnedPost {
-                      withAnimation(spring) {
-                        postsInBox = postsInBox.filter { $0.id != post.id }
-                      }
-                      withAnimation(nil) {
-                        showRemovedToast.toggle()
-                      }
-                    } else {
-                      var subIcon: String?
-                      if let subData = subreddit.data {
-                        let communityIcon = subData.community_icon?.split(separator: "?") ?? []
-                        subIcon = subData.icon_img == "" || subData.icon_img == nil ? !communityIcon.isEmpty ? String(communityIcon[0]) : "" : subData.icon_img
-                      }
-                      let newPostInBox = PostInBox(
-                        id: data.id, fullname: data.name,
-                        title: data.title, body: data.selftext ?? "",
-                        subredditIconURL: subIcon, img: nil,
-                        subredditName: data.subreddit, authorName: data.author,
-                        score: data.ups, commentsCount: data.num_comments,
-                        createdAt: data.created, lastUpdatedAt: Date().timeIntervalSince1970,
-                      )
-                      withAnimation(spring) {
-                        postsInBox.append(newPostInBox)
-                      }
-                      withAnimation(nil) {
-                        showAddedToast.toggle()
-                      }
-                    }
-                  }
-                  //            .toast(isPresenting: $showAddedToast, tapToDismiss: true){
-                  //              AlertToast(displayMode: .hud, type: .systemImage("plus.circle", Color.blue), title: "Added to Posts Box!")
-                  //            }
-                  //            .toast(isPresenting: $showRemovedToast, tapToDismiss: true){
-                  //              AlertToast(displayMode: .hud, type: .systemImage("trash", Color.blue), title: "Removed from Posts Box!")
-                  //            }
-
-                  LightBoxButton(icon: "arrowshape.turn.up.left.fill", label: "Reply") {
-                    withAnimation(spring) {
-                      showReplyModal = true
-                    }
-                  }
-                }
-
-                HStack(alignment: .center, spacing: 8) {
-                  VotesCluster(votesKit: data.votesKit, voteAction: post.vote, vertical: false, showUpVoteRatio: showUpVoteRatio)
-                }
-              }
-            }
-            .padding(.trailing, 14)
-            .floating()
-            .padding(.all, 8)
-          }
-        } else {
-          Group {
-            HStack { // Set spacing to 0 to make buttons stretch evenly
-              if let data = post.data {
-                LightBoxButton(icon: data.saved ? "bookmark.fill" : "bookmark", label: data.saved ? "Unsave" : "Save") {
-                  Task {
-                    await post.saveToggle()
-                  }
-                }
-                .padding(.vertical, -2)
-              }
-
-              // ShareLink button
-              Spacer()
-
-              LightBoxButton(icon: "square.and.arrow.up.fill", label: "Share") {
+          // The post page's bottom bar: monochrome icons on glass, like the system's bars.
+          HStack(spacing: 2) {
+            HStack(spacing: -12) {
+              LightBoxButton(icon: "square.and.arrow.up", label: "Share") {
                 ShareUtils.shareItem(item: permalink)
               }
-              .padding(.vertical, -2)
 
-              Spacer()
+              postsBoxButton(data)
 
-              // LightBoxButton for pinned post
-              LightBoxButton(icon: !thisPinnedPost ? "shippingbox" : "shippingbox.and.arrow.backward.fill", label: thisPinnedPost ? "Remove from Posts Box" : "Add to Posts Box") {
-                if thisPinnedPost {
-                  withAnimation(spring) {
-                    postsInBox = postsInBox.filter { $0.id != post.id }
-                  }
-                  withAnimation(nil) {
-                    showRemovedToast.toggle()
-                  }
-                } else {
-                  var subIcon: String?
-                  if let subData = subreddit.data {
-                    let communityIcon = subData.community_icon?.split(separator: "?") ?? []
-                    subIcon = subData.icon_img == "" || subData.icon_img == nil ? !communityIcon.isEmpty ? String(communityIcon[0]) : "" : subData.icon_img
-                  }
-                  let newPostInBox = PostInBox(
-                    id: data.id, fullname: data.name,
-                    title: data.title, body: data.selftext ?? "",
-                    subredditIconURL: subIcon, img: nil,
-                    subredditName: data.subreddit, authorName: data.author,
-                    score: data.ups, commentsCount: data.num_comments,
-                    createdAt: data.created, lastUpdatedAt: Date().timeIntervalSince1970,
-                  )
-                  withAnimation(spring) {
-                    postsInBox.append(newPostInBox)
-                  }
-                  withAnimation(nil) {
-                    showAddedToast.toggle()
-                  }
-                }
-              }
-              .padding(.vertical, -2)
-
-              Spacer()
-
-              // LightBoxButton for reply
-              LightBoxButton(icon: "arrowshape.turn.up.left.fill", label: "Reply") {
+              LightBoxButton(icon: "arrowshape.turn.up.left", label: "Reply") {
                 withAnimation(spring) {
                   showReplyModal = true
                 }
               }
+            }
+
+            VotesCluster(votesKit: data.votesKit, voteAction: post.vote, vertical: false, showUpVoteRatio: showUpVoteRatio)
+          }
+          .padding(.trailing, 14)
+          .foregroundStyle(.primary)
+          .floating()
+        } else {
+          HStack { // Set spacing to 0 to make buttons stretch evenly
+            LightBoxButton(icon: data.saved ? "bookmark.fill" : "bookmark", label: data.saved ? "Unsave" : "Save") {
+              Task {
+                await post.saveToggle()
+              }
+            }
+            .padding(.vertical, -2)
+
+            Spacer()
+
+            LightBoxButton(icon: "square.and.arrow.up.fill", label: "Share") {
+              ShareUtils.shareItem(item: permalink)
+            }
+            .padding(.vertical, -2)
+
+            Spacer()
+
+            postsBoxButton(data)
               .padding(.vertical, -2)
 
-              Spacer()
+            Spacer()
 
-              // VotesCluster
-              VotesCluster(votesKit: data.votesKit, voteAction: post.vote, vertical: false, showUpVoteRatio: showUpVoteRatio)
-                .padding(.vertical, -2)
-
-              Spacer()
+            LightBoxButton(icon: "arrowshape.turn.up.left.fill", label: "Reply") {
+              withAnimation(spring) {
+                showReplyModal = true
+              }
             }
-            //            .padding(.all, 4)
-            .background(RR(12, selectedTheme.comments.theme.bg()))
-            .frame(maxWidth: .infinity)
+            .padding(.vertical, -2)
+
+            Spacer()
+
+            VotesCluster(votesKit: data.votesKit, voteAction: post.vote, vertical: false, showUpVoteRatio: showUpVoteRatio)
+              .padding(.vertical, -2)
+
+            Spacer()
           }
+          .foregroundStyle(Color.accentColor)
+          .background(RR(12, selectedTheme.comments.theme.bg()))
+          .frame(maxWidth: .infinity)
         }
       }
     }
     .fontSize(20, .semibold)
-    .foregroundColor(Color.accentColor)
     .sheet(isPresented: $showReplyModal) {
       ReplyModalPost(post: post, updateComments: updateComments)
     }

@@ -24,6 +24,7 @@ struct PostView: View, Equatable {
   var highlightID: String?
   @Default(.PostPageDefSettings) private var defSettings
   @Default(.CommentsSectionDefSettings) var commentsSectionDefSettings
+  @Default(.CommentLinkDefSettings) private var commentLinkDefSettings
   @Environment(\.useTheme) private var selectedTheme
   @Environment(\.globalLoaderStart) private var globalLoaderStart
   @Environment(\.contentWidth) private var contentWidth
@@ -73,13 +74,19 @@ struct PostView: View, Equatable {
     }
   }
 
+  /// The page is titled by its subreddit, with the comment count under it; the post's own
+  /// title is the first thing on the page. Empty until the post loads.
+  static func navigationTitles(_ data: PostData?) -> (title: String, subtitle: String) {
+    guard let data else { return ("", "") }
+    return (data.subreddit_name_prefixed, String(localized: "\(data.num_comments) comments"))
+  }
+
   func updatePost() {
     Task(priority: .userInitiated) { await asyncFetch() }
   }
 
   var body: some View {
-    let navtitle: String = post.data?.title ?? "no title"
-    let subnavtitle = "r/\(post.data?.subreddit ?? "no sub") \u{2022} " + String(localized: "\(post.data?.num_comments ?? 0) comments")
+    let (navTitle, navSubtitle) = Self.navigationTitles(post.data)
     let commentsHPad = selectedTheme.comments.theme.outerHPadding > 0 ? selectedTheme.comments.theme.outerHPadding : selectedTheme.comments.theme.innerPadding.horizontal
     GeometryReader { geometryReader in
       ScrollViewReader { proxy in
@@ -124,13 +131,6 @@ struct PostView: View, Equatable {
               }
               .listRowBackground(Color.primary.opacity(0.1))
             }
-
-            Section {
-              Spacer()
-                .frame(maxWidth: .infinity, minHeight: 72)
-                .listRowBackground(Color.clear)
-                .id("end-spacer")
-            }
           }
           .listRowSeparator(.hidden)
         }
@@ -142,14 +142,17 @@ struct PostView: View, Equatable {
         .refreshable {
           await asyncFetch()
         }
-        .overlay(alignment: .bottomTrailing) {
-          if !selectedTheme.posts.inlineFloatingPill, !isPreview {
-            PostFloatingPill(post: post, subreddit: subreddit, showUpVoteRatio: defSettings.showUpVoteRatio)
+        // A bar of its own, so the list makes room for it instead of hiding comments under it.
+        .safeAreaBar(edge: .bottom) {
+          if !isPreview {
+            bottomBar(proxy: proxy)
           }
         }
-        .navigationBarTitle("\(navtitle)", displayMode: .inline)
+        .navigationTitle(navTitle)
+        .navigationSubtitle(navSubtitle)
+        .navigationBarTitleDisplayMode(.inline)
         .relayoutPosts({ [post] }, contentWidth: contentWidth, theme: selectedTheme)
-        .toolbar { Toolbar(title: navtitle, subtitle: subnavtitle, hideElements: hideElements, subreddit: subreddit, post: post, sort: $sort) }
+        .toolbar { Toolbar(hideElements: hideElements, subreddit: subreddit, post: post, sort: $sort) }
         .onChange(of: sort) { _ in
           updatePost()
         }
@@ -187,14 +190,36 @@ struct PostView: View, Equatable {
             topVisibleCommentId = CommentUtils.shared.topCommentRow(of: anchors, in: geometryReader)
           }
         }
-        .commentSkipper(
-          showJumpToNextCommentButton: $commentsSectionDefSettings.commentSkipper,
-          topVisibleCommentId: $topVisibleCommentId,
-          previousScrollTarget: $previousScrollTarget,
-          comments: comments,
-          reader: proxy,
-        )
       }
+    }
+  }
+
+  /// The post's actions and the jump to the next comment, on glass. The jump button sits on the
+  /// left unless the actions are inline in the post and the setting puts it on the right.
+  @ViewBuilder
+  private func bottomBar(proxy: ScrollViewProxy) -> some View {
+    let inlineActions = selectedTheme.posts.inlineFloatingPill
+    let showSkipper = commentsSectionDefSettings.commentSkipper
+    let skipperOnLeft = !inlineActions || commentLinkDefSettings.jumpNextCommentButtonLeft
+    if showSkipper || !inlineActions {
+      GlassEffectContainer(spacing: 12) {
+        HStack(spacing: 12) {
+          if showSkipper, skipperOnLeft {
+            CommentSkipper(topVisibleCommentId: $topVisibleCommentId, previousScrollTarget: $previousScrollTarget, comments: comments, reader: proxy)
+          }
+          Spacer(minLength: 0)
+          if !inlineActions {
+            // At its natural width: squeezed, the score's ratio wraps.
+            PostFloatingPill(post: post, subreddit: subreddit, showUpVoteRatio: defSettings.showUpVoteRatio)
+              .fixedSize()
+          }
+          if showSkipper, !skipperOnLeft {
+            CommentSkipper(topVisibleCommentId: $topVisibleCommentId, previousScrollTarget: $previousScrollTarget, comments: comments, reader: proxy)
+          }
+        }
+      }
+      .padding(.horizontal, 12)
+      .padding(.bottom, 8)
     }
   }
 }
@@ -237,56 +262,42 @@ final class CommentsLoad {
 }
 
 private struct Toolbar: ToolbarContent {
-  var title: String
-  var subtitle: String
   var hideElements: Bool
   var subreddit: Subreddit
   var post: Post
   @Binding var sort: CommentSortOption
 
   var body: some ToolbarContent {
-    if !isWideLayout {
-      ToolbarItem(id: "postview-title", placement: .principal) {
-        VStack {
-          Text(title)
-            .font(.headline)
-          Text(subtitle)
-            .font(.subheadline)
-        }
-      }
-    }
-
-    ToolbarItem(id: "postview-sortandsub", placement: .navigationBarTrailing) {
-      HStack {
-        Menu {
-          if !hideElements {
+    ToolbarItem(id: "postview-sort", placement: .topBarTrailing) {
+      Menu {
+        if !hideElements {
+          Picker("Sort comments", selection: Binding(get: { sort }, set: { opt in
+            sort = opt
+            Defaults[.PostPageDefSettings].postSorts[post.id] = opt
+          })) {
             ForEach(CommentSortOption.allCases) { opt in
-              Button {
-                sort = opt
-                Defaults[.PostPageDefSettings].postSorts[post.id] = opt
-              } label: {
-                HStack {
-                  Text(opt.rawVal.value.capitalized)
-                  Spacer()
-                  Image(systemName: opt.rawVal.icon)
-                    .foregroundColor(Color.accentColor)
-                    .fontSize(17, .bold)
-                }
-              }
+              Label(opt.rawVal.value.capitalized, systemImage: opt.rawVal.icon)
+                .tag(opt)
             }
           }
-        } label: {
-          Image(systemName: sort.rawVal.icon)
-            .foregroundColor(Color.accentColor)
-            .fontSize(17, .bold)
         }
-
-        if let data = subreddit.data, !feedsAndSuch.contains(subreddit.id) {
-          SubredditIcon(subredditIconKit: data.subredditIconKit)
-            .onTapGesture { Nav.to(.reddit(.subInfo(subreddit))) }
-        }
+      } label: {
+        Label("Sort", systemImage: sort.rawVal.icon)
       }
       .animation(nil, value: sort)
+    }
+
+    if let data = subreddit.data, !feedsAndSuch.contains(subreddit.id) {
+      ToolbarSpacer(.fixed, placement: .topBarTrailing)
+
+      ToolbarItem(id: "postview-sub", placement: .topBarTrailing) {
+        Button {
+          Nav.to(.reddit(.subInfo(subreddit)))
+        } label: {
+          SubredditIcon(subredditIconKit: data.subredditIconKit)
+        }
+        .accessibilityLabel("About r/\(data.display_name ?? subreddit.id)")
+      }
     }
   }
 }
