@@ -137,7 +137,11 @@ extension Post {
         // Left unloaded by `mediaExtractor`; the large media the post page shows loads it.
         if !fetchLinkMetadata {
           self.helioData?.deferredMedia = { [weak self] in
+            // Both copies: compact rows keep their own, which shows if the feed switches to Large.
             self?.helioData?.extractedMediaForcedNormal?.loadLinkedEntity()
+            if compact {
+              self?.helioData?.extractedMedia?.loadLinkedEntity()
+            }
           }
         }
       default:
