@@ -16,7 +16,8 @@ final class CommandTargets {
   static let shared = CommandTargets()
 
   struct Target {
-    enum Kind { case feed, post, subs, search }
+    /// `composer`: a reply being written, which the Post commands must not dismiss.
+    enum Kind { case feed, post, subs, search, composer }
 
     var kind: Kind
     /// The posts split view's column it shows in.
@@ -27,6 +28,10 @@ final class CommandTargets {
     var posts: (() -> [Post])?
     /// Scrolls a feed to one of its posts.
     var reveal: ((Post) -> Void)?
+    /// Whether a feed has another page past its loaded posts, and loads it. A feed loads pages
+    /// as its rows appear, which a feed covered by its post can't do.
+    var canLoadMore: (() -> Bool)?
+    var loadMore: (() async -> Void)?
     /// The post a post screen shows, for voting and replying.
     var post: Post?
     var reply: (() -> Void)?
@@ -103,24 +108,64 @@ final class CommandTargets {
     targets.last { $0.target.kind == .post && $0.target.post != nil }?.target
   }
 
-  /// The post `offset` places from the post the posts tab's feed has open, in that feed. Nil
-  /// when no post from it is open, or at its end.
-  func adjacentPost(_ offset: Int, nav: Nav = .shared) -> Post? {
-    nav.activeTab == .posts ? adjacentPost(offset, in: nav[.posts]) : nil
+  /// While a reply is being written, or a sheet such as the theme editor shows, the Post
+  /// commands would act on the screen behind it, and moving to another post would close the reply.
+  func postCommandsSuspended(nav: Nav = .shared) -> Bool {
+    nav.presentingSheet != nil || isComposing
   }
 
+  var isComposing: Bool {
+    targets.contains { $0.target.kind == .composer }
+  }
+
+  /// Whether Next or Previous Post can move from the post the posts tab's feed has open: to
+  /// another loaded post, or past the last one when the feed has another page.
+  func canOpenAdjacentPost(_ offset: Int, nav: Nav = .shared) -> Bool {
+    guard nav.activeTab == .posts, !postCommandsSuspended(nav: nav) else { return false }
+    return canOpenAdjacentPost(offset, in: nav[.posts])
+  }
+
+  func canOpenAdjacentPost(_ offset: Int, in router: Router) -> Bool {
+    adjacentPost(offset, in: router) != nil || needsNextPage(offset, in: router)
+  }
+
+  /// The post `offset` places from the post the posts tab's feed has open, among its loaded
+  /// posts. Nil when no post from it is open, or past the loaded ones.
   func adjacentPost(_ offset: Int, in router: Router) -> Post? {
     guard let id = Self.feedPostID(in: router), let posts = postsFeed?.target.posts?() else { return nil }
     return Self.post(offset, from: id, in: posts)
   }
 
+  /// Whether moving `offset` forward goes past the feed's loaded posts into a page it can load.
+  private func needsNextPage(_ offset: Int, in router: Router) -> Bool {
+    guard offset > 0, let feed = postsFeed?.target, feed.canLoadMore?() == true, let id = Self.feedPostID(in: router),
+          let posts = feed.posts?(), let index = posts.firstIndex(where: { $0.id == id }) else { return false }
+    return index + offset >= posts.count
+  }
+
   /// Opens the post `offset` places from the open one in the post column and scrolls the feed to it.
   func openAdjacentPost(_ offset: Int, nav: Nav = .shared) {
-    guard nav.activeTab == .posts else { return }
+    guard canOpenAdjacentPost(offset, nav: nav) else { return }
     openAdjacentPost(offset, in: nav[.posts])
   }
 
-  func openAdjacentPost(_ offset: Int, in router: Router) {
+  /// Past the loaded posts, loads the feed's next page first and returns the task doing so.
+  @discardableResult
+  func openAdjacentPost(_ offset: Int, in router: Router) -> Task<Void, Never>? {
+    guard adjacentPost(offset, in: router) == nil else {
+      openLoadedPost(offset, in: router)
+      return nil
+    }
+    guard needsNextPage(offset, in: router), let id = Self.feedPostID(in: router), let loadMore = postsFeed?.target.loadMore else { return nil }
+    return Task { @MainActor in
+      await loadMore()
+      // Not if the user has moved on or started a reply while the page loaded.
+      guard Self.feedPostID(in: router) == id, !postCommandsSuspended() else { return }
+      openLoadedPost(offset, in: router)
+    }
+  }
+
+  private func openLoadedPost(_ offset: Int, in router: Router) {
     guard let post = adjacentPost(offset, in: router) else { return }
     router.navigateTo(.reddit(.post(post)), from: .feed)
     // Only a feed that shows scrolls; a covered one keeps its place.

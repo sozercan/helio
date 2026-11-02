@@ -293,6 +293,8 @@ struct RedditListingFeed<Header: View, Footer: View, S: Sorting>: View {
             nil
           }
         } },
+        canLoadMore: { itemsManager.canLoadMore },
+        loadMore: { await itemsManager.loadMore() },
       ))
       .onChange(of: selectedAuthorization) { _, _ in
         Task { await refetch(clearItems: true) }

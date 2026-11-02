@@ -1,3 +1,4 @@
+import Foundation
 import Testing
 @testable import HelioKit
 
@@ -132,11 +133,74 @@ struct AdjacentPostTests {
     #expect(CommandTargets.feedPostID(in: router) == nil)
   }
 
+  @Test func nextPastTheLoadedPostsLoadsTheNextPageAndOpensItsFirstPost() async {
+    let targets = CommandTargets()
+    var loaded = feed
+    let more = Post(id: "d", subID: "apple")
+    let registration = targets.register(.init(kind: .feed, column: .feed, posts: { loaded }, canLoadMore: { true }, loadMore: { loaded.append(more) }))
+    // Collapsed into one stack, the open post covers the feed, so its rows can't page it.
+    targets.unregister(registration)
+    let router = router(open: 2, columns: false)
+    #expect(targets.adjacentPost(1, in: router) == nil)
+    #expect(targets.canOpenAdjacentPost(1, in: router))
+    await targets.openAdjacentPost(1, in: router)?.value
+    #expect(router.postColumn.first?.id == more.id)
+  }
+
+  @Test func nextStopsAtTheEndOfTheFeed() {
+    let targets = CommandTargets()
+    _ = targets.register(.init(kind: .feed, column: .feed, posts: { feed }, canLoadMore: { false }, loadMore: {}))
+    let router = router(open: 2, columns: false)
+    #expect(!targets.canOpenAdjacentPost(1, in: router))
+    #expect(targets.openAdjacentPost(1, in: router) == nil)
+    // Previous never loads a page.
+    _ = targets.register(.init(kind: .feed, column: .feed, posts: { feed }, canLoadMore: { true }, loadMore: {}))
+    #expect(!targets.canOpenAdjacentPost(-1, in: self.router(open: 0, columns: false)))
+  }
+
+  @Test func aPageThatArrivesAfterTheUserMovedOnDoesntOpenAPost() async {
+    let targets = CommandTargets()
+    var loaded = feed
+    let router = router(open: 2, columns: false)
+    _ = targets.register(.init(kind: .feed, column: .feed, posts: { loaded }, canLoadMore: { true }, loadMore: {
+      loaded.append(Post(id: "d", subID: "apple"))
+      router.closePost()
+    }))
+    await targets.openAdjacentPost(1, in: router)?.value
+    #expect(router.postColumn.isEmpty)
+  }
+
+  @Test func aReplyStartedWhileThePageLoadsKeepsItsPost() async {
+    let targets = CommandTargets()
+    var loaded = feed
+    _ = targets.register(.init(kind: .feed, column: .feed, posts: { loaded }, canLoadMore: { true }, loadMore: {
+      loaded.append(Post(id: "d", subID: "apple"))
+      _ = targets.register(.init(kind: .composer))
+    }))
+    let router = router(open: 2, columns: false)
+    await targets.openAdjacentPost(1, in: router)?.value
+    #expect(router.postColumn.first?.id == feed[2].id)
+  }
+
   @Test func feedsOutsideThePostsTabsFeedColumnArentUsed() {
     let targets = CommandTargets()
     _ = targets.register(.init(kind: .feed, column: .post, posts: { feed }))
     _ = targets.register(.init(kind: .feed, posts: { feed }))
     #expect(targets.adjacentPost(1, in: router(open: 0, columns: true)) == nil)
+  }
+}
+
+struct ComposerTests {
+  @Test func aReplyBeingWrittenSuspendsThePostCommands() {
+    let targets = CommandTargets()
+    _ = targets.register(.init(kind: .post, post: Post(id: "a", subID: "apple")))
+    #expect(!targets.isComposing)
+    let reply = targets.register(.init(kind: .composer))
+    #expect(targets.isComposing)
+    // A composer isn't a post, refresh or search target.
+    #expect(targets.openPost?.post != nil)
+    targets.unregister(reply)
+    #expect(!targets.isComposing)
   }
 }
 
@@ -166,6 +230,24 @@ struct SubsListSelectionTests {
   @Test func theRowChosenStaysSelected() {
     let favorite = Subreddits.RowSelection(dest: pics, inFavorites: true)
     #expect(Subreddits.RowSelection.row(for: pics, chosen: favorite) == favorite)
+  }
+
+  @Test func aSubredditOpenedByNameSelectsItsCachedRow() throws {
+    let json = #"{"name": "t5_2qh1f", "id": "2qh1f", "display_name": "Apple", "url": "/r/Apple/", "public_description": ""}"#
+    let cached = try Router.NavDest.reddit(.subFeed(Subreddit(data: JSONDecoder().decode(SubredditData.self, from: Data(json.utf8)))))
+    let row = Subreddits.RowSelection(dest: cached)
+    #expect(Subreddits.RowSelection.row(for: apple, chosen: nil) == row)
+    #expect(Set([row]).contains(.init(dest: apple)))
+    #expect(Subreddits.RowSelection(dest: apple, inFavorites: true) != row)
+    // Built-in feeds still don't match a subreddit of the same name.
+    let rHome = try Router.NavDest.reddit(.subFeed(Subreddit(data: JSONDecoder().decode(SubredditData.self, from: Data(#"{"name": "t5_2qs0q", "id": "2qs0q", "display_name": "home", "url": "/r/home/", "public_description": ""}"#.utf8)))))
+    #expect(Subreddits.RowSelection(dest: .reddit(.subFeed(Subreddit(id: "home")))) != .init(dest: rHome))
+  }
+
+  @Test func aFavoriteRowThatNoLongerShowsFallsBackToTheRegularRow() {
+    let favorite = Subreddits.RowSelection(dest: pics, inFavorites: true)
+    #expect(Subreddits.RowSelection.row(for: pics, chosen: favorite, favoriteShows: { _ in false }) == .init(dest: pics))
+    #expect(Subreddits.RowSelection.row(for: pics, chosen: favorite, favoriteShows: { _ in true }) == favorite)
   }
 
   @Test func aFeedOpenedElsewhereSelectsItsRegularRow() {

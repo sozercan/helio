@@ -65,29 +65,31 @@ struct SubredditsStack: View {
       .columnContentWidth()
     }
     .navigationSplitViewStyle(.balanced)
-    // On the split view, not the feed column: collapsed, the subs list shows first and the feed
-    // column's tasks don't run, which would leave the default feed unopened. On appear rather
-    // than in a task: until it runs, the feed column shows no feed.
-    .onAppear {
-      if !loaded {
-        if let feed = Self.launchFeed(defaultFeed: behaviorDefSettings.preferenceDefaultFeed, showsColumns: layout.showsColumns, current: router.firstSelected) {
-          router.firstSelected = feed
-        }
-
-        withAnimation {
-          loaded = true
-        }
-      }
-    }
     // Too narrow for the feed and a post side by side (a narrow iPad or Mac window), the split view
     // collapses into one stack as it does in compact width; across a hinge it never does.
     .environment(\.horizontalSizeClass, layout.showsColumns ? .regular : .compact)
-    .onGeometryChange(for: CGRect.self) { $0.frame(in: .global) } action: { frame = $0 }
+    .onGeometryChange(for: CGRect.self) { $0.frame(in: .global) } action: { newFrame in
+      frame = newFrame
+      chooseLaunchFeed(in: newFrame)
+    }
     .onChange(of: layout.showsColumns, initial: true) { _, showsColumns in
       router.firstIsSidebarSelection = showsColumns
     }
     .onChange(of: layout.fitsSidebar, initial: true) { _, fits in
       columnVisibility = fits ? .all : .doubleColumn
+    }
+  }
+
+  /// Opens the launch feed once the window's width is measured: before that, the size class alone
+  /// would take a narrow regular-width window for one with the feed beside the subs list.
+  private func chooseLaunchFeed(in frame: CGRect) {
+    let layout = SplitLayout(sizeClass: horizontalSizeClass, frame: frame, division: WindowMetrics.shared.divisionFrame)
+    guard !loaded, layout.measured else { return }
+    if let feed = Self.launchFeed(defaultFeed: behaviorDefSettings.preferenceDefaultFeed, showsColumns: layout.showsColumns, current: router.firstSelected) {
+      router.firstSelected = feed
+    }
+    withAnimation {
+      loaded = true
     }
   }
 
@@ -185,13 +187,15 @@ struct SplitLayout: Equatable {
   let showsColumns: Bool
   /// Room for the sidebar beside them.
   let fitsSidebar: Bool
+  /// Whether the window's width is known. Until it is, the size class decides.
+  let measured: Bool
   /// The feed column's width that ends it at a vertical hinge, when there is one.
   let hingeFeedWidth: CGFloat?
 
   init(sizeClass: UserInterfaceSizeClass?, frame: CGRect, division: CGRect?) {
     let width = frame.width
-    // Before the first measurement, the size class decides.
     let measured = width > 0
+    self.measured = measured
     // Only a vertical hinge separates a left and a right column.
     let division = division.flatMap { $0.height > $0.width ? $0 : nil }
     showsColumns = division != nil || (sizeClass != .compact && (!measured || width >= Self.minFeedWidth + Self.minPostWidth))

@@ -52,14 +52,15 @@ struct NavCommands: Commands {
     CommandMenu("Post") {
       Button("Previous Post", systemImage: "chevron.up") { targets.openAdjacentPost(-1) }
         .keyboardShortcut(.upArrow, modifiers: [.command, .option])
-        .disabled(targets.adjacentPost(-1) == nil)
+        .disabled(!targets.canOpenAdjacentPost(-1))
       Button("Next Post", systemImage: "chevron.down") { targets.openAdjacentPost(1) }
         .keyboardShortcut(.downArrow, modifiers: [.command, .option])
-        .disabled(targets.adjacentPost(1) == nil)
+        .disabled(!targets.canOpenAdjacentPost(1))
 
       Divider()
 
-      let post = targets.openPost
+      // Not the post behind a reply being written.
+      let post = targets.postCommandsSuspended() ? nil : targets.openPost
       Button(post?.post?.data?.likes == true ? "Remove Upvote" : "Upvote", systemImage: "arrow.up") {
         if let post = post?.post {
           Task { _ = await post.vote(.up) }

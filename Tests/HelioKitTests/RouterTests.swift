@@ -378,6 +378,9 @@ struct SplitLayoutTests {
   @Test func beforeMeasuringTheSizeClassDecides() {
     #expect(SplitLayout(sizeClass: .regular, frame: .zero, division: nil).showsColumns)
     #expect(!SplitLayout(sizeClass: .compact, frame: .zero, division: nil).showsColumns)
+    // The launch feed waits for a measurement: a narrow regular window is one stack.
+    #expect(!SplitLayout(sizeClass: .regular, frame: .zero, division: nil).measured)
+    #expect(SplitLayout(sizeClass: .regular, frame: frame(700), division: nil).measured)
   }
 }
 

@@ -86,6 +86,11 @@ class FeedItemsManager<S> {
     await startFetch(loadingMore: false, clearItems: clearItems)?.value
   }
 
+  /// Whether `loadMore()` has a next page to load.
+  var canLoadMore: Bool {
+    lastElementId != nil && displayMode == .items
+  }
+
   func loadMore() async {
     await fetchCaller(loadingMore: true)
   }

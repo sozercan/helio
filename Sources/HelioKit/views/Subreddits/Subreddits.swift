@@ -67,14 +67,28 @@ struct Subreddits: View, Equatable {
     var dest: Router.NavDest
     var inFavorites = false
 
-    /// The row that shows `dest` as selected: the one chosen last if it shows `dest`, else its
-    /// row outside Favorites, as when the feed was opened from elsewhere.
-    static func row(for dest: Router.NavDest?, chosen: RowSelection?) -> RowSelection? {
-      guard let dest else { return nil }
-      if let chosen, chosen.dest.isSameFeed(as: dest) {
-        return chosen
+    /// Rows match by feed, as `isSameFeed` does: a subreddit opened by name (a quick action, the
+    /// launch feed) selects its cached row, which has Reddit's id.
+    static func == (lhs: RowSelection, rhs: RowSelection) -> Bool {
+      lhs.inFavorites == rhs.inFavorites && lhs.dest.isSameFeed(as: rhs.dest)
+    }
+
+    func hash(into hasher: inout Hasher) {
+      hasher.combine(inFavorites)
+      if let name = dest.subredditFeedName {
+        hasher.combine(name)
+      } else {
+        hasher.combine(dest)
       }
-      return RowSelection(dest: dest)
+    }
+
+    /// The row that shows `dest` as selected: the one chosen last if it shows `dest` and still
+    /// shows (a favorite's row goes when its star does, or when search hides it), else its row
+    /// outside Favorites, as when the feed was opened from elsewhere.
+    static func row(for dest: Router.NavDest?, chosen: RowSelection?, favoriteShows: (Router.NavDest) -> Bool = { _ in true }) -> RowSelection? {
+      guard let dest else { return nil }
+      let inFavorites = chosen.map { $0.inFavorites && $0.dest.isSameFeed(as: dest) } == true && favoriteShows(dest)
+      return RowSelection(dest: dest, inFavorites: inFavorites)
     }
   }
 
@@ -83,7 +97,7 @@ struct Subreddits: View, Equatable {
 
   private var selection: Binding<RowSelection?> {
     Binding {
-      RowSelection.row(for: firstDestination, chosen: chosenRow)
+      RowSelection.row(for: firstDestination, chosen: chosenRow, favoriteShows: favoriteRowShows)
     } set: { row in
       if let row {
         chosenRow = row
@@ -92,11 +106,17 @@ struct Subreddits: View, Equatable {
     }
   }
 
+  /// Whether Favorites shows a row for `dest`: not while searching, nor once its star is removed.
+  private func favoriteRowShows(_ dest: Router.NavDest) -> Bool {
+    guard searchText.isEmpty, let name = dest.subredditFeedName else { return false }
+    return subreddits.contains { $0.user_has_favorited && $0.user_is_subscriber && $0.display_name?.lowercased() == name }
+  }
+
   /// A subreddit's row, tagged with its feed so the list's selection opens it.
-  private func subItem(_ cachedSub: CachedSub, inFavorites: Bool = false) -> some View {
+  private func subItem(_ cachedSub: CachedSub, inFavorites: Bool = false, selected: RowSelection?) -> some View {
     let sub = Subreddit(data: SubredditData(entity: cachedSub))
     let row = RowSelection(dest: .reddit(.subFeed(sub)), inFavorites: inFavorites)
-    return SubItem(isActive: row == selection.wrappedValue, inSidebar: inSidebar, sub: sub, cachedSub: cachedSub) {
+    return SubItem(isActive: row == selected, inSidebar: inSidebar, sub: sub, cachedSub: cachedSub) {
       selection.wrappedValue = row
     }
     .tag(row)
@@ -111,6 +131,8 @@ struct Subreddits: View, Equatable {
   }
 
   var body: some View {
+    // Worked out once rather than per row: it looks through the subs for a favorite.
+    let selectedRow = selection.wrappedValue
     ScrollViewReader { proxy in
       List(selection: selection) {
         if searchText == "" {
@@ -171,7 +193,7 @@ struct Subreddits: View, Equatable {
             Section("Found subs") {
               let foundSubs = Array(Array(subreddits.filter { ($0.display_name ?? "").lowercased().contains(searchText.lowercased()) }).enumerated())
               ForEach(foundSubs, id: \.self.element.uuid) { _, cachedSub in
-                subItem(cachedSub)
+                subItem(cachedSub, selected: selectedRow)
               }
             }
 
@@ -181,7 +203,7 @@ struct Subreddits: View, Equatable {
               Section("Favorites") {
                 let favs = Array(favs.sorted(by: { x, y in (x.display_name?.lowercased() ?? "a") < (y.display_name?.lowercased() ?? "a") }).enumerated())
                 ForEach(favs, id: \.self.element) { _, cachedSub in
-                  subItem(cachedSub, inFavorites: true)
+                  subItem(cachedSub, inFavorites: true, selected: selectedRow)
                     .id("\(cachedSub.uuid ?? "")-fav")
                 }
                 .onDelete(perform: deleteFromFavorites)
@@ -192,7 +214,7 @@ struct Subreddits: View, Equatable {
               Section("Subs") {
                 let subs = Array(subreddits.filter(\.user_is_subscriber).sorted(by: { x, y in (x.display_name?.lowercased() ?? "a") < (y.display_name?.lowercased() ?? "a") }).enumerated())
                 ForEach(subs, id: \.self.element) { _, cachedSub in
-                  subItem(cachedSub)
+                  subItem(cachedSub, selected: selectedRow)
                 }
               }
 
@@ -204,7 +226,7 @@ struct Subreddits: View, Equatable {
                       (x.display_name?.lowercased() ?? "a") < (y.display_name?.lowercased() ?? "a")
                     }).enumerated())
                     ForEach(subs, id: \.self.element.uuid) { _, cachedSub in
-                      subItem(cachedSub)
+                      subItem(cachedSub, selected: selectedRow)
                     }
                     .onDelete(perform: { i in
                       deleteFromList(at: i, letter: letter)
