@@ -25,6 +25,27 @@ struct PostLayoutTests {
     PostLayout.large.apply(to: "pics", compactPerSubreddit: &compact, canvasSubreddits: &canvas)
     #expect(PostLayout.of("pics", compactPerSubreddit: compact, compactByDefault: true, canvasSubreddits: canvas) == .large)
   }
+
+  /// Saved has comments, which the canvas has no tiles for.
+  @Test func savedOffersNoCanvas() {
+    #expect(PostLayout.available(for: "pics") == PostLayout.allCases)
+    #expect(!PostLayout.available(for: savedKeyword).contains(.canvas))
+    // A canvas stored for it from before shows rows.
+    #expect(!PostLayout.isCanvas(savedKeyword, canvasSubreddits: [savedKeyword]))
+    #expect(PostLayout.of(savedKeyword, compactPerSubreddit: [:], compactByDefault: true, canvasSubreddits: [savedKeyword]) == .compact)
+  }
+}
+
+@MainActor
+struct CanvasTileTests {
+  /// A refresh brings new models for the same posts; their tiles have to draw the new ones.
+  @Test func aRefreshedPostRedrawsItsTile() {
+    let sub = Subreddit(id: "pics")
+    let post = Post(id: "abc")
+    let theme = defaultTheme.postLinks.theme
+    #expect(CanvasTile(post: post, sub: sub, size: 100, theme: theme) == CanvasTile(post: post, sub: sub, size: 100, theme: theme))
+    #expect(CanvasTile(post: post, sub: sub, size: 100, theme: theme) != CanvasTile(post: Post(id: "abc"), sub: sub, size: 100, theme: theme))
+  }
 }
 
 struct CanvasGridTests {
@@ -81,12 +102,16 @@ struct CanvasThumbnailTests {
         "resolutions": [
           ["url": "https://preview.redd.it/a.jpg?width=320&amp;s=x", "width": 320, "height": 240],
           ["url": "https://preview.redd.it/a.jpg?width=640&amp;s=y", "width": 640, "height": 480],
+          ["url": "https://preview.redd.it/a.jpg?width=1080&amp;s=w", "width": 1080, "height": 810],
           ["url": "https://preview.redd.it/a.jpg?width=108&amp;s=z", "width": 108, "height": 81],
         ],
       ]]]
     }
-    #expect(CanvasThumbnail.url(for: data, pixelWidth: 600)?.absoluteString == "https://preview.redd.it/a.jpg?width=640&s=y")
-    #expect(CanvasThumbnail.url(for: data, pixelWidth: 300)?.absoluteString == "https://preview.redd.it/a.jpg?width=320&s=x")
+    // The tile is a square from the middle, so the shorter side has to cover it: 640×480 is
+    // too short for 600.
+    #expect(CanvasThumbnail.url(for: data, pixelWidth: 600)?.absoluteString == "https://preview.redd.it/a.jpg?width=1080&s=w")
+    #expect(CanvasThumbnail.url(for: data, pixelWidth: 300)?.absoluteString == "https://preview.redd.it/a.jpg?width=640&s=y")
+    #expect(CanvasThumbnail.url(for: data, pixelWidth: 240)?.absoluteString == "https://preview.redd.it/a.jpg?width=320&s=x")
     // Larger than every rendition: the source.
     #expect(CanvasThumbnail.url(for: data, pixelWidth: 3000)?.absoluteString == "https://preview.redd.it/a.jpg?width=2000&s=src")
     #expect(CanvasThumbnail.kind(of: data) == .image)
@@ -102,7 +127,18 @@ struct CanvasThumbnailTests {
       ]
     }
     #expect(CanvasThumbnail.url(for: data, pixelWidth: 400)?.absoluteString == "https://preview.redd.it/second-640.jpg")
+    #expect(CanvasThumbnail.url(for: data, pixelWidth: 600)?.absoluteString == "https://i.redd.it/second.jpg")
     #expect(CanvasThumbnail.kind(of: data) == .gallery(2))
+  }
+
+  @Test func anImageLinkWithoutAPreviewShowsTheImage() throws {
+    let data = try data { json in
+      json["preview"] = nil
+      json["post_hint"] = "image"
+      json["url"] = "https://i.redd.it/abc.jpg"
+    }
+    #expect(CanvasThumbnail.url(for: data, pixelWidth: 300)?.absoluteString == "https://i.redd.it/abc.jpg")
+    #expect(CanvasThumbnail.kind(of: data) == .image)
   }
 
   @Test func textPostsAndBareLinksHaveNoPicture() throws {
@@ -111,6 +147,7 @@ struct CanvasThumbnailTests {
     let link = try data { json in
       json["preview"] = nil
       json["post_hint"] = "link"
+      json["url"] = "https://example.com/article"
     }
     #expect(CanvasThumbnail.url(for: link, pixelWidth: 300) == nil)
   }

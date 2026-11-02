@@ -86,7 +86,7 @@ struct RedditListingFeed<Header: View, Footer: View, S: Sorting>: View {
     let isThereDivider = selectedTheme.postLinks.divider.style != .no
     let paddingH = selectedTheme.postLinks.theme.outerHPadding
     let paddingV = selectedTheme.postLinks.spacing / (isThereDivider ? 4 : 2)
-    let canvas = subreddit.map { canvasSubreddits.contains($0.id) } ?? false
+    let canvas = subreddit.map { PostLayout.isCanvas($0.id, canvasSubreddits: canvasSubreddits) } ?? false
     GeometryReader { geo in
       List {
         header()
@@ -382,6 +382,7 @@ extension RedditListingFeed {
     if let subreddit {
       actions.append(.feedOptions(
         layout: PostLayout.of(subreddit.settingsKey, compactPerSubreddit: compactPerSubreddit, compactByDefault: compactByDefault, canvasSubreddits: canvasSubreddits),
+        layouts: PostLayout.available(for: subreddit.settingsKey),
         setLayout: { $0.save(for: subreddit.settingsKey) },
         filters: filters,
         selected: manager.selectedFilter,
@@ -454,7 +455,7 @@ private struct FeedOptionsMenu: View {
     let custom = filters.filter { $0.type == .custom }
     Menu {
       Picker("Post Layout", selection: layout) {
-        ForEach(PostLayout.allCases) { layout in
+        ForEach(PostLayout.available(for: subId)) { layout in
           Label(layout.title, systemImage: layout.systemImage)
             .tag(layout)
         }

@@ -145,8 +145,7 @@ func mediaExtractor(compact: Bool, contentWidth: Double = .screenW, _ data: Post
     return .yt(newExtracted)
   }
 
-  if let rawImageURL = URL(string: data.url.escape), IMAGES_FORMATS.contains(".\(rawImageURL.pathExtension.lowercased())") {
-    let url = loadableMediaURL(rawImageURL)
+  if let url = directImageURL(data) {
     var actualWidth = 0
     var actualHeight = 0
     if let images = data.preview?.images, !images.isEmpty, let image = images[0].source, let width = image.width, let height = image.height {
@@ -245,6 +244,13 @@ extension URL {
   var isGIF: Bool {
     pathExtension.lowercased() == "gif"
   }
+}
+
+/// The post's link when it's straight to an image file, by its extension, without tracking
+/// parameters.
+func directImageURL(_ data: PostData) -> URL? {
+  guard let url = URL(string: data.url.escape), IMAGES_FORMATS.contains(".\(url.pathExtension.lowercased())") else { return nil }
+  return loadableMediaURL(url)
 }
 
 /// A YouTube embed's thumbnail, downsampled for the column.

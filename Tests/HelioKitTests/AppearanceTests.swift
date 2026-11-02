@@ -41,6 +41,7 @@ struct ThemePresetTests {
     #expect(theme.postLinks.theme.bg.color.light == defaultTheme.postLinks.theme.bg.color.light)
     #expect(theme.postLinks.divider.color.light == defaultTheme.postLinks.divider.color.light)
     #expect(theme.lists.foreground.color.light == defaultTheme.lists.foreground.color.light)
+    #expect(theme.comments.theme.indentColors == rainbowIndentColors)
   }
 
   @Test func highContrastTextReachesAAAAndSeparators3To1() {
@@ -55,9 +56,25 @@ struct ThemePresetTests {
     // Flair text on its own background.
     #expect(contrast(badge.flairText.color.light, badge.flairBackground.light) >= 7)
     #expect(contrast(badge.flairText.color.dark, badge.flairBackground.dark) >= 7)
+    // Separators on the cells, and list separators on Settings' rows too.
     for divider in [theme.lists.dividersColors, theme.comments.theme.indentColor] {
       #expect(contrast(divider.light, cell.light) >= 3)
       #expect(contrast(divider.dark, cell.dark) >= 3)
+    }
+    let row = theme.lists.foreground.color
+    #expect(contrast(theme.lists.dividersColors.light, row.light) >= 3)
+    #expect(contrast(theme.lists.dividersColors.dark, row.dark) >= 3)
+    // The feed's divider between posts.
+    let feedDivider = theme.postLinks.divider
+    #expect(feedDivider.style != .no)
+    #expect(contrast(feedDivider.color.light, cell.light) >= 3)
+    #expect(contrast(feedDivider.color.dark, cell.dark) >= 3)
+    // Comments' depth bars, which comments draw instead of `indentColor` while there are any.
+    let comment = theme.comments.theme.bg
+    #expect(!theme.comments.theme.indentColors.isEmpty)
+    for bar in theme.comments.theme.indentColors {
+      #expect(contrast(bar.light, comment.light) >= 3)
+      #expect(contrast(bar.dark, comment.dark) >= 3)
     }
     // Stronger than Apollo's.
     #expect(contrast(theme.postLinks.theme.bodyText.color.light, cell.light) > contrast(defaultTheme.postLinks.theme.bodyText.color.light, cell.light))

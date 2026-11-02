@@ -27,13 +27,20 @@ let rainbowIndentColors: [ColorSchemes<ThemeColor>] = [
   scheme("F24336", "AF2E27"), scheme("FF922E", "B15610"), scheme("F9D141", "967727"), scheme("2D704C", "2D704C"),
   scheme("0D74DC", "1F68B1"), scheme("224688", "224688"), scheme("643B95", "643B95"),
 ]
+/// The same rainbow in iOS's Increase Contrast system colors: every bar reaches 3:1 on the
+/// comments' white or black background.
+let highContrastIndentColors: [ColorSchemes<ThemeColor>] = [
+  scheme("D70015", "FF6961"), scheme("C93400", "FFB340"), scheme("A05A00", "FFD426"), scheme("248A3D", "30DB5B"),
+  scheme("0040DD", "409CFF"), scheme("3634A3", "7D7AFF"), scheme("8944AB", "DA8FFF"),
+]
 
 /// Increase Contrast versions of the palette's greys, for themes that use them: secondary and
-/// tertiary text reach 7:1 on the cells, and separators darken to 3:1.
+/// tertiary text reach 7:1 on the cells, and separators reach 3:1 on the cells and on grouped
+/// list rows.
 let highContrastPalette: [ColorSchemes<ThemeColor>: ColorSchemes<ThemeColor>] = [
   themeFontSecondary: scheme("4D4D4D", "B4B6BC"),
   themeFontTertiary: scheme("505156", "ADAFB5"),
-  defaultThemeDividerColor: scheme("8E8E93", "5A606B"),
+  defaultThemeDividerColor: scheme("8E8E93", "6A6F7A"),
 ]
 
 extension Color {
@@ -74,6 +81,8 @@ struct ThemePalette {
   var listRow: ColorSchemes<ThemeColor>
   /// The feed's divider between posts.
   var feedDivider: LineTheme
+  /// Comments' depth bars, by depth.
+  var depthColors: [ColorSchemes<ThemeColor>]
 
   static let apollo = ThemePalette(
     fontPrimary: themeFontPrimary,
@@ -87,6 +96,7 @@ struct ThemePalette {
     background: defaultBG,
     listRow: listSectionBGTheme,
     feedDivider: defaultFancyDivider,
+    depthColors: rainbowIndentColors,
   )
 
   /// Apollo in light mode; in dark mode, nothing but text, media, flair and hairlines is lit,
@@ -100,9 +110,9 @@ struct ThemePalette {
     return palette
   }()
 
-  /// Text at 7:1 or more on its background in both modes (WCAG AAA), separators at 3:1 or
-  /// more. These are the Increase Contrast versions of Apollo's greys (`highContrastPalette`),
-  /// kept on whatever the system setting.
+  /// Text at 7:1 or more on its background in both modes (WCAG AAA); separators, the feed's
+  /// dividers and comments' depth bars at 3:1 or more. The greys are the Increase Contrast
+  /// versions of Apollo's (`highContrastPalette`), kept on whatever the system setting.
   static let highContrast: ThemePalette = {
     var palette = ThemePalette.apollo
     palette.fontPrimary = scheme("000000", "FFFFFF")
@@ -110,9 +120,10 @@ struct ThemePalette {
     palette.fontTertiary = highContrastPalette[themeFontTertiary] ?? themeFontTertiary
     palette.divider = highContrastPalette[defaultThemeDividerColor] ?? defaultThemeDividerColor
     palette.accent = scheme("0040DD", "409CFF")
-    // A darker band sets posts apart; flair keeps the lighter grey its text is measured on.
-    palette.band = scheme("E5E5EA", "1C1C1E")
-    palette.feedDivider = .init(style: .fancy, thickness: 8, color: palette.band)
+    // A hairline in the separator color sets posts apart: Apollo's band is about 1.2:1 on the
+    // cells, and a band dark enough for 3:1 would be heavy.
+    palette.feedDivider = .init(style: .line, thickness: 1, color: palette.divider)
+    palette.depthColors = highContrastIndentColors
     return palette
   }()
 
@@ -206,7 +217,7 @@ extension HelioTheme {
           repliesSpacing: 0,
           indentCurve: 12,
           indentColor: palette.divider,
-          indentColors: rainbowIndentColors,
+          indentColors: palette.depthColors,
           cornerRadius: 0,
           badge: palette.commentBadge,
           bodyText: .init(size: 15, color: palette.fontPrimary),

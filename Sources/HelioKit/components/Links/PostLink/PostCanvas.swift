@@ -68,32 +68,35 @@ enum CanvasThumbnail {
     case image, gallery(Int), video, link
   }
 
-  /// The smallest of Reddit's renditions at least `pixelWidth` wide, else the largest. Nil for
-  /// posts without a picture: text posts, and links without a preview.
+  /// The smallest of Reddit's renditions that covers a square tile `pixelWidth` wide, else the
+  /// largest; a link straight to an image when Reddit has none. Nil for posts without a
+  /// picture: text posts, and links without a preview.
   static func url(for data: PostData, pixelWidth: CGFloat) -> URL? {
     // A crosspost shows the original's picture.
     let data = data.crosspost_parent_list?.first ?? data
     guard !data.is_self else { return nil }
     if data.is_gallery == true, let first = data.gallery_data?.items?.first, case let item?? = data.media_metadata?[first.media_id] {
       let sizes = (item.p ?? []) + [item.s].compactMap(\.self)
-      if let url = smallest(sizes.map { ($0.x, $0.u) }, atLeast: pixelWidth) {
+      if let url = smallest(sizes.map { (min($0.x, $0.y), $0.u) }, covering: pixelWidth) {
         return url
       }
     }
     if let image = data.preview?.images?.first {
       let sizes = (image.resolutions ?? []) + [image.source].compactMap(\.self)
-      if let url = smallest(sizes.map { ($0.width ?? 0, $0.url) }, atLeast: pixelWidth) {
+      if let url = smallest(sizes.map { (min($0.width ?? 0, $0.height ?? $0.width ?? 0), $0.url) }, covering: pixelWidth) {
         return url
       }
     }
     if let thumbnail = data.media?.oembed?.thumbnail_url {
       return URL(string: thumbnail.escape)
     }
-    return nil
+    return directImageURL(data)
   }
 
-  static func smallest(_ sizes: [(width: Int, url: String?)], atLeast pixelWidth: CGFloat) -> URL? {
-    let usable = sizes.compactMap { size in size.url.flatMap { URL(string: $0.escape) }.map { (size.width, $0) } }
+  /// The smallest of `sizes` whose shorter side is at least `pixelWidth`, since the tile crops
+  /// a square from its middle; else the largest.
+  static func smallest(_ sizes: [(shorterSide: Int, url: String?)], covering pixelWidth: CGFloat) -> URL? {
+    let usable = sizes.compactMap { size in size.url.flatMap { URL(string: $0.escape) }.map { (size.shorterSide, $0) } }
       .sorted { $0.0 < $1.0 }
     return (usable.first { CGFloat($0.0) >= pixelWidth } ?? usable.last)?.1
   }
@@ -116,7 +119,8 @@ enum CanvasThumbnail {
 /// One post in the canvas: its picture, or its title when it has none. Opens the post.
 struct CanvasTile: View, Equatable {
   static func == (lhs: CanvasTile, rhs: CanvasTile) -> Bool {
-    lhs.post.id == rhs.post.id && lhs.size == rhs.size && lhs.showSub == rhs.showSub && lhs.blurNSFW == rhs.blurNSFW && lhs.readOnScroll == rhs.readOnScroll && lhs.theme == rhs.theme
+    // By identity: a refresh brings new models for the same posts, with new scores and votes.
+    lhs.post === rhs.post && lhs.sub === rhs.sub && lhs.size == rhs.size && lhs.showSub == rhs.showSub && lhs.blurNSFW == rhs.blurNSFW && lhs.readOnScroll == rhs.readOnScroll && lhs.theme == rhs.theme
   }
 
   let post: Post

@@ -34,10 +34,21 @@ enum PostLayout: String, CaseIterable, Identifiable {
     }
   }
 
-  /// A subreddit's layout: canvas when it's one of `canvasSubreddits`, else compact or large as
-  /// set for it, else as compact mode is set for every feed.
+  /// The layouts `subId`'s feed offers. Saved has no canvas: it has comments too, which the
+  /// canvas has no tiles for.
+  static func available(for subId: String) -> [PostLayout] {
+    subId == savedKeyword ? [.large, .compact] : allCases
+  }
+
+  /// Whether `subId`'s feed shows the canvas.
+  static func isCanvas(_ subId: String, canvasSubreddits: Set<String>) -> Bool {
+    canvasSubreddits.contains(subId) && available(for: subId).contains(.canvas)
+  }
+
+  /// A subreddit's layout: canvas when it's one of `canvasSubreddits` and offers it, else
+  /// compact or large as set for it, else as compact mode is set for every feed.
   static func of(_ subId: String, compactPerSubreddit: [String: Bool], compactByDefault: Bool, canvasSubreddits: Set<String>) -> PostLayout {
-    if canvasSubreddits.contains(subId) {
+    if isCanvas(subId, canvasSubreddits: canvasSubreddits) {
       return .canvas
     }
     return (compactPerSubreddit[subId] ?? compactByDefault) ? .compact : .large

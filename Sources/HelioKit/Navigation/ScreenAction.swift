@@ -113,8 +113,8 @@ extension ScreenAction {
   }
 
   /// A subreddit feed's post layout and its flair filter.
-  static func feedOptions(layout: PostLayout, setLayout: @escaping (PostLayout) -> Void, filters: [ShallowCachedFilter], selected: ShallowCachedFilter?, select: @escaping (ShallowCachedFilter?) -> Void) -> ScreenAction {
-    var entries: [Entry] = [.section(nil, PostLayout.allCases.map { option in
+  static func feedOptions(layout: PostLayout, layouts: [PostLayout] = PostLayout.allCases, setLayout: @escaping (PostLayout) -> Void, filters: [ShallowCachedFilter], selected: ShallowCachedFilter?, select: @escaping (ShallowCachedFilter?) -> Void) -> ScreenAction {
+    var entries: [Entry] = [.section(nil, layouts.map { option in
       .choice(option.title, systemImage: option.systemImage, isOn: layout == option) { setLayout(option) }
     })]
     // Each flair once: the cache can hold the same text in different colors.
