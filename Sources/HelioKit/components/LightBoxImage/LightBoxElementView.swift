@@ -10,6 +10,8 @@ import SwiftUI
 
 struct LightBoxElementView: View {
   var el: ImgExtracted
+  /// The post's title, VoiceOver's label for the image.
+  var label: String?
   var onTap: (() -> Void)?
   var doLiveText: Bool
   var showOverlay: Bool
@@ -21,6 +23,9 @@ struct LightBoxElementView: View {
       URLImage(url: el.url, doLiveText: doLiveText, showOverlay: showOverlay)
         .scaledToFit()
     }
+    .accessibilityElement(children: .ignore)
+    .accessibilityLabel(label ?? "Image")
+    .accessibilityAddTraits(.isImage)
     .id("\(el.id)\(altSize.width + altSize.height)")
     .frame(width: .screenW)
     .preferredColorScheme(.dark)

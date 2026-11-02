@@ -36,6 +36,7 @@ struct LightBoxOverlay: View {
       if imagesArr.count > 1 {
         Text("\(activeIndex + 1)/\(imagesArr.count)")
           .fontSize(16, .semibold)
+          .accessibilityLabel("Image \(activeIndex + 1) of \(imagesArr.count)")
           .padding(.horizontal, 12)
           .padding(.vertical, 8)
           .background(Capsule(style: .continuous).fill(.regularMaterial))
@@ -54,7 +55,7 @@ struct LightBoxOverlay: View {
 //               }
 //           }
 
-        LightBoxButton(icon: "square.and.arrow.down") {
+        LightBoxButton(icon: "square.and.arrow.down", label: "Save Image") {
           withAnimation(spring) {
             loading = true
           }
@@ -64,7 +65,7 @@ struct LightBoxOverlay: View {
             }
           }
         }
-        LightBoxButton(icon: "square.and.arrow.up") {
+        LightBoxButton(icon: "square.and.arrow.up", label: "Share Image") {
           Task {
             sharedImageData = try await downloadAndSaveImage(url: imagesArr[activeIndex].url)
           }

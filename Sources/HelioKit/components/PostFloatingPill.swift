@@ -34,11 +34,11 @@ struct PostFloatingPill: View {
             HStack(spacing: 2) {
               Group {
                 HStack(spacing: -12) {
-                  LightBoxButton(icon: "square.and.arrow.up.fill") {
+                  LightBoxButton(icon: "square.and.arrow.up.fill", label: "Share") {
                     ShareUtils.shareItem(item: permalink)
                   }
 
-                  LightBoxButton(icon: !thisPinnedPost ? "shippingbox" : "shippingbox.and.arrow.backward.fill") {
+                  LightBoxButton(icon: !thisPinnedPost ? "shippingbox" : "shippingbox.and.arrow.backward.fill", label: thisPinnedPost ? "Remove from Posts Box" : "Add to Posts Box") {
                     if thisPinnedPost {
                       withAnimation(spring) {
                         postsInBox = postsInBox.filter { $0.id != post.id }
@@ -75,7 +75,7 @@ struct PostFloatingPill: View {
                   //              AlertToast(displayMode: .hud, type: .systemImage("trash", Color.blue), title: "Removed from Posts Box!")
                   //            }
 
-                  LightBoxButton(icon: "arrowshape.turn.up.left.fill") {
+                  LightBoxButton(icon: "arrowshape.turn.up.left.fill", label: "Reply") {
                     withAnimation(spring) {
                       showReplyModal = true
                     }
@@ -95,7 +95,7 @@ struct PostFloatingPill: View {
           Group {
             HStack { // Set spacing to 0 to make buttons stretch evenly
               if let data = post.data {
-                LightBoxButton(icon: data.saved ? "bookmark.fill" : "bookmark") {
+                LightBoxButton(icon: data.saved ? "bookmark.fill" : "bookmark", label: data.saved ? "Unsave" : "Save") {
                   Task {
                     await post.saveToggle()
                   }
@@ -106,7 +106,7 @@ struct PostFloatingPill: View {
               // ShareLink button
               Spacer()
 
-              LightBoxButton(icon: "square.and.arrow.up.fill") {
+              LightBoxButton(icon: "square.and.arrow.up.fill", label: "Share") {
                 ShareUtils.shareItem(item: permalink)
               }
               .padding(.vertical, -2)
@@ -114,7 +114,7 @@ struct PostFloatingPill: View {
               Spacer()
 
               // LightBoxButton for pinned post
-              LightBoxButton(icon: !thisPinnedPost ? "shippingbox" : "shippingbox.and.arrow.backward.fill") {
+              LightBoxButton(icon: !thisPinnedPost ? "shippingbox" : "shippingbox.and.arrow.backward.fill", label: thisPinnedPost ? "Remove from Posts Box" : "Add to Posts Box") {
                 if thisPinnedPost {
                   withAnimation(spring) {
                     postsInBox = postsInBox.filter { $0.id != post.id }
@@ -149,7 +149,7 @@ struct PostFloatingPill: View {
               Spacer()
 
               // LightBoxButton for reply
-              LightBoxButton(icon: "arrowshape.turn.up.left.fill") {
+              LightBoxButton(icon: "arrowshape.turn.up.left.fill", label: "Reply") {
                 withAnimation(spring) {
                   showReplyModal = true
                 }

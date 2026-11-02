@@ -10,23 +10,29 @@ import SwiftUI
 struct LightBoxButton: View {
   @State private var pressed = false
   var icon: String
+  /// What VoiceOver calls it.
+  var label: String
   var action: (() -> Void)?
   var disabled = false
   var body: some View {
-    Image(systemName: icon)
-      .fontSize(20)
-      .frame(width: 56, height: 56)
-      .background(Circle().fill(.secondary.opacity(pressed ? 0.15 : 0)))
-      .contentShape(Circle())
-      .scaleEffect(pressed ? 0.95 : 1)
-      .onTapGesture {
-        if !disabled {
-          withAnimation(.interpolatingSpring(stiffness: 250, damping: 15)) { pressed = true }
-          action?()
-          pressed.toggle()
-        }
+    Button {
+      if !disabled {
+        withAnimation(.interpolatingSpring(stiffness: 250, damping: 15)) { pressed = true }
+        action?()
+        pressed.toggle()
       }
-      .transition(.scaleAndBlur)
-      .id(icon)
+    } label: {
+      Image(systemName: icon)
+        .fontSize(20)
+        .frame(width: 56, height: 56)
+        .background(Circle().fill(.secondary.opacity(pressed ? 0.15 : 0)))
+        .contentShape(Circle())
+        .scaleEffect(pressed ? 0.95 : 1)
+    }
+    .buttonStyle(.plain)
+    .hoverEffect(.highlight)
+    .accessibilityLabel(label)
+    .transition(.scaleAndBlur)
+    .id(icon)
   }
 }

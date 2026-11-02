@@ -16,7 +16,7 @@ struct UserFlair: View, Equatable {
   let flairBackground: ColorSchemes<ThemeColor>
 
   var body: some View {
-    Text(flair).font(.system(size: flairText.size, weight: flairText.weight.t))
+    Text(flair).contentFont(flairText.size, flairText.weight.t, relativeTo: .meta)
       .lineLimit(1)
       .foregroundColor(flairText.color())
       .padding(EdgeInsets(top: 0, leading: 4, bottom: 0, trailing: 4))
@@ -98,25 +98,33 @@ struct BadgeView: View, Equatable {
         if showsFirstLine {
           HStack(alignment: .center, spacing: 4) {
             if let openSub, let subName {
-              if theme.forceSubsAsTags {
-                Tag(subredditIconKit: nil, text: "r/\(subName)", fontSize: theme.authorText.size, backgroundColor: theme.subColor())
-                  .onTapGesture(perform: openSub)
-              } else {
-                Text(subName).foregroundStyle(theme.subColor())
-                  .font(.system(size: theme.authorText.size, weight: theme.authorText.weight.t)).lineLimit(1)
-                  .highPriorityGesture(TapGesture().onEnded(openSub))
+              Button(action: openSub) {
+                if theme.forceSubsAsTags {
+                  Tag(subredditIconKit: nil, text: "r/\(subName)", fontSize: theme.authorText.size, backgroundColor: theme.subColor())
+                } else {
+                  Text(subName).foregroundStyle(theme.subColor())
+                    .contentFont(theme.authorText.size, theme.authorText.weight.t, relativeTo: .meta).lineLimit(1)
+                }
               }
+              .buttonStyle(.plain)
+              .hoverEffect(.highlight)
+              .accessibilityLabel("r/\(subName)")
             }
 
             if showAuthorOnPostLinks {
               if showSubName {
                 Text("·").foregroundStyle(theme.authorText.color().opacity(0.6))
+                  .accessibilityHidden(true)
               }
-              Text(author)
-                .font(.system(size: theme.authorText.size, weight: showSubName ? .regular : theme.authorText.weight.t))
-                .foregroundStyle(author == "[deleted]" ? .red : usernameColor ?? theme.authorText.color())
-                .lineLimit(1)
-                .onTapGesture(perform: openUser)
+              Button(action: openUser) {
+                Text(author)
+                  .contentFont(theme.authorText.size, showSubName ? .regular : theme.authorText.weight.t, relativeTo: .meta)
+                  .foregroundStyle(author == "[deleted]" ? .red : usernameColor ?? theme.authorText.color())
+                  .lineLimit(1)
+              }
+              .buttonStyle(.plain)
+              .hoverEffect(.highlight)
+              .accessibilityLabel("u/\(author)")
 
               if unseen {
                 PostLinkGlowDot(unseenType: .dot(commentTheme?.unseenDot ?? ColorSchemes<ThemeColor>(light: .init(hex: "FF0000"), dark: .init(hex: "FF0000"))), seen: false, badge: true).equatable()
@@ -134,43 +142,54 @@ struct BadgeView: View, Equatable {
               Image(systemName: "bookmark.fill")
                 .foregroundStyle(.green)
                 .transition(.scale.combined(with: .opacity))
+                .accessibilityLabel("Saved")
             }
           }
-          .font(.system(size: theme.authorText.size))
+          .contentFont(theme.authorText.size, relativeTo: .meta)
         }
 
         HStack(alignment: .center, spacing: theme.statsText.size * 0.62) {
           if let openSub, let subName, theme.forceSubsAsTags, !showAuthorOnPostLinks {
-            Tag(subredditIconKit: nil, text: "r/\(subName)", fontSize: theme.statsText.size, backgroundColor: theme.subColor())
-              .highPriorityGesture(TapGesture().onEnded(openSub))
+            Button(action: openSub) {
+              Tag(subredditIconKit: nil, text: "r/\(subName)", fontSize: theme.statsText.size, backgroundColor: theme.subColor())
+            }
+            .buttonStyle(.plain)
+            .hoverEffect(.highlight)
           }
 
-          if let votesCount {
-            BadgeStat(icon: likes == false ? "arrow.down" : "arrow.up", text: votesCount)
-              .foregroundStyle(likes == nil ? defaultIconColor : likes == true ? Color.upvote : Color.downvote)
-          }
+          // The numbers read as one element, "4.8K points, 1.3K comments, 2 hours ago".
+          HStack(alignment: .center, spacing: theme.statsText.size * 0.62) {
+            if let votesCount {
+              BadgeStat(icon: likes == false ? "arrow.down" : "arrow.up", text: votesCount, label: likes == nil ? "\(votesCount) points" : "\(votesCount) points, \(likes == true ? "upvoted" : "downvoted")")
+                .foregroundStyle(likes == nil ? defaultIconColor : likes == true ? Color.upvoteText : Color.downvoteText)
+            }
 
-          if let upvoteRatio {
-            BadgeStat(icon: "face.smiling", text: "\(Int((upvoteRatio * 100).rounded()))%")
-          }
+            if let upvoteRatio {
+              let percent = Int((upvoteRatio * 100).rounded())
+              BadgeStat(icon: "face.smiling", text: "\(percent)%", label: "\(percent)% upvoted")
+            }
 
-          if let commentsCount {
-            BadgeStat(icon: "bubble.left", text: commentsCount)
-          }
+            if let commentsCount {
+              BadgeStat(icon: "bubble.left", text: commentsCount, label: "\(commentsCount) comments")
+            }
 
-          if let newComments = newCommentsCount, newComments > 0 {
-            Text("+\(newComments)").foregroundStyle(Color.accentColor)
-          }
+            if let newComments = newCommentsCount, newComments > 0 {
+              Text("+\(newComments)").foregroundStyle(Color.accentColor)
+                .accessibilityLabel("\(newComments) new")
+            }
 
-          BadgeStat(icon: "clock", text: timeSince(Int(created)))
+            BadgeStat(icon: "clock", text: timeSince(Int(created)), label: spokenTimeSince(Int(created)))
 
-          // The first line holds the saved mark; without it, show it here.
-          if saved, !showAvatar, !showsFirstLine {
-            Image(systemName: "bookmark.fill").foregroundStyle(.green)
+            // The first line holds the saved mark; without it, show it here.
+            if saved, !showAvatar, !showsFirstLine {
+              Image(systemName: "bookmark.fill").foregroundStyle(.green)
+                .accessibilityLabel("Saved")
+            }
           }
+          .accessibilityElement(children: .combine)
         }
         .foregroundStyle(defaultIconColor)
-        .font(.system(size: theme.statsText.size, weight: theme.statsText.weight.t))
+        .contentFont(theme.statsText.size, theme.statsText.weight.t, relativeTo: .meta)
         .contentShape(Rectangle())
         .onTapGesture { onTapStats?() }
         .allowsHitTesting(onTapStats != nil)
@@ -185,12 +204,16 @@ struct BadgeView: View, Equatable {
 struct BadgeStat: View {
   var icon: String
   var text: String
+  /// What VoiceOver reads instead of the symbol's name and the number, like "1.3K comments".
+  var label: String
 
   var body: some View {
     HStack(alignment: .center, spacing: 3) {
       Image(systemName: icon).imageScale(.small)
       Text(text).contentTransition(.numericText())
     }
+    .accessibilityElement(children: .ignore)
+    .accessibilityLabel(label)
   }
 }
 

@@ -15,7 +15,7 @@ struct PostLinkNormalSelftext: View, Equatable {
   var body: some View {
     if let selftext {
       Text(selftext).lineLimit(3)
-        .fontSize(theme.size, theme.weight.t)
+        .contentFont(theme.size, theme.weight.t)
         .foregroundColor(theme.color())
         .fixedSize(horizontal: false, vertical: true)
         .frame(maxWidth: .infinity, alignment: .topLeading)
@@ -106,6 +106,7 @@ struct PostLinkNormal: View, Equatable, Identifiable {
 
         VStack(alignment: .leading, spacing: theme.theme.verticalElementsSpacing / 2.5) {
           PostLinkTitle(attrString: helioData.titleAttr, label: data.title, theme: theme.theme.titleText, size: helioData.postDimensions.titleSize, dimmed: theme.theme.unseenType == .fade && (data.helioSeen ?? false), dimmedColor: theme.theme.badge.statsText.color)
+            .postTitleAccessibility(post: post, data: data, open: openPost)
 
           if !(data.selftext?.isEmpty ?? true), defSettings.showSelfText, let selftext = data.selftext {
             PostLinkNormalSelftext(selftext: selftext, theme: theme.theme.bodyText)
@@ -165,7 +166,9 @@ struct PostLinkMoreMenu: View {
         .foregroundStyle(.secondary)
         .frame(width: VoteButton.hitSize, height: VoteButton.hitSize)
         .contentShape(Rectangle())
+        .contentShape(.hoverEffect, RoundedRectangle(cornerRadius: 10, style: .continuous).inset(by: 5))
     }
+    .hoverEffect(.highlight)
     .accessibilityLabel("More")
   }
 }

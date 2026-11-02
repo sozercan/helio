@@ -60,8 +60,8 @@ struct VotesCluster: View, Equatable {
       VotesClusterVertical(id: votesKit.id, likes: votesKit.likes, upvote: upvote, downvote: downvote)
     } else if !showScore {
       HStack(spacing: 0) {
-        VoteButton(active: votesKit.likes ?? false, color: .upvote, image: "arrow.up").highPriorityGesture(TapGesture().onEnded(upvote))
-        VoteButton(active: !(votesKit.likes ?? true), color: .downvote, image: "arrow.down").highPriorityGesture(TapGesture().onEnded(downvote))
+        VoteButton(active: votesKit.likes ?? false, color: .upvote, image: "arrow.up", label: "Upvote", action: upvote)
+        VoteButton(active: !(votesKit.likes ?? true), color: .downvote, image: "arrow.down", label: "Downvote", action: downvote)
       }
     } else {
       VotesClusterHorizontal(id: votesKit.id, likes: votesKit.likes, ups: votesKit.ups, upvote_ratio: votesKit.ratio, upvote: upvote, downvote: downvote, showUpVoteRatio: showUpVoteRatio)
@@ -83,11 +83,11 @@ struct VotesClusterHorizontal: View, Equatable {
   var showUpVoteRatio: Bool
   var body: some View {
     HStack(spacing: showUpVoteRatio ? 4 : 8) {
-      VoteButton(active: likes ?? false, color: .upvote, image: "arrow.up").onTapGesture(perform: upvote)
+      VoteButton(active: likes ?? false, color: .upvote, image: "arrow.up", label: "Upvote", action: upvote)
 
       VotesClusterInfo(ups: ups, likes: likes, likeRatio: upvote_ratio, showUpVoteRatio: showUpVoteRatio).allowsHitTesting(false)
 
-      VoteButton(active: !(likes ?? true), color: .downvote, image: "arrow.down").onTapGesture(perform: downvote)
+      VoteButton(active: !(likes ?? true), color: .downvote, image: "arrow.down", label: "Downvote", action: downvote)
     }
     .scaleEffect(1)
     //    .drawingGroup()
@@ -105,9 +105,9 @@ struct VotesClusterVertical: View, Equatable {
   let downvote: () -> Void
   var body: some View {
     VStack(spacing: 0) {
-      VoteButton(active: likes ?? false, color: .upvote, image: "arrow.up").highPriorityGesture(TapGesture().onEnded(upvote))
+      VoteButton(active: likes ?? false, color: .upvote, image: "arrow.up", label: "Upvote", action: upvote)
 
-      VoteButton(active: !(likes ?? true), color: .downvote, image: "arrow.down").highPriorityGesture(TapGesture().onEnded(downvote))
+      VoteButton(active: !(likes ?? true), color: .downvote, image: "arrow.down", label: "Downvote", action: downvote)
     }
     .frame(width: VotesCluster.verticalWidth, alignment: .top)
   }
@@ -126,6 +126,7 @@ struct VotesClusterInfo: View {
   var showUpVoteRatio: Bool
 
   @State var flyingNumber: FlyingNumberInfo
+  @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
   init(ups: Int, likes: Bool? = nil, likeRatio: CGFloat? = nil, showUpVoteRatio: Bool) {
     self.ups = ups
@@ -139,15 +140,18 @@ struct VotesClusterInfo: View {
     VStack(spacing: 0) {
       Text(formatBigNumber(ups))
         .contentTransition(.numericText())
-        .foregroundStyle(likes != nil ? (likes! ? Color.upvote : Color.downvote) : Color.gray)
+        .foregroundStyle(likes != nil ? (likes! ? Color.upvoteText : Color.downvoteText) : Color.gray)
         .fontSize(16, .semibold)
+        .accessibilityLabel("\(formatBigNumber(ups)) points")
+        // The change floats up from the score; with Reduce Motion the score just updates.
         .changeEffect(
           .rise(origin: UnitPoint(x: 0.75, y: 0.25)) {
             Text(flyingNumber.value > 0 ? "+\(flyingNumber.value)" : "\(flyingNumber.value)")
-              .foregroundStyle(flyingNumber.color == true ? Color.upvote : flyingNumber.color == nil ? Color.gray : Color.downvote)
+              .foregroundStyle(flyingNumber.color == true ? Color.upvoteText : flyingNumber.color == nil ? Color.gray : Color.downvoteText)
               .font(.system(size: 12, weight: .semibold))
           },
           value: flyingNumber,
+          isEnabled: !reduceMotion,
         )
       if showUpVoteRatio {
         if likeRatio != nil, let ratio = likeRatio {

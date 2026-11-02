@@ -63,11 +63,16 @@ struct SubItem: View, Equatable {
 
           Spacer()
 
+          // A gesture inside the row button's label, which VoiceOver reads as one element:
+          // VoiceOver gets the toggle as an action of the row instead.
           Image(systemName: "star.fill")
             .foregroundColor(favorite ? Color.accentColor : .gray.opacity(0.3))
             .highPriorityGesture(TapGesture().onEnded(favoriteToggle))
+            .accessibilityHidden(true)
         }
       }
+      .accessibilityValue(favorite ? "Favorite" : "")
+      .accessibilityAction(named: favorite ? "Remove from Favorites" : "Add to Favorites", favoriteToggle)
 
     } else {
       Text("Error")
