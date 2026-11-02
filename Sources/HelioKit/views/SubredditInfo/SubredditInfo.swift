@@ -41,7 +41,7 @@ struct SubredditInfo: View {
                 .fontSize(22, .bold)
               Text("Created \(data.created == nil ? "at some point" : Date(timeIntervalSince1970: TimeInterval(data.created!)).toFormat("MMM dd, yyyy"))")
                 .fontSize(16, .medium)
-                .opacity(0.5)
+                .foregroundStyle(Color.secondaryText)
               HStack {
                 SubscribeButton(subreddit: subreddit)
               }

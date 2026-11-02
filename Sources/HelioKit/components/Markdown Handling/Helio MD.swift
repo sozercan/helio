@@ -88,7 +88,7 @@ public extension Theme {
             .fill(Color(rgba: 0x4244_4EFF))
             .relativeFrame(width: .em(0.2))
           configuration.label
-            .markdownTextStyle { ForegroundColor(Color(rgba: 0x9294_A0FF)) }
+            .markdownTextStyle { ForegroundColor(blockquoteText) }
             .relativePadding(.horizontal, length: .em(1))
         }
         .fixedSize(horizontal: false, vertical: true)
@@ -99,6 +99,9 @@ public extension Theme {
       }
   }
 }
+
+/// Quoted text: #9294A0 on black, darker on white so it keeps 4.5:1 there too.
+private let blockquoteText = Color(UIColor(light: UIColor(hex: "6B6E78"), dark: UIColor(hex: "9294A0")))
 
 private extension View {
   /// `TextSelectability` is read from the type (`static var allowsSelection`), so a single

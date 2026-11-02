@@ -46,7 +46,7 @@ struct BehaviorPanel: View {
               HStack {
                 Text("Your iPhone does not support Live Text :(")
                   .fontSize(12)
-                  .opacity(0.5)
+                  .foregroundStyle(Color.secondaryText)
                 Spacer()
               }
             }

@@ -25,7 +25,7 @@ struct FakeSection<Content: View>: View {
         HStack {
           Text(title.uppercased())
             .fontSize(13)
-            .opacity(0.5)
+            .foregroundStyle(Color.secondaryText)
           Spacer()
           Image(systemName: "chevron.down")
             .fontSize(13, .semibold)
@@ -48,7 +48,7 @@ struct FakeSection<Content: View>: View {
           Text(footer)
             .fontSize(13)
             .padding(.horizontal, 16)
-            .opacity(0.5)
+            .foregroundStyle(Color.secondaryText)
         }
       }
     }

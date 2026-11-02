@@ -29,7 +29,7 @@ struct UserLink: View {
           Text("u/\(data.name)")
             .fontSize(18, .semibold)
           Text("\(formatBigNumber(data.total_karma ?? ((data.link_karma ?? 0) + (data.comment_karma ?? 0)))) karma")
-            .fontSize(14).opacity(0.5)
+            .fontSize(14).foregroundStyle(Color.secondaryText)
           if let description = data.subreddit?.public_description {
             Text(description.md()).lineLimit(2)
               .fontSize(15).opacity(0.75)
