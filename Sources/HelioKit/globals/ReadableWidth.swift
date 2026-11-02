@@ -10,7 +10,7 @@ import SwiftUI
 
 enum ReadableWidth {
   /// The widest rows get.
-  static let max: CGFloat = 700
+  static let max: CGFloat = MacIdiom.size(700)
 
   /// The width content gets in a column `width` wide. The open iPhone Duo uses its whole width:
   /// a centered column would straddle the hinge.

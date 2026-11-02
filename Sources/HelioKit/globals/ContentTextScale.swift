@@ -52,8 +52,9 @@ enum ContentTextScale {
   /// `size`, a size at the default text size, scaled for `dynamicTypeSize` like `role`.
   static func size(_ size: CGFloat, relativeTo role: Role = .body, dynamicTypeSize: DynamicTypeSize = ContentTextScale.dynamicTypeSize) -> CGFloat {
     #if targetEnvironment(macCatalyst)
-      // Mac Catalyst has no Dynamic Type: keep the sizes the Mac layout was made for.
-      return size
+      // Mac Catalyst has no Dynamic Type: keep the sizes the Mac layout was made for, and
+      // their size on screen in the Mac idiom. Measuring and drawing both come through here.
+      return MacIdiom.size(size)
     #else
       let capped = min(dynamicTypeSize, role.maximum)
       guard capped != .large else { return size }

@@ -14,7 +14,7 @@ struct EndOfFeedView: View {
   var body: some View {
     VStack(spacing: 10) {
       Image(systemName: "sun.horizon.fill")
-        .font(.system(size: 36))
+        .font(.system(size: MacIdiom.size(36)))
         .foregroundStyle(.orange.gradient)
       Text(QuirkyMessageUtil.quirkyEndOfFeed())
         .fixedSize(horizontal: false, vertical: true)

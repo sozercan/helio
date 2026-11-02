@@ -175,13 +175,13 @@ struct SubredditsStack: View {
 
 /// How the posts split view lays out its columns for a window width.
 struct SplitLayout: Equatable {
-  static let minFeedWidth: CGFloat = 320
-  static let idealFeedWidth: CGFloat = 400
-  static let maxFeedWidth: CGFloat = 480
+  static let minFeedWidth: CGFloat = MacIdiom.size(320)
+  static let idealFeedWidth: CGFloat = MacIdiom.size(400)
+  static let maxFeedWidth: CGFloat = MacIdiom.size(480)
   /// The narrowest post column worth reading in. Narrower, the post replaces the feed.
-  static let minPostWidth: CGFloat = 440
+  static let minPostWidth: CGFloat = MacIdiom.size(440)
   /// The sidebar's width when shown beside the other two.
-  static let sidebarWidth: CGFloat = 320
+  static let sidebarWidth: CGFloat = MacIdiom.size(320)
 
   /// The feed and the post side by side, else one stack. The open iPhone Duo always shows both,
   /// one on each side of the hinge, where a single column would be cut in two.

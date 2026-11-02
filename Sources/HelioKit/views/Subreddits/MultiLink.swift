@@ -42,6 +42,7 @@ struct MultiLink: View {
     } primaryAction: {
       Nav.selectFeed(.reddit(.multiFeed(multi)))
     }
+    .borderlessMenuOnMac()
     .accessibilityAddTraits(selected ? .isSelected : [])
     .onAppear {
       if subs.isEmpty {

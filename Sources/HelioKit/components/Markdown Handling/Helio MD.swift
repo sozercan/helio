@@ -13,7 +13,7 @@ public extension Theme {
   static func helioMarkdown(fontSize: CGFloat, lineSpacing: CGFloat = 0.2, textSelection: Bool = false) -> Theme {
     Theme()
       .text {
-        FontSize(fontSize)
+        FontSize(MacIdiom.size(fontSize))
       }
       .paragraph { configuration in
         configuration.label
@@ -24,21 +24,21 @@ public extension Theme {
       .heading1 { configuration in
         configuration.label
           .markdownTextStyle {
-            FontSize(fontSize * 2)
+            FontSize(MacIdiom.size(fontSize * 2))
           }
           .helioTextSelection(textSelection)
       }
       .heading2 { configuration in
         configuration.label
           .markdownTextStyle {
-            FontSize(fontSize * 1.5)
+            FontSize(MacIdiom.size(fontSize * 1.5))
           }
           .helioTextSelection(textSelection)
       }
       .heading3 { configuration in
         configuration.label
           .markdownTextStyle {
-            FontSize(fontSize * 1.25)
+            FontSize(MacIdiom.size(fontSize * 1.25))
           }
           .helioTextSelection(textSelection)
       }

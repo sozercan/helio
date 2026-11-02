@@ -16,9 +16,9 @@ struct ShortCommentPostLink: View {
     if let data = comment.data, let _ = data.link_id, let _ = data.subreddit {
       VStack(alignment: .leading, spacing: 6) {
         if let subreddit = data.subreddit {
-          Text(data.link_title ?? "Error").font(.system(size: 15)).foregroundColor(.primary.opacity(0.75)) +
-            Text(" · ").font(.system(size: 13)).foregroundColor(.primary.opacity(0.5)) +
-            Text("r/\(subreddit)").italic().font(.system(size: 14)).foregroundColor(.primary.opacity(0.75))
+          Text(data.link_title ?? "Error").font(.system(size: MacIdiom.size(15))).foregroundStyle(Color.primary.opacity(0.75)) +
+            Text(" · ").font(.system(size: MacIdiom.size(13))).foregroundStyle(Color.primary.opacity(0.5)) +
+            Text("r/\(subreddit)").italic().font(.system(size: MacIdiom.size(14))).foregroundStyle(Color.primary.opacity(0.75))
         }
       }
       .multilineTextAlignment(.leading)

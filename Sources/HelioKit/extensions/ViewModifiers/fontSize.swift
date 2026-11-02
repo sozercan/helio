@@ -21,7 +21,8 @@ import SwiftUI
 // ]
 
 extension View {
+  /// A system font of `size`, at the size it has on iPad (and at 77% on Mac, `MacIdiom`).
   func fontSize(_ size: CGFloat, _ weight: Font.Weight = .regular, design: Font.Design = .default) -> some View {
-    self.font(.system(size: size, weight: weight, design: design))
+    self.font(.system(size: MacIdiom.size(size), weight: weight, design: design))
   }
 }

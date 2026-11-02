@@ -18,9 +18,9 @@ extension Color {
 
 /// An arrow that fills a rounded square with its vote color while active.
 struct VoteButton: View, Equatable {
-  static let size: CGFloat = 30
+  static let size: CGFloat = MacIdiom.size(30)
   /// The tap target around the drawn square, so adjacent buttons stay easy to hit.
-  static let hitSize: CGFloat = 44
+  static let hitSize: CGFloat = MacIdiom.size(44)
 
   static func == (lhs: VoteButton, rhs: VoteButton) -> Bool {
     lhs.active == rhs.active && lhs.color == rhs.color && lhs.image == rhs.image && lhs.label == rhs.label
@@ -36,7 +36,7 @@ struct VoteButton: View, Equatable {
   var body: some View {
     Button(action: action) {
       Image(systemName: image)
-        .font(.system(size: 17, weight: .medium))
+        .font(.system(size: MacIdiom.size(17), weight: .medium))
         .symbolEffect(active ? .bounce.up : .bounce.down, options: .speed(2.75), value: active)
         .foregroundStyle(active ? Color.white : Color.secondary)
         .frame(width: VoteButton.size, height: VoteButton.size)

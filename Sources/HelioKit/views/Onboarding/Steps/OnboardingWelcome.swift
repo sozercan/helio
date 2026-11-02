@@ -31,7 +31,7 @@ struct OnboardingWelcome: View {
           }
 
           if showAppName {
-            (Text("I'm ").font(Font.system(size: 24, weight: .semibold)).foregroundColor(.primary.opacity(0.75)) + Text("Helio").font(Font.system(size: 34, weight: .bold)).foregroundColor(.yellow))
+            (Text("I'm ").font(Font.system(size: MacIdiom.size(24), weight: .semibold)).foregroundStyle(Color.primary.opacity(0.75)) + Text("Helio").font(Font.system(size: MacIdiom.size(34), weight: .bold)).foregroundStyle(Color.yellow))
               .transition(.scaleAndBlur)
           }
         }

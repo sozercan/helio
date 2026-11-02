@@ -163,13 +163,14 @@ struct PostLinkMoreMenu: View {
       }
     } label: {
       Image(systemName: "ellipsis")
-        .font(.system(size: 17, weight: .medium))
+        .font(.system(size: MacIdiom.size(17), weight: .medium))
         .foregroundStyle(.secondary)
         .frame(width: VoteButton.hitSize, height: VoteButton.hitSize)
         .contentShape(Rectangle())
         .contentShape(.hoverEffect, RoundedRectangle(cornerRadius: 10, style: .continuous).inset(by: 5))
     }
     .hoverEffect(.highlight)
+    .borderlessMenuOnMac()
     .accessibilityLabel("More")
   }
 }

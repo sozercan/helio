@@ -68,7 +68,7 @@ struct PostInBoxLink: View {
             }
           }
         }
-        .font(.system(size: 13, weight: .medium))
+        .font(.system(size: MacIdiom.size(13), weight: .medium))
         .foregroundStyle(Color.secondaryText)
 
         Spacer()
