@@ -43,10 +43,24 @@ final class CommandTargets {
   /// Set by Find when no search field shows: the Search tab focuses its field when it next appears.
   @ObservationIgnored var searchFocusPending = false
 
+  /// The feed shown last in the posts tab's feed column, for Next and Previous Post. Kept after
+  /// it unregisters: in the collapsed stack, the post opened from it covers it.
+  private var postsFeed: (id: UUID, target: Target)?
+
   func register(_ target: Target) -> UUID {
     let id = UUID()
     targets.append((id, target))
+    if target.kind == .feed, target.column == .feed, target.posts != nil {
+      postsFeed = (id, target)
+    }
     return id
+  }
+
+  /// Replaces a registered target, such as when what it can do changes.
+  func update(_ id: UUID, to target: Target) {
+    if let index = targets.firstIndex(where: { $0.id == id }) {
+      targets[index].target = target
+    }
   }
 
   func unregister(_ id: UUID) {
@@ -89,24 +103,39 @@ final class CommandTargets {
     targets.last { $0.target.kind == .post && $0.target.post != nil }?.target
   }
 
-  /// The posts tab's feed column, for Next and Previous Post: the feed shown last there.
-  private var feedColumn: Target? {
-    targets.last { $0.target.kind == .feed && $0.target.column == .feed && $0.target.posts != nil }?.target
+  /// The post `offset` places from the post the posts tab's feed has open, in that feed. Nil
+  /// when no post from it is open, or at its end.
+  func adjacentPost(_ offset: Int, nav: Nav = .shared) -> Post? {
+    nav.activeTab == .posts ? adjacentPost(offset, in: nav[.posts]) : nil
   }
 
-  /// The post `offset` places from the one open in the posts tab's post column, in the feed
-  /// beside it. Nil when no post from that feed is open, or at its end.
-  func adjacentPost(_ offset: Int, nav: Nav = .shared) -> Post? {
-    guard nav.activeTab == .posts, let feed = feedColumn, let posts = feed.posts?(),
-          case let .reddit(dest) = nav[.posts].postColumn.first else { return nil }
-    return Self.post(offset, from: dest.id, in: posts)
+  func adjacentPost(_ offset: Int, in router: Router) -> Post? {
+    guard let id = Self.feedPostID(in: router), let posts = postsFeed?.target.posts?() else { return nil }
+    return Self.post(offset, from: id, in: posts)
   }
 
   /// Opens the post `offset` places from the open one in the post column and scrolls the feed to it.
   func openAdjacentPost(_ offset: Int, nav: Nav = .shared) {
-    guard let post = adjacentPost(offset, nav: nav) else { return }
-    nav[.posts].navigateTo(.reddit(.post(post)), from: .feed)
-    feedColumn?.reveal?(post)
+    guard nav.activeTab == .posts else { return }
+    openAdjacentPost(offset, in: nav[.posts])
+  }
+
+  func openAdjacentPost(_ offset: Int, in router: Router) {
+    guard let post = adjacentPost(offset, in: router) else { return }
+    router.navigateTo(.reddit(.post(post)), from: .feed)
+    // Only a feed that shows scrolls; a covered one keeps its place.
+    if let feed = postsFeed, targets.contains(where: { $0.id == feed.id }) {
+      feed.target.reveal?(post)
+    }
+  }
+
+  /// The id of the post Next and Previous Post move from: the first in the post column, the one
+  /// the feed marks as open. Beside the feed it moves even under screens opened from the post,
+  /// as a list's selection does; in one stack, where the feed doesn't show, only from the post
+  /// itself, not from a profile or another post opened over it.
+  static func feedPostID(in router: Router) -> String? {
+    guard let post = router.postColumn.first, router.firstIsSidebarSelection || router.postPath.isEmpty else { return nil }
+    return post.id
   }
 
   /// The post `offset` places from the one with `id` in `posts`.
@@ -117,8 +146,9 @@ final class CommandTargets {
   }
 }
 
-private struct CommandTargetModifier: ViewModifier {
+private struct CommandTargetModifier<Key: Equatable>: ViewModifier {
   var target: CommandTargets.Target?
+  var key: Key
   @State private var registration: UUID?
 
   func body(content: Content) -> some View {
@@ -126,6 +156,11 @@ private struct CommandTargetModifier: ViewModifier {
       .onAppear {
         guard registration == nil, let target else { return }
         registration = CommandTargets.shared.register(target)
+      }
+      .onChange(of: key) {
+        if let registration, let target {
+          CommandTargets.shared.update(registration, to: target)
+        }
       }
       .onDisappear {
         if let registration {
@@ -139,7 +174,13 @@ private struct CommandTargetModifier: ViewModifier {
 extension View {
   /// Makes this screen what the menu bar's commands act on while it shows. Nil registers nothing.
   func commandTarget(_ target: CommandTargets.Target?) -> some View {
-    modifier(CommandTargetModifier(target: target))
+    modifier(CommandTargetModifier(target: target, key: 0))
+  }
+
+  /// `commandTarget` whose target changes with `key`, such as a refresh that's only available
+  /// with something to refresh.
+  func commandTarget(_ target: CommandTargets.Target, updatingWith key: some Equatable) -> some View {
+    modifier(CommandTargetModifier(target: target, key: key))
   }
 
   /// `commandTarget` for a feed, which Next and Previous Post scroll to the post they open.

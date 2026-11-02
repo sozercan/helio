@@ -61,14 +61,45 @@ struct Subreddits: View, Equatable {
     }
   }
 
-  /// A subreddit's row, tagged with its feed so the list's selection opens it.
-  private func subItem(_ cachedSub: CachedSub) -> some View {
-    let sub = Subreddit(data: SubredditData(entity: cachedSub))
-    let dest = Router.NavDest.reddit(.subFeed(sub))
-    return SubItem(isActive: firstDestination?.isSameFeed(as: dest) ?? false, inSidebar: inSidebar, sub: sub, cachedSub: cachedSub) {
-      firstDestination = dest
+  /// A row the list can select: its feed, and whether it's the row in Favorites, as a favorite
+  /// shows twice. Selecting either opens the same feed.
+  struct RowSelection: Hashable {
+    var dest: Router.NavDest
+    var inFavorites = false
+
+    /// The row that shows `dest` as selected: the one chosen last if it shows `dest`, else its
+    /// row outside Favorites, as when the feed was opened from elsewhere.
+    static func row(for dest: Router.NavDest?, chosen: RowSelection?) -> RowSelection? {
+      guard let dest else { return nil }
+      if let chosen, chosen.dest.isSameFeed(as: dest) {
+        return chosen
+      }
+      return RowSelection(dest: dest)
     }
-    .tag(dest)
+  }
+
+  /// The row chosen last, which tells a favorite's two rows apart.
+  @State private var chosenRow: RowSelection?
+
+  private var selection: Binding<RowSelection?> {
+    Binding {
+      RowSelection.row(for: firstDestination, chosen: chosenRow)
+    } set: { row in
+      if let row {
+        chosenRow = row
+      }
+      firstDestination = row?.dest
+    }
+  }
+
+  /// A subreddit's row, tagged with its feed so the list's selection opens it.
+  private func subItem(_ cachedSub: CachedSub, inFavorites: Bool = false) -> some View {
+    let sub = Subreddit(data: SubredditData(entity: cachedSub))
+    let row = RowSelection(dest: .reddit(.subFeed(sub)), inFavorites: inFavorites)
+    return SubItem(isActive: row == selection.wrappedValue, inSidebar: inSidebar, sub: sub, cachedSub: cachedSub) {
+      selection.wrappedValue = row
+    }
+    .tag(row)
   }
 
   /// A feed's tile, selected while its feed shows.
@@ -81,7 +112,7 @@ struct Subreddits: View, Equatable {
 
   var body: some View {
     ScrollViewReader { proxy in
-      List(selection: $firstDestination) {
+      List(selection: selection) {
         if searchText == "" {
           VStack(spacing: 12) {
             HStack(spacing: 12) {
@@ -150,7 +181,7 @@ struct Subreddits: View, Equatable {
               Section("Favorites") {
                 let favs = Array(favs.sorted(by: { x, y in (x.display_name?.lowercased() ?? "a") < (y.display_name?.lowercased() ?? "a") }).enumerated())
                 ForEach(favs, id: \.self.element) { _, cachedSub in
-                  subItem(cachedSub)
+                  subItem(cachedSub, inFavorites: true)
                     .id("\(cachedSub.uuid ?? "")-fav")
                 }
                 .onDelete(perform: deleteFromFavorites)

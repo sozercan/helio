@@ -192,7 +192,8 @@ struct PostView: View, Equatable {
         // A context-menu preview isn't a screen the menu bar's commands act on.
         .commandTarget(isPreview ? nil : CommandTargets.Target(kind: .post, column: navColumn, refresh: updatePost, post: post, reply: { showReplyModal = true }))
         .sheet(isPresented: $showReplyModal) {
-          ReplyModalPost(post: post)
+          // Reloads the comments once the reply is posted, so it shows.
+          ReplyModalPost(post: post, updateComments: updatePost)
         }
         .onPreferenceChange(CommentUtils.AnchorsKey.self) { anchors in
           Task(priority: .background) {

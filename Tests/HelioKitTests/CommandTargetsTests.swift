@@ -76,3 +76,102 @@ struct CommandTargetsTests {
     #expect(targets.openPost == nil)
   }
 }
+
+struct AdjacentPostTests {
+  private let feed = ["a", "b", "c"].map { Post(id: $0, subID: "apple") }
+  private let home = Router.NavDest.reddit(.subFeed(Subreddit(id: "home")))
+  private let profile = Router.NavDest.reddit(.user(User(id: "someone")))
+
+  /// The posts tab with `feed` as its feed and the post at `open` in the post column.
+  private func router(open: Int, columns: Bool, above: [Router.NavDest] = []) -> Router {
+    let router = Router(id: "test")
+    router.firstIsSidebarSelection = columns
+    router.fullPath = [home, .reddit(.post(feed[open]))] + above
+    return router
+  }
+
+  @Test func theFeedsPostsStayAvailableWhileItsPostCoversIt() {
+    let targets = CommandTargets()
+    let registration = targets.register(.init(kind: .feed, column: .feed, posts: { feed }))
+    // Collapsed into one stack, the open post hides the feed.
+    targets.unregister(registration)
+    let router = router(open: 1, columns: false)
+    #expect(targets.adjacentPost(1, in: router)?.id == feed[2].id)
+    #expect(targets.adjacentPost(-1, in: router)?.id == feed[0].id)
+  }
+
+  @Test func onlyAFeedThatShowsScrollsToThePostItOpens() {
+    let targets = CommandTargets()
+    var reveals = 0
+    var target = CommandTargets.Target(kind: .feed, column: .feed, posts: { feed })
+    target.reveal = { _ in reveals += 1 }
+    let registration = targets.register(target)
+    let router = router(open: 0, columns: true)
+    targets.openAdjacentPost(1, in: router)
+    #expect(router.postColumn.first?.id == feed[1].id)
+    #expect(reveals == 1)
+    targets.unregister(registration)
+    targets.openAdjacentPost(1, in: router)
+    #expect(router.postColumn.first?.id == feed[2].id)
+    #expect(reveals == 1)
+  }
+
+  @Test func besideTheFeedNextFollowsTheMarkedPostUnderScreensOpenedFromIt() {
+    #expect(CommandTargets.feedPostID(in: router(open: 1, columns: true, above: [profile])) == feed[1].id)
+  }
+
+  @Test func inOneStackOnlyThePostItselfMoves() {
+    #expect(CommandTargets.feedPostID(in: router(open: 1, columns: false)) == feed[1].id)
+    #expect(CommandTargets.feedPostID(in: router(open: 1, columns: false, above: [profile])) == nil)
+    #expect(CommandTargets.feedPostID(in: router(open: 1, columns: false, above: [.reddit(.post(feed[2]))])) == nil)
+  }
+
+  @Test func withNoPostOpenThereIsNothingToMoveFrom() {
+    let router = Router(id: "test")
+    router.fullPath = [home]
+    #expect(CommandTargets.feedPostID(in: router) == nil)
+  }
+
+  @Test func feedsOutsideThePostsTabsFeedColumnArentUsed() {
+    let targets = CommandTargets()
+    _ = targets.register(.init(kind: .feed, column: .post, posts: { feed }))
+    _ = targets.register(.init(kind: .feed, posts: { feed }))
+    #expect(targets.adjacentPost(1, in: router(open: 0, columns: true)) == nil)
+  }
+}
+
+struct CommandTargetUpdateTests {
+  @Test func anUpdatedTargetChangesWhatTheCommandsCanDo() {
+    let targets = CommandTargets()
+    let search = targets.register(.init(kind: .search, focusSearch: {}))
+    #expect(!targets.canRefresh)
+    targets.update(search, to: .init(kind: .search, refresh: {}, focusSearch: {}))
+    #expect(targets.canRefresh)
+    targets.update(search, to: .init(kind: .search, focusSearch: {}))
+    #expect(!targets.canRefresh)
+  }
+}
+
+struct SubsListSelectionTests {
+  private let pics = Router.NavDest.reddit(.subFeed(Subreddit(id: "pics")))
+  private let apple = Router.NavDest.reddit(.subFeed(Subreddit(id: "apple")))
+
+  @Test func aFavoritesTwoRowsAreDifferentRowsForTheSameFeed() {
+    let favorite = Subreddits.RowSelection(dest: pics, inFavorites: true)
+    let regular = Subreddits.RowSelection(dest: pics)
+    #expect(favorite != regular)
+    #expect(favorite.dest == regular.dest)
+  }
+
+  @Test func theRowChosenStaysSelected() {
+    let favorite = Subreddits.RowSelection(dest: pics, inFavorites: true)
+    #expect(Subreddits.RowSelection.row(for: pics, chosen: favorite) == favorite)
+  }
+
+  @Test func aFeedOpenedElsewhereSelectsItsRegularRow() {
+    let favorite = Subreddits.RowSelection(dest: pics, inFavorites: true)
+    #expect(Subreddits.RowSelection.row(for: apple, chosen: favorite) == .init(dest: apple))
+    #expect(Subreddits.RowSelection.row(for: pics, chosen: nil) == .init(dest: pics))
+    #expect(Subreddits.RowSelection.row(for: nil, chosen: favorite) == nil)
+  }
+}

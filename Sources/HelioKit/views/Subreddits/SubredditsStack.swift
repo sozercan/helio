@@ -66,8 +66,9 @@ struct SubredditsStack: View {
     }
     .navigationSplitViewStyle(.balanced)
     // On the split view, not the feed column: collapsed, the subs list shows first and the feed
-    // column's tasks don't run, which would leave the default feed unopened.
-    .task(priority: .background) {
+    // column's tasks don't run, which would leave the default feed unopened. On appear rather
+    // than in a task: until it runs, the feed column shows no feed.
+    .onAppear {
       if !loaded {
         if let feed = Self.launchFeed(defaultFeed: behaviorDefSettings.preferenceDefaultFeed, showsColumns: layout.showsColumns, current: router.firstSelected) {
           router.firstSelected = feed

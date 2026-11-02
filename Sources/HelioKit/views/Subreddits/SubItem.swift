@@ -29,7 +29,7 @@ struct SubItemButton: View, Equatable {
 /// sidebar the list draws the selection; in a stack the row marks it while the feed opens.
 struct SubItem: View, Equatable {
   static func == (lhs: SubItem, rhs: SubItem) -> Bool {
-    lhs.sub == rhs.sub && lhs.isActive == rhs.isActive && lhs.inSidebar == rhs.inSidebar
+    lhs.sub == rhs.sub && lhs.sub.data?.user_is_subscriber == rhs.sub.data?.user_is_subscriber && lhs.isActive == rhs.isActive && lhs.inSidebar == rhs.inSidebar
   }
 
   var isActive: Bool
@@ -83,8 +83,15 @@ struct SubItem: View, Equatable {
           ShareUtils.shareItem(item: "https://reddit.com/r/\(name)")
         }
         Divider()
-        Button("Unsubscribe", systemImage: "minus.circle", role: .destructive) {
-          sub.subscribeToggle(optimistic: true)
+        // Search also finds subs cached for a multi that aren't subscribed to.
+        if data.user_is_subscriber == true {
+          Button("Unsubscribe", systemImage: "minus.circle", role: .destructive) {
+            sub.subscribeToggle(optimistic: true)
+          }
+        } else {
+          Button("Subscribe", systemImage: "plus.circle") {
+            sub.subscribeToggle(optimistic: true)
+          }
         }
       }
       .accessibilityValue(favorite ? "Favorite" : "")
