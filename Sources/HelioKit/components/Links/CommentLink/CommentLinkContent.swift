@@ -418,9 +418,11 @@ struct CommentHeaderLine: View {
         Button {
           Nav.to(.reddit(.user(User(id: author))), from: navColumn)
         } label: {
+          // The theme's accent rather than the app's tint, which is the same in every built-in
+          // theme: High Contrast's is darker so OP names reach 7:1.
           Text(author)
             .contentFont(badge.authorText.size, badge.authorText.weight.t, relativeTo: .meta)
-            .foregroundStyle(author == "[deleted]" ? .red : isOP ? Color.accentColor : badge.authorText.color())
+            .foregroundStyle(author == "[deleted]" ? .red : isOP ? badge.subColor() : badge.authorText.color())
             .lineLimit(1)
         }
         .buttonStyle(.plain)

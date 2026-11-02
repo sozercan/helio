@@ -80,6 +80,7 @@ struct MediaPresenter: View, Equatable {
           .progressViewStyle(.circular)
           .frame(maxWidth: .infinity, minHeight: 100)
           .id("streamable-loading")
+          .task { helioData.resolveDeferredStreamable() }
           .listRowInsets(EdgeInsets(top: 0, leading: 0, bottom: 0, trailing: 0))
           .listRowSeparator(.hidden)
           .listRowBackground(Color.clear)

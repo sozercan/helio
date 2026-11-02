@@ -48,7 +48,8 @@ struct ThemePresetTests {
     let theme = ThemePreset.highContrast.theme
     let cell = theme.postLinks.theme.bg.color
     let badge = theme.postLinks.theme.badge
-    let texts = [theme.postLinks.theme.titleText.color, theme.postLinks.theme.bodyText.color, badge.authorText.color, badge.statsText.color, theme.comments.theme.bodyText.color, theme.comments.theme.badge.statsText.color]
+    // Comments draw OP names in their badge's `subColor`.
+    let texts = [theme.postLinks.theme.titleText.color, theme.postLinks.theme.bodyText.color, badge.authorText.color, badge.statsText.color, theme.comments.theme.bodyText.color, theme.comments.theme.badge.statsText.color, theme.comments.theme.badge.subColor]
     for text in texts {
       #expect(contrast(text.light, cell.light) >= 7)
       #expect(contrast(text.dark, cell.dark) >= 7)
@@ -62,6 +63,9 @@ struct ThemePresetTests {
       #expect(contrast(divider.dark, cell.dark) >= 3)
     }
     let row = theme.lists.foreground.color
+    // Settings > Appearance's descriptions, in the applied theme's secondary text.
+    #expect(contrast(badge.statsText.color.light, row.light) >= 7)
+    #expect(contrast(badge.statsText.color.dark, row.dark) >= 7)
     #expect(contrast(theme.lists.dividersColors.light, row.light) >= 3)
     #expect(contrast(theme.lists.dividersColors.dark, row.dark) >= 3)
     // The feed's divider between posts.
@@ -95,6 +99,8 @@ struct ThemePresetTests {
       #expect(theme.posts.quoteText == apolloQuote)
       #expect(theme.comments.theme.quoteText == apolloQuote)
       #expect(theme.comments.theme.loadMoreText.color == themeAccentColor)
+      #expect(theme.comments.theme.badge.subColor == theme.general.accentColor)
+      #expect(theme.postLinks.theme.badge.statsText.color == themeFontSecondary)
     }
     #expect(themeAccentColor == .init(light: .init(hex: "007AFF"), dark: .init(hex: "2399FF")))
   }

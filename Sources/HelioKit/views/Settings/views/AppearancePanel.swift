@@ -30,7 +30,7 @@ struct AppearancePanel: View {
 
         Section("Theme") {
           ForEach(ThemePreset.all) { preset in
-            ThemeRow(theme: preset.theme, tag: preset.modes.label, selected: theme.id == preset.id) { select(preset.theme) }
+            ThemeRow(theme: preset.theme, tag: preset.modes.label, selected: theme.id == preset.id, secondaryText: secondaryText) { select(preset.theme) }
           }
         }
 
@@ -39,7 +39,7 @@ struct AppearancePanel: View {
         if !saved.isEmpty {
           Section("My Themes") {
             ForEach(saved) { saved in
-              ThemeRow(theme: saved, tag: "Custom", selected: theme.id == saved.id) { select(saved) }
+              ThemeRow(theme: saved, tag: "Custom", selected: theme.id == saved.id, secondaryText: secondaryText) { select(saved) }
             }
           }
         }
@@ -59,6 +59,12 @@ struct AppearancePanel: View {
     .navigationBarTitleDisplayMode(.inline)
   }
 
+  /// The applied theme's secondary text, so High Contrast's descriptions reach 7:1 on its rows.
+  /// Apollo's is `Color.secondaryText`.
+  private var secondaryText: Color {
+    theme.postLinks.theme.badge.statsText.color()
+  }
+
   private func select(_ theme: HelioTheme) {
     themesDefSettings.selectedThemeID = theme.id
   }
@@ -70,6 +76,8 @@ private struct ThemeRow: View {
   let theme: HelioTheme
   let tag: String
   let selected: Bool
+  /// In the applied theme, not this row's.
+  let secondaryText: Color
   let select: () -> Void
 
   var body: some View {
@@ -85,15 +93,15 @@ private struct ThemeRow: View {
           if !theme.metadata.description.isEmpty {
             Text(theme.metadata.description)
               .font(.subheadline)
-              .foregroundStyle(Color.secondaryText)
+              .foregroundStyle(secondaryText)
               .fixedSize(horizontal: false, vertical: true)
           }
           Text(tag)
             .font(.caption.weight(.semibold))
-            .foregroundStyle(Color.secondaryText)
+            .foregroundStyle(secondaryText)
             .padding(.horizontal, 7)
             .padding(.vertical, 2)
-            .background(Capsule().strokeBorder(Color.secondaryText.opacity(0.5), lineWidth: 1))
+            .background(Capsule().strokeBorder(secondaryText.opacity(0.5), lineWidth: 1))
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         Image(systemName: "checkmark")

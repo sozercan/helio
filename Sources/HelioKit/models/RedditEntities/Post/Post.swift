@@ -106,6 +106,7 @@ extension Post {
         self.helioData = .init()
       }
       self.helioData?.fetchesLinkMetadata = fetchLinkMetadata
+      self.helioData?.deferredStreamable = nil
 
       self.helioData?.permaURL = URL(string: "https://reddit.com\(data.permalink.urlEncoded)")
 
@@ -121,23 +122,14 @@ extension Post {
           extractedMedia = .video(sharedVideo)
           extractedMediaForcedNormal = .video(sharedVideo)
         } else {
-          Task(priority: .utility) {
-            if let video = await self.loadStreamableMedia(streamable: streamable) {
-              Caches.streamable.addKeyValue(key: streamable.shortCode, data: { StreamableCached(url: video.url, size: video.size) }, expires: Date().dateByAdding(1, .day).date)
-
-              DispatchQueue.main.async {
-                withAnimation {
-                  self.helioData?.extractedMedia = .video(video)
-                  self.helioData?.extractedMediaForcedNormal = .video(video)
-
-                  // The post may have been laid out again for another width since.
-                  let width = self.helioData?.layoutWidth ?? contentWidth
-                  let textSize = self.helioData?.layoutDynamicTypeSize ?? textSize
-                  self.helioData?.postDimensions = getPostDimensions(post: self, helioData: self.helioData, columnWidth: width, secondary: secondary, rawTheme: theme, subId: sub?.settingsKey, dynamicTypeSize: textSize)
-                  self.helioData?.postDimensionsForcedNormal = getPostDimensions(post: self, helioData: self.helioData, columnWidth: width, secondary: secondary, rawTheme: theme, compact: false, dynamicTypeSize: textSize)
-                }
-              }
-            }
+          // A canvas shows no video, so it resolves one only when a preview or the post page shows it.
+          let resolve: () -> Void = { [weak self] in
+            self?.resolveStreamable(streamable, contentWidth: contentWidth, secondary: secondary, theme: theme, sub: sub)
+          }
+          if fetchLinkMetadata {
+            resolve()
+          } else {
+            self.helioData?.deferredStreamable = resolve
           }
         }
       default:
@@ -303,6 +295,28 @@ extension Post {
   //      }
   //    }
   //  }
+
+  /// Turns a Streamable link into its video, then lays the post out for it.
+  private func resolveStreamable(_ streamable: StreamableExtracted, contentWidth: Double, secondary: Bool, theme: HelioTheme, sub: Subreddit?) {
+    Task(priority: .utility) {
+      if let video = await self.loadStreamableMedia(streamable: streamable) {
+        Caches.streamable.addKeyValue(key: streamable.shortCode, data: { StreamableCached(url: video.url, size: video.size) }, expires: Date().dateByAdding(1, .day).date)
+
+        await MainActor.run {
+          withAnimation {
+            self.helioData?.extractedMedia = .video(video)
+            self.helioData?.extractedMediaForcedNormal = .video(video)
+
+            // The post may have been laid out again for another width since.
+            let width = self.helioData?.layoutWidth ?? contentWidth
+            let textSize = self.helioData?.layoutDynamicTypeSize ?? ContentTextScale.dynamicTypeSize
+            self.helioData?.postDimensions = getPostDimensions(post: self, helioData: self.helioData, columnWidth: width, secondary: secondary, rawTheme: theme, subId: sub?.settingsKey, dynamicTypeSize: textSize)
+            self.helioData?.postDimensionsForcedNormal = getPostDimensions(post: self, helioData: self.helioData, columnWidth: width, secondary: secondary, rawTheme: theme, compact: false, dynamicTypeSize: textSize)
+          }
+        }
+      }
+    }
+  }
 
   func loadStreamableMedia(streamable: StreamableExtracted) async -> SharedVideo? {
     let response = await AF.request(

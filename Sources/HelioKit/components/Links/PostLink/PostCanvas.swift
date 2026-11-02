@@ -101,6 +101,23 @@ enum CanvasThumbnail {
     return (usable.first { CGFloat($0.0) >= pixelWidth } ?? usable.last)?.1
   }
 
+  /// Why the picture is hidden when blurring is on. A crosspost shows the original's picture,
+  /// so either post being NSFW or a spoiler hides it.
+  enum Veil: Equatable {
+    case nsfw, spoiler
+  }
+
+  static func veil(for data: PostData) -> Veil? {
+    let posts = [data] + (data.crosspost_parent_list?.prefix(1) ?? [])
+    if posts.contains(where: { $0.over_18 == true }) {
+      return .nsfw
+    }
+    if posts.contains(where: { $0.spoiler == true }) {
+      return .spoiler
+    }
+    return nil
+  }
+
   static func kind(of data: PostData) -> Kind {
     let data = data.crosspost_parent_list?.first ?? data
     if data.is_gallery == true {
@@ -169,7 +186,8 @@ struct CanvasTile: View, Equatable {
 
   private func picture(_ url: URL, data: PostData) -> some View {
     let request = ImageRequest(url: url, processors: [ImageProcessors.Resize(size: CGSize(width: size, height: size), unit: .points, contentMode: .aspectFill, crop: true)])
-    let hidden = blurNSFW && (data.over_18 == true || data.spoiler == true)
+    let veil = blurNSFW ? CanvasThumbnail.veil(for: data) : nil
+    let hidden = veil != nil
     return LazyImageOpt(request: request, transaction: .init(animation: .default)) { state in
       if let image = state.image {
         image
@@ -185,7 +203,7 @@ struct CanvasTile: View, Equatable {
     .blur(radius: hidden ? 24 : 0, opaque: true)
     .overlay {
       if hidden {
-        Text(data.over_18 == true ? "NSFW" : "Spoiler")
+        Text(veil == .nsfw ? "NSFW" : "Spoiler")
           .font(.caption.weight(.bold))
           .foregroundStyle(.white)
           .padding(.horizontal, 8)

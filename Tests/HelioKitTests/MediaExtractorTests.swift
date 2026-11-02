@@ -187,4 +187,23 @@ struct DeferredLinkPreviewTests {
     }
     #expect(!model.hasStartedLoading)
   }
+
+  /// Canvas shows no video, so a Streamable link waits until its media shows, and resolves once.
+  @Test func aDeferredStreamableResolvesOnlyWhenItShows() throws {
+    let data = try postData(["url": "https://streamable.com/deferred\(UUID().uuidString.prefix(8))", "domain": "streamable.com"])
+    let post = Post(data: data, contentWidth: 400, theme: defaultTheme, fetchAvatar: false, fetchLinkMetadata: false)
+    let helioData = try #require(post.helioData)
+    guard case .streamable = helioData.extractedMedia else {
+      Issue.record("expected a Streamable link")
+      return
+    }
+    #expect(helioData.deferredStreamable != nil)
+
+    // Stands in for the request, which the test doesn't make.
+    var resolved = 0
+    helioData.deferredStreamable = { resolved += 1 }
+    helioData.resolveDeferredStreamable()
+    helioData.resolveDeferredStreamable()
+    #expect(resolved == 1)
+  }
 }

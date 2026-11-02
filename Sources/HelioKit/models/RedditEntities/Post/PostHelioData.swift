@@ -46,11 +46,21 @@ class PostHelioData: Hashable {
   /// Whether the post's link previews download their page as soon as they're extracted, or only
   /// once they show (`Post.fetchesLinkMetadata`).
   @ObservationIgnored var fetchesLinkMetadata = true
+  /// Resolves a Streamable link the post didn't resolve when it was extracted, because it
+  /// defers link metadata. Called when its media shows (`resolveDeferredStreamable`).
+  @ObservationIgnored var deferredStreamable: (() -> Void)?
   var linkMedia: PreviewModel?
   var videoMedia: SharedVideo?
   var postBodyAttr: NSAttributedString?
   var seenCommentsCount: Int?
   var seenComments: String?
+
+  /// Starts resolving a deferred Streamable video, once.
+  func resolveDeferredStreamable() {
+    let resolve = deferredStreamable
+    deferredStreamable = nil
+    resolve?()
+  }
 
   func hash(into hasher: inout Hasher) {
     hasher.combine(permaURL)

@@ -151,4 +151,38 @@ struct CanvasThumbnailTests {
     }
     #expect(CanvasThumbnail.url(for: link, pixelWidth: 300) == nil)
   }
+
+  /// A crosspost shows the original's picture, so either post's flags hide it.
+  @Test func aCrosspostIsHiddenWhenEitherPostIsNSFWOrASpoiler() throws {
+    let plain = try data { _ in }
+    #expect(CanvasThumbnail.veil(for: plain) == nil)
+    #expect(try CanvasThumbnail.veil(for: data { $0["over_18"] = true }) == .nsfw)
+    #expect(try CanvasThumbnail.veil(for: data { $0["spoiler"] = true }) == .spoiler)
+
+    let original = try #require(try JSONSerialization.jsonObject(with: JSONEncoder().encode(postSampleData)) as? [String: Any])
+    func crosspost(_ flag: String, onOriginal: Bool) throws -> PostData {
+      var parent = original
+      if onOriginal {
+        parent[flag] = true
+      }
+      return try data { json in
+        json["crosspost_parent_list"] = [parent]
+        if !onOriginal {
+          json[flag] = true
+        }
+      }
+    }
+    #expect(try CanvasThumbnail.veil(for: crosspost("over_18", onOriginal: true)) == .nsfw)
+    #expect(try CanvasThumbnail.veil(for: crosspost("spoiler", onOriginal: true)) == .spoiler)
+    #expect(try CanvasThumbnail.veil(for: crosspost("over_18", onOriginal: false)) == .nsfw)
+    #expect(try CanvasThumbnail.veil(for: data { $0["crosspost_parent_list"] = [original] }) == nil)
+    // NSFW wins over a spoiler on the other post.
+    var nsfwOriginal = original
+    nsfwOriginal["over_18"] = true
+    let spoilerOfNSFW = try data { json in
+      json["spoiler"] = true
+      json["crosspost_parent_list"] = [nsfwOriginal]
+    }
+    #expect(CanvasThumbnail.veil(for: spoilerOfNSFW) == .nsfw)
+  }
 }
