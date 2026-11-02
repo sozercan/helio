@@ -118,7 +118,8 @@ extension ScreenAction {
   static func switchAccount(manager: RedditCredentialsManager = .shared, selectedID: UUID? = nil) -> ScreenAction? {
     let credentials = manager.validCredentials
     guard credentials.count > 1 else { return nil }
-    let selected = selectedID ?? manager.selectedCredential?.id
+    // The manager falls back to the first account when the stored one is gone (deleted).
+    let selected = selectedID.map { manager.selectedCredential(id: $0)?.id } ?? manager.selectedCredential?.id
     return ScreenAction(id: .switchAccount, title: "Switch Account", systemImage: "person.2.circle", content: .menu(credentials.map { cred in
       .choice(cred.userName ?? "Account", isOn: cred.id == selected) {
         Defaults[.GeneralDefSettings].redditCredentialSelectedID = cred.id
