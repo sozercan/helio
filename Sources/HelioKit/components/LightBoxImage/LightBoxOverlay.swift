@@ -30,6 +30,8 @@ struct LightBoxOverlay: View {
           .allowsHitTesting(false)
         BadgeView(avatarRequest: avatarImageRequest, saved: false, usernameColor: nil, author: badgeKit.author, userFlair: badgeKit.userFlair, created: badgeKit.created, avatarURL: nil, theme: selectedTheme.postLinks.theme.badge)
       }
+      // Clear of the Close button at the top trailing corner.
+      .padding(.trailing, 56)
 
       Spacer()
 
