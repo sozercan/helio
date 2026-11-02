@@ -127,7 +127,7 @@ struct ReplyModal<Content: View>: View {
   }
 
   var body: some View {
-    NavigationView {
+    NavigationStack {
       ScrollView {
         VStack(spacing: 12) {
           VStack(alignment: .leading) {
@@ -219,35 +219,32 @@ struct ReplyModal<Content: View>: View {
         }
       }
       .toolbar {
-        ToolbarItem {
-          HStack(spacing: 0) {
-            MasterButton(icon: "trash.fill", mode: .subtle, color: .primary, textColor: .red, height: 52, proportional: .circle, disabled: textWrapper.replyText.isEmpty) {
-              withAnimation(spring) {
-                alertExit = true
-              }
+        // Closing keeps the draft; discarding deletes it.
+        ToolbarItem(placement: .cancellationAction) {
+          Button(role: .close) {
+            withAnimation(spring) {
+              dismiss()
             }
-            .actionSheet(isPresented: $alertExit) {
-              ActionSheet(title: Text("Are you sure you wanna discard?"), buttons: [
-                .default(Text("Yes")) {
-                  withAnimation(spring) {
-                    dismiss()
-                  }
-                  if let currentDraft {
-                    Task {
-                      await viewContext.perform(schedule: .enqueued) {
-                        viewContext.delete(currentDraft)
-                        try? viewContext.save()
-                      }
-                    }
-                  }
-                },
-                .cancel(),
-              ])
-            }
+          }
+        }
 
-            MasterButton(icon: "chevron.down", mode: .subtle, color: .primary, textColor: .primary, height: 52, proportional: .circle) {
+        ToolbarItem(placement: .topBarTrailing) {
+          Button("Discard draft", systemImage: "trash", role: .destructive) {
+            alertExit = true
+          }
+          .disabled(textWrapper.replyText.isEmpty)
+          .confirmationDialog("Discard this draft?", isPresented: $alertExit, titleVisibility: .visible) {
+            Button("Discard", role: .destructive) {
               withAnimation(spring) {
                 dismiss()
+              }
+              if let currentDraft {
+                Task {
+                  await viewContext.perform(schedule: .enqueued) {
+                    viewContext.delete(currentDraft)
+                    try? viewContext.save()
+                  }
+                }
               }
             }
           }
@@ -256,18 +253,9 @@ struct ReplyModal<Content: View>: View {
       .navigationBarTitleDisplayMode(.inline)
       .navigationTitle(title)
     }
-    .background(
-      !selectedTheme.general.modalsBG.blurry
-        ? nil
-        : GeometryReader { geo in
-          selectedTheme.general.modalsBG.color()
-            .frame(width: geo.size.width, height: geo.size.height)
-        }
-        .edgesIgnoringSafeArea(.all),
-    )
-    .presentationBackground(selectedTheme.general.modalsBG.blurry ? AnyShapeStyle(.bar) : AnyShapeStyle(selectedTheme.general.modalsBG.color()))
+    // A blurry theme gets the system's glass sheet; only an opaque theme color replaces it.
+    .if(!selectedTheme.general.modalsBG.blurry) { $0.presentationBackground(selectedTheme.general.modalsBG.color()) }
     .presentationDetents([.large, .fraction(0.75), .medium, collapsedPresentation], selection: $selection)
-    .presentationCornerRadius(32)
     .presentationBackgroundInteraction(.enabled)
     .presentationDragIndicator(.hidden)
   }
