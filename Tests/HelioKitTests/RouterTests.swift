@@ -61,6 +61,27 @@ struct RouterTests {
     #expect(router.fullPath == [cached, post])
   }
 
+  @Test func reselectingAFeedTakesFresherDetails() throws {
+    func cached(_ title: String) throws -> Router.NavDest {
+      let json = #"{"name": "t5_2qh1f", "id": "2qh1f", "display_name": "Apple", "url": "/r/Apple/", "public_description": ""}"#
+      let data = try JSONDecoder().decode(SubredditData.self, from: Data(json.utf8))
+      let sub = Subreddit(data: data)
+      sub.data?.title = title
+      return .reddit(.subFeed(sub))
+    }
+    let router = Router(id: "test")
+    router.firstSelected = try cached("old")
+    router.navigateTo(post)
+    let fresh = try cached("new")
+    router.firstSelected = fresh
+    guard case let .reddit(.subFeed(sub)) = router.fullPath.first else {
+      Issue.record("expected a subreddit feed")
+      return
+    }
+    #expect(sub.data?.title == "new")
+    #expect(router.fullPath.count == 2)
+  }
+
   @Test func backClosesAPostOpenedFirstBesideTheSidebar() {
     let router = Router(id: "test")
     router.firstIsSidebarSelection = true

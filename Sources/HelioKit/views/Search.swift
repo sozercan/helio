@@ -255,6 +255,10 @@ struct Search: View {
         }
       }
       // Opening the tab starts a search, like the system's search tabs, unless one is showing.
+      // The Search quick action asks for the field even when Search shows or keeps a query.
+      .onChange(of: Nav.shared.searchFocusRequest) {
+        searchPresented = true
+      }
       .onChange(of: Nav.shared.activeTab) { _, tab in
         if tab == .search, searchQuery.value.isEmpty, router.fullPath.isEmpty {
           searchPresented = true

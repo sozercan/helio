@@ -58,4 +58,12 @@ struct QuickActionTests {
     #expect(nav.activeTab == .search)
     #expect(nav[.search].fullPath.isEmpty)
   }
+
+  @Test func searchActionAsksForTheFieldEachTime() {
+    let nav = Nav.shared
+    let before = nav.searchFocusRequest
+    QuickAction.search.perform(on: nav) { Subreddit(id: $0) }
+    QuickAction.search.perform(on: nav) { Subreddit(id: $0) }
+    #expect(nav.searchFocusRequest == before + 2)
+  }
 }

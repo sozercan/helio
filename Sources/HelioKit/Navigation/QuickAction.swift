@@ -58,6 +58,7 @@ enum QuickAction: Equatable {
       if nav.activeTab != .search {
         nav.activeTab = .search
       }
+      nav.searchFocusRequest += 1
     case .saved: nav.selectFeed(.reddit(.subFeed(Subreddit(id: savedKeyword))), popToFeed: true)
     case let .subreddit(name): nav.selectFeed(.reddit(.subFeed(subreddit(name))), popToFeed: true)
     }

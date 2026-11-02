@@ -60,9 +60,9 @@ class Router: Hashable, Equatable, Identifiable {
     set {
       if let newValue {
         if let first = fullPath.first, first.isSameFeed(as: newValue) {
-          // The same feed keeps its screens, but takes the subreddit's details if it gains them
-          // (opened from a link by name, then chosen in the sidebar).
-          if newValue.addsSubredditData(to: first) {
+          // The same feed keeps its screens, but takes the subreddit's details when they come
+          // along (opened from a link by name, then chosen in the sidebar; or fresher ones).
+          if newValue.carriesSubredditData {
             fullPath[0] = newValue
           }
         } else {
@@ -175,7 +175,7 @@ class Router: Hashable, Equatable, Identifiable {
 
   /// Shows `dest` with nothing stacked on it, even when it's the feed already selected.
   func showFeedRoot(_ dest: NavDest) {
-    if let first = fullPath.first, first.isSameFeed(as: dest), !dest.addsSubredditData(to: first) {
+    if let first = fullPath.first, first.isSameFeed(as: dest), !dest.carriesSubredditData {
       fullPath = [first]
     } else {
       fullPath = [dest]
@@ -218,10 +218,12 @@ extension Router.NavDest {
     }
   }
 
-  /// Whether this is a subreddit feed with details that `other`, the same feed by name, lacks.
-  func addsSubredditData(to other: Router.NavDest) -> Bool {
-    guard case let .reddit(.subFeed(sub)) = self, case let .reddit(.subFeed(otherSub)) = other else { return false }
-    return sub.data != nil && otherSub.data == nil
+  /// A subreddit feed with the subreddit's details, not just its name.
+  var carriesSubredditData: Bool {
+    if case let .reddit(.subFeed(sub)) = self {
+      return sub.data != nil
+    }
+    return false
   }
 
   /// Whether both show the same feed, matching subreddits by name.

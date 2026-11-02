@@ -88,6 +88,22 @@ class Nav: Identifiable, Equatable {
   }
 
   var routers: [TabIdentifier: Router]
+
+  /// Asks the Search tab to show and focus its field, each time it's bumped (a Home Screen
+  /// quick action), whether or not Search is already the tab shown.
+  var searchFocusRequest = 0
+
+  /// Switches tabs for the app, not the user. The tab view can echo the selection back as a
+  /// same-tab tap, which would reset the new tab's screens; that echo is ignored, but only until
+  /// the next turn, so a later real tap on the tab still resets it.
+  private func switchTab(to tab: TabIdentifier) {
+    _suppressNextSameTabReset = true
+    activeTab = tab
+    Task { @MainActor [weak self] in
+      self?._suppressNextSameTabReset = false
+    }
+  }
+
   var presentingSheetsQueue: [PresentingSheet] = []
   var presentingSheet: PresentingSheet? {
     get { presentingSheetsQueue.isEmpty ? nil : presentingSheetsQueue[0] }
@@ -119,8 +135,7 @@ class Nav: Identifiable, Equatable {
 
   func navigateTo(_ tab: TabIdentifier, _ dest: Router.NavDest, _ reset: Bool = true) {
     if tab != activeTab {
-      _suppressNextSameTabReset = true
-      activeTab = tab
+      switchTab(to: tab)
     }
     routers[tab]?.navigateTo(dest, reset)
   }
@@ -129,8 +144,7 @@ class Nav: Identifiable, Equatable {
   /// so the feed itself shows (a Home Screen quick action asks for the feed, not what's on it).
   func selectFeed(_ dest: Router.NavDest, popToFeed: Bool = false) {
     if activeTab != .posts {
-      _suppressNextSameTabReset = true
-      activeTab = .posts
+      switchTab(to: .posts)
     }
     if popToFeed {
       self[.posts].showFeedRoot(dest)

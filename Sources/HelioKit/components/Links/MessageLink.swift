@@ -52,7 +52,20 @@ struct MessageLink: View {
         ),
         entity: message,
       )
+      // The swipe is otherwise the only way to mark one message read or unread.
+      .contextMenu {
+        Button(readToggleTitle(data), systemImage: (data.new ?? false) ? "envelope.open" : "envelope.badge") {
+          Task { _ = await message.toggleRead() }
+        }
+      }
+      .accessibilityAction(named: Text(readToggleTitle(data))) {
+        Task { _ = await message.toggleRead() }
+      }
     }
+  }
+
+  private func readToggleTitle(_ data: MessageData) -> String {
+    (data.new ?? false) ? "Mark as Read" : "Mark as Unread"
   }
 
   private func action(_ data: MessageData) -> String {
