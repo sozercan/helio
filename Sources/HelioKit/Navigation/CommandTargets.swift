@@ -85,11 +85,13 @@ final class CommandTargets {
     targets.last { $0.target.refresh != nil }?.target
   }
 
+  /// Not while something covers the screens: the refresh would reload the screen behind it.
   var canRefresh: Bool {
-    refreshTarget != nil
+    refreshTarget != nil && !isCovered()
   }
 
   func refresh() {
+    guard canRefresh else { return }
     refreshTarget?.refresh?()
   }
 
@@ -113,7 +115,18 @@ final class CommandTargets {
   /// sign-in shows, Find and the Post commands would act on the screen behind it, and moving to
   /// another post would close it.
   func isCovered(nav: Nav = .shared) -> Bool {
-    nav.presentingSheet != nil || showsModal
+    nav.presentingSheet != nil || showsModal || Self.windowPresentsSomething()
+  }
+
+  /// Anything presented over the window's root, such as the share sheet or a view's own sheet,
+  /// which neither sets `Nav.presentingSheet` nor registers as a modal. Not an active search
+  /// field: UIKit presents its search controller too, and Find and Refresh must still work then.
+  static func windowPresentsSomething() -> Bool {
+    guard Thread.isMainThread else { return false }
+    return MainActor.assumeIsolated {
+      guard let presented = UIApplication.shared.firstKeyWindow?.rootViewController?.presentedViewController else { return false }
+      return !(presented is UISearchController)
+    }
   }
 
   var showsModal: Bool {

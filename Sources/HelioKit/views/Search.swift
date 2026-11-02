@@ -265,11 +265,11 @@ struct Search: View {
         }
         // Find, chosen where no search field showed.
         if CommandTargets.shared.takeSearchFocusRequest() {
-          searchPresented = true
+          presentSearchField()
         }
       }
       // Refresh repeats the search, as pulling to refresh does, once there's one to repeat.
-      .commandTarget(CommandTargets.Target(kind: .search, refresh: searchQuery.value.isEmpty ? nil : { fetch() }, focusSearch: { searchPresented = true }), updatingWith: searchQuery.value.isEmpty)
+      .commandTarget(CommandTargets.Target(kind: .search, refresh: searchQuery.value.isEmpty ? nil : { fetch() }, focusSearch: { presentSearchField() }), updatingWith: searchQuery.value.isEmpty)
       // Opening the tab starts a search, like the system's search tabs, unless one is showing.
       // The Search quick action asks for the field even when Search shows or keeps a query.
       .onChange(of: Nav.shared.searchFocusRequest) {
