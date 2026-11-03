@@ -131,6 +131,25 @@ struct CanvasThumbnailTests {
     #expect(CanvasThumbnail.kind(of: data) == .gallery(2))
   }
 
+  @Test func tilesReadTheWarningsTheirPictureShows() throws {
+    let spoiler = try data { json in
+      json["over_18"] = false
+      json["spoiler"] = true
+      json["link_flair_text"] = nil
+    }
+    #expect(CanvasThumbnail.accessibilityLabel(for: spoiler) == "\(spoiler.title), Spoiler")
+    // A crosspost of an NSFW post.
+    var original = try #require(try JSONSerialization.jsonObject(with: JSONEncoder().encode(postSampleData)) as? [String: Any])
+    original["over_18"] = true
+    let crosspost = try data { json in
+      json["over_18"] = false
+      json["spoiler"] = false
+      json["link_flair_text"] = nil
+      json["crosspost_parent_list"] = [original]
+    }
+    #expect(CanvasThumbnail.accessibilityLabel(for: crosspost) == "\(crosspost.title), NSFW")
+  }
+
   @Test func aPostWithOnlyRedditsThumbnailShowsIt() throws {
     let video = try data { json in
       json["url"] = "https://v.redd.it/abc"

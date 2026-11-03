@@ -115,6 +115,23 @@ enum CanvasThumbnail {
     case nsfw, spoiler
   }
 
+  /// The tile's VoiceOver label: the title with the warnings its picture shows, a crosspost's
+  /// original's too, and the flair.
+  static func accessibilityLabel(for data: PostData) -> String {
+    let posts = [data] + (data.crosspost_parent_list?.prefix(1) ?? [])
+    var parts = [data.title]
+    if posts.contains(where: { $0.over_18 == true }) {
+      parts.append(String(localized: "NSFW"))
+    }
+    if posts.contains(where: { $0.spoiler == true }) {
+      parts.append(String(localized: "Spoiler"))
+    }
+    if let flair = flairWithoutEmojis(str: data.link_flair_text)?.joined(separator: " "), !flair.isEmpty {
+      parts.append(flair)
+    }
+    return parts.joined(separator: ", ")
+  }
+
   static func veil(for data: PostData) -> Veil? {
     let posts = [data] + (data.crosspost_parent_list?.prefix(1) ?? [])
     if posts.contains(where: { $0.over_18 == true }) {
@@ -184,7 +201,7 @@ struct CanvasTile: View, Equatable {
       } preview: {
         PostLinkContextPreview(post: post, sub: sub)
       }
-      .accessibilityLabel(postTitleAccessibilityLabel(data))
+      .accessibilityLabel(CanvasThumbnail.accessibilityLabel(for: data))
       .accessibilityValue(accessibilityValue(data))
       .accessibilityHint("Opens the post")
       .accessibilityActions { PostMenuItems(post: post) }
