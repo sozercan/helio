@@ -130,11 +130,13 @@ struct VideoPlayerPost: View, Equatable {
   @Environment(\.scenePhase) private var scenePhase
   @State private var observerBag = VideoObserverBag()
   @State private var isVisible = false
+  /// iOS's Auto-Play Video Previews setting, kept as state so changing it redraws the player.
+  @State private var systemAutoplay = UIAccessibility.isVideoAutoplayEnabled
   @StateObject private var holder: VideoPlayerHolder
 
   /// Off when iOS's Auto-Play Video Previews setting is, too.
   private var autoPlayVideos: Bool {
-    videoDefSettings.autoPlay && UIAccessibility.isVideoAutoplayEnabled
+    videoDefSettings.autoPlay && systemAutoplay
   }
 
   private var loopVideos: Bool {
@@ -259,10 +261,12 @@ struct VideoPlayerPost: View, Equatable {
             if holder.hasFailed {
               reload(player)
             }
-            if autoPlayVideos, isVisible, !PictureInPicture.shared.isPlaying(player) {
-              player.play()
-            }
+            // The setting may have changed while the app was in the background.
+            reconcileAutoplay(player)
           }
+        }
+        .onReceive(NotificationCenter.default.publisher(for: UIAccessibility.videoAutoplayStatusDidChangeNotification)) { _ in
+          reconcileAutoplay(player)
         }
         .onDisappear {
           isVisible = false
@@ -301,6 +305,22 @@ struct VideoPlayerPost: View, Equatable {
           FullScreenVP(player: player, size: sharedVideo.size, holder: holder)
         }
       }
+    }
+  }
+
+  /// Plays the inline preview when autoplay is on, and pauses it when Auto-Play Video Previews
+  /// was turned off. Leaves fullscreen and picture-in-picture playback, which the user started,
+  /// alone.
+  func reconcileAutoplay(_ player: AVPlayer) {
+    let systemEnabled = UIAccessibility.isVideoAutoplayEnabled
+    if systemAutoplay != systemEnabled {
+      systemAutoplay = systemEnabled
+    }
+    guard isVisible, !PictureInPicture.shared.isPlaying(player) else { return }
+    if videoDefSettings.autoPlay, systemEnabled {
+      player.play()
+    } else if !fullscreen {
+      player.pause()
     }
   }
 
