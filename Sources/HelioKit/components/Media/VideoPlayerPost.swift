@@ -261,8 +261,9 @@ struct VideoPlayerPost: View, Equatable {
             if holder.hasFailed {
               reload(player)
             }
-            // The setting may have changed while the app was in the background.
-            reconcileAutoplay(player)
+            // The setting may have changed while the app was in the background. As before,
+            // coming back resumes a fullscreen video too.
+            reconcileAutoplay(player, resumesFullscreen: true)
           }
         }
         .onReceive(NotificationCenter.default.publisher(for: UIAccessibility.videoAutoplayStatusDidChangeNotification)) { _ in
@@ -309,16 +310,19 @@ struct VideoPlayerPost: View, Equatable {
   }
 
   /// Plays the inline preview when autoplay is on, and pauses it when Auto-Play Video Previews
-  /// was turned off. Leaves fullscreen and picture-in-picture playback, which the user started,
-  /// alone.
-  func reconcileAutoplay(_ player: AVPlayer) {
+  /// was turned off. Leaves fullscreen and picture-in-picture playback, which the user controls,
+  /// alone, unless `resumesFullscreen` (coming back to the app resumes it, as it always has).
+  func reconcileAutoplay(_ player: AVPlayer, resumesFullscreen: Bool = false) {
     let systemEnabled = UIAccessibility.isVideoAutoplayEnabled
     if systemAutoplay != systemEnabled {
       systemAutoplay = systemEnabled
     }
     guard isVisible, !PictureInPicture.shared.isPlaying(player) else { return }
     if videoDefSettings.autoPlay, systemEnabled {
-      player.play()
+      // A setting change doesn't restart a fullscreen video the user paused.
+      if !fullscreen || resumesFullscreen {
+        player.play()
+      }
     } else if !fullscreen {
       player.pause()
     }
