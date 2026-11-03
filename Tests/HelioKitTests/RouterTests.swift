@@ -101,27 +101,29 @@ struct RouterTests {
     #expect(sub.data?.display_name == "Apple")
   }
 
-  @Test func reselectingAFeedTakesTheSidebarsIDForItsSettings() throws {
+  @Test func aFeedKeepsItsSettingsKeyWhicheverDetailsItHolds() throws {
     // The sidebar's copy comes from the cache, which keys a subreddit by its fullname; Reddit's
-    // own details carry the bare id.
+    // own details carry the bare id; a link knows only the name.
     let coordinator = NSPersistentStoreCoordinator(managedObjectModel: AccountListSyncAuthorizationTests.model)
     try coordinator.addPersistentStore(ofType: NSInMemoryStoreType, configurationName: nil, at: nil)
     let context = NSManagedObjectContext(concurrencyType: .privateQueueConcurrencyType)
     context.persistentStoreCoordinator = coordinator
-    let cachedJSON = #"{"name": "t5_2qh1f", "id": "2qh1f", "display_name": "Apple", "url": "/r/Apple/", "public_description": "", "user_has_favorited": true}"#
-    let cachedData = try JSONDecoder().decode(SubredditData.self, from: Data(cachedJSON.utf8))
-    let sidebarData = context.performAndWait { SubredditData(entity: CachedSub(data: cachedData, context: context, credentialID: UUID())) }
-    #expect(sidebarData.id == "t5_2qh1f")
+    let json = #"{"name": "t5_2qh1f", "id": "2qh1f", "display_name": "Apple", "url": "/r/Apple/", "public_description": "", "user_has_favorited": true}"#
+    let full = try JSONDecoder().decode(SubredditData.self, from: Data(json.utf8))
+    let cached = context.performAndWait { SubredditData(entity: CachedSub(data: full, context: context, credentialID: UUID())) }
+    #expect(cached.id != full.id)
+    #expect(Subreddit(data: cached).settingsKey == "t5_2qh1f")
+    #expect(Subreddit(data: full).settingsKey == "t5_2qh1f")
+    #expect(Subreddit(id: "apple").settingsKey == "apple")
 
-    let full = #"{"name": "t5_2qh1f", "id": "2qh1f", "display_name": "Apple", "url": "/r/Apple/", "public_description": "Apple news", "description": "All things Apple"}"#
-    let feed = try Subreddit(data: JSONDecoder().decode(SubredditData.self, from: Data(full.utf8)))
+    // Reselected from the sidebar, then Reddit's details landing late: the key stays.
+    let feed = Subreddit(data: full)
     let router = Router(id: "test")
     router.firstSelected = .reddit(.subFeed(feed))
-    router.firstSelected = .reddit(.subFeed(Subreddit(data: sidebarData)))
-    // Compact mode and other per-subreddit settings read the sidebar's key, with the details kept.
-    #expect(feed.id == "t5_2qh1f")
-    #expect(feed.data?.description == "All things Apple")
-    #expect(feed.data?.user_has_favorited == true)
+    router.firstSelected = .reddit(.subFeed(Subreddit(data: cached)))
+    #expect(feed.settingsKey == "t5_2qh1f")
+    feed.data = full
+    #expect(feed.settingsKey == "t5_2qh1f")
   }
 
   @Test func reselectingAFeedKeepsDetailsTheSidebarsCopyLacks() throws {

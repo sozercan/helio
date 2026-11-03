@@ -105,7 +105,7 @@ struct RedditListingFeed<Header: View, Footer: View, S: Sorting>: View {
                   switch el {
                   case let .post(post):
                     if let helioData = post.helioData, let sub = helioData.subreddit ?? subreddit {
-                      PostLink(id: post.id, theme: selectedTheme.postLinks, showSub: showSubInPosts, compactPerSubreddit: compactPerSubreddit[sub.id], contentWidth: contentWidth, defSettings: postLinkSettings)
+                      PostLink(id: post.id, theme: selectedTheme.postLinks, showSub: showSubInPosts, compactPerSubreddit: compactPerSubreddit[sub.settingsKey], contentWidth: contentWidth, defSettings: postLinkSettings)
                         .environment(\.contextPost, post)
                         .environment(\.contextSubreddit, sub)
                         .environment(\.contextPostHelioData, helioData)
@@ -113,7 +113,7 @@ struct RedditListingFeed<Header: View, Footer: View, S: Sorting>: View {
 
                       if isThereDivider {
                         // Compact rows get Apollo's inset hairline instead of the thick band.
-                        let compact = compactPerSubreddit[sub.id] ?? postLinkSettings.compactMode.enabled
+                        let compact = compactPerSubreddit[sub.settingsKey] ?? postLinkSettings.compactMode.enabled
                         Group {
                           if compact, paddingH == 0 {
                             selectedTheme.lists.dividersColors()
@@ -283,7 +283,7 @@ struct RedditListingFeed<Header: View, Footer: View, S: Sorting>: View {
           }
         }
       }
-      .floatingMenu(subId: subreddit?.id, filters: shallowCachedFilters, selectedFilter: $itemsManager.selectedFilter)
+      .floatingMenu(subId: subreddit?.settingsKey, filters: shallowCachedFilters, selectedFilter: $itemsManager.selectedFilter)
       .relayoutPosts({ itemsManager.entities.compactMap {
         if case let .post(post) = $0 {
           post
@@ -291,9 +291,9 @@ struct RedditListingFeed<Header: View, Footer: View, S: Sorting>: View {
           nil
         }
       } }, contentWidth: contentWidth, theme: selectedTheme)
-      // A feed opened by name takes Reddit's id with its details, and with it the compact setting
-      // kept for that id: lay its posts out again for it.
-      .onChange(of: subreddit?.id) {
+      // A feed opened by name gains its fullname with its details, and with it the compact
+      // setting kept under it: lay its posts out again for it.
+      .onChange(of: subreddit?.settingsKey) {
         withAnimation {
           for case let .post(post) in itemsManager.entities {
             post.relayout(contentWidth: contentWidth, theme: selectedTheme)

@@ -71,7 +71,7 @@ extension Post {
   }
 
   static func isCompact(_ data: PostData, sub: Subreddit?) -> Bool {
-    CachedDefaults[.SubredditFeedDefSettings].compactPerSubreddit[sub?.id ?? data.subreddit_id ?? ""] ?? CachedDefaults[.PostLinkDefSettings].compactMode.enabled
+    CachedDefaults[.SubredditFeedDefSettings].compactPerSubreddit[sub?.settingsKey ?? data.subreddit_id ?? ""] ?? CachedDefaults[.PostLinkDefSettings].compactMode.enabled
   }
 
   func shouldUpdateAvatarFamily(fetchAvatar: Bool) -> Bool {
@@ -121,7 +121,7 @@ extension Post {
 
                   // The post may have been laid out again for another width since.
                   let width = self.helioData?.layoutWidth ?? contentWidth
-                  self.helioData?.postDimensions = getPostDimensions(post: self, helioData: self.helioData, columnWidth: width, secondary: secondary, rawTheme: theme, subId: sub?.id)
+                  self.helioData?.postDimensions = getPostDimensions(post: self, helioData: self.helioData, columnWidth: width, secondary: secondary, rawTheme: theme, subId: sub?.settingsKey)
                   self.helioData?.postDimensionsForcedNormal = getPostDimensions(post: self, helioData: self.helioData, columnWidth: width, secondary: secondary, rawTheme: theme, compact: false)
                 }
               }
@@ -135,7 +135,7 @@ extension Post {
       self.helioData?.extractedMedia = extractedMedia
       self.helioData?.extractedMediaForcedNormal = extractedMediaForcedNormal
 
-      self.helioData?.postDimensions = getPostDimensions(post: self, helioData: self.helioData, columnWidth: contentWidth, secondary: secondary, rawTheme: theme, subId: sub?.id)
+      self.helioData?.postDimensions = getPostDimensions(post: self, helioData: self.helioData, columnWidth: contentWidth, secondary: secondary, rawTheme: theme, subId: sub?.settingsKey)
       self.helioData?.postDimensionsForcedNormal = getPostDimensions(post: self, helioData: self.helioData, columnWidth: contentWidth, secondary: secondary, rawTheme: theme, compact: false)
       self.helioData?.layoutWidth = contentWidth
       self.helioData?.layoutWindowHeight = .screenH

@@ -65,7 +65,7 @@ extension Post {
         embedded.relayout(contentWidth: contentWidth, theme: theme, secondary: true)
       }
     }
-    helioData.postDimensions = getPostDimensions(post: self, helioData: helioData, columnWidth: contentWidth, secondary: secondary, rawTheme: theme, subId: sub?.id)
+    helioData.postDimensions = getPostDimensions(post: self, helioData: helioData, columnWidth: contentWidth, secondary: secondary, rawTheme: theme, subId: sub?.settingsKey)
     helioData.postDimensionsForcedNormal = getPostDimensions(post: self, helioData: helioData, columnWidth: contentWidth, secondary: secondary, rawTheme: theme, compact: false)
     helioData.layoutWidth = contentWidth
     helioData.layoutWindowHeight = windowHeight

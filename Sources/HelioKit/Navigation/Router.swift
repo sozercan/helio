@@ -226,14 +226,14 @@ extension Router.NavDest {
   }
 
   /// Fills in this feed's subreddit with the details `other` carries for the same feed; one that
-  /// has its details takes only its id and the account's state from it (`takingSidebarState`). In place,
+  /// has its details takes only the account's state from it (`takingAccountState`). In place,
   /// so the feed view, the posts it loaded (which point at this subreddit) and its per-subreddit
   /// settings (compact mode, kept by the subreddit's id, which the details set) all keep using
   /// one subreddit, and the feed keeps its pages.
   func takeSubredditDetails(from other: Router.NavDest) {
     guard case let .reddit(.subFeed(sub)) = self, case let .reddit(.subFeed(otherSub)) = other,
           sub !== otherSub, let data = otherSub.data else { return }
-    sub.data = sub.data.map { $0.takingSidebarState(from: data) } ?? data
+    sub.data = sub.data.map { $0.takingAccountState(from: data) } ?? data
   }
 
   /// Whether both show the same feed, matching subreddits by name.

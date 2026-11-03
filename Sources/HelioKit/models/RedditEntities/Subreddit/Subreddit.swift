@@ -321,3 +321,14 @@ extension SubListingSortOption: CaseIterable {
     [.best, .hot, .new, .controversial, .top(.all)]
   }
 }
+
+extension Subreddit {
+  /// What per-subreddit settings (compact mode) are kept by: its fullname (t5_...), which the
+  /// sidebar's cached copy and Reddit's own details both carry, else its name. Not `id`, which
+  /// is the fullname in the cached copy, the bare id in Reddit's details and the name in a
+  /// subreddit known only by name, so it changes as details come in.
+  var settingsKey: String {
+    guard let name = data?.name, !name.isEmpty else { return id }
+    return name
+  }
+}
