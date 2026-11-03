@@ -68,7 +68,12 @@ extension View {
 //      .brightness(isOpen.wrappedValue ? 0.075 : 0)
       .opacity(fadeReadPosts && seen ? theme.unseenFadeOpacity : 1)
       // Outside the read-post fade: opening a post marks it read, which mustn't hide its mark.
-      .overlay { OpenPostHighlight(postID: post.id, cornerRadius: theme.cornerRadius) }
+      // Only the feed's own rows: a crosspost's embedded card has the original's id.
+      .overlay {
+        if !secondary {
+          OpenPostHighlight(postID: post.id, cornerRadius: theme.cornerRadius)
+        }
+      }
       .contextMenu(menuItems: {
         PostLinkContext(post: post)
 

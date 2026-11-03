@@ -107,7 +107,7 @@ struct PostLinkNormal: View, Equatable, Identifiable {
 
         VStack(alignment: .leading, spacing: theme.theme.verticalElementsSpacing / 2.5) {
           PostLinkTitle(attrString: helioData.titleAttr, label: data.title, theme: theme.theme.titleText, size: helioData.postDimensions.titleSize, dimmed: theme.theme.unseenType == .fade && (data.helioSeen ?? false), dimmedColor: theme.theme.badge.statsText.color)
-            .postTitleAccessibility(post: post, data: data, open: openPost)
+            .postTitleAccessibility(post: post, data: data, secondary: secondary, open: openPost)
 
           if !(data.selftext?.isEmpty ?? true), defSettings.showSelfText, let selftext = data.selftext {
             PostLinkNormalSelftext(selftext: selftext, theme: theme.theme.bodyText)

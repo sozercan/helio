@@ -83,7 +83,8 @@ struct NavCommands: Commands {
         }
       }
       .keyboardShortcut("r", modifiers: [.command, .shift])
-      .disabled(post?.reply == nil || post?.post?.data == nil)
+      // Reddit turns down comments on archived and locked posts.
+      .disabled(post?.reply == nil || post?.post?.data?.acceptsReplies != true)
     }
   }
 }

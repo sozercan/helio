@@ -27,6 +27,7 @@ struct PostView: View, Equatable {
   @Default(.CommentLinkDefSettings) private var commentLinkDefSettings
   @Environment(\.useTheme) private var selectedTheme
   @Environment(\.globalLoaderStart) private var globalLoaderStart
+  @Environment(\.globalLoaderDismiss) private var globalLoaderDismiss
   @Environment(\.contentWidth) private var contentWidth
   @State private var ignoreSpecificComment = false
   @Environment(\.navColumn) private var navColumn
@@ -125,6 +126,9 @@ struct PostView: View, Equatable {
                   withAnimation {
                     ignoreSpecificComment = true
                   }
+                  withAnimation(spring) {
+                    proxy.scrollTo("post-content", anchor: .bottom)
+                  }
                 } label: {
                   HStack {
                     Image(systemName: "arrow.up.left.and.arrow.down.right")
@@ -159,6 +163,25 @@ struct PostView: View, Equatable {
         .toolbar { Toolbar(hideElements: hideElements, subreddit: subreddit, post: post, sort: $sort, column: navColumn) }
         .onChange(of: sort) { _ in
           updatePost()
+        }
+        // The one reload of the whole thread, for View full conversation and a reply alike.
+        // Here rather than in the comments' rows, which a list only builds near the screen.
+        .onChange(of: ignoreSpecificComment) {
+          Task(priority: .userInitiated) {
+            await asyncFetch()
+            globalLoaderDismiss()
+            // Keep the comment the link opened in view, now among the whole thread.
+            if var specificID = highlightID {
+              specificID = specificID.hasPrefix("t1_") ? String(specificID.dropFirst(3)) : specificID
+              if let rowID = CommentTree.rows(for: comments).first(where: { $0.comment.data?.id == specificID })?.id {
+                doThisAfter(0.1) {
+                  withAnimation(spring) {
+                    proxy.scrollTo(rowID, anchor: .center)
+                  }
+                }
+              }
+            }
+          }
         }
         .onAppear {
           doThisAfter(0.5) {
@@ -196,9 +219,13 @@ struct PostView: View, Equatable {
           // Reloads the comments once the reply is posted, so it shows.
           // A reply to the post is top level: reload the whole thread, not just the comment a link
           // opened it on, so the reply shows.
+          // Showing the whole thread reloads it; already shown, reload it here.
           ReplyModalPost(post: post, updateComments: {
-            ignoreSpecificComment = true
-            updatePost()
+            if ignoreSpecificComment {
+              updatePost()
+            } else {
+              ignoreSpecificComment = true
+            }
           })
         }
         .onPreferenceChange(CommentUtils.AnchorsKey.self) { anchors in

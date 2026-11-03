@@ -108,7 +108,7 @@ struct PostLinkCompact: View, Equatable, Identifiable {
           VStack(alignment: .leading, spacing: theme.theme.verticalElementsSpacing) {
             VStack(alignment: .leading, spacing: theme.theme.verticalElementsSpacing / 2) {
               PostLinkTitle(attrString: helioData.titleAttr, label: data.title, theme: theme.theme.titleText, size: helioData.postDimensions.titleSize, dimmed: theme.theme.unseenType == .fade && (data.helioSeen ?? false), dimmedColor: theme.theme.badge.statsText.color)
-                .postTitleAccessibility(post: post, data: data, open: openPost)
+                .postTitleAccessibility(post: post, data: data, secondary: secondary, open: openPost)
 
               if let extractedMedia = post.helioData?.extractedMedia {
                 if case let .repost(repost) = extractedMedia, let repostData = repost.data, let url = URL(string: "https://reddit.com/r/\(repostData.subreddit)/comments/\(repost.id)") {

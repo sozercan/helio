@@ -127,6 +127,20 @@ struct AdjacentPostTests {
     #expect(CommandTargets.feedPostID(in: router(open: 1, columns: false, above: [.reddit(.post(feed[2]))])) == nil)
   }
 
+  @Test func aProfileAtTheRootIsAFeedToMoveThrough() {
+    let router = Router(id: "test")
+    router.firstIsSidebarSelection = true
+    router.fullPath = [profile, .reddit(.post(feed[1]))]
+    #expect(CommandTargets.feedPostID(in: router) == feed[1].id)
+  }
+
+  @Test func aPostAtTheRootIsntAFeed() {
+    let router = Router(id: "test")
+    router.firstIsSidebarSelection = true
+    router.fullPath = [.reddit(.post(feed[0])), .reddit(.post(feed[1]))]
+    #expect(CommandTargets.feedPostID(in: router) == nil)
+  }
+
   @Test func withNoPostOpenThereIsNothingToMoveFrom() {
     let router = Router(id: "test")
     router.fullPath = [home]
@@ -322,5 +336,27 @@ struct SubsListSelectionTests {
     #expect(Subreddits.RowSelection.row(for: apple, chosen: favorite) == .init(dest: apple))
     #expect(Subreddits.RowSelection.row(for: pics, chosen: nil) == .init(dest: pics))
     #expect(Subreddits.RowSelection.row(for: nil, chosen: favorite) == nil)
+  }
+}
+
+struct ReplyAvailabilityTests {
+  @Test func anOpenPostTakesReplies() {
+    #expect(postSampleData.acceptsReplies)
+  }
+
+  @Test func anArchivedPostDoesntTakeReplies() {
+    var data = postSampleData
+    data.archived = true
+    #expect(!data.acceptsReplies)
+    data.can_mod_post = true
+    #expect(!data.acceptsReplies)
+  }
+
+  @Test func aLockedPostTakesRepliesOnlyFromItsModerators() {
+    var data = postSampleData
+    data.locked = true
+    #expect(!data.acceptsReplies)
+    data.can_mod_post = true
+    #expect(data.acceptsReplies)
   }
 }

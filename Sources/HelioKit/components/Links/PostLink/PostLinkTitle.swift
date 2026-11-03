@@ -36,7 +36,8 @@ struct PostLinkTitle: View, Equatable {
 extension View {
   /// The feed title, drawn by a UIKit label VoiceOver can't read, as a button that opens the
   /// post, with the post's actions (the ones in its context menu and swipe actions).
-  func postTitleAccessibility(post: Post, data: PostData, open: @escaping () -> Void) -> some View {
+  /// `secondary`: a crosspost's embedded card, which never reads as the open post.
+  func postTitleAccessibility(post: Post, data: PostData, secondary: Bool, open: @escaping () -> Void) -> some View {
     // The element is a clear view behind the title: the label itself runs taller than the
     // title (it lays out blank lines below it), and VoiceOver would outline all of it.
     accessibilityHidden(true)
@@ -45,7 +46,7 @@ extension View {
           .accessibilityElement(children: .ignore)
           .accessibilityLabel(postTitleAccessibilityLabel(data))
           .accessibilityAddTraits(.isButton)
-          .modifier(OpenPostSelectedTrait(postID: post.id))
+          .modifier(OpenPostSelectedTrait(postID: post.id, marks: !secondary))
           .accessibilityHint("Opens the post")
           .accessibilityAction(.default, open)
           .accessibilityActions { PostAccessibilityActions(post: post) }
@@ -82,9 +83,11 @@ func postTitleAccessibilityLabel(_ data: PostData) -> String {
 /// The post open beside the feed reads as selected, as the feed's highlight shows it.
 private struct OpenPostSelectedTrait: ViewModifier {
   let postID: String
+  /// False for a row the highlight doesn't mark.
+  let marks: Bool
   @Environment(\.navColumn) private var navColumn
 
   func body(content: Content) -> some View {
-    content.accessibilityAddTraits(isOpenBesideFeed(postID: postID, column: navColumn) ? .isSelected : [])
+    content.accessibilityAddTraits(marks && isOpenBesideFeed(postID: postID, column: navColumn) ? .isSelected : [])
   }
 }

@@ -26,12 +26,11 @@ struct PostReplies: View {
 
   @State private var seenComments: String?
   @State private var loading = true
-  @Environment(\.globalLoaderDismiss) private var globalLoaderDismiss
 
   /// `usePrefetch`: take the request `PostView` started when the post opened, if it asked for the
   /// same comments.
-  func asyncFetch(_ full: Bool, _ altIgnoreSpecificComment: Bool? = nil, usePrefetch: Bool = false) async {
-    let commentID = (altIgnoreSpecificComment ?? ignoreSpecificComment) ? nil : highlightID
+  func asyncFetch(_ full: Bool, usePrefetch: Bool = false) async {
+    let commentID = ignoreSpecificComment ? nil : highlightID
     let (request, prefetched) = await MainActor.run {
       (commentsLoad.begin(), usePrefetch ? commentsLoad.takePrefetch(sort: sort, commentID: commentID) : nil)
     }
@@ -88,17 +87,6 @@ struct PostReplies: View {
           Spacer()
             .frame(height: 1)
             .listRowBackground(Color.clear)
-            .onChange(of: ignoreSpecificComment) { _, val in
-              Task(priority: .userInitiated) {
-                await asyncFetch(post.data == nil, val)
-                globalLoaderDismiss()
-              }
-              if val {
-                withAnimation(spring) {
-                  proxy.scrollTo("post-content", anchor: .bottom)
-                }
-              }
-            }
             .id("on-change-spacer")
         }
         .listRowBackground(Color.clear)
