@@ -113,6 +113,10 @@ struct ThemePresetTests {
     let titleFlair = try #require(theme.postLinks.theme.titleFlair)
     #expect(titleFlair.text.alpha == 1 && titleFlair.background.alpha == 1)
     #expect(contrast(titleFlair.text, titleFlair.background) >= 7)
+    // The NSFW tag, white on a translucent red (about 3.5:1) elsewhere.
+    let nsfw = try #require(titleFlair.nsfwBackground)
+    #expect(nsfw.alpha == 1)
+    #expect(contrast(titleFlair.text, nsfw) >= 7)
     // Comments' "load more" on its grey.
     let loadMore = theme.comments.theme
     #expect(contrast(loadMore.loadMoreText.color.light, loadMore.loadMoreBackground.light) >= 7)

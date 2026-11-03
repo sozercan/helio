@@ -150,7 +150,8 @@ struct ThemePalette {
     palette.depthColors = highContrastIndentColors
     // The translucent grey pill is about 3.3:1 in light mode: white on a dark grey is 7.9:1,
     // and the pill still stands out on black (2.7:1).
-    palette.titleFlair = .init(text: .init(hex: "FFFFFF"), background: .init(hex: "505156"))
+    // The NSFW tag's translucent red is about 3.5:1 with white: a dark red is 7.9:1.
+    palette.titleFlair = .init(text: .init(hex: "FFFFFF"), background: .init(hex: "505156"), nsfwBackground: .init(hex: "A50E0E"))
     return palette
   }()
 

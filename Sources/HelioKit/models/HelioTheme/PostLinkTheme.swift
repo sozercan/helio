@@ -97,9 +97,12 @@ struct PostLinkTheme: Codable, Hashable, Equatable {
     self.titleFlair = try container.decodeIfPresent(TitleFlair.self, forKey: .titleFlair)
   }
 
+  /// Title tags' colors, the same in both modes: `text` on `background` for uncolored flair, and
+  /// `text` on `nsfwBackground` for the NSFW tag (`nil` keeps its translucent red).
   struct TitleFlair: Codable, Hashable, Equatable {
     var text: ThemeColor
     var background: ThemeColor
+    var nsfwBackground: ThemeColor?
   }
 
   struct TitleStyle: Hashable {
