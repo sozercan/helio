@@ -115,8 +115,12 @@ extension ScreenAction {
   /// A subreddit feed's compact-posts switch and its flair filter.
   static func feedOptions(compact: Bool, setCompact: @escaping (Bool) -> Void, filters: [ShallowCachedFilter], selected: ShallowCachedFilter?, select: @escaping (ShallowCachedFilter?) -> Void) -> ScreenAction {
     var entries: [Entry] = [.choice("Compact Posts", systemImage: "rectangle.compress.vertical", isOn: compact) { setCompact(!compact) }]
-    let shown = filters.filter { $0.type == .flair } + filters.filter { $0.type == .custom }
-    if !shown.isEmpty {
+    // Each flair once: the cache can hold the same text in different colors.
+    var seen = Set<String>()
+    let shown = (filters.filter { $0.type == .flair } + filters.filter { $0.type == .custom })
+      .filter { seen.insert($0.pickerKey).inserted }
+    // Also while a filter is on, so All Posts can clear one a refresh dropped from the list.
+    if !shown.isEmpty || selected != nil {
       entries.append(.section("Flair", [.choice("All Posts", systemImage: "square.stack", isOn: selected == nil) { select(nil) }]
           // By kind and text, not colors, which a refresh can change while it's selected.
           + shown.map { filter in .choice(filter.text, isOn: selected?.pickerKey == filter.pickerKey) { select(filter) } }))

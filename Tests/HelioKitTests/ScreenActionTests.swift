@@ -65,6 +65,35 @@ struct ScreenActionTests {
     #expect(checked == [CommentSortOption.new.rawVal.value.capitalized])
   }
 
+  @Test func feedOptionsListEachFlairOnceAndKeepAllPostsWhileFiltered() {
+    func flair(_ text: String, _ type: CachedFilter.FilterType, color: String? = nil) -> ShallowCachedFilter {
+      ShallowCachedFilter(bgColor: color, subID: "apple", text: text, textColor: nil, rawType: type.rawValue)
+    }
+    func flairChoices(_ action: ScreenAction) -> [String]? {
+      guard case let .menu(entries) = action.content else { return nil }
+      for entry in entries {
+        if case let .section(title, items) = entry, title == "Flair" {
+          return items.compactMap {
+            if case let .choice(title, _, _, _) = $0 {
+              title
+            } else {
+              nil
+            }
+          }
+        }
+      }
+      return nil
+    }
+    let duplicated = ScreenAction.feedOptions(compact: false, setCompact: { _ in }, filters: [flair("News", .flair, color: "#ff0000"), flair("News", .flair, color: "#00ff00")], selected: nil, select: { _ in })
+    #expect(flairChoices(duplicated) == ["All Posts", "News"])
+    // A refresh made the selected flair moderator-only, so no flair is listed, but it's still on.
+    let selected = flair("News", .modFlair)
+    let filtered = ScreenAction.feedOptions(compact: false, setCompact: { _ in }, filters: [selected], selected: selected, select: { _ in })
+    #expect(flairChoices(filtered) == ["All Posts"])
+    let unfiltered = ScreenAction.feedOptions(compact: false, setCompact: { _ in }, filters: [selected], selected: nil, select: { _ in })
+    #expect(flairChoices(unfiltered) == nil)
+  }
+
   @Test func feedSortsWithChildrenAreSubmenus() {
     var picked: SubListingSortOption?
     let action = ScreenAction.sortPosts(SubListingSortOption.best) { picked = $0 }

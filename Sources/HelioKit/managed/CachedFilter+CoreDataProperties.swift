@@ -18,7 +18,7 @@ struct ShallowCachedFilter: Equatable, Identifiable, Hashable {
   private(set) var subID: String
   private(set) var text: String
   private(set) var textColor: String?
-  fileprivate var rawType: String
+  private(set) var rawType: String
   var type: CachedFilter.FilterType {
     CachedFilter.FilterType(rawValue: self.rawType) ?? .flair
   }
