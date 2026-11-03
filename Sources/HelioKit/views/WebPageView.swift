@@ -31,9 +31,6 @@ struct WebPageView: View {
           // reach the web view's scroll view.)
           .toolbarBackground(Color(uiColor: .systemBackground), for: .navigationBar)
           .toolbarBackgroundVisibility(.visible, for: .navigationBar)
-          // The web view keeps its page clear of the side insets itself (the open Duo's side tab
-          // bar), so inside the safe area it took them twice and left a blank strip that wide.
-          .ignoresSafeArea(.container, edges: .horizontal)
       } else {
         Color.clear
       }

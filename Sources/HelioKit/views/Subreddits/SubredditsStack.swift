@@ -20,6 +20,9 @@ struct SubredditsStack: View {
   @Environment(\.horizontalSizeClass) private var horizontalSizeClass
   /// The split view's measured frame. Follows window resizes, unlike a screen-size calculation.
   @State private var frame: CGRect = .zero
+  /// The window's safe-area insets where this shows, which the open Duo's panes keep clear of
+  /// (the side tab bar's).
+  @State private var safeAreaInsets = EdgeInsets()
 
   init(router: Router) {
     self._router = .init(initialValue: router)
@@ -40,6 +43,7 @@ struct SubredditsStack: View {
       frame = newFrame
       chooseLaunchFeed(in: newFrame)
     }
+    .onGeometryChange(for: EdgeInsets.self) { $0.safeAreaInsets } action: { safeAreaInsets = $0 }
     .onChange(of: layout.showsColumns, initial: true) { _, showsColumns in
       router.showsPostBesideFeed = showsColumns
     }
@@ -83,17 +87,21 @@ struct SubredditsStack: View {
   /// the post pane ran across the hinge.
   ///
   /// The panes meet in the middle of the hinge with a hairline between them: leaving the hinge's
-  /// whole width empty drew a wide black bar between them.
+  /// whole width empty drew a wide black bar between them. Each keeps clear of the window's side
+  /// insets (the side tab bar) itself, so its screens ignore them: a navigation stack in a pane
+  /// gets them anyway, which narrowed lists twice at the hinge, and a web page doesn't keep its
+  /// content clear of them at all.
   private func panes(_ layout: SplitLayout) -> some View {
     HStack(spacing: 0) {
       feedPane
-        .environment(\.paneHingeEdges, .trailing)
+        .padding(.leading, safeAreaInsets.leading)
         .frame(width: layout.feedPaneWidth)
       Divider()
       postColumn(layout)
-        .environment(\.paneHingeEdges, .leading)
         .environment(\.horizontalSizeClass, .compact)
+        .padding(.trailing, safeAreaInsets.trailing)
     }
+    .environment(\.paneHingeEdges, .horizontal)
   }
 
   /// The subs list with the feed and what's opened from it stacked on it, as in one stack.
