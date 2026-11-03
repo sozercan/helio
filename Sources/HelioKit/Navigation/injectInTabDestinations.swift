@@ -33,12 +33,15 @@ struct RouterDestinationView: View {
   let dest: Router.NavDest
 
   var body: some View {
-    if case let .web(url) = dest {
-      // A page lays itself out for the column's whole width.
-      WebPageView(url: url)
-    } else {
-      screen.readableWidth()
+    Group {
+      if case let .web(url) = dest {
+        // A page lays itself out for the column's whole width.
+        WebPageView(url: url)
+      } else {
+        screen.readableWidth()
+      }
     }
+    .ignoresPaneHingeInsets()
   }
 
   @ViewBuilder

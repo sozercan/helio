@@ -468,13 +468,32 @@ struct SplitLayoutTests {
 }
 
 struct ReadableWidthTests {
-  @Test func wideColumnsAreCapped() {
-    #expect(ReadableWidth.contentWidth(column: 1200, hasDivision: false) == ReadableWidth.max)
-    #expect(ReadableWidth.contentWidth(column: 500, hasDivision: false) == 500)
+  private func column(_ x: CGFloat, _ width: CGFloat) -> CGRect {
+    CGRect(x: x, y: 0, width: width, height: 900)
   }
 
-  @Test func theOpenDuoUsesItsWholeWidth() {
-    #expect(ReadableWidth.contentWidth(column: 1200, hasDivision: true) == 1200)
+  @Test func wideColumnsAreCapped() {
+    #expect(ReadableWidth.contentWidth(column: column(0, 1200), visibleWidth: 1200, division: nil) == ReadableWidth.max)
+    #expect(ReadableWidth.contentWidth(column: column(0, 500), visibleWidth: 500, division: nil) == 500)
+  }
+
+  @Test func aColumnAcrossTheOpenDuosHingeUsesItsWholeWidth() {
+    let hinge = CGRect(x: 580, y: 0, width: 40, height: 900)
+    #expect(ReadableWidth.contentWidth(column: column(0, 1200), visibleWidth: 1200, division: hinge) == 1200)
+  }
+
+  @Test func theOpenDuosPanesGetTheirOwnWidth() {
+    // The open Duo flat on its back: the side tab bar takes the window's right 84 pt, and the
+    // hinge is 40 pt wide in the middle of the window.
+    let hinge = CGRect(x: 455.5, y: 0, width: 40, height: 669)
+    let feedPane = column(0, 455.5)
+    let postPane = CGRect(x: 495.5, y: 0, width: 455.5, height: 669)
+    #expect(ReadableWidth.contentWidth(column: feedPane, visibleWidth: 455.5, division: hinge) == 455.5)
+    // The post pane runs under the tab bar; its content stops at the window's safe area.
+    #expect(ReadableWidth.contentWidth(column: postPane, visibleWidth: 371.5, division: hinge) == 371.5)
+    // A pane on one side of the hinge is capped like any column.
+    let farHinge = CGRect(x: 1000, y: 0, width: 40, height: 900)
+    #expect(ReadableWidth.contentWidth(column: column(0, 1000), visibleWidth: 1000, division: farHinge) == ReadableWidth.max)
   }
 }
 
