@@ -158,6 +158,16 @@ struct AdjacentPostTests {
     #expect(CommandTargets.feedPostID(in: router) == nil)
   }
 
+  @Test func findNeedsAFieldOrAnAccountForTheSearchTab() {
+    let targets = CommandTargets()
+    #expect(!targets.canFind(credential: nil))
+    // A search field that shows is always there to focus.
+    let registration = targets.register(.init(kind: .feed, column: .feed, focusSearch: {}))
+    #expect(targets.canFind(credential: nil))
+    targets.unregister(registration)
+    #expect(!targets.canFind(credential: nil))
+  }
+
   @Test func aDiscardedFeedIsntKeptForNextPost() {
     let targets = CommandTargets()
     let registration = targets.register(.init(kind: .feed, column: .feed, posts: { feed }))

@@ -24,7 +24,8 @@ struct NavCommands: Commands {
       // Not the screen behind a reply, a full-screen image or a sheet.
       Button("Find…", systemImage: "magnifyingglass") { targets.find() }
         .keyboardShortcut("f")
-        .disabled(targets.isCoveredObservably())
+        // Without an account, the Search tab only says so.
+        .disabled(targets.isCoveredObservably() || !targets.canFind())
     }
 
     // The top of the View menu.

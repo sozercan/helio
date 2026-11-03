@@ -104,7 +104,23 @@ final class CommandTargets {
     refreshTarget?.refresh?()
   }
 
-  /// Focuses the search field shown last, else switches to the Search tab and focuses its.
+  /// Whether Find has a field to focus: one shown, or the Search tab's, which needs an account
+  /// it can use (as `WithCredentialOnly` gates it).
+  @MainActor
+  func canFind() -> Bool {
+    canFind(credential: RedditCredentialsManager.shared.selectedCredential)
+  }
+
+  func canFind(credential: RedditCredential?) -> Bool {
+    if targets.contains(where: { $0.target.focusSearch != nil }) {
+      return true
+    }
+    guard let credential, credential.validationStatus == .authorized else { return false }
+    return !(credential.isWebSession && credential.webSessionCookies == nil)
+  }
+
+  /// Focuses the search field shown last, else switches to the Search tab and focuses its. The
+  /// menu offers it only when `canFind()`.
   func find(nav: Nav = .shared) {
     guard !isCovered(nav: nav) else { return }
     if let focus = targets.last(where: { $0.target.focusSearch != nil })?.target.focusSearch {
