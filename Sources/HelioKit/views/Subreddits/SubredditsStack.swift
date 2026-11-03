@@ -81,11 +81,15 @@ struct SubredditsStack: View {
   ///
   /// Not `ArrangementView`: lying flat, it splits the space left of the side tab bar in half, so
   /// the post pane ran across the hinge.
+  ///
+  /// The panes meet in the middle of the hinge with a hairline between them: leaving the hinge's
+  /// whole width empty drew a wide black bar between them.
   private func panes(_ layout: SplitLayout) -> some View {
-    HStack(spacing: layout.hingeWidth) {
+    HStack(spacing: 0) {
       feedPane
         .environment(\.paneHingeEdges, .trailing)
-        .frame(width: layout.hingeFeedWidth)
+        .frame(width: layout.feedPaneWidth)
+      Divider()
       postColumn(layout)
         .environment(\.paneHingeEdges, .leading)
         .environment(\.horizontalSizeClass, .compact)
@@ -256,6 +260,11 @@ struct SplitLayout: Equatable {
   let hingeFeedWidth: CGFloat?
   /// The hinge's width, between the two panes.
   let hingeWidth: CGFloat
+
+  /// The first pane's width: to the middle of the hinge, where the panes meet.
+  var feedPaneWidth: CGFloat? {
+    hingeFeedWidth.map { $0 + hingeWidth / 2 }
+  }
 
   /// The subs list shows beside the feed, as the split view's sidebar. In one stack, and in the
   /// Duo's first pane, the feed is a screen pushed on it instead, which Back can leave.
