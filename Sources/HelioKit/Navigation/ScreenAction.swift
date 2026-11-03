@@ -68,6 +68,31 @@ struct ScreenAction: Identifiable, Equatable {
       run()
     }
   }
+
+  /// The same action, doing nothing unless `allowed()` when it runs.
+  func guarded(_ allowed: @escaping () -> Bool) -> ScreenAction {
+    func guarded(_ entry: Entry) -> Entry {
+      switch entry {
+      case let .choice(title, systemImage, isOn, select): .choice(title, systemImage: systemImage, isOn: isOn) {
+          if allowed() {
+            select()
+          }
+        }
+      case let .submenu(title, systemImage, entries): .submenu(title, systemImage: systemImage, entries.map(guarded))
+      case let .section(title, entries): .section(title, entries.map(guarded))
+      }
+    }
+    var action = self
+    switch content {
+    case let .button(run): action.content = .button {
+        if allowed() {
+          run()
+        }
+      }
+    case let .menu(entries): action.content = .menu(entries.map(guarded))
+    }
+    return action
+  }
 }
 
 extension ScreenAction {
@@ -93,7 +118,8 @@ extension ScreenAction {
     let shown = filters.filter { $0.type == .flair } + filters.filter { $0.type == .custom }
     if !shown.isEmpty {
       entries.append(.section("Flair", [.choice("All Posts", systemImage: "square.stack", isOn: selected == nil) { select(nil) }]
-          + shown.map { filter in .choice(filter.text, isOn: selected == filter) { select(filter) } }))
+          // By kind and text, not colors, which a refresh can change while it's selected.
+          + shown.map { filter in .choice(filter.text, isOn: selected?.pickerKey == filter.pickerKey) { select(filter) } }))
     }
     return ScreenAction(id: .feedOptions, title: "Feed Options", systemImage: selected == nil ? "line.3.horizontal.decrease" : "line.3.horizontal.decrease.circle.fill", content: .menu(entries))
   }

@@ -21,7 +21,10 @@ struct NavCommands: Commands {
   /// The shown screen's action with `id`, unless a reply, a full-screen viewer or a sheet covers
   /// it: acting on the screen behind could navigate under it or close it.
   private func screenAction(_ id: ScreenAction.ID) -> ScreenAction? {
-    targets.isCovered() ? nil : targets.action(id)
+    // The observable part only, so the menus don't stay disabled after a share sheet closes;
+    // the action checks the rest when it runs.
+    guard !targets.isCoveredObservably(), let action = targets.action(id) else { return nil }
+    return action.guarded { !targets.isCovered() }
   }
 
   private func actionMenu(_ action: ScreenAction?, title: String, placeholder: ScreenAction? = nil) -> some View {
