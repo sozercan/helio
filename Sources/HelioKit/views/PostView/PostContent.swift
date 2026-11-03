@@ -21,6 +21,7 @@ struct PostContent: View, Equatable {
   var forceCollapse: Bool = false
   @State private var collapsed = false
   @State private var showSpoiler = false
+  @State private var youTubePlayer = PageYouTubePlayer()
   @Default(.PostPageDefSettings) private var defSettings
   // Markdown sets its own font sizes, so bodies scale by passing a scaled size in.
   @Environment(\.dynamicTypeSize) private var dynamicTypeSize
@@ -74,7 +75,8 @@ struct PostContent: View, Equatable {
           if !isCollapsed {
             VStack(spacing: 0) {
               VStack(spacing: selectedTheme.posts.spacing) {
-                if let layout = post.pageLayout(contentWidth: contentWidth, theme: selectedTheme), let extractedMedia = layout.media {
+                if let layout = post.pageLayout(contentWidth: contentWidth, theme: selectedTheme), let pageMedia = layout.media {
+                  let extractedMedia = youTubePlayer.owning(pageMedia)
                   // The feed's size runs full-bleed images edge to edge; the post page keeps them inset.
                   let feedTheme = selectedTheme.postLinks.theme
                   let fullBleedInset = isFullBleedMedia(extractedMedia, theme: feedTheme, secondary: false, compact: false) ? feedTheme.innerPadding.horizontal * 2 : 0

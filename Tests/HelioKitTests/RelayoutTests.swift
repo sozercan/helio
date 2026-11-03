@@ -169,22 +169,29 @@ struct RelayoutTests {
     #expect(post.helioData?.layoutWidth == 500)
   }
 
-  @Test func thePostPageHasItsOwnYouTubePlayer() throws {
+  @Test func eachPostPageHasItsOwnYouTubePlayer() throws {
     let post = try post()
     post.setupHelioData(contentWidth: 400, theme: theme, fetchAvatar: false)
     let rowPlayer = YouTubePlayer(source: .video(id: "abc"))
     let thumbnail = try #require(URL(string: "https://i.ytimg.com/vi/abc/hqdefault.jpg"))
     post.helioData?.extractedMediaForcedNormal = .yt(YTMediaExtracted(videoID: "abc", size: CGSize(width: 16, height: 9), thumbnailURL: thumbnail, thumbnailRequest: ImageRequest(url: thumbnail), player: rowPlayer, author: "", authorURL: thumbnail))
-    let wide = try #require(post.pageLayout(contentWidth: 900, theme: theme))
-    let narrow = try #require(post.pageLayout(contentWidth: 600, theme: theme))
-    guard case let .yt(wideVideo) = wide.media, case let .yt(narrowVideo) = narrow.media else {
-      Issue.record("expected a YouTube embed")
-      return
+    // Two pages of the post showing at once, such as the post at the feed column's root and its
+    // thread beside it.
+    let page = PageYouTubePlayer()
+    let otherPage = PageYouTubePlayer()
+    func player(_ owner: PageYouTubePlayer, width: Double) throws -> YouTubePlayer? {
+      let media = try #require(post.pageLayout(contentWidth: width, theme: theme)?.media)
+      guard case let .yt(video) = owner.owning(media) else { return nil }
+      return video.player
     }
-    // Beside the feed, the row and the page would otherwise play in one web view.
-    #expect(wideVideo.player !== rowPlayer)
+    let wide = try #require(try player(page, width: 900))
+    let narrow = try #require(try player(page, width: 600))
+    let other = try #require(try player(otherPage, width: 900))
+    // Not the row's, nor the other page's: they'd share one web view.
+    #expect(wide !== rowPlayer)
+    #expect(other !== wide)
     // Kept across the page's relayouts, so a playing video doesn't restart.
-    #expect(narrowVideo.player === wideVideo.player)
+    #expect(narrow === wide)
   }
 
   @Test func thePostPageFollowsItsColumn() throws {

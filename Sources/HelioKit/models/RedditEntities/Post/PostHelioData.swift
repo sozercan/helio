@@ -7,7 +7,6 @@
 
 import Nuke
 import SwiftUI
-import YouTubePlayerKit
 
 @Observable
 class PostHelioData: Hashable {
@@ -42,9 +41,6 @@ class PostHelioData: Hashable {
   /// The post page's layout, kept apart from the feed row's: side by side, the page and the row
   /// are in columns of different widths. Derived when the page draws (`Post.pageLayout`).
   @ObservationIgnored var pageLayout: PostPageLayout?
-  /// The post page's own YouTube player, kept across the page's relayouts. Not the row's: open
-  /// beside the feed, the two would share one web view, moving the video between columns.
-  @ObservationIgnored var pageYouTubePlayer: (videoID: String, player: YouTubePlayer)?
   var linkMedia: PreviewModel?
   var videoMedia: SharedVideo?
   var postBodyAttr: NSAttributedString?
