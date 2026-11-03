@@ -338,7 +338,7 @@ private struct FeedOptionsMenu: View {
   var filters: [ShallowCachedFilter]
   /// A filter's identity in the picker: its kind and text.
   static func key(_ filter: ShallowCachedFilter) -> String {
-    "\(filter.type.rawValue)|\(filter.text)"
+    filter.pickerKey
   }
 
   @Binding var selectedFilter: ShallowCachedFilter?
@@ -359,17 +359,20 @@ private struct FeedOptionsMenu: View {
     let custom = filters.filter { $0.type == .custom }
     Menu {
       Toggle("Compact posts", systemImage: "rectangle.compress.vertical", isOn: compact)
-      if !flairs.isEmpty || !custom.isEmpty {
+      // Also while a filter is on, so it can be cleared even after a refresh dropped its flair.
+      if !flairs.isEmpty || !custom.isEmpty || selectedFilter != nil {
         // Tagged by the filter's kind and text, not the whole filter: a background refresh can
-        // change a flair's colors, which would leave the active one unchecked.
-        let options = flairs + custom
+        // change a flair's colors, which would leave the active one unchecked. Flairs with the
+        // same text in different colors show once.
+        var seen = Set<String>()
+        let options = (flairs + custom).filter { seen.insert(Self.key($0)).inserted }
         Picker("Flair", selection: Binding(
           get: { selectedFilter.map(Self.key) },
           set: { key in selectedFilter = key.flatMap { key in options.first { Self.key($0) == key } } },
         )) {
           Label("All posts", systemImage: "square.stack")
             .tag(String?.none)
-          ForEach(options) { filter in
+          ForEach(options, id: \.self.pickerKey) { filter in
             Text(filter.text)
               .tag(Optional(Self.key(filter)))
           }
@@ -381,5 +384,13 @@ private struct FeedOptionsMenu: View {
     }
     .accessibilityLabel("Filter and view options")
     .accessibilityValue(selectedFilter.map { "Showing \($0.text)" } ?? "")
+  }
+}
+
+extension ShallowCachedFilter {
+  /// The filter's identity in menus: its kind and text, not its colors, which a refresh can
+  /// change while it's selected.
+  var pickerKey: String {
+    "\(type.rawValue)|\(text)"
   }
 }
