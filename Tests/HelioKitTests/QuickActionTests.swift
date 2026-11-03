@@ -2,8 +2,10 @@ import Testing
 import UIKit
 @testable import HelioKit
 
-/// Serialized: the actions drive the shared `Nav`, which parallel tests would race on.
+/// Serialized and on the main actor: the actions drive the shared `Nav`, which parallel tests
+/// would race on, and its tab switches finish on the main actor.
 @Suite(.serialized)
+@MainActor
 struct QuickActionTests {
   @Test func listsSearchSavedAndTheFirstFavoritesOnce() {
     let list = QuickAction.list(favorites: ["apple", "Apple", " ", "pics", "swift"])
