@@ -61,6 +61,45 @@ struct RouterTests {
     #expect(router.fullPath == [cached, post])
   }
 
+  @Test func aFeedOpenedByNameTakesTheDetailsInPlace() throws {
+    // Its feed view and loaded posts hold this subreddit; replacing it would split them from the
+    // per-subreddit settings, which are kept by Reddit's id.
+    let json = #"{"name": "t5_2qh1f", "id": "2qh1f", "display_name": "Apple", "url": "/r/Apple/", "public_description": ""}"#
+    let cached = try Subreddit(data: JSONDecoder().decode(SubredditData.self, from: Data(json.utf8)))
+    let byName = Subreddit(id: "apple")
+    let router = Router(id: "test")
+    router.firstSelected = .reddit(.subFeed(byName))
+    let nameBefore = router.fullPath.first?.subredditFeedName
+    router.firstSelected = .reddit(.subFeed(cached))
+    guard case let .reddit(.subFeed(sub)) = router.fullPath.first else {
+      Issue.record("expected a subreddit feed")
+      return
+    }
+    #expect(sub === byName)
+    #expect(sub.id == cached.id)
+    // The sidebar's selection matches the cached row.
+    #expect(router.firstSelected == .reddit(.subFeed(cached)))
+    // The feed view is keyed by this, so it isn't rebuilt.
+    #expect(router.fullPath.first?.subredditFeedName == nameBefore)
+  }
+
+  @Test func showingAFeedRootByNameKeepsItsSubreddit() throws {
+    let json = #"{"name": "t5_2qh1f", "id": "2qh1f", "display_name": "Apple", "url": "/r/Apple/", "public_description": ""}"#
+    let cached = try Subreddit(data: JSONDecoder().decode(SubredditData.self, from: Data(json.utf8)))
+    let byName = Subreddit(id: "apple")
+    let router = Router(id: "test")
+    router.firstSelected = .reddit(.subFeed(byName))
+    router.navigateTo(post)
+    router.showFeedRoot(.reddit(.subFeed(cached)))
+    #expect(router.fullPath.count == 1)
+    guard case let .reddit(.subFeed(sub)) = router.fullPath.first else {
+      Issue.record("expected a subreddit feed")
+      return
+    }
+    #expect(sub === byName)
+    #expect(sub.data?.display_name == "Apple")
+  }
+
   @Test func reselectingAFeedTakesFresherDetails() throws {
     func cached(_ title: String) throws -> Router.NavDest {
       let json = #"{"name": "t5_2qh1f", "id": "2qh1f", "display_name": "Apple", "url": "/r/Apple/", "public_description": ""}"#

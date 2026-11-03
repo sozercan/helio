@@ -60,11 +60,9 @@ class Router: Hashable, Equatable, Identifiable {
     set {
       if let newValue {
         if let first = fullPath.first, first.isSameFeed(as: newValue) {
-          // The same feed keeps its screens, but takes the subreddit's details when they come
+          // The same feed keeps its screens, and takes the subreddit's details when they come
           // along (opened from a link by name, then chosen in the sidebar; or fresher ones).
-          if newValue.carriesSubredditData {
-            fullPath[0] = newValue
-          }
+          first.takeSubredditDetails(from: newValue)
         } else {
           fullPath = [newValue]
         }
@@ -175,7 +173,8 @@ class Router: Hashable, Equatable, Identifiable {
 
   /// Shows `dest` with nothing stacked on it, even when it's the feed already selected.
   func showFeedRoot(_ dest: NavDest) {
-    if let first = fullPath.first, first.isSameFeed(as: dest), !dest.carriesSubredditData {
+    if let first = fullPath.first, first.isSameFeed(as: dest) {
+      first.takeSubredditDetails(from: dest)
       fullPath = [first]
     } else {
       fullPath = [dest]
@@ -224,6 +223,16 @@ extension Router.NavDest {
       return sub.data != nil
     }
     return false
+  }
+
+  /// Fills in this feed's subreddit with the details `other` carries for the same feed. In place,
+  /// so the feed view, the posts it loaded (which point at this subreddit) and its per-subreddit
+  /// settings (compact mode, kept by the subreddit's id, which the details set) all keep using
+  /// one subreddit, and the feed keeps its pages.
+  func takeSubredditDetails(from other: Router.NavDest) {
+    guard case let .reddit(.subFeed(sub)) = self, case let .reddit(.subFeed(otherSub)) = other,
+          sub !== otherSub, let data = otherSub.data else { return }
+    sub.data = data
   }
 
   /// Whether both show the same feed, matching subreddits by name.
