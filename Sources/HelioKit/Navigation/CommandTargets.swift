@@ -274,7 +274,7 @@ extension View {
 
   /// `commandTarget` whose target changes with `key`, such as a refresh that's only available
   /// with something to refresh.
-  func commandTarget(_ target: CommandTargets.Target, updatingWith key: some Equatable) -> some View {
+  func commandTarget(_ target: CommandTargets.Target?, updatingWith key: some Equatable) -> some View {
     modifier(CommandTargetModifier(target: target, key: key))
   }
 

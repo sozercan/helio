@@ -190,10 +190,16 @@ struct PostView: View, Equatable {
           }
         }
         // A context-menu preview isn't a screen the menu bar's commands act on.
-        .commandTarget(isPreview ? nil : CommandTargets.Target(kind: .post, column: navColumn, refresh: updatePost, post: post, reply: { showReplyModal = true }))
+        // Kept current when the page is handed a new Post for the same destination (after a refresh).
+        .commandTarget(isPreview ? nil : CommandTargets.Target(kind: .post, column: navColumn, refresh: updatePost, post: post, reply: { showReplyModal = true }), updatingWith: ObjectIdentifier(post))
         .sheet(isPresented: $showReplyModal) {
           // Reloads the comments once the reply is posted, so it shows.
-          ReplyModalPost(post: post, updateComments: updatePost)
+          // A reply to the post is top level: reload the whole thread, not just the comment a link
+          // opened it on, so the reply shows.
+          ReplyModalPost(post: post, updateComments: {
+            ignoreSpecificComment = true
+            updatePost()
+          })
         }
         .onPreferenceChange(CommentUtils.AnchorsKey.self) { anchors in
           Task(priority: .background) {
