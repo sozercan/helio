@@ -29,8 +29,8 @@ struct QuickActionTests {
   @Test func readsItemsFromOlderVersions() {
     #expect(QuickAction(UIApplicationShortcutItem(type: "Search", localizedTitle: "Search")) == .search)
     #expect(QuickAction(UIApplicationShortcutItem(type: "Saved", localizedTitle: "Saved")) == .saved)
-    // Older favorites stored "sub" instead of the subreddit, so they can't be opened.
-    #expect(QuickAction(UIApplicationShortcutItem(type: "subFav", localizedTitle: "apple", localizedSubtitle: nil, icon: nil, userInfo: ["name": "sub" as NSString])) == nil)
+    // Older favorites stored a placeholder name, but their title is the subreddit.
+    #expect(QuickAction(UIApplicationShortcutItem(type: "subFav", localizedTitle: "apple", localizedSubtitle: nil, icon: nil, userInfo: ["name": "sub" as NSString])) == .subreddit("apple"))
   }
 
   @Test func subredditActionOpensTheFeedInPosts() {

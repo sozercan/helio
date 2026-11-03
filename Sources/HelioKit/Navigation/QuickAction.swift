@@ -35,6 +35,12 @@ enum QuickAction: Equatable {
     case "subreddit":
       guard let name = item.userInfo?["name"] as? String, !name.isEmpty else { return nil }
       self = .subreddit(name)
+    // Older versions stored favorites as "subFav" with a placeholder name ("sub"); their title is
+    // the subreddit, so those still open until the list is rebuilt.
+    case "subFav":
+      let name = item.localizedTitle.hasPrefix("r/") ? String(item.localizedTitle.dropFirst(2)) : item.localizedTitle
+      guard !name.isEmpty else { return nil }
+      self = .subreddit(name)
     default: return nil
     }
   }
