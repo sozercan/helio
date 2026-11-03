@@ -124,11 +124,14 @@ struct SubredditData: Codable, GenericRedditEntityDataType, Defaults.Serializabl
     return SubredditIconKit(url: iconURLStr, initialLetter: String(name.prefix(1)).uppercased(), color: String((firstNonEmptyString(color, "#828282") ?? "").dropFirst(1)))
   }
 
-  /// These details with the account's state from `cached`, the sidebar's copy, which is the
-  /// fresher for it (favorited, subscribed). Only that: the copy fills the fields it doesn't
-  /// keep with placeholders (no description, a public type).
-  func takingAccountState(from cached: SubredditData) -> SubredditData {
+  /// These details with the sidebar's copy's (`cached`) identity and account state. Its id, the
+  /// subreddit's fullname (Reddit's own details carry the bare id), is the one per-subreddit
+  /// settings such as compact mode are kept by; its account state (favorited, subscribed) is
+  /// the fresher. Only those: the copy fills the fields it doesn't keep with placeholders (no
+  /// description, a public type).
+  func takingSidebarState(from cached: SubredditData) -> SubredditData {
     var data = self
+    data.id = cached.id
     data.user_has_favorited = cached.user_has_favorited ?? data.user_has_favorited
     data.user_is_subscriber = cached.user_is_subscriber ?? data.user_is_subscriber
     data.user_is_moderator = cached.user_is_moderator ?? data.user_is_moderator

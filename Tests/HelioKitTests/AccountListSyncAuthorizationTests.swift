@@ -27,7 +27,8 @@ struct AccountListSyncAuthorizationTests {
 
   /// Package tests do not have the app bundle's Core Data model. Model just the two
   /// list entities, with the same attributes and relationship as the app model.
-  private static let model: NSManagedObjectModel = {
+  /// The account-list entities, for in-memory stores in tests.
+  static let model: NSManagedObjectModel = {
     func entity(_ name: String, type: NSManagedObject.Type, strings: [String], booleans: [String]) -> NSEntityDescription {
       let entity = NSEntityDescription()
       entity.name = name
