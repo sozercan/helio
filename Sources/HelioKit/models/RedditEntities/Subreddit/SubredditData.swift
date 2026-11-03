@@ -124,15 +124,16 @@ struct SubredditData: Codable, GenericRedditEntityDataType, Defaults.Serializabl
     return SubredditIconKit(url: iconURLStr, initialLetter: String(name.prefix(1)).uppercased(), color: String((firstNonEmptyString(color, "#828282") ?? "").dropFirst(1)))
   }
 
-  /// These details updated with every one `newer` has; the fields it lacks (a partial copy, such
-  /// as the sidebar's) keep these values.
-  func merged(with newer: SubredditData) -> SubredditData {
-    let encoder = JSONEncoder()
-    guard let old = try? JSONSerialization.jsonObject(with: encoder.encode(self)) as? [String: Any],
-          let new = try? JSONSerialization.jsonObject(with: encoder.encode(newer)) as? [String: Any],
-          let data = try? JSONSerialization.data(withJSONObject: old.merging(new) { _, newer in newer }),
-          let merged = try? JSONDecoder().decode(SubredditData.self, from: data) else { return newer }
-    return merged
+  /// These details with the account's state from `cached`, the sidebar's copy, which is the
+  /// fresher for it (favorited, subscribed). Only that: the copy fills the fields it doesn't
+  /// keep with placeholders (no description, a public type).
+  func takingAccountState(from cached: SubredditData) -> SubredditData {
+    var data = self
+    data.user_has_favorited = cached.user_has_favorited ?? data.user_has_favorited
+    data.user_is_subscriber = cached.user_is_subscriber ?? data.user_is_subscriber
+    data.user_is_moderator = cached.user_is_moderator ?? data.user_is_moderator
+    data.user_is_banned = cached.user_is_banned ?? data.user_is_banned
+    return data
   }
 
   enum CodingKeys: String, CodingKey {

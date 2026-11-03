@@ -101,36 +101,21 @@ struct RouterTests {
   }
 
   @Test func reselectingAFeedKeepsDetailsTheSidebarsCopyLacks() throws {
-    // The feed's subreddit has Reddit's full response; the sidebar's copy has no description.
-    let full = #"{"name": "t5_2qh1f", "id": "2qh1f", "display_name": "Apple", "url": "/r/Apple/", "public_description": "", "description": "All things Apple", "title": "old"}"#
-    let partial = #"{"name": "t5_2qh1f", "id": "2qh1f", "display_name": "Apple", "url": "/r/Apple/", "public_description": "", "title": "new"}"#
+    // The feed's subreddit has Reddit's full response; the sidebar's copy fills what it doesn't
+    // keep with placeholders (no description, a public type).
+    let full = #"{"name": "t5_2qh1f", "id": "2qh1f", "display_name": "Apple", "url": "/r/Apple/", "public_description": "Apple news", "description": "All things Apple", "subreddit_type": "restricted", "user_has_favorited": false}"#
+    let partial = #"{"name": "t5_2qh1f", "id": "2qh1f", "display_name": "Apple", "url": "/r/Apple/", "public_description": "", "subreddit_type": "public", "user_has_favorited": true}"#
     let feed = try Subreddit(data: JSONDecoder().decode(SubredditData.self, from: Data(full.utf8)))
     let sidebar = try Subreddit(data: JSONDecoder().decode(SubredditData.self, from: Data(partial.utf8)))
     let router = Router(id: "test")
     router.firstSelected = .reddit(.subFeed(feed))
+    router.navigateTo(post)
     router.firstSelected = .reddit(.subFeed(sidebar))
     #expect(feed.data?.description == "All things Apple")
-    #expect(feed.data?.title == "new")
-  }
-
-  @Test func reselectingAFeedTakesFresherDetails() throws {
-    func cached(_ title: String) throws -> Router.NavDest {
-      let json = #"{"name": "t5_2qh1f", "id": "2qh1f", "display_name": "Apple", "url": "/r/Apple/", "public_description": ""}"#
-      let data = try JSONDecoder().decode(SubredditData.self, from: Data(json.utf8))
-      let sub = Subreddit(data: data)
-      sub.data?.title = title
-      return .reddit(.subFeed(sub))
-    }
-    let router = Router(id: "test")
-    router.firstSelected = try cached("old")
-    router.navigateTo(post)
-    let fresh = try cached("new")
-    router.firstSelected = fresh
-    guard case let .reddit(.subFeed(sub)) = router.fullPath.first else {
-      Issue.record("expected a subreddit feed")
-      return
-    }
-    #expect(sub.data?.title == "new")
+    #expect(feed.data?.public_description == "Apple news")
+    #expect(feed.data?.subreddit_type == "restricted")
+    // The account's state is the sidebar's, the fresher.
+    #expect(feed.data?.user_has_favorited == true)
     #expect(router.fullPath.count == 2)
   }
 
