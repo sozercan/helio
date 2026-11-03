@@ -53,9 +53,9 @@ struct SubredditsStack: View {
                 .attachViewControllerToRouter(tabID: .posts)
             case let .reddit(.subFeed(sub)):
               SubredditPosts(subreddit: sub)
-                // By feed, not id: filling in a name-only subreddit's details changes its id, which
-                // would rebuild the feed and drop its pages.
-                .id("\(firstSelected.subredditFeedName ?? sub.id)-sub-first-tab")
+                // By the subreddit's id: when a feed opened by name gains its details, it reloads
+                // once with them, so its settings (such as compact mode, kept per id) apply.
+                .id("\(sub.id)-sub-first-tab")
             case let .reddit(.post(post)):
               if let sub = post.helioData?.subreddit {
                 PostView(post: post, subreddit: sub)
