@@ -14,8 +14,10 @@ import Synchronization
 
 @Observable
 final class PreviewModel: Equatable {
+  /// The same model, not just the same link: a refresh makes a new one, which a layout cached
+  /// with the old one (`Post.pageLayout`) has to pick up, as the old one may have failed to load.
   static func == (lhs: PreviewModel, rhs: PreviewModel) -> Bool {
-    lhs.url == rhs.url
+    lhs === rhs
   }
 
   var imageReq: ImageRequest?
