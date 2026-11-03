@@ -83,6 +83,8 @@ struct ThemePalette {
   /// Voted scores' text; `nil` keeps the app's fixed upvote and downvote colors.
   var upvoteText: ColorSchemes<ThemeColor>?
   var downvoteText: ColorSchemes<ThemeColor>?
+  /// The post page's unvoted score and upvote ratio; `nil` keeps grey.
+  var scoreText: ColorSchemes<ThemeColor>?
   /// Hairlines: comment and list separators.
   var divider: ColorSchemes<ThemeColor>
   /// The background behind lists and feeds.
@@ -140,6 +142,8 @@ struct ThemePalette {
     // Voted scores: Apollo's orange and indigo text is about 4.9:1 on white.
     palette.upvoteText = scheme("8A2E00", "FFA066")
     palette.downvoteText = scheme("2E35A8", "ABAEFF")
+    // The post page's unvoted score and upvote ratio: grey is about 3.5:1 on white.
+    palette.scoreText = palette.fontSecondary
     // A hairline in the separator color sets posts apart: Apollo's band is about 1.2:1 on the
     // cells, and a band dark enough for 3:1 would be heavy.
     palette.feedDivider = .init(style: .line, thickness: 1, color: palette.divider)
@@ -163,6 +167,7 @@ struct ThemePalette {
       upvoteText: upvoteText,
       downvoteText: downvoteText,
       newCommentsText: accentText,
+      scoreText: scoreText,
     )
   }
 
@@ -179,6 +184,7 @@ struct ThemePalette {
       upvoteText: upvoteText,
       downvoteText: downvoteText,
       newCommentsText: accentText,
+      scoreText: scoreText,
     )
   }
 }

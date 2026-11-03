@@ -142,14 +142,14 @@ struct VotesClusterInfo: View {
     VStack(spacing: 0) {
       Text(formatBigNumber(ups))
         .contentTransition(.numericText())
-        .foregroundStyle(theme.posts.badge.voteColor(likes, neutral: .gray))
+        .foregroundStyle(theme.posts.badge.voteColor(likes, neutral: theme.posts.badge.neutralScoreColor))
         .fontSize(16, .semibold)
         .accessibilityLabel("\(formatBigNumber(ups)) points")
         // The change floats up from the score; with Reduce Motion the score just updates.
         .changeEffect(
           .rise(origin: UnitPoint(x: 0.75, y: 0.25)) {
             Text(flyingNumber.value > 0 ? "+\(flyingNumber.value)" : "\(flyingNumber.value)")
-              .foregroundStyle(theme.posts.badge.voteColor(flyingNumber.color, neutral: .gray))
+              .foregroundStyle(theme.posts.badge.voteColor(flyingNumber.color, neutral: theme.posts.badge.neutralScoreColor))
               .font(.system(size: 12, weight: .semibold))
           },
           value: flyingNumber,
@@ -162,7 +162,7 @@ struct VotesClusterInfo: View {
             Text(String(Int(ratio * 100)) + "%")
           }
           .fontSize(12, .medium)
-          .foregroundColor(.gray)
+          .foregroundStyle(theme.posts.badge.neutralScoreColor)
         }
       }
     }

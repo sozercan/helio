@@ -99,6 +99,10 @@ struct ThemePresetTests {
         #expect(contrast(vote.dark, bg.dark) >= 7)
       }
     }
+    // The post page's unvoted score and upvote ratio, grey (about 3.5:1) elsewhere.
+    let score = try #require(theme.posts.badge.scoreText)
+    #expect(contrast(score.light, cell.light) >= 7)
+    #expect(contrast(score.dark, cell.dark) >= 7)
     // New-comment counts under posts and over comments, which the app's shared accent color would draw at 4:1.
     for (badge, bg) in [(theme.postLinks.theme.badge, cell), (theme.comments.theme.badge, comment)] {
       let count = try #require(badge.newCommentsText)
@@ -131,6 +135,8 @@ struct ThemePresetTests {
       // No new-comment color or title flair colors: the app's accent and the translucent grey pill.
       #expect(theme.postLinks.theme.badge.newCommentsText == nil)
       #expect(theme.comments.theme.badge.newCommentsText == nil)
+      // Unvoted scores on the post page stay grey.
+      #expect(theme.posts.badge.scoreText == nil)
       #expect(theme.postLinks.theme.titleFlair == nil)
       #expect(theme.comments.theme.loadMoreText.color == themeAccentColor)
       #expect(theme.comments.theme.badge.subColor == theme.general.accentColor)
