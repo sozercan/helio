@@ -226,20 +226,21 @@ final class CommandTargets {
   /// as a list's selection does; in one stack, where the feed doesn't show, only from the post
   /// itself, not from a profile or another post opened over it.
   static func feedPostID(in router: Router) -> String? {
-    // Only from a feed: a post opened from elsewhere (the Posts Box, the subs list) isn't in the
-    // feed kept from before.
-    guard let root = router.fullPath.first, listsPosts(root), let post = router.postColumn.first,
+    // Only from a feed, the top screen of the feed column (a profile opened over a standalone
+    // post registers its posts too): a post opened from elsewhere (the Posts Box, the subs list)
+    // isn't in the feed kept from before.
+    guard let feedTop = router.feedPath.last ?? router.fullPath.first, listsPosts(feedTop), let post = router.postColumn.first,
           router.firstIsSidebarSelection || router.postPath.isEmpty else { return nil }
     return post.id
   }
 
-  /// A root in the feed column that registers its posts as the feed: a subreddit or multireddit,
-  /// or a profile opened from a link.
-  private static func listsPosts(_ root: Router.NavDest) -> Bool {
-    if case .reddit(.user) = root {
+  /// A screen in the feed column that registers its posts as the feed: a subreddit or
+  /// multireddit, or a profile.
+  private static func listsPosts(_ dest: Router.NavDest) -> Bool {
+    if case .reddit(.user) = dest {
       return true
     }
-    return root.isFeed
+    return dest.isFeed
   }
 
   /// The post `offset` places from the one with `id` in `posts`.

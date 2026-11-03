@@ -54,10 +54,24 @@ struct PostView: View, Equatable {
     _sort = State(initialValue: defSettings.perPostSort ? (defSettings.postSorts[post.id] ?? commentsDefSettings.preferredSort) : commentsDefSettings.preferredSort)
   }
 
-  /// Reloads the post and its comments (pull to refresh, another sort).
-  func asyncFetch() async {
-    let request = await MainActor.run { commentsLoad.begin() }
-    if let result = await post.refreshPost(commentID: ignoreSpecificComment ? nil : highlightID, sort: sort, subreddit: subreddit.data?.display_name ?? subreddit.id, full: true), let newComments = result.0 {
+  /// Reloads the post and its comments (pull to refresh, another sort). `full: false` reloads only
+  /// the comments of a post already loaded, keeping its data (and with it its read mark).
+  /// `sharesWithReplies` offers the request to `PostReplies`, so its first load, if it hasn't
+  /// started yet, waits for this one instead of sending the same request again.
+  func asyncFetch(full: Bool = true, sharesWithReplies: Bool = false) async {
+    let request = commentsLoad.begin()
+    let commentID = ignoreSpecificComment ? nil : highlightID
+    let sort = sort
+    let subredditName = subreddit.data?.display_name ?? subreddit.id
+    let task = Task(priority: .userInitiated) { [post] in
+      await post.refreshPost(commentID: commentID, sort: sort, subreddit: subredditName, full: full)
+    }
+    if sharesWithReplies {
+      commentsLoad.startPrefetch(.init(task: task, sort: sort, commentID: commentID))
+    }
+    let fetched = await task.value
+    commentsLoad.dropPrefetch(task)
+    if let result = fetched, let newComments = result.0 {
       newComments.forEach { $0.parentHelio = comments }
       let applied = await MainActor.run {
         // A later request (another sort) replaces these.
@@ -168,7 +182,7 @@ struct PostView: View, Equatable {
         // Here rather than in the comments' rows, which a list only builds near the screen.
         .onChange(of: ignoreSpecificComment) {
           Task(priority: .userInitiated) {
-            await asyncFetch()
+            await asyncFetch(full: post.data == nil, sharesWithReplies: true)
             globalLoaderDismiss()
             // Keep the comment the link opened in view, now among the whole thread.
             if var specificID = highlightID {
@@ -222,7 +236,8 @@ struct PostView: View, Equatable {
           // Showing the whole thread reloads it; already shown, reload it here.
           ReplyModalPost(post: post, updateComments: {
             if ignoreSpecificComment {
-              updatePost()
+              // Just the comments: a full refresh would replace the post's data and its read mark.
+              Task(priority: .userInitiated) { await asyncFetch(full: post.data == nil) }
             } else {
               ignoreSpecificComment = true
             }
@@ -300,6 +315,13 @@ final class CommentsLoad {
   func startPrefetch(_ prefetch: Prefetch) {
     started = true
     self.prefetch = prefetch
+  }
+
+  /// Forgets `task` once it's done, if no one took it.
+  func dropPrefetch(_ task: Task<([Comment]?, String?)?, Never>) {
+    if prefetch?.task == task {
+      prefetch = nil
+    }
   }
 
   /// The prefetch, if it asked for the same comments. Taken once.

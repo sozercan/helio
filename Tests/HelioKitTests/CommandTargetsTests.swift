@@ -141,6 +141,17 @@ struct AdjacentPostTests {
     #expect(CommandTargets.feedPostID(in: router) == nil)
   }
 
+  @Test func aProfileOpenedOverAStandalonePostIsAFeedToMoveThrough() {
+    // A post opened by itself, its author's profile over it, and a post from that profile.
+    let router = Router(id: "test")
+    router.firstIsSidebarSelection = true
+    router.fullPath = [.reddit(.post(feed[0])), profile, .reddit(.post(feed[1]))]
+    #expect(CommandTargets.feedPostID(in: router) == feed[1].id)
+    // Under a screen that isn't a feed, the feed kept from before doesn't count.
+    router.fullPath = [home, .reddit(.subInfo(Subreddit(id: "apple"))), .reddit(.post(feed[1]))]
+    #expect(CommandTargets.feedPostID(in: router) == nil)
+  }
+
   @Test func withNoPostOpenThereIsNothingToMoveFrom() {
     let router = Router(id: "test")
     router.fullPath = [home]
