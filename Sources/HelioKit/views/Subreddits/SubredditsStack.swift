@@ -78,32 +78,16 @@ struct SubredditsStack: View {
   /// The open iPhone Duo: the subs list and the feed on the left of the hinge, the post on the
   /// right, each its own stack. The split view would cover the post with the feed there, as
   /// neither half is as wide as its columns need.
-  @ViewBuilder
+  ///
+  /// Not `ArrangementView`: lying flat, it splits the space left of the side tab bar in half, so
+  /// the post pane ran across the hinge.
   private func panes(_ layout: SplitLayout) -> some View {
-    #if compiler(>=6.4)
-      if #available(iOS 27.1, *) {
-        // Splits at the hinge, and follows the device into book posture.
-        ArrangementView {
-          feedPane
-        } secondary: {
-          postColumn(layout)
-            .environment(\.horizontalSizeClass, .compact)
-        }
-        .arrangementViewStyle(.split.axes(.horizontal))
-      } else {
-        hingePanes(layout)
-      }
-    #else
-      hingePanes(layout)
-    #endif
-  }
-
-  /// The two panes side by side, the first ending at the hinge.
-  private func hingePanes(_ layout: SplitLayout) -> some View {
     HStack(spacing: layout.hingeWidth) {
       feedPane
+        .environment(\.paneHingeEdges, .trailing)
         .frame(width: layout.hingeFeedWidth)
       postColumn(layout)
+        .environment(\.paneHingeEdges, .leading)
         .environment(\.horizontalSizeClass, .compact)
     }
   }
@@ -112,6 +96,7 @@ struct SubredditsStack: View {
   private var feedPane: some View {
     NavigationStack(path: $router.feedPanePath) {
       subsList(inSidebar: false)
+        .ignoresPaneHingeInsets()
         .injectInTabDestinations()
     }
     .environment(\.navColumn, .feed)
