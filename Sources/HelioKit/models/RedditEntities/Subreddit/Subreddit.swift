@@ -327,8 +327,18 @@ extension Subreddit {
   /// sidebar's cached copy and Reddit's own details both carry, else its name. Not `id`, which
   /// is the fullname in the cached copy, the bare id in Reddit's details and the name in a
   /// subreddit known only by name, so it changes as details come in.
+  ///
+  /// A setting saved before under one of those (the bare id or the name) keeps its key, so it
+  /// still applies; a bare id can't be told from a name to move it.
   var settingsKey: String {
-    guard let name = data?.name, !name.isEmpty else { return id }
-    return name
+    Self.settingsKey(fullname: data?.name, bareID: data?.id, name: data?.display_name, id: id, saved: CachedDefaults[.SubredditFeedDefSettings].compactPerSubreddit)
+  }
+
+  /// The first of the subreddit's keys a setting is saved under, else its fullname (else its id).
+  static func settingsKey(fullname: String?, bareID: String?, name: String?, id: String, saved: [String: Bool]) -> String {
+    let fullname = fullname.flatMap { $0.isEmpty ? nil : $0 }
+    // A subreddit opened by name was saved under the name as written, often lowercased.
+    let keys = [fullname, bareID, name, name?.lowercased(), id].compactMap(\.self)
+    return keys.first { saved[$0] != nil } ?? fullname ?? id
   }
 }

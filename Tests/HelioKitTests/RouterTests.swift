@@ -126,6 +126,22 @@ struct RouterTests {
     #expect(feed.settingsKey == "t5_2qh1f")
   }
 
+  @Test func aSettingSavedUnderAnOlderKeyKeepsApplying() {
+    func key(_ saved: [String: Bool]) -> String {
+      Subreddit.settingsKey(fullname: "t5_2qh1f", bareID: "2qh1f", name: "Apple", id: "2qh1f", saved: saved)
+    }
+    // Nothing saved yet: the fullname.
+    #expect(key([:]) == "t5_2qh1f")
+    // Saved from a feed with Reddit's own details, or one opened by name, before.
+    #expect(key(["2qh1f": true]) == "2qh1f")
+    #expect(key(["Apple": true]) == "Apple")
+    #expect(key(["apple": true]) == "apple")
+    // The fullname wins once it's there.
+    #expect(key(["t5_2qh1f": false, "2qh1f": true]) == "t5_2qh1f")
+    // Known only by name.
+    #expect(Subreddit.settingsKey(fullname: nil, bareID: nil, name: nil, id: "apple", saved: [:]) == "apple")
+  }
+
   @Test func reselectingAFeedKeepsDetailsTheSidebarsCopyLacks() throws {
     // The feed's subreddit has Reddit's full response; the sidebar's copy fills what it doesn't
     // keep with placeholders (no description, a public type).
