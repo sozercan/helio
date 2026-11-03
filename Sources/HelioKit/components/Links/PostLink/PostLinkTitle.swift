@@ -45,6 +45,7 @@ extension View {
           .accessibilityElement(children: .ignore)
           .accessibilityLabel(postTitleAccessibilityLabel(data))
           .accessibilityAddTraits(.isButton)
+          .modifier(OpenPostSelectedTrait(postID: post.id))
           .accessibilityHint("Opens the post")
           .accessibilityAction(.default, open)
           .accessibilityActions { PostAccessibilityActions(post: post) }
@@ -76,4 +77,14 @@ func postTitleAccessibilityLabel(_ data: PostData) -> String {
     parts.append(flair)
   }
   return parts.joined(separator: ", ")
+}
+
+/// The post open beside the feed reads as selected, as the feed's highlight shows it.
+private struct OpenPostSelectedTrait: ViewModifier {
+  let postID: String
+  @Environment(\.navColumn) private var navColumn
+
+  func body(content: Content) -> some View {
+    content.accessibilityAddTraits(isOpenBesideFeed(postID: postID, column: navColumn) ? .isSelected : [])
+  }
 }

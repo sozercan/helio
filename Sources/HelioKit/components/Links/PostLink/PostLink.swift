@@ -147,9 +147,13 @@ private struct OpenPostHighlight: View {
 
   var body: some View {
     // Collapsed into one stack, the post covers the feed: nothing to mark.
-    if navColumn == .feed, Nav.shared[.posts].firstIsSidebarSelection, Nav.shared[.posts].postColumn.first?.id == postID {
+    if isOpenBesideFeed(postID: postID, column: navColumn) {
+      // The tint alone is faint (about 1.2:1 on white), so a bar in the accent color marks it too.
       RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
         .fill(Color.accentColor.opacity(0.12))
+        .overlay(alignment: .leading) {
+          Rectangle().fill(Color.accentColor).frame(width: 3)
+        }
         .allowsHitTesting(false)
     }
   }
@@ -182,4 +186,11 @@ struct PostLinkBG: View, Equatable {
     .allowsHitTesting(false)
     .clipShape(RoundedRectangle(cornerRadius: theme.cornerRadius, style: .continuous))
   }
+}
+
+/// Whether the post with `postID`, in a feed column, is the one open beside it.
+@MainActor
+func isOpenBesideFeed(postID: String, column: Router.Column?) -> Bool {
+  // Collapsed into one stack, the post covers the feed: nothing to mark.
+  column == .feed && Nav.shared[.posts].firstIsSidebarSelection && Nav.shared[.posts].postColumn.first?.id == postID
 }

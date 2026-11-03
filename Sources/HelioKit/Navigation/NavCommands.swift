@@ -24,7 +24,7 @@ struct NavCommands: Commands {
       // Not the screen behind a reply, a full-screen image or a sheet.
       Button("Find…", systemImage: "magnifyingglass") { targets.find() }
         .keyboardShortcut("f")
-        .disabled(targets.isCovered())
+        .disabled(targets.isCoveredObservably())
     }
 
     // The top of the View menu.
@@ -62,24 +62,28 @@ struct NavCommands: Commands {
       Divider()
 
       // Not the post behind a reply being written or a full-screen image.
-      let post = targets.isCovered() ? nil : targets.openPost
+      let post = targets.isCoveredObservably() ? nil : targets.openPost
       Button(post?.post?.data?.likes == true ? "Remove Upvote" : "Upvote", systemImage: "arrow.up") {
-        if let post = post?.post {
+        if let post = post?.post, !targets.isCovered() {
           Task { _ = await post.vote(.up) }
         }
       }
       .keyboardShortcut("u", modifiers: [.command, .shift])
       .disabled(post?.post?.data == nil)
       Button(post?.post?.data?.likes == false ? "Remove Downvote" : "Downvote", systemImage: "arrow.down") {
-        if let post = post?.post {
+        if let post = post?.post, !targets.isCovered() {
           Task { _ = await post.vote(.down) }
         }
       }
       .keyboardShortcut("d", modifiers: [.command, .shift])
       .disabled(post?.post?.data == nil)
-      Button("Reply", systemImage: "arrowshape.turn.up.left") { post?.reply?() }
-        .keyboardShortcut("r", modifiers: [.command, .shift])
-        .disabled(post?.reply == nil || post?.post?.data == nil)
+      Button("Reply", systemImage: "arrowshape.turn.up.left") {
+        if !targets.isCovered() {
+          post?.reply?()
+        }
+      }
+      .keyboardShortcut("r", modifiers: [.command, .shift])
+      .disabled(post?.reply == nil || post?.post?.data == nil)
     }
   }
 }

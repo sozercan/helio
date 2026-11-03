@@ -87,16 +87,17 @@ final class CommandTargets {
 
   /// Not while something covers the screens: the refresh would reload the screen behind it.
   var canRefresh: Bool {
-    refreshTarget != nil && !isCovered()
+    refreshTarget != nil && !isCoveredObservably()
   }
 
   func refresh() {
-    guard canRefresh else { return }
+    guard refreshTarget != nil, !isCovered() else { return }
     refreshTarget?.refresh?()
   }
 
   /// Focuses the search field shown last, else switches to the Search tab and focuses its.
   func find(nav: Nav = .shared) {
+    guard !isCovered(nav: nav) else { return }
     if let focus = targets.last(where: { $0.target.focusSearch != nil })?.target.focusSearch {
       focus()
     } else {
@@ -116,7 +117,14 @@ final class CommandTargets {
   /// sign-in shows, Find and the Post commands would act on the screen behind it, and moving to
   /// another post would close it.
   func isCovered(nav: Nav = .shared) -> Bool {
-    nav.presentingSheet != nil || showsModal || Self.windowPresentsSomething()
+    isCoveredObservably(nav: nav) || Self.windowPresentsSomething()
+  }
+
+  /// The part of `isCovered` SwiftUI observes, for menu items' enabled state: UIKit's own
+  /// presentations (a share sheet) don't redraw the menus, so a state that included them could
+  /// stay disabled after they close. The commands check the whole of it when they run.
+  func isCoveredObservably(nav: Nav = .shared) -> Bool {
+    nav.presentingSheet != nil || showsModal
   }
 
   /// Anything presented over the window's root, such as the share sheet or a view's own sheet,
@@ -144,7 +152,7 @@ final class CommandTargets {
   /// Whether Next or Previous Post can move from the post the posts tab's feed has open: to
   /// another loaded post, or past the last one when the feed has another page.
   func canOpenAdjacentPost(_ offset: Int, nav: Nav = .shared) -> Bool {
-    guard nav.activeTab == .posts, !isCovered(nav: nav) else { return false }
+    guard nav.activeTab == .posts, !isCoveredObservably(nav: nav) else { return false }
     return canOpenAdjacentPost(offset, in: nav[.posts])
   }
 
@@ -168,7 +176,7 @@ final class CommandTargets {
 
   /// Opens the post `offset` places from the open one in the post column and scrolls the feed to it.
   func openAdjacentPost(_ offset: Int, nav: Nav = .shared) {
-    guard canOpenAdjacentPost(offset, nav: nav) else { return }
+    guard canOpenAdjacentPost(offset, nav: nav), !isCovered(nav: nav) else { return }
     openAdjacentPost(offset, in: nav[.posts]) { nav.activeTab == .posts && nav.presentingSheet == nil }
   }
 
@@ -194,7 +202,9 @@ final class CommandTargets {
           openLoadedPost(offset, in: router)
           return
         }
-        guard feed.target.canLoadMore?() == true else { return }
+        // Not past a list the open post is no longer in (a refresh or filter replaced it).
+        guard let id = Self.feedPostID(in: router), feed.target.posts?().contains(where: { $0.id == id }) == true,
+              feed.target.canLoadMore?() == true else { return }
       }
     }
   }
@@ -216,7 +226,10 @@ final class CommandTargets {
   /// as a list's selection does; in one stack, where the feed doesn't show, only from the post
   /// itself, not from a profile or another post opened over it.
   static func feedPostID(in router: Router) -> String? {
-    guard let post = router.postColumn.first, router.firstIsSidebarSelection || router.postPath.isEmpty else { return nil }
+    // Only from a feed: a post opened from elsewhere (the Posts Box, the subs list) isn't in the
+    // feed kept from before.
+    guard router.fullPath.first?.isFeed == true, let post = router.postColumn.first,
+          router.firstIsSidebarSelection || router.postPath.isEmpty else { return nil }
     return post.id
   }
 
