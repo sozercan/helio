@@ -77,9 +77,9 @@ struct ThemePalette {
   var accent: ColorSchemes<ThemeColor>
   /// Quoted text in posts' and comments' Markdown.
   var quoteText: ColorSchemes<ThemeColor>
-  /// Links in posts' and comments' Markdown; `nil` keeps the app's accent color
-  /// (`general.accentColor`), which presets share.
-  var linkText: ColorSchemes<ThemeColor>?
+  /// Text in the accent color: links in posts' and comments' Markdown and badges' new-comment
+  /// counts. `nil` keeps the app's accent color (`general.accentColor`), which presets share.
+  var accentText: ColorSchemes<ThemeColor>?
   /// Voted scores' text; `nil` keeps the app's fixed upvote and downvote colors.
   var upvoteText: ColorSchemes<ThemeColor>?
   var downvoteText: ColorSchemes<ThemeColor>?
@@ -93,6 +93,8 @@ struct ThemePalette {
   var feedDivider: LineTheme
   /// Comments' depth bars, by depth.
   var depthColors: [ColorSchemes<ThemeColor>]
+  /// Uncolored flair in feed titles, the same in both modes; `nil` keeps a translucent grey.
+  var titleFlair: PostLinkTheme.TitleFlair?
 
   static let apollo = ThemePalette(
     fontPrimary: themeFontPrimary,
@@ -134,7 +136,7 @@ struct ThemePalette {
     // Darker than iOS's Increase Contrast blue (#0040DD) and lighter in dark mode (#409CFF), so
     // "load more" reaches 7:1 on its grey too.
     palette.accent = scheme("003CD0", "62ADFF")
-    palette.linkText = palette.accent
+    palette.accentText = palette.accent
     // Voted scores: Apollo's orange and indigo text is about 4.9:1 on white.
     palette.upvoteText = scheme("8A2E00", "FFA066")
     palette.downvoteText = scheme("2E35A8", "ABAEFF")
@@ -142,6 +144,9 @@ struct ThemePalette {
     // cells, and a band dark enough for 3:1 would be heavy.
     palette.feedDivider = .init(style: .line, thickness: 1, color: palette.divider)
     palette.depthColors = highContrastIndentColors
+    // The translucent grey pill is about 3.3:1 in light mode: white on a dark grey is 7.9:1,
+    // and the pill still stands out on black (2.7:1).
+    palette.titleFlair = .init(text: .init(hex: "FFFFFF"), background: .init(hex: "505156"))
     return palette
   }()
 
@@ -157,6 +162,7 @@ struct ThemePalette {
       forceSubsAsTags: false,
       upvoteText: upvoteText,
       downvoteText: downvoteText,
+      newCommentsText: accentText,
     )
   }
 
@@ -172,6 +178,7 @@ struct ThemePalette {
       forceSubsAsTags: false,
       upvoteText: upvoteText,
       downvoteText: downvoteText,
+      newCommentsText: accentText,
     )
   }
 }
@@ -212,6 +219,7 @@ extension HelioTheme {
           unseenFadeOpacity: 1,
           compactSelftextPostLinkPlaceholderImg: .init(type: .icon, color: .init(light: .init(hex: "000000", alpha: 0.2), dark: .init(hex: "ffffff", alpha: 0.2))),
           showDivider: false,
+          titleFlair: palette.titleFlair,
         ),
         spacing: 0,
         divider: palette.feedDivider,
@@ -230,7 +238,7 @@ extension HelioTheme {
         titleText: .init(size: 19, color: palette.fontPrimary, weight: .medium),
         bodyText: .init(size: 15, color: palette.fontPrimary),
         quoteText: palette.quoteText,
-        linkText: palette.linkText,
+        linkText: palette.accentText,
         linespacing: 0,
         inlineFloatingPill: false,
       ),
@@ -246,7 +254,7 @@ extension HelioTheme {
           badge: palette.commentBadge,
           bodyText: .init(size: 15, color: palette.fontPrimary),
           quoteText: palette.quoteText,
-          linkText: palette.linkText,
+          linkText: palette.accentText,
           bodyAuthorSpacing: 6,
           linespacing: 0,
           bg: palette.cellBG,

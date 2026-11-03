@@ -172,7 +172,7 @@ struct BadgeView: View, Equatable {
             }
 
             if let newComments = newCommentsCount, newComments > 0 {
-              Text("+\(newComments)").foregroundStyle(Color.accentColor)
+              Text("+\(newComments)").foregroundStyle(theme.newCommentsText?.color() ?? Color.accentColor)
                 .accessibilityLabel("\(newComments) new")
             }
 

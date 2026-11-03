@@ -159,8 +159,8 @@ extension Post {
       self.helioData?.layoutSecondary = secondary
       self.helioData?.layoutCompact = compact
 
-      self.helioData?.titleAttr = createTitleTagsAttrString(titleTheme: theme.postLinks.theme.titleText, postData: data, textColor: theme.postLinks.theme.titleText.color.uiColor(), dynamicTypeSize: textSize)
-      self.helioData?.layoutTitleText = theme.postLinks.theme.titleText
+      self.helioData?.titleAttr = createTitleTagsAttrString(titleTheme: theme.postLinks.theme.titleText, postData: data, textColor: theme.postLinks.theme.titleText.color.uiColor(), uncoloredFlair: theme.postLinks.theme.titleFlair, dynamicTypeSize: textSize)
+      self.helioData?.layoutTitleStyle = theme.postLinks.theme.titleStyle
 
       if let sub {
         self.helioData?.subreddit = sub
@@ -176,11 +176,15 @@ extension Post {
     }
   }
 
-  static func extractFlairData(data: PostData) -> PrependTag? {
+  /// The title's flair tag, in Reddit's colors or, uncolored, in `uncolored` (the theme's).
+  static func extractFlairData(data: PostData, uncolored: PostLinkTheme.TitleFlair? = nil) -> PrependTag? {
     if let flair = data.link_flair_text, let cleansed = flairWithoutEmojis(str: flair), !cleansed.joined().isEmpty {
       if let bgColor = data.link_flair_background_color, !bgColor.isEmpty {
         let textColor = data.link_flair_text_color == "light" ? "FFFFFF" : "000000"
         return PrependTag(label: flair, bgColor: UIColor(hex: bgColor), textColor: UIColor(hex: textColor))
+      }
+      if let uncolored {
+        return PrependTag(label: flair, bgColor: uncolored.background.uiColor(), textColor: uncolored.text.uiColor())
       }
       // Uncolored flair is drawn into an image once, so it can't follow the appearance:
       // a translucent grey reads as Apollo's grey pill on both white and black.

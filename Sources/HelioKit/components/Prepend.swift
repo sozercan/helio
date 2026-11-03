@@ -17,10 +17,11 @@ struct PrependTag: Hashable, Equatable {
 }
 
 /// The feed title with its tags, in fonts scaled for `dynamicTypeSize` like `getPostDimensions` measures them.
-func createTitleTagsAttrString(titleTheme: ThemeText, postData: PostData, textColor: UIColor, dynamicTypeSize: DynamicTypeSize = ContentTextScale.dynamicTypeSize) -> NSAttributedString {
+/// Uncolored flair is drawn in `uncoloredFlair`'s colors when the theme sets them.
+func createTitleTagsAttrString(titleTheme: ThemeText, postData: PostData, textColor: UIColor, uncoloredFlair: PostLinkTheme.TitleFlair? = nil, dynamicTypeSize: DynamicTypeSize = ContentTextScale.dynamicTypeSize) -> NSAttributedString {
   let tagFont = ContentTextScale.font(ofSize: Double(((titleTheme.size - 2) * 100) / 120), weight: .semibold, relativeTo: .title, dynamicTypeSize: dynamicTypeSize)
   let titleFont = ContentTextScale.font(ofSize: titleTheme.size, weight: titleTheme.weight.ut, relativeTo: .title, dynamicTypeSize: dynamicTypeSize)
-  let titleTagsImages = getTagsFromTitle(postData).compactMap { createTagImage(withTitle: $0.label, textColor: $0.textColor, backgroundColor: $0.bgColor, font: tagFont) }
+  let titleTagsImages = getTagsFromTitle(postData, uncoloredFlair: uncoloredFlair).compactMap { createTagImage(withTitle: $0.label, textColor: $0.textColor, backgroundColor: $0.bgColor, font: tagFont) }
 
   let attrTitle = NSMutableAttributedString(string: postData.title, attributes: [.font: titleFont, .foregroundColor: textColor])
 

@@ -9,7 +9,7 @@ import Foundation
 
 struct PostLinkTheme: Codable, Hashable, Equatable {
   enum CodingKeys: String, CodingKey {
-    case cornerRadius, mediaCornerRadius, innerPadding, outerHPadding, stickyPostBorderColor, titleText, bodyText, linespacing, badge, verticalElementsSpacing, bg, unseenType, unseenFadeOpacity, compactSelftextPostLinkPlaceholderImg, showDivider
+    case cornerRadius, mediaCornerRadius, innerPadding, outerHPadding, stickyPostBorderColor, titleText, bodyText, linespacing, badge, verticalElementsSpacing, bg, unseenType, unseenFadeOpacity, compactSelftextPostLinkPlaceholderImg, showDivider, titleFlair
   }
 
   var cornerRadius: CGFloat
@@ -27,8 +27,16 @@ struct PostLinkTheme: Codable, Hashable, Equatable {
   var unseenFadeOpacity: CGFloat
   var compactSelftextPostLinkPlaceholderImg: CompactSelftextPostLinkPlaceholderImg
   var showDivider: Bool
+  /// Uncolored flair in titles. It's drawn into the title once, so it looks the same in light
+  /// and dark mode; `nil` keeps a translucent grey that reads as a grey pill on either.
+  var titleFlair: TitleFlair?
 
-  init(cornerRadius: CGFloat, mediaCornerRadius: CGFloat, innerPadding: ThemePadding, outerHPadding: CGFloat, stickyPostBorderColor: LineTheme, titleText: ThemeText, bodyText: ThemeText, linespacing: CGFloat, badge: BadgeTheme, verticalElementsSpacing: CGFloat, bg: ThemeForegroundBG, unseenType: UnseenType, unseenFadeOpacity: CGFloat, compactSelftextPostLinkPlaceholderImg: CompactSelftextPostLinkPlaceholderImg, showDivider: Bool) {
+  /// What titles are drawn with (`createTitleTagsAttrString`): a new style draws them again.
+  var titleStyle: TitleStyle {
+    .init(text: titleText, flair: titleFlair)
+  }
+
+  init(cornerRadius: CGFloat, mediaCornerRadius: CGFloat, innerPadding: ThemePadding, outerHPadding: CGFloat, stickyPostBorderColor: LineTheme, titleText: ThemeText, bodyText: ThemeText, linespacing: CGFloat, badge: BadgeTheme, verticalElementsSpacing: CGFloat, bg: ThemeForegroundBG, unseenType: UnseenType, unseenFadeOpacity: CGFloat, compactSelftextPostLinkPlaceholderImg: CompactSelftextPostLinkPlaceholderImg, showDivider: Bool, titleFlair: TitleFlair? = nil) {
     self.cornerRadius = cornerRadius
     self.mediaCornerRadius = mediaCornerRadius
     self.innerPadding = innerPadding
@@ -44,6 +52,7 @@ struct PostLinkTheme: Codable, Hashable, Equatable {
     self.unseenFadeOpacity = unseenFadeOpacity
     self.compactSelftextPostLinkPlaceholderImg = compactSelftextPostLinkPlaceholderImg
     self.showDivider = showDivider
+    self.titleFlair = titleFlair
   }
 
   func encode(to encoder: Encoder) throws {
@@ -63,6 +72,7 @@ struct PostLinkTheme: Codable, Hashable, Equatable {
     try container.encodeIfPresent(unseenFadeOpacity, forKey: .unseenFadeOpacity)
     try container.encodeIfPresent(compactSelftextPostLinkPlaceholderImg, forKey: .compactSelftextPostLinkPlaceholderImg)
     try container.encodeIfPresent(showDivider, forKey: .showDivider)
+    try container.encodeIfPresent(titleFlair, forKey: .titleFlair)
   }
 
   init(from decoder: Decoder) throws {
@@ -83,6 +93,18 @@ struct PostLinkTheme: Codable, Hashable, Equatable {
     self.unseenFadeOpacity = try container.decodeIfPresent(CGFloat.self, forKey: .unseenFadeOpacity) ?? t.unseenFadeOpacity
     self.compactSelftextPostLinkPlaceholderImg = try container.decodeIfPresent(CompactSelftextPostLinkPlaceholderImg.self, forKey: .compactSelftextPostLinkPlaceholderImg) ?? t.compactSelftextPostLinkPlaceholderImg
     self.showDivider = try container.decodeIfPresent(Bool.self, forKey: .showDivider) ?? t.showDivider
+    // Optional: themes saved without it keep the translucent grey.
+    self.titleFlair = try container.decodeIfPresent(TitleFlair.self, forKey: .titleFlair)
+  }
+
+  struct TitleFlair: Codable, Hashable, Equatable {
+    var text: ThemeColor
+    var background: ThemeColor
+  }
+
+  struct TitleStyle: Hashable {
+    let text: ThemeText
+    let flair: TitleFlair?
   }
 
   struct CompactSelftextPostLinkPlaceholderImg: Codable, Hashable, Equatable {

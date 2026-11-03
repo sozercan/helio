@@ -81,7 +81,7 @@ func postTitleAccessibilityLabel(_ data: PostData) -> String {
 }
 
 /// The post open beside the feed reads as selected, as the feed's highlight shows it.
-private struct OpenPostSelectedTrait: ViewModifier {
+struct OpenPostSelectedTrait: ViewModifier {
   let postID: String
   /// False for a row the highlight doesn't mark.
   let marks: Bool

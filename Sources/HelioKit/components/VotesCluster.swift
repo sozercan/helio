@@ -127,6 +127,8 @@ struct VotesClusterInfo: View {
 
   @State var flyingNumber: FlyingNumberInfo
   @Environment(\.accessibilityReduceMotion) private var reduceMotion
+  /// The post page's vote colors, which the theme can set (High Contrast does).
+  @Environment(\.useTheme) private var theme
 
   init(ups: Int, likes: Bool? = nil, likeRatio: CGFloat? = nil, showUpVoteRatio: Bool) {
     self.ups = ups
@@ -140,14 +142,14 @@ struct VotesClusterInfo: View {
     VStack(spacing: 0) {
       Text(formatBigNumber(ups))
         .contentTransition(.numericText())
-        .foregroundStyle(likes != nil ? (likes! ? Color.upvoteText : Color.downvoteText) : Color.gray)
+        .foregroundStyle(theme.posts.badge.voteColor(likes, neutral: .gray))
         .fontSize(16, .semibold)
         .accessibilityLabel("\(formatBigNumber(ups)) points")
         // The change floats up from the score; with Reduce Motion the score just updates.
         .changeEffect(
           .rise(origin: UnitPoint(x: 0.75, y: 0.25)) {
             Text(flyingNumber.value > 0 ? "+\(flyingNumber.value)" : "\(flyingNumber.value)")
-              .foregroundStyle(flyingNumber.color == true ? Color.upvoteText : flyingNumber.color == nil ? Color.gray : Color.downvoteText)
+              .foregroundStyle(theme.posts.badge.voteColor(flyingNumber.color, neutral: .gray))
               .font(.system(size: 12, weight: .semibold))
           },
           value: flyingNumber,

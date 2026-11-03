@@ -49,8 +49,9 @@ extension Post {
     let compactChanged = helioData.layoutCompact != compact
     let mediaChanged = helioData.layoutWidth != contentWidth || helioData.layoutWindowHeight != windowHeight || helioData.layoutSecondary != secondary || compactChanged
     let titleText = theme.postLinks.theme.titleText
-    // A new theme can change the title's color or size, which are drawn into it.
-    let titleChanged = helioData.layoutDynamicTypeSize != textSize || helioData.layoutTitleText != titleText
+    let titleStyle = theme.postLinks.theme.titleStyle
+    // A new theme can change the title's color or size, or its flair's colors, which are drawn into it.
+    let titleChanged = helioData.layoutDynamicTypeSize != textSize || helioData.layoutTitleStyle != titleStyle
     guard mediaChanged || titleChanged else { return }
     if mediaChanged {
       // Compact and large rows extract images and link previews differently, so a compact
@@ -75,7 +76,7 @@ extension Post {
     }
     // The title is drawn into a frame its measured size, in fonts scaled for the text size.
     if titleChanged {
-      helioData.titleAttr = createTitleTagsAttrString(titleTheme: titleText, postData: data, textColor: titleText.color.uiColor(), dynamicTypeSize: textSize)
+      helioData.titleAttr = createTitleTagsAttrString(titleTheme: titleText, postData: data, textColor: titleText.color.uiColor(), uncoloredFlair: titleStyle.flair, dynamicTypeSize: textSize)
     }
     helioData.postDimensions = getPostDimensions(post: self, helioData: helioData, columnWidth: contentWidth, secondary: secondary, rawTheme: theme, subId: sub?.settingsKey, dynamicTypeSize: textSize)
     helioData.postDimensionsForcedNormal = getPostDimensions(post: self, helioData: helioData, columnWidth: contentWidth, secondary: secondary, rawTheme: theme, compact: false, dynamicTypeSize: textSize)
@@ -84,7 +85,7 @@ extension Post {
     helioData.layoutSecondary = secondary
     helioData.layoutCompact = compact
     helioData.layoutDynamicTypeSize = textSize
-    helioData.layoutTitleText = titleText
+    helioData.layoutTitleStyle = titleStyle
   }
 }
 
@@ -187,8 +188,8 @@ private struct RelayoutPostsModifier: ViewModifier {
       .onChange(of: postLinkDefSettings.compactMode.enabled) {
         withAnimation { posts().forEach { $0.relayout(contentWidth: contentWidth, theme: theme) } }
       }
-      // Titles are drawn in the theme's color: a new theme draws them again.
-      .onChange(of: theme.postLinks.theme.titleText) {
+      // Titles and their flair are drawn in the theme's colors: a new theme draws them again.
+      .onChange(of: theme.postLinks.theme.titleStyle) {
         posts().forEach { $0.relayout(contentWidth: contentWidth, theme: theme) }
       }
   }

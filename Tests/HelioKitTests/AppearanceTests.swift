@@ -99,6 +99,16 @@ struct ThemePresetTests {
         #expect(contrast(vote.dark, bg.dark) >= 7)
       }
     }
+    // New-comment counts under posts and over comments, which the app's shared accent color would draw at 4:1.
+    for (badge, bg) in [(theme.postLinks.theme.badge, cell), (theme.comments.theme.badge, comment)] {
+      let count = try #require(badge.newCommentsText)
+      #expect(contrast(count.light, bg.light) >= 7)
+      #expect(contrast(count.dark, bg.dark) >= 7)
+    }
+    // Uncolored flair in feed titles on its pill, the same in both modes: the translucent grey is about 3.3:1.
+    let titleFlair = try #require(theme.postLinks.theme.titleFlair)
+    #expect(titleFlair.text.alpha == 1 && titleFlair.background.alpha == 1)
+    #expect(contrast(titleFlair.text, titleFlair.background) >= 7)
     // Comments' "load more" on its grey.
     let loadMore = theme.comments.theme
     #expect(contrast(loadMore.loadMoreText.color.light, loadMore.loadMoreBackground.light) >= 7)
@@ -118,6 +128,10 @@ struct ThemePresetTests {
       // No vote colors: scores keep the app's upvote and downvote colors.
       #expect(theme.postLinks.theme.badge.upvoteText == nil)
       #expect(theme.comments.theme.badge.downvoteText == nil)
+      // No new-comment color or title flair colors: the app's accent and the translucent grey pill.
+      #expect(theme.postLinks.theme.badge.newCommentsText == nil)
+      #expect(theme.comments.theme.badge.newCommentsText == nil)
+      #expect(theme.postLinks.theme.titleFlair == nil)
       #expect(theme.comments.theme.loadMoreText.color == themeAccentColor)
       #expect(theme.comments.theme.badge.subColor == theme.general.accentColor)
       #expect(theme.postLinks.theme.badge.statsText.color == themeFontSecondary)
@@ -229,10 +243,16 @@ struct TextSizeAndThemeRelayoutTests {
     post.relayout(contentWidth: 400, theme: highContrast)
     let after = try #require(post.helioData?.titleAttr)
     #expect(after !== before)
-    #expect(post.helioData?.layoutTitleText == highContrast.postLinks.theme.titleText)
+    #expect(post.helioData?.layoutTitleStyle == highContrast.postLinks.theme.titleStyle)
 
     // The same theme again keeps it.
     post.relayout(contentWidth: 400, theme: highContrast)
     #expect(post.helioData?.titleAttr === after)
+
+    // Another flair color alone draws it again too.
+    var noFlairColor = highContrast
+    noFlairColor.postLinks.theme.titleFlair = nil
+    post.relayout(contentWidth: 400, theme: noFlairColor)
+    #expect(post.helioData?.titleAttr !== after)
   }
 }

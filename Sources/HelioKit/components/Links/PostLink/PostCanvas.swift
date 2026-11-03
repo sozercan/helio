@@ -180,6 +180,8 @@ struct CanvasTile: View, Equatable {
       .accessibilityValue(accessibilityValue(data))
       .accessibilityHint("Opens the post")
       .accessibilityActions { PostMenuItems(post: post) }
+      // Selected while open beside the feed, as its outline shows.
+      .modifier(OpenPostSelectedTrait(postID: post.id, marks: true))
       .modifier(ReadOnScrollModifier(post: post, enabled: readOnScroll))
     }
   }
