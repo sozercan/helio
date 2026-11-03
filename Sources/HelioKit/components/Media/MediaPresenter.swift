@@ -34,11 +34,14 @@ struct OnlyURL: View {
 
 struct MediaPresenter: View, Equatable {
   static func == (lhs: MediaPresenter, rhs: MediaPresenter) -> Bool {
-    lhs.compact == rhs.compact && lhs.contentWidth == rhs.contentWidth && lhs.badgeKit == rhs.badgeKit && lhs.cornerRadius == rhs.cornerRadius && lhs.media == rhs.media
+    lhs.compact == rhs.compact && lhs.contentWidth == rhs.contentWidth && lhs.badgeKit == rhs.badgeKit && lhs.cornerRadius == rhs.cornerRadius && lhs.media == rhs.media && lhs.pageMediaSize == rhs.pageMediaSize
   }
 
   var helioData: PostHelioData
   var fullPage = false
+  /// The media's size on a post page, from the page's own layout. Not read from the post's
+  /// cache: two pages of the post in different columns would overwrite each other's.
+  var pageMediaSize: CGSize?
   weak var controller: UIViewController?
   let postTitle: String
   let badgeKit: BadgeKit
@@ -54,7 +57,7 @@ struct MediaPresenter: View, Equatable {
   let maxMediaHeightScreenPercentage: CGFloat
 
   var body: some View {
-    let mediaSize = fullPage ? helioData.pageLayout?.mediaSize : helioData.postDimensions.mediaSize
+    let mediaSize = fullPage ? pageMediaSize : helioData.postDimensions.mediaSize
     switch media {
     case let .imgs(imgsExtracted):
       if !showURLInstead {

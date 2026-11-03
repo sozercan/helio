@@ -80,7 +80,7 @@ struct PostContent: View, Equatable {
                   // The feed's size runs full-bleed images edge to edge; the post page keeps them inset.
                   let feedTheme = selectedTheme.postLinks.theme
                   let fullBleedInset = isFullBleedMedia(extractedMedia, theme: feedTheme, secondary: false, compact: false) ? feedTheme.innerPadding.horizontal * 2 : 0
-                  MediaPresenter(helioData: helioData, fullPage: true, controller: nil, postTitle: data.title, badgeKit: data.badgeKit, avatarImageRequest: helioData.avatarImageRequest, markAsSeen: {}, cornerRadius: selectedTheme.postLinks.theme.mediaCornerRadius, blurPostLinkNSFW: defSettings.blurNSFW, media: extractedMedia, over18: over18, compact: false, contentWidth: (layout.mediaSize?.width ?? 0) - fullBleedInset, maxMediaHeightScreenPercentage: Defaults[.PostLinkDefSettings].maxMediaHeightScreenPercentage)
+                  MediaPresenter(helioData: helioData, fullPage: true, pageMediaSize: layout.mediaSize, controller: nil, postTitle: data.title, badgeKit: data.badgeKit, avatarImageRequest: helioData.avatarImageRequest, markAsSeen: {}, cornerRadius: selectedTheme.postLinks.theme.mediaCornerRadius, blurPostLinkNSFW: defSettings.blurNSFW, media: extractedMedia, over18: over18, compact: false, contentWidth: (layout.mediaSize?.width ?? 0) - fullBleedInset, maxMediaHeightScreenPercentage: Defaults[.PostLinkDefSettings].maxMediaHeightScreenPercentage)
                 }
 
                 if !(data.selftext?.isEmpty ?? true) {
