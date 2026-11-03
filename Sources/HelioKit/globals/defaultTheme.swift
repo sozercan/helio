@@ -80,6 +80,9 @@ struct ThemePalette {
   /// Links in posts' and comments' Markdown; `nil` keeps the app's accent color
   /// (`general.accentColor`), which presets share.
   var linkText: ColorSchemes<ThemeColor>?
+  /// Voted scores' text; `nil` keeps the app's fixed upvote and downvote colors.
+  var upvoteText: ColorSchemes<ThemeColor>?
+  var downvoteText: ColorSchemes<ThemeColor>?
   /// Hairlines: comment and list separators.
   var divider: ColorSchemes<ThemeColor>
   /// The background behind lists and feeds.
@@ -132,6 +135,9 @@ struct ThemePalette {
     // "load more" reaches 7:1 on its grey too.
     palette.accent = scheme("003CD0", "62ADFF")
     palette.linkText = palette.accent
+    // Voted scores: Apollo's orange and indigo text is about 4.9:1 on white.
+    palette.upvoteText = scheme("8A2E00", "FFA066")
+    palette.downvoteText = scheme("2E35A8", "ABAEFF")
     // A hairline in the separator color sets posts apart: Apollo's band is about 1.2:1 on the
     // cells, and a band dark enough for 3:1 would be heavy.
     palette.feedDivider = .init(style: .line, thickness: 1, color: palette.divider)
@@ -149,6 +155,8 @@ struct ThemePalette {
       flairBackground: flairBackground,
       statsText: .init(size: 13, color: fontSecondary), spacing: 8,
       forceSubsAsTags: false,
+      upvoteText: upvoteText,
+      downvoteText: downvoteText,
     )
   }
 
@@ -162,6 +170,8 @@ struct ThemePalette {
       flairBackground: flairBackground,
       statsText: .init(size: 14, color: fontTertiary), spacing: 8,
       forceSubsAsTags: false,
+      upvoteText: upvoteText,
+      downvoteText: downvoteText,
     )
   }
 }

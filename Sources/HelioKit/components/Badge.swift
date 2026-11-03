@@ -159,7 +159,7 @@ struct BadgeView: View, Equatable {
           HStack(alignment: .center, spacing: theme.statsText.size * 0.62) {
             if let votesCount {
               BadgeStat(icon: likes == false ? "arrow.down" : "arrow.up", text: votesCount, label: likes == nil ? "\(votesCount) points" : "\(votesCount) points, \(likes == true ? "upvoted" : "downvoted")")
-                .foregroundStyle(likes == nil ? defaultIconColor : likes == true ? Color.upvoteText : Color.downvoteText)
+                .foregroundStyle(theme.voteColor(likes, neutral: defaultIconColor))
             }
 
             if let upvoteRatio {

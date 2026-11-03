@@ -442,7 +442,7 @@ struct CommentHeaderLine: View {
       if let ups = data.ups {
         BadgeStat(icon: data.likes == false ? "arrow.down" : "arrow.up", text: data.score_hidden == true ? "–" : formatBigNumber(ups), label: data.score_hidden == true ? "Score hidden" : "\(formatBigNumber(ups)) points\(data.likes == nil ? "" : data.likes == true ? ", upvoted" : ", downvoted")")
           .contentFont(badge.statsText.size, badge.statsText.weight.t, relativeTo: .meta)
-          .foregroundStyle(data.likes == nil ? badge.statsText.color() : data.likes == true ? Color.upvoteText : Color.downvoteText)
+          .foregroundStyle(badge.voteColor(data.likes, neutral: badge.statsText.color()))
       }
     }
   }

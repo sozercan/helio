@@ -91,6 +91,14 @@ struct ThemePresetTests {
       #expect(contrast(link.light, bg.light) >= 7)
       #expect(contrast(link.dark, bg.dark) >= 7)
     }
+    // Voted scores under posts and over comments, which Apollo's fixed colors draw at about 4.9:1.
+    for (badge, bg) in [(theme.postLinks.theme.badge, cell), (theme.comments.theme.badge, comment)] {
+      for vote in [badge.upvoteText, badge.downvoteText] {
+        let vote = try #require(vote)
+        #expect(contrast(vote.light, bg.light) >= 7)
+        #expect(contrast(vote.dark, bg.dark) >= 7)
+      }
+    }
     // Comments' "load more" on its grey.
     let loadMore = theme.comments.theme
     #expect(contrast(loadMore.loadMoreText.color.light, loadMore.loadMoreBackground.light) >= 7)
@@ -107,6 +115,9 @@ struct ThemePresetTests {
       // No link color: links keep the app's accent color.
       #expect(theme.posts.linkText == nil)
       #expect(theme.comments.theme.linkText == nil)
+      // No vote colors: scores keep the app's upvote and downvote colors.
+      #expect(theme.postLinks.theme.badge.upvoteText == nil)
+      #expect(theme.comments.theme.badge.downvoteText == nil)
       #expect(theme.comments.theme.loadMoreText.color == themeAccentColor)
       #expect(theme.comments.theme.badge.subColor == theme.general.accentColor)
       #expect(theme.postLinks.theme.badge.statsText.color == themeFontSecondary)
