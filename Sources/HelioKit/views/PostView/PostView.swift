@@ -254,8 +254,9 @@ struct PostView: View, Equatable {
       })
     }
     if subreddit.data != nil, !feedsAndSuch.contains(subreddit.id) {
-      // Like the navigation bar's button, which doesn't say where it's from.
-      actions.append(.subredditInfo(subreddit, column: nil))
+      // From the column the post is in, like the navigation bar's button: a post at the feed
+      // column's root opens it there.
+      actions.append(.subredditInfo(subreddit, column: navColumn))
     }
     return actions
   }
