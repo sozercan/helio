@@ -97,6 +97,8 @@ struct FeedItemsManagerTests {
       #expect(requested().count == 6)
       #expect(manager.entities.isEmpty)
       #expect(manager.displayMode == .onlyReadPosts)
+      // Next Post can go on paging too, as the feed's own button does.
+      #expect(manager.canLoadMore)
 
       // Continuing resumes from where the scan stopped.
       await manager.loadMore()

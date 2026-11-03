@@ -87,8 +87,10 @@ class FeedItemsManager<S> {
   }
 
   /// Whether `loadMore()` has a next page to load.
+  /// Whether `loadMore()` has a next page to fetch: also after paging stopped on pages of only
+  /// hidden read posts, as the feed's own "keep looking" does, so Next Post can go on.
   var canLoadMore: Bool {
-    lastElementId != nil && displayMode == .items
+    lastElementId != nil && (displayMode == .items || displayMode == .onlyReadPosts)
   }
 
   func loadMore() async {
