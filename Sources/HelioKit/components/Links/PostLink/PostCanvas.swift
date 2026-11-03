@@ -90,7 +90,15 @@ enum CanvasThumbnail {
     if let thumbnail = data.media?.oembed?.thumbnail_url {
       return URL(string: thumbnail.escape)
     }
-    return directImageURL(data)
+    if let direct = directImageURL(data) {
+      return direct
+    }
+    // Reddit's own small thumbnail, as for a native video without a preview. Not its stand-ins
+    // ("self", "default", "nsfw", "spoiler"), which aren't addresses.
+    if let thumbnail = data.thumbnail, let url = URL(string: thumbnail.escape), ["http", "https"].contains(url.scheme?.lowercased() ?? ""), url.host?.isEmpty == false {
+      return url
+    }
+    return nil
   }
 
   /// The smallest of `sizes` whose shorter side is at least `pixelWidth`, since the tile crops
@@ -210,7 +218,8 @@ struct CanvasTile: View, Equatable {
           .foregroundStyle(.white)
           .padding(.horizontal, 8)
           .padding(.vertical, 3)
-          .background(Capsule().fill(.black.opacity(0.5)))
+          // Opaque, so the label reads on any picture.
+          .background(Capsule().fill(.black))
       }
     }
     .overlay(alignment: .topTrailing) {
@@ -220,7 +229,8 @@ struct CanvasTile: View, Equatable {
           .foregroundStyle(.white)
           .padding(.horizontal, 6)
           .padding(.vertical, 4)
-          .background(Capsule().fill(.black.opacity(0.5)))
+          // Opaque, so the label reads on any picture.
+          .background(Capsule().fill(.black))
           .padding(6)
       }
     }

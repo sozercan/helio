@@ -131,6 +131,24 @@ struct CanvasThumbnailTests {
     #expect(CanvasThumbnail.kind(of: data) == .gallery(2))
   }
 
+  @Test func aPostWithOnlyRedditsThumbnailShowsIt() throws {
+    let video = try data { json in
+      json["url"] = "https://v.redd.it/abc"
+      json["preview"] = nil
+      json["thumbnail"] = "https://b.thumbs.redditmedia.com/abc.jpg"
+    }
+    #expect(CanvasThumbnail.url(for: video, pixelWidth: 300)?.absoluteString == "https://b.thumbs.redditmedia.com/abc.jpg")
+    // Reddit's stand-ins aren't pictures: the post is a text tile.
+    for standIn in ["self", "default", "nsfw", "spoiler", ""] {
+      let post = try data { json in
+        json["url"] = "https://example.com/article"
+        json["preview"] = nil
+        json["thumbnail"] = standIn
+      }
+      #expect(CanvasThumbnail.url(for: post, pixelWidth: 300) == nil)
+    }
+  }
+
   @Test func anImageLinkWithoutAPreviewShowsTheImage() throws {
     let data = try data { json in
       json["preview"] = nil
