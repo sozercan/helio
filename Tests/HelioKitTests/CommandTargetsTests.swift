@@ -158,6 +158,20 @@ struct AdjacentPostTests {
     #expect(CommandTargets.feedPostID(in: router) == nil)
   }
 
+  @Test func aDiscardedFeedIsntKeptForNextPost() {
+    let targets = CommandTargets()
+    let registration = targets.register(.init(kind: .feed, column: .feed, posts: { feed }))
+    targets.unregister(registration)
+    // Its stack was discarded (the account changed), not just covered.
+    targets.forgetPostsFeed(registration)
+    #expect(targets.adjacentPost(1, in: router(open: 1, columns: false)) == nil)
+    // Forgetting another registration leaves the kept feed alone.
+    let kept = targets.register(.init(kind: .feed, column: .feed, posts: { feed }))
+    targets.unregister(kept)
+    targets.forgetPostsFeed(UUID())
+    #expect(targets.adjacentPost(1, in: router(open: 1, columns: false)) == feed[2])
+  }
+
   @Test func nextPastTheLoadedPostsLoadsTheNextPageAndOpensItsFirstPost() async {
     let targets = CommandTargets()
     var loaded = feed

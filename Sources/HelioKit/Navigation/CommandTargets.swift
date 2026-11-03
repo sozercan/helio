@@ -73,6 +73,15 @@ final class CommandTargets {
     targets.removeAll { $0.id == id }
   }
 
+  /// Drops the posts feed kept for Next and Previous Post once its screen is gone for good (its
+  /// stack discarded, as when the account changes), not just covered, so its posts and the
+  /// credential its requests captured aren't kept.
+  func forgetPostsFeed(_ id: UUID) {
+    if postsFeed?.id == id {
+      postsFeed = nil
+    }
+  }
+
   /// Hands the pending Find request to the Search tab, once.
   func takeSearchFocusRequest() -> Bool {
     defer { searchFocusPending = false }
@@ -251,16 +260,28 @@ final class CommandTargets {
   }
 }
 
+/// Lives as long as the screen's state: a covered screen keeps it, a discarded one frees it.
+private final class CommandTargetLifetime {
+  var registration: UUID?
+
+  deinit {
+    guard let registration else { return }
+    Task { @MainActor in CommandTargets.shared.forgetPostsFeed(registration) }
+  }
+}
+
 private struct CommandTargetModifier<Key: Equatable>: ViewModifier {
   var target: CommandTargets.Target?
   var key: Key
   @State private var registration: UUID?
+  @State private var lifetime = CommandTargetLifetime()
 
   func body(content: Content) -> some View {
     content
       .onAppear {
         guard registration == nil, let target else { return }
         registration = CommandTargets.shared.register(target)
+        lifetime.registration = registration
       }
       .onChange(of: key) {
         if let registration, let target {

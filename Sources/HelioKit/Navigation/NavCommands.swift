@@ -69,14 +69,15 @@ struct NavCommands: Commands {
         }
       }
       .keyboardShortcut("u", modifiers: [.command, .shift])
-      .disabled(post?.post?.data == nil)
+      // Reddit turns down votes on archived posts.
+      .disabled(post?.post?.data == nil || post?.post?.data?.archived == true)
       Button(post?.post?.data?.likes == false ? "Remove Downvote" : "Downvote", systemImage: "arrow.down") {
         if let post = post?.post, !targets.isCovered() {
           Task { _ = await post.vote(.down) }
         }
       }
       .keyboardShortcut("d", modifiers: [.command, .shift])
-      .disabled(post?.post?.data == nil)
+      .disabled(post?.post?.data == nil || post?.post?.data?.archived == true)
       Button("Reply", systemImage: "arrowshape.turn.up.left") {
         if !targets.isCovered() {
           post?.reply?()
