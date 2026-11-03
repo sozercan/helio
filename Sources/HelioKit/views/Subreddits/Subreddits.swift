@@ -50,6 +50,8 @@ struct Subreddits: View, Equatable {
   @State private var searchText: String = ""
   /// The search field's state, which the menu bar's Find sets.
   @State private var searchPresented = false
+  /// Find focuses the field even while it's presented, after its keyboard was dismissed.
+  @FocusState private var searchFocused: Bool
 
   //  @Default(.likedButNotSubbed) private var likedButNotSubbed // subreddits that a user likes but is not subscribed to so they wont be in subsDict
   @Default(.AppearanceDefSettings) private var appearanceDefSettings
@@ -252,8 +254,11 @@ struct Subreddits: View, Equatable {
       .listStyle(.sidebar)
       .scrollDismissesKeyboard(.immediately)
       .loader(!loaded && subreddits.isEmpty)
-      .subsSearchAndEdit($searchText, isPresented: $searchPresented)
-      .commandTarget(CommandTargets.Target(kind: .subs, refresh: { Task { await refresh() } }, focusSearch: { searchPresented = true }))
+      .subsSearchAndEdit($searchText, isPresented: $searchPresented, focused: $searchFocused)
+      .commandTarget(CommandTargets.Target(kind: .subs, refresh: { Task { await refresh() } }, focusSearch: {
+        searchPresented = true
+        searchFocused = true
+      }))
       .overlay(alignment: .trailing) {
         // Without the sidebar's own shade, a hairline marks where the posts start.
         if usesWindowBackground {
@@ -314,12 +319,13 @@ private extension View {
   /// that bar floats over the rows, which show through behind it, so the list gets a plain
   /// header above it instead.
   @ViewBuilder
-  func subsSearchAndEdit(_ searchText: Binding<String>, isPresented: Binding<Bool>) -> some View {
+  func subsSearchAndEdit(_ searchText: Binding<String>, isPresented: Binding<Bool>, focused: FocusState<Bool>.Binding) -> some View {
     #if targetEnvironment(macCatalyst)
       safeAreaInset(edge: .top, spacing: 0) { MacSubsHeader(searchText: searchText, focusRequested: isPresented) }
         .toolbar(.hidden, for: .navigationBar)
     #else
       searchable(text: searchText, isPresented: isPresented, prompt: "Search my subreddits")
+        .searchFocused(focused)
         .toolbar {
           ToolbarItem(placement: .navigationBarTrailing) {
             EditButton()

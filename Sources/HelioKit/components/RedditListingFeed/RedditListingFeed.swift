@@ -46,6 +46,8 @@ struct RedditListingFeed<Header: View, Footer: View, S: Sorting>: View {
   @State private var itemsManager: FeedItemsManager<S>
   /// The search field's state, which the menu bar's Find sets.
   @State private var searchPresented = false
+  /// Find focuses the field even while it's presented, after its keyboard was dismissed.
+  @FocusState private var searchFocused: Bool
 
   @Environment(\.useTheme) private var selectedTheme
   @Environment(\.contentWidth) private var contentWidth
@@ -234,7 +236,7 @@ struct RedditListingFeed<Header: View, Footer: View, S: Sorting>: View {
       .themedListBG(theme)
       // In the toolbar (the default in a split view's detail on iOS 26+), closing search
       // re-focuses it as soon as the dismiss animation ends.
-      .if(!disableSearch) { $0.searchable(text: $itemsManager.searchQuery.value, isPresented: $searchPresented, placement: .navigationBarDrawer(displayMode: .automatic)) }
+      .if(!disableSearch) { $0.searchable(text: $itemsManager.searchQuery.value, isPresented: $searchPresented, placement: .navigationBarDrawer(displayMode: .automatic)).searchFocused($searchFocused) }
       .scrollIndicators(.never)
       .listStyle(.plain)
       .navigationTitle(title)
@@ -285,7 +287,10 @@ struct RedditListingFeed<Header: View, Footer: View, S: Sorting>: View {
         kind: .feed,
         column: navColumn,
         refresh: { Task { await refetch() } },
-        focusSearch: disableSearch ? nil : { searchPresented = true },
+        focusSearch: disableSearch ? nil : {
+          searchPresented = true
+          searchFocused = true
+        },
         posts: { itemsManager.entities.compactMap {
           if case let .post(post) = $0 {
             post

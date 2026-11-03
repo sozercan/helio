@@ -10,6 +10,8 @@ import SwiftUI
 
 struct PostReplies: View {
   var commentsLoad: CommentsLoad
+  /// The comments seen before this visit, so the new ones stand out.
+  var seenComments: String?
   var post: Post
   var subreddit: Subreddit
   var ignoreSpecificComment: Bool
@@ -23,8 +25,6 @@ struct PostReplies: View {
   @Binding var topVisibleCommentId: String?
   @Binding var previousScrollTarget: String?
   @Binding var comments: [Comment]
-
-  @State private var seenComments: String?
 
   var body: some View {
     let theme = selectedTheme.comments
@@ -63,7 +63,5 @@ struct PostReplies: View {
           .id("no-comments-placeholder")
       }
     }
-    // The comments seen before this visit, so the new ones stand out.
-    .onAppear { withAnimation { seenComments = post.helioData?.seenComments } }
   }
 }

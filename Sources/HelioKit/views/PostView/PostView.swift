@@ -34,6 +34,8 @@ struct PostView: View, Equatable {
   @State private var hideElements = true
   @State private var sort: CommentSortOption
   @State private var commentsLoad = CommentsLoad()
+  /// The comments seen before this visit (`PostReplies`).
+  @State private var seenComments: String?
   /// The reply sheet opened by the menu bar's Reply; the post's bar has its own.
   @State private var showReplyModal = false
 
@@ -57,11 +59,13 @@ struct PostView: View, Equatable {
   /// Loads the comments, and with `full` the post's details. Every load (the first one, pull to
   /// refresh, another sort, the whole conversation, after a reply) goes through here, and the
   /// newest wins: one still in flight is ignored when it lands. With `proxy`, scrolls to the
-  /// comment a link opened once they show.
-  func asyncFetch(full: Bool = true, proxy: ScrollViewProxy? = nil) async {
+  /// comment a link opened once they show. `savesCount: false` for the first load, which
+  /// `onAppear` saves the comment count for already.
+  func asyncFetch(full: Bool = true, savesCount: Bool = true, proxy: ScrollViewProxy? = nil) async {
     let request = commentsLoad.begin()
     let commentID = ignoreSpecificComment ? nil : highlightID
-    let result = await post.refreshPost(commentID: commentID, sort: sort, subreddit: subreddit.data?.display_name ?? subreddit.id, full: full)
+    // The post's details apply only while this is the newest load, like its comments.
+    let result = await post.refreshPost(commentID: commentID, sort: sort, subreddit: subreddit.data?.display_name ?? subreddit.id, full: full, appliesDetails: { [commentsLoad] in commentsLoad.isCurrent(request) })
     guard commentsLoad.isCurrent(request) else { return }
     commentsLoad.finish()
     guard let result, let newComments = result.0 else { return }
@@ -72,9 +76,11 @@ struct PostView: View, Equatable {
     Task(priority: .utility) {
       await RedditAPI.shared.updateCommentsWithAvatar(comments: newComments, avatarSize: selectedTheme.comments.theme.badge.avatar.size)
     }
-    Task(priority: .background) {
-      if let numComments = post.data?.num_comments {
-        await post.saveCommentsCount(numComments: numComments)
+    if savesCount {
+      Task(priority: .background) {
+        if let numComments = post.data?.num_comments {
+          await post.saveCommentsCount(numComments: numComments)
+        }
       }
     }
     // Before the push animation ends the comments aren't shown yet; `onAppear` scrolls then.
@@ -133,7 +139,7 @@ struct PostView: View, Equatable {
             .listRowBackground(Color.clear)
 
             if !hideElements {
-              PostReplies(commentsLoad: commentsLoad, post: post, subreddit: subreddit, ignoreSpecificComment: ignoreSpecificComment, highlightID: highlightID, sort: sort, proxy: proxy, topVisibleCommentId: $topVisibleCommentId, previousScrollTarget: $previousScrollTarget, comments: $comments)
+              PostReplies(commentsLoad: commentsLoad, seenComments: seenComments, post: post, subreddit: subreddit, ignoreSpecificComment: ignoreSpecificComment, highlightID: highlightID, sort: sort, proxy: proxy, topVisibleCommentId: $topVisibleCommentId, previousScrollTarget: $previousScrollTarget, comments: $comments)
             }
 
             if !ignoreSpecificComment, highlightID != nil {
@@ -148,7 +154,8 @@ struct PostView: View, Equatable {
                   }
                   Task(priority: .userInitiated) {
                     // Keeps the comment the link opened in view, now among the whole thread.
-                    await asyncFetch(proxy: proxy)
+                    // Just the comments of a loaded post: its details and media stay.
+                    await asyncFetch(full: post.data == nil, proxy: proxy)
                     globalLoaderDismiss()
                   }
                 } label: {
@@ -198,7 +205,10 @@ struct PostView: View, Equatable {
           post.layoutIfNeeded(contentWidth: contentWidth)
           // Comments start loading now; they're shown once the push animation is over.
           if !commentsLoad.started {
-            Task(priority: .userInitiated) { await asyncFetch(full: post.data == nil, proxy: proxy) }
+            // The comments seen before this visit, so the new ones stand out; the load saves
+            // these as seen.
+            seenComments = post.helioData?.seenComments
+            Task(priority: .userInitiated) { await asyncFetch(full: post.data == nil, savesCount: false, proxy: proxy) }
           }
 
           Task(priority: .background) {

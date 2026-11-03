@@ -558,13 +558,16 @@ extension Post {
     return false
   }
 
-  func refreshPost(commentID: String? = nil, sort: CommentSortOption = .confidence, subreddit: String? = nil, full: Bool = true) async -> ([Comment]?, String?)? {
+  /// `appliesDetails`: whether the post's details still apply when they come (`full`), for a
+  /// caller that a newer request can supersede.
+  func refreshPost(commentID: String? = nil, sort: CommentSortOption = .confidence, subreddit: String? = nil, full: Bool = true, appliesDetails: @MainActor @escaping () -> Bool = { true }) async -> ([Comment]?, String?)? {
     if let subreddit = data?.subreddit ?? subreddit, let response = await RedditAPI.shared.fetchPost(subreddit: subreddit, postID: id, commentID: commentID, sort: sort), response.count >= 2 {
       if let post = response[0] {
         switch post {
         case let .first(actualData):
           if full {
             await MainActor.run {
+              guard appliesDetails() else { return }
               var newData = actualData.data?.children?[0].data
               // Read is kept on the device, not sent by Reddit: keep it.
               if self.data?.helioSeen == true {
