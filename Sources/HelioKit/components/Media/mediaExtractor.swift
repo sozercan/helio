@@ -82,6 +82,18 @@ enum MediaExtractedType: Equatable {
 }
 
 extension MediaExtractedType {
+  /// Whether a feed row shows this as a link: a page's card or address, or a card for the Reddit
+  /// post, subreddit or user the post links to. Tapping a link opens it, whatever "Open media from
+  /// feed" says; that setting is for pictures and videos. A linked comment shows as the comment
+  /// itself in large rows (tapping it collapses it), and as a link only in compact ones.
+  func isFeedLink(compact: Bool) -> Bool {
+    switch self {
+    case .link, .post, .subreddit, .user: true
+    case .comment: compact
+    default: false
+    }
+  }
+
   /// Starts loading the post, comment, user or subreddit a post links to.
   func loadLinkedEntity() {
     switch self {

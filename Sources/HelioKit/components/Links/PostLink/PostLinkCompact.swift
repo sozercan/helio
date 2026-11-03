@@ -69,7 +69,8 @@ struct PostLinkCompact: View, Equatable, Identifiable {
   func mediaComponentCall(showURLInstead: Bool = false) -> some View {
     if let data = post.data, let extractedMedia = post.helioData?.extractedMedia {
       MediaPresenter(helioData: helioData, controller: controller, postTitle: data.title, badgeKit: data.badgeKit, avatarImageRequest: helioData.avatarImageRequest, markAsSeen: !defSettings.lightboxReadsPost ? nil : markAsRead, cornerRadius: theme.theme.mediaCornerRadius, blurPostLinkNSFW: defSettings.blurNSFW, showURLInstead: showURLInstead, media: extractedMedia, over18: over18, compact: true, contentWidth: helioData.postDimensions.mediaSize?.width ?? 0, maxMediaHeightScreenPercentage: defSettings.maxMediaHeightScreenPercentage)
-        .allowsHitTesting(defSettings.isMediaTappable)
+        // A link opens its page; tapping anywhere else on the row opens the post.
+        .allowsHitTesting(defSettings.isMediaTappable || extractedMedia.isFeedLink(compact: true))
     }
   }
 

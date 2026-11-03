@@ -241,3 +241,20 @@ struct DeferredLinkPreviewTests {
     #expect(helioData.deferredMedia == nil)
   }
 }
+
+struct FeedLinkTapTests {
+  @Test func linksOpenFromTheFeedWhilePicturesFollowTheSetting() throws {
+    let page = try MediaExtractedType.link(PreviewModel(#require(URL(string: "https://example.com/article")), compact: false, fetch: false))
+    for compact in [false, true] {
+      #expect(page.isFeedLink(compact: compact))
+      #expect(MediaExtractedType.post(nil).isFeedLink(compact: compact))
+      #expect(MediaExtractedType.subreddit(nil).isFeedLink(compact: compact))
+      #expect(MediaExtractedType.user(nil).isFeedLink(compact: compact))
+      #expect(!MediaExtractedType.imgs([]).isFeedLink(compact: compact))
+    }
+    // A large row shows a linked comment as the comment, which a tap collapses; a compact row
+    // shows its address.
+    #expect(!MediaExtractedType.comment(nil).isFeedLink(compact: false))
+    #expect(MediaExtractedType.comment(nil).isFeedLink(compact: true))
+  }
+}
