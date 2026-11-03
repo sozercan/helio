@@ -101,7 +101,8 @@ struct PostContent: View, Equatable {
           }
         }
         .id("post-content")
-        .listRowInsets(EdgeInsets(top: postsTheme.spacing / 2, leading: postsTheme.padding.horizontal, bottom: postsTheme.spacing / 2, trailing: postsTheme.spacing / 2))
+        // The same margin on both sides, so media and link cards don't run to the right edge.
+        .listRowInsets(EdgeInsets(top: postsTheme.spacing / 2, leading: postsTheme.padding.horizontal, bottom: postsTheme.spacing / 2, trailing: postsTheme.padding.horizontal))
       }
       .contentShape(Rectangle())
       .onTapGesture { withAnimation(.smooth) { collapsed.toggle() } }
