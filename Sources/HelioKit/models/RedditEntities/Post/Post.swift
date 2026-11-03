@@ -565,7 +565,11 @@ extension Post {
         case let .first(actualData):
           if full {
             await MainActor.run {
-              let newData = actualData.data?.children?[0].data
+              var newData = actualData.data?.children?[0].data
+              // Read is kept on the device, not sent by Reddit: keep it.
+              if self.data?.helioSeen == true {
+                newData?.helioSeen = true
+              }
               self.data = newData
               setupHelioData(data: newData, secondary: false, theme: InMemoryTheme.shared.currentTheme)
             }

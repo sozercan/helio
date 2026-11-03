@@ -54,42 +54,45 @@ struct PostView: View, Equatable {
     _sort = State(initialValue: defSettings.perPostSort ? (defSettings.postSorts[post.id] ?? commentsDefSettings.preferredSort) : commentsDefSettings.preferredSort)
   }
 
-  /// Reloads the post and its comments (pull to refresh, another sort). `full: false` reloads only
-  /// the comments of a post already loaded, keeping its data (and with it its read mark).
-  /// `sharesWithReplies` offers the request to `PostReplies`, so its first load, if it hasn't
-  /// started yet, waits for this one instead of sending the same request again.
-  func asyncFetch(full: Bool = true, sharesWithReplies: Bool = false) async {
+  /// Loads the comments, and with `full` the post's details. Every load (the first one, pull to
+  /// refresh, another sort, the whole conversation, after a reply) goes through here, and the
+  /// newest wins: one still in flight is ignored when it lands. With `proxy`, scrolls to the
+  /// comment a link opened once they show.
+  func asyncFetch(full: Bool = true, proxy: ScrollViewProxy? = nil) async {
     let request = commentsLoad.begin()
     let commentID = ignoreSpecificComment ? nil : highlightID
-    let sort = sort
-    let subredditName = subreddit.data?.display_name ?? subreddit.id
-    let task = Task(priority: .userInitiated) { [post] in
-      await post.refreshPost(commentID: commentID, sort: sort, subreddit: subredditName, full: full)
+    let result = await post.refreshPost(commentID: commentID, sort: sort, subreddit: subreddit.data?.display_name ?? subreddit.id, full: full)
+    guard commentsLoad.isCurrent(request) else { return }
+    commentsLoad.finish()
+    guard let result, let newComments = result.0 else { return }
+    newComments.forEach { $0.parentHelio = comments }
+    // Not animated: an animated insert makes the list build and measure every new row in one
+    // long frame.
+    comments = newComments
+    Task(priority: .utility) {
+      await RedditAPI.shared.updateCommentsWithAvatar(comments: newComments, avatarSize: selectedTheme.comments.theme.badge.avatar.size)
     }
-    if sharesWithReplies {
-      commentsLoad.startPrefetch(.init(task: task, sort: sort, commentID: commentID))
+    Task(priority: .background) {
+      if let numComments = post.data?.num_comments {
+        await post.saveCommentsCount(numComments: numComments)
+      }
     }
-    let fetched = await task.value
-    commentsLoad.dropPrefetch(task)
-    if let result = fetched, let newComments = result.0 {
-      newComments.forEach { $0.parentHelio = comments }
-      let applied = await MainActor.run {
-        // A later request (another sort) replaces these.
-        guard commentsLoad.isCurrent(request) else { return false }
-        comments = newComments
-        return true
-      }
-      guard applied else { return }
-      Task(priority: .utility) {
-        await RedditAPI.shared.updateCommentsWithAvatar(comments: newComments, avatarSize: selectedTheme.comments.theme.badge.avatar.size)
-      }
+    // Before the push animation ends the comments aren't shown yet; `onAppear` scrolls then.
+    if let proxy, !hideElements {
+      doThisAfter(0.1) { scrollToHighlight(proxy) }
+    }
+  }
 
-      Task(priority: .background) {
-        if let numComments = post.data?.num_comments {
-          await post.saveCommentsCount(numComments: numComments)
-        }
-      }
+  /// Scrolls to the comment a link opened, if it's among the comments shown.
+  @discardableResult
+  func scrollToHighlight(_ proxy: ScrollViewProxy) -> Bool {
+    guard var specificID = highlightID else { return false }
+    specificID = specificID.hasPrefix("t1_") ? String(specificID.dropFirst(3)) : specificID
+    guard let rowID = CommentTree.rows(for: comments).first(where: { $0.comment.data?.id == specificID })?.id else { return false }
+    withAnimation(spring) {
+      proxy.scrollTo(rowID, anchor: .center)
     }
+    return true
   }
 
   /// The page is titled by its subreddit, with the comment count under it; the post's own
@@ -143,6 +146,11 @@ struct PostView: View, Equatable {
                   withAnimation(spring) {
                     proxy.scrollTo("post-content", anchor: .bottom)
                   }
+                  Task(priority: .userInitiated) {
+                    // Keeps the comment the link opened in view, now among the whole thread.
+                    await asyncFetch(proxy: proxy)
+                    globalLoaderDismiss()
+                  }
                 } label: {
                   HStack {
                     Image(systemName: "arrow.up.left.and.arrow.down.right")
@@ -178,30 +186,11 @@ struct PostView: View, Equatable {
         .onChange(of: sort) { _ in
           updatePost()
         }
-        // The one reload of the whole thread, for View full conversation and a reply alike.
-        // Here rather than in the comments' rows, which a list only builds near the screen.
-        .onChange(of: ignoreSpecificComment) {
-          Task(priority: .userInitiated) {
-            await asyncFetch(full: post.data == nil, sharesWithReplies: true)
-            globalLoaderDismiss()
-            // Keep the comment the link opened in view, now among the whole thread.
-            if var specificID = highlightID {
-              specificID = specificID.hasPrefix("t1_") ? String(specificID.dropFirst(3)) : specificID
-              if let rowID = CommentTree.rows(for: comments).first(where: { $0.comment.data?.id == specificID })?.id {
-                doThisAfter(0.1) {
-                  withAnimation(spring) {
-                    proxy.scrollTo(rowID, anchor: .center)
-                  }
-                }
-              }
-            }
-          }
-        }
         .onAppear {
           doThisAfter(0.5) {
             hideElements = false
             doThisAfter(0.1) {
-              if highlightID != nil {
+              if highlightID != nil, !scrollToHighlight(proxy) {
                 withAnimation { proxy.scrollTo("loading-comments") }
               }
             }
@@ -209,11 +198,7 @@ struct PostView: View, Equatable {
           post.layoutIfNeeded(contentWidth: contentWidth)
           // Comments start loading now; they're shown once the push animation is over.
           if !commentsLoad.started {
-            let full = post.data == nil
-            let task = Task(priority: .userInitiated) {
-              await post.refreshPost(commentID: highlightID, sort: sort, subreddit: subreddit.data?.display_name ?? subreddit.id, full: full)
-            }
-            commentsLoad.startPrefetch(CommentsLoad.Prefetch(task: task, sort: sort, commentID: highlightID))
+            Task(priority: .userInitiated) { await asyncFetch(full: post.data == nil, proxy: proxy) }
           }
 
           Task(priority: .background) {
@@ -230,17 +215,12 @@ struct PostView: View, Equatable {
         // Kept current when the page is handed a new Post for the same destination (after a refresh).
         .commandTarget(isPreview ? nil : CommandTargets.Target(kind: .post, column: navColumn, refresh: updatePost, post: post, reply: { showReplyModal = true }), updatingWith: ObjectIdentifier(post))
         .sheet(isPresented: $showReplyModal) {
-          // Reloads the comments once the reply is posted, so it shows.
-          // A reply to the post is top level: reload the whole thread, not just the comment a link
-          // opened it on, so the reply shows.
-          // Showing the whole thread reloads it; already shown, reload it here.
+          // Reloads the comments once the reply is posted, so it shows, and the post's details
+          // with its comment count. A reply to the post is top level: reload the whole thread,
+          // not just the comment a link opened it on.
           ReplyModalPost(post: post, updateComments: {
-            if ignoreSpecificComment {
-              // Just the comments: a full refresh would replace the post's data and its read mark.
-              Task(priority: .userInitiated) { await asyncFetch(full: post.data == nil) }
-            } else {
-              ignoreSpecificComment = true
-            }
+            ignoreSpecificComment = true
+            updatePost()
           })
         }
         .onPreferenceChange(CommentUtils.AnchorsKey.self) { anchors in
@@ -298,47 +278,31 @@ struct PostView: View, Equatable {
   }
 }
 
-/// A post's comment requests: the first one, started when the post opens and picked up by
-/// `PostReplies`, and the reloads after it. Only the latest request's comments are shown.
+/// A post's comment requests: the first one, started when the post opens, and the reloads after
+/// it. Only the latest request's comments are shown, and only it ends the loading state.
 @MainActor
+@Observable
 final class CommentsLoad {
-  struct Prefetch {
-    let task: Task<([Comment]?, String?)?, Never>
-    let sort: CommentSortOption
-    let commentID: String?
-  }
-
   private(set) var started = false
-  private var prefetch: Prefetch?
-  private var generation = 0
-
-  func startPrefetch(_ prefetch: Prefetch) {
-    started = true
-    self.prefetch = prefetch
-  }
-
-  /// Forgets `task` once it's done, if no one took it.
-  func dropPrefetch(_ task: Task<([Comment]?, String?)?, Never>) {
-    if prefetch?.task == task {
-      prefetch = nil
-    }
-  }
-
-  /// The prefetch, if it asked for the same comments. Taken once.
-  func takePrefetch(sort: CommentSortOption, commentID: String?) -> Task<([Comment]?, String?)?, Never>? {
-    defer { prefetch = nil }
-    guard let prefetch, prefetch.sort == sort, prefetch.commentID == commentID else { return nil }
-    return prefetch.task
-  }
+  /// The first comments came, or the request for them failed: the list shows them, or that
+  /// there are none, instead of its spinner.
+  private(set) var loaded = false
+  @ObservationIgnored private var generation = 0
 
   /// Starts a request. Its comments apply only while it's the latest: `isCurrent(request)`.
   func begin() -> Int {
+    started = true
     generation += 1
     return generation
   }
 
   func isCurrent(_ request: Int) -> Bool {
     request == generation
+  }
+
+  /// The latest request finished.
+  func finish() {
+    loaded = true
   }
 }
 
