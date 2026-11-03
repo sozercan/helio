@@ -148,7 +148,10 @@ struct RedditListingFeed<Header: View, Footer: View, S: Sorting>: View {
                     .contentShape(Rectangle())
                     .onTapGesture {
                       if let data = comment.data, let link_id = data.link_id, let subID = data.subreddit {
-                        Nav.to(.reddit(.postHighlighted(Post(id: link_id, subID: subID), comment.id)), from: navColumn)
+                        // `link_id` is the post's fullname (t3_…); posts are made from the bare id, as
+                        // the feed's are, so the open post matches its row there.
+                        let postID = link_id.hasPrefix("t3_") ? String(link_id.dropFirst(3)) : link_id
+                        Nav.to(.reddit(.postHighlighted(Post(id: postID, subID: subID), comment.id)), from: navColumn)
                       }
                     }
                     .listRowInsets(EdgeInsets(top: paddingV, leading: paddingH, bottom: paddingV, trailing: paddingH))
