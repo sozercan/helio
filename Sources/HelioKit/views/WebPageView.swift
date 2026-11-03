@@ -23,12 +23,14 @@ struct WebPageView: View {
                 .progressViewStyle(.linear)
             }
           }
-          // The bar's title and buttons follow the app's appearance, the page under it its own:
-          // a light page under the soft edge left white text on a light band in dark mode. The
-          // hard edge puts the bar on the app's background.
-          .scrollEdgeEffectStyle(.hard, for: .top)
           .navigationTitle(page.title.isEmpty ? url.host() ?? url.absoluteString : page.title)
           .toolbar { toolbar(page) }
+          // The bar's title and buttons follow the app's appearance, the page under it its own,
+          // so in dark mode a light page under the bar's soft edge left white text on a light
+          // band. The bar gets the app's own background instead. (A scroll-edge style doesn't
+          // reach the web view's scroll view.)
+          .toolbarBackground(Color(uiColor: .systemBackground), for: .navigationBar)
+          .toolbarBackgroundVisibility(.visible, for: .navigationBar)
       } else {
         Color.clear
       }
