@@ -176,19 +176,23 @@ struct LightBoxImage: View {
     .ignoresSafeArea(edges: .all)
     .overlay(alignment: .topTrailing) {
       let chromeOpacity = !showOverlay || isPinching ? 0 : interpolate([1, 0], false)
-      Button("Close", systemImage: "xmark", action: close)
-        .labelStyle(.iconOnly)
-        .fontSize(17, .semibold)
-        .frame(width: 44, height: 44)
-        .contentShape(Circle())
-        .buttonStyle(.plain)
-        .foregroundStyle(.white)
-        .glassEffect(.regular.interactive(), in: Circle())
-        .keyboardShortcut(.cancelAction)
-        .padding(.horizontal, 16)
-        .padding(.top, 8)
-        .opacity(chromeOpacity)
-        .allowsHitTesting(chromeOpacity != 0)
+      Button(action: close) {
+        // The label fills the circle, so the whole of it takes the tap: with the plain style,
+        // only the label does.
+        Label("Close", systemImage: "xmark")
+          .labelStyle(.iconOnly)
+          .fontSize(17, .semibold)
+          .frame(width: 44, height: 44)
+          .contentShape(Circle())
+      }
+      .buttonStyle(.plain)
+      .foregroundStyle(.white)
+      .glassEffect(.regular.interactive(), in: Circle())
+      .keyboardShortcut(.cancelAction)
+      .padding(.horizontal, 16)
+      .padding(.top, 8)
+      .opacity(chromeOpacity)
+      .allowsHitTesting(chromeOpacity != 0)
     }
     .compositingGroup()
     .opacity(appearContent ? 1 : 0)
