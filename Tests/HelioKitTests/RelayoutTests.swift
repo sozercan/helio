@@ -1,5 +1,7 @@
 import Foundation
+import Nuke
 import Testing
+import YouTubePlayerKit
 @testable import HelioKit
 
 @MainActor
@@ -165,6 +167,24 @@ struct RelayoutTests {
     #expect(second.key == first.key)
     #expect(second.mediaSize == first.mediaSize)
     #expect(post.helioData?.layoutWidth == 500)
+  }
+
+  @Test func thePostPageHasItsOwnYouTubePlayer() throws {
+    let post = try post()
+    post.setupHelioData(contentWidth: 400, theme: theme, fetchAvatar: false)
+    let rowPlayer = YouTubePlayer(source: .video(id: "abc"))
+    let thumbnail = try #require(URL(string: "https://i.ytimg.com/vi/abc/hqdefault.jpg"))
+    post.helioData?.extractedMediaForcedNormal = .yt(YTMediaExtracted(videoID: "abc", size: CGSize(width: 16, height: 9), thumbnailURL: thumbnail, thumbnailRequest: ImageRequest(url: thumbnail), player: rowPlayer, author: "", authorURL: thumbnail))
+    let wide = try #require(post.pageLayout(contentWidth: 900, theme: theme))
+    let narrow = try #require(post.pageLayout(contentWidth: 600, theme: theme))
+    guard case let .yt(wideVideo) = wide.media, case let .yt(narrowVideo) = narrow.media else {
+      Issue.record("expected a YouTube embed")
+      return
+    }
+    // Beside the feed, the row and the page would otherwise play in one web view.
+    #expect(wideVideo.player !== rowPlayer)
+    // Kept across the page's relayouts, so a playing video doesn't restart.
+    #expect(narrowVideo.player === wideVideo.player)
   }
 
   @Test func thePostPageFollowsItsColumn() throws {

@@ -5,6 +5,7 @@
 
 import Defaults
 import SwiftUI
+import YouTubePlayerKit
 
 extension MediaExtractedType {
   /// Image requests are sized for the column; link previews, videos and embeds aren't, and
@@ -28,10 +29,10 @@ extension MediaExtractedType {
   }
 
   /// The width-dependent part of media that's kept across a relayout: a YouTube embed's
-  /// thumbnail request. Keeps its player.
-  func relayoutingParts(contentWidth: Double, theme: HelioTheme) -> MediaExtractedType {
+  /// thumbnail request. Keeps its player, or takes `player`.
+  func relayoutingParts(contentWidth: Double, theme: HelioTheme, player: YouTubePlayer? = nil) -> MediaExtractedType {
     guard case let .yt(yt) = self else { return self }
-    return .yt(YTMediaExtracted(videoID: yt.videoID, size: yt.size, thumbnailURL: yt.thumbnailURL, thumbnailRequest: youTubeThumbnailRequest(yt.thumbnailURL, contentWidth: contentWidth, theme: theme), player: yt.player, author: yt.author, authorURL: yt.authorURL))
+    return .yt(YTMediaExtracted(videoID: yt.videoID, size: yt.size, thumbnailURL: yt.thumbnailURL, thumbnailRequest: youTubeThumbnailRequest(yt.thumbnailURL, contentWidth: contentWidth, theme: theme), player: player ?? yt.player, author: yt.author, authorURL: yt.authorURL))
   }
 }
 
@@ -112,13 +113,24 @@ extension Post {
       return layout
     }
     // Images are requested at the column's size; other media are shared with the row, which keeps
-    // players, link previews and videos playing.
-    let media = source?.dependsOnWidth == true ? mediaExtractor(compact: false, contentWidth: contentWidth, data, theme: theme) : source?.relayoutingParts(contentWidth: contentWidth, theme: theme)
+    // link previews and videos playing. A YouTube embed gets the page's own player.
+    let media = source?.dependsOnWidth == true ? mediaExtractor(compact: false, contentWidth: contentWidth, data, theme: theme) : source?.relayoutingParts(contentWidth: contentWidth, theme: theme, player: pageYouTubePlayer(for: source))
     // The size depends on the media's own shape, the same in either extraction.
     let dimensions = getPostDimensions(post: self, helioData: helioData, columnWidth: contentWidth, rawTheme: theme, compact: false)
     let layout = PostPageLayout(key: key, media: media, mediaSize: dimensions.mediaSize)
     helioData.pageLayout = layout
     return layout
+  }
+
+  /// The page's player for a YouTube embed, made once per video.
+  private func pageYouTubePlayer(for media: MediaExtractedType?) -> YouTubePlayer? {
+    guard case let .yt(yt) = media, let helioData else { return nil }
+    if let existing = helioData.pageYouTubePlayer, existing.videoID == yt.videoID {
+      return existing.player
+    }
+    let player = YouTubePlayer(source: .video(id: yt.videoID))
+    helioData.pageYouTubePlayer = (yt.videoID, player)
+    return player
   }
 }
 
