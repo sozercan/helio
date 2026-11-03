@@ -428,6 +428,8 @@ struct SplitLayoutTests {
       #expect(layout.showsColumns)
       #expect(layout.hingeFeedWidth == 330)
       #expect(layout.hingeWidth == 8)
+      // The panes meet in the middle of the hinge.
+      #expect(layout.feedPaneWidth == 334)
     }
   }
 
