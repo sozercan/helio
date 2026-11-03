@@ -336,6 +336,11 @@ private struct FeedSortMenu<S: Sorting>: View {
 private struct FeedOptionsMenu: View {
   var subId: String
   var filters: [ShallowCachedFilter]
+  /// A filter's identity in the picker: its kind and text.
+  static func key(_ filter: ShallowCachedFilter) -> String {
+    "\(filter.type.rawValue)|\(filter.text)"
+  }
+
   @Binding var selectedFilter: ShallowCachedFilter?
 
   @Default(.SubredditFeedDefSettings) private var subredditFeedDefSettings
@@ -355,12 +360,18 @@ private struct FeedOptionsMenu: View {
     Menu {
       Toggle("Compact posts", systemImage: "rectangle.compress.vertical", isOn: compact)
       if !flairs.isEmpty || !custom.isEmpty {
-        Picker("Flair", selection: $selectedFilter) {
+        // Tagged by the filter's kind and text, not the whole filter: a background refresh can
+        // change a flair's colors, which would leave the active one unchecked.
+        let options = flairs + custom
+        Picker("Flair", selection: Binding(
+          get: { selectedFilter.map(Self.key) },
+          set: { key in selectedFilter = key.flatMap { key in options.first { Self.key($0) == key } } },
+        )) {
           Label("All posts", systemImage: "square.stack")
-            .tag(ShallowCachedFilter?.none)
-          ForEach(flairs + custom) { filter in
+            .tag(String?.none)
+          ForEach(options) { filter in
             Text(filter.text)
-              .tag(Optional(filter))
+              .tag(Optional(Self.key(filter)))
           }
         }
         .pickerStyle(.inline)
