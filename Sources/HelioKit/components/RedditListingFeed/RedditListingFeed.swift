@@ -339,8 +339,8 @@ extension RedditListingFeed {
     }
     if let subreddit {
       actions.append(.feedOptions(
-        compact: compactPerSubreddit[subreddit.id] ?? compactByDefault,
-        setCompact: { Defaults[.SubredditFeedDefSettings].compactPerSubreddit[subreddit.id] = $0 },
+        compact: compactPerSubreddit[subreddit.settingsKey] ?? compactByDefault,
+        setCompact: { Defaults[.SubredditFeedDefSettings].compactPerSubreddit[subreddit.settingsKey] = $0 },
         filters: filters,
         selected: manager.selectedFilter,
         select: { manager.selectedFilter = $0 },
