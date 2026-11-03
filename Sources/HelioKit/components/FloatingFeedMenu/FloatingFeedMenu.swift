@@ -153,6 +153,10 @@ struct FloatingFeedMenu: View, Equatable {
         .padding([.trailing, .bottom], screenEdgeMargin)
       }
     }
+    // A feed opened by name takes Reddit's id with its details, and the setting kept for it.
+    .onChange(of: subId) {
+      compact = Defaults[.SubredditFeedDefSettings].compactPerSubreddit[subId] ?? Defaults[.PostLinkDefSettings].compactMode.enabled
+    }
   }
 }
 

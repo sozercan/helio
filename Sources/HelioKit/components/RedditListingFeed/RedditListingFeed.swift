@@ -291,6 +291,15 @@ struct RedditListingFeed<Header: View, Footer: View, S: Sorting>: View {
           nil
         }
       } }, contentWidth: contentWidth, theme: selectedTheme)
+      // A feed opened by name takes Reddit's id with its details, and with it the compact setting
+      // kept for that id: lay its posts out again for it.
+      .onChange(of: subreddit?.id) {
+        withAnimation {
+          for case let .post(post) in itemsManager.entities {
+            post.relayout(contentWidth: contentWidth, theme: selectedTheme)
+          }
+        }
+      }
       //    .onChange(of: itemsManager.selectedFilter) { searchEnabled = $1?.type != .custom }
       .refreshable { await refetch() }
       .onChange(of: selectedAuthorization) { _, _ in

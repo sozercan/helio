@@ -100,6 +100,19 @@ struct RouterTests {
     #expect(sub.data?.display_name == "Apple")
   }
 
+  @Test func reselectingAFeedKeepsDetailsTheSidebarsCopyLacks() throws {
+    // The feed's subreddit has Reddit's full response; the sidebar's copy has no description.
+    let full = #"{"name": "t5_2qh1f", "id": "2qh1f", "display_name": "Apple", "url": "/r/Apple/", "public_description": "", "description": "All things Apple", "title": "old"}"#
+    let partial = #"{"name": "t5_2qh1f", "id": "2qh1f", "display_name": "Apple", "url": "/r/Apple/", "public_description": "", "title": "new"}"#
+    let feed = try Subreddit(data: JSONDecoder().decode(SubredditData.self, from: Data(full.utf8)))
+    let sidebar = try Subreddit(data: JSONDecoder().decode(SubredditData.self, from: Data(partial.utf8)))
+    let router = Router(id: "test")
+    router.firstSelected = .reddit(.subFeed(feed))
+    router.firstSelected = .reddit(.subFeed(sidebar))
+    #expect(feed.data?.description == "All things Apple")
+    #expect(feed.data?.title == "new")
+  }
+
   @Test func reselectingAFeedTakesFresherDetails() throws {
     func cached(_ title: String) throws -> Router.NavDest {
       let json = #"{"name": "t5_2qh1f", "id": "2qh1f", "display_name": "Apple", "url": "/r/Apple/", "public_description": ""}"#
