@@ -86,7 +86,7 @@ struct RedditListingFeed<Header: View, Footer: View, S: Sorting>: View {
     let isThereDivider = selectedTheme.postLinks.divider.style != .no
     let paddingH = selectedTheme.postLinks.theme.outerHPadding
     let paddingV = selectedTheme.postLinks.spacing / (isThereDivider ? 4 : 2)
-    let canvas = subreddit.map { PostLayout.isCanvas($0.id, canvasSubreddits: canvasSubreddits) } ?? false
+    let canvas = subreddit.map { PostLayout.isCanvas($0.settingsKey, canvasSubreddits: canvasSubreddits) } ?? false
     GeometryReader { geo in
       List {
         header()

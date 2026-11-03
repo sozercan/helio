@@ -79,7 +79,7 @@ extension Post {
   /// none, so its posts' previews wait until they show, such as when the post opens, instead of
   /// downloading every linked page.
   static func fetchesLinkMetadata(_ data: PostData, sub: Subreddit?) -> Bool {
-    !PostLayout.isCanvas(sub?.id ?? data.subreddit_id ?? "", canvasSubreddits: CachedDefaults[.canvasSubreddits])
+    !PostLayout.isCanvas(sub?.settingsKey ?? data.subreddit_id ?? "", canvasSubreddits: CachedDefaults[.canvasSubreddits])
   }
 
   func shouldUpdateAvatarFamily(fetchAvatar: Bool) -> Bool {
