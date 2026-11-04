@@ -153,6 +153,8 @@ struct SubredditsStack: View {
           ContentUnavailableView("No Post Selected", systemImage: "doc.text.image", description: Text("Choose a post from the feed."))
         }
       }
+      // The post at the column's root, like the screens pushed on it (`injectInTabDestinations`).
+      .ignoresPaneHingeInsets()
       .attachViewControllerToRouter(tabID: .posts)
       .injectInTabDestinations()
     }
