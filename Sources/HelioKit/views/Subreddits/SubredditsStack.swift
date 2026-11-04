@@ -145,6 +145,8 @@ struct SubredditsStack: View {
             .themedListBG(selectedTheme.posts.bg)
         }
       }
+      // The post at the column's root, like the screens pushed on it (`injectInTabDestinations`).
+      .ignoresPaneHingeInsets()
       .attachViewControllerToRouter(tabID: .posts)
       .injectInTabDestinations()
     }
