@@ -54,7 +54,7 @@ struct ScreenAction: Identifiable, Equatable {
   }
 
   enum ID: String {
-    case sortPosts, feedOptions, sortComments, subredditInfo, switchAccount
+    case sortPosts, feedOptions, sortComments, subredditInfo, switchAccount, openInBrowser
   }
 
   var id: ID
@@ -140,6 +140,13 @@ extension ScreenAction {
   static func subredditInfo(_ sub: Subreddit, column: Router.Column?) -> ScreenAction {
     ScreenAction(id: .subredditInfo, title: "About r/\(sub.data?.display_name ?? sub.id)", systemImage: "info.circle", content: .button {
       Nav.to(.reddit(.subInfo(sub)), from: column)
+    })
+  }
+
+  /// Opens a web page shown in the app in the default browser.
+  static func openInBrowser(_ url: URL) -> ScreenAction {
+    ScreenAction(id: .openInBrowser, title: "Open in Browser", systemImage: "safari", content: .button {
+      UIApplication.shared.open(url)
     })
   }
 

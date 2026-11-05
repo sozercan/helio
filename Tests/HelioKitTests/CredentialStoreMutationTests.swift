@@ -60,6 +60,7 @@ struct CredentialStoreMutationTests {
       expectObservableMutation(manager) { manager.deleteCred(account) }
       #expect(manager.credentials == [other])
       #expect(manager.selectedCredential == other)
+      #expect(Defaults[.GeneralDefSettings].redditCredentialSelectedID == other.id)
       #expect(reloads == 2)
 
       expectObservableMutation(manager) { manager.wipeAllCredentials() }
@@ -144,6 +145,28 @@ struct CredentialStoreMutationTests {
     manager.saveCred(replacement)
     manager.backfillUserName("placeholder-stale-name", for: authorization)
     #expect(manager.credentials[0].userName == nil)
+  }
+
+  @Test func signingInReplacesASelectionThatIsNoLongerSaved() {
+    let account = credential()
+    let manager = RedditCredentialsManager(credentials: [], reloadSelectedProfile: {})
+    withSelection(UUID()) {
+      manager.saveCred(account)
+      #expect(Defaults[.GeneralDefSettings].redditCredentialSelectedID == account.id)
+    }
+  }
+
+  @Test func launchReplacesASelectionThatIsNoLongerSaved() {
+    let account = credential()
+    let manager = RedditCredentialsManager(credentials: [account], reloadSelectedProfile: {})
+    withSelection(UUID()) {
+      autoSelectCredentialIfNil(manager: manager)
+      #expect(Defaults[.GeneralDefSettings].redditCredentialSelectedID == account.id)
+    }
+    withSelection(account.id) {
+      autoSelectCredentialIfNil(manager: RedditCredentialsManager(credentials: [account, credential("placeholder-other-grant")], reloadSelectedProfile: {}))
+      #expect(Defaults[.GeneralDefSettings].redditCredentialSelectedID == account.id)
+    }
   }
 
   @Test func updateOnlySaveDoesNotRecreateOrSelectARemovedRecord() {

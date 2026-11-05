@@ -31,7 +31,7 @@ struct RedditWebLoginView: View {
 
   var body: some View {
     RedditWebLoginWebView { cookies, userAgent in
-      Task { await finish(cookies: cookies, userAgent: userAgent) }
+      await finish(cookies: cookies, userAgent: userAgent)
     } onLoadFailed: {
       phase = .failed
     }
@@ -86,18 +86,25 @@ struct RedditWebLoginView: View {
     phase = .browsing
   }
 
+  /// Returns whether the browser is done: `false` when the cookies turned out to be a signed-out
+  /// visitor's, so it keeps watching for the sign-in.
   @MainActor
-  private func finish(cookies: String, userAgent: String) async {
+  private func finish(cookies: String, userAgent: String) async -> Bool {
     phase = .finishing
-    guard let signedIn = await RedditWebSession.signIn(credential, cookies: cookies, userAgent: userAgent) else {
+    switch await RedditWebSession.signIn(credential, cookies: cookies, userAgent: userAgent) {
+    case .signedOut:
+      phase = .browsing
+      return false
+    case .failed:
       phase = .failed
-      return
+    case let .signedIn(signedIn):
+      if let expectedUserName, signedIn.userName?.lowercased() != expectedUserName.lowercased() {
+        phase = .wrongAccount(signedIn: signedIn)
+      } else {
+        save(signedIn)
+      }
     }
-    if let expectedUserName, signedIn.userName?.lowercased() != expectedUserName.lowercased() {
-      phase = .wrongAccount(signedIn: signedIn)
-      return
-    }
-    save(signedIn)
+    return true
   }
 
   private func save(_ signedIn: RedditCredential) {
@@ -120,13 +127,14 @@ struct RedditWebLoginView: View {
 }
 
 /// A browser on reddit.com's sign-in page with its own empty cookie store, so each sign-in
-/// starts signed out. It reports the session once Reddit says someone is signed in.
+/// starts signed out. It reports each new session cookie; `onSession` returns whether that was
+/// the sign-in.
 private struct RedditWebLoginWebView: UIViewRepresentable {
-  var onSignedIn: @MainActor (_ cookies: String, _ userAgent: String) -> Void
+  var onSession: @MainActor (_ cookies: String, _ userAgent: String) async -> Bool
   var onLoadFailed: @MainActor () -> Void
 
   func makeCoordinator() -> Coordinator {
-    Coordinator(onSignedIn: onSignedIn, onLoadFailed: onLoadFailed)
+    Coordinator(onSession: onSession, onLoadFailed: onLoadFailed)
   }
 
   func makeUIView(context: Context) -> WKWebView {
@@ -150,7 +158,7 @@ private struct RedditWebLoginWebView: UIViewRepresentable {
 
   @MainActor
   final class Coordinator: NSObject, WKNavigationDelegate, WKUIDelegate {
-    private let onSignedIn: @MainActor (String, String) -> Void
+    private let onSession: @MainActor (String, String) async -> Bool
     private let onLoadFailed: @MainActor () -> Void
     /// A sign-in popup, such as "Continue with Apple", shown over the page that opened it.
     private var popup: WKWebView?
@@ -158,19 +166,12 @@ private struct RedditWebLoginWebView: UIViewRepresentable {
     private var pageLoaded = false
     private var checking = false
     private var done = false
+    /// The session cookie last reported, so a signed-out visitor's isn't sent to the token
+    /// service every poll.
+    private var reportedSession: String?
 
-    /// Asks Reddit, from the page's origin so its cookies go along, who is signed in.
-    private static let signedInUserScript = """
-    try {
-      const response = await fetch('/api/me.json', { credentials: 'include' });
-      if (!response.ok) { return ''; }
-      const body = await response.json();
-      return (body && body.data && body.data.name) ? body.data.name : '';
-    } catch (e) { return ''; }
-    """
-
-    init(onSignedIn: @escaping @MainActor (String, String) -> Void, onLoadFailed: @escaping @MainActor () -> Void) {
-      self.onSignedIn = onSignedIn
+    init(onSession: @escaping @MainActor (String, String) async -> Bool, onLoadFailed: @escaping @MainActor () -> Void) {
+      self.onSession = onSession
       self.onLoadFailed = onLoadFailed
     }
 
@@ -234,19 +235,24 @@ private struct RedditWebLoginWebView: UIViewRepresentable {
       popup = nil
     }
 
+    /// Reads the browser's cookies rather than asking the page, which reddit.com doesn't let
+    /// scripts fetch from. Whether a session cookie is a sign-in is the token service's call.
     private func checkSignedIn(_ webView: WKWebView) async {
-      guard pageLoaded, !checking, !done, webView.url?.host?.hasSuffix("reddit.com") == true else { return }
+      guard pageLoaded, !checking, !done else { return }
       checking = true
       defer { checking = false }
 
-      let name = try? await webView.callAsyncJavaScript(Self.signedInUserScript, contentWorld: .page) as? String
-      guard let name, !name.isEmpty, !done else { return }
       let cookies = await webView.configuration.websiteDataStore.httpCookieStore.allCookies()
-      guard let header = RedditWebSession.cookieHeader(from: cookies), !done else { return }
+      guard
+        let session = RedditWebSession.sessionCookieValue(from: cookies), session != reportedSession,
+        let header = RedditWebSession.cookieHeader(from: cookies), !done
+      else { return }
       let userAgent = await (try? webView.callAsyncJavaScript("return navigator.userAgent", contentWorld: .page) as? String) ?? RedditCredential.defaultUserAgent()
       guard !done else { return }
-      stop()
-      onSignedIn(header, userAgent)
+      reportedSession = session
+      if await onSession(header, userAgent) {
+        stop()
+      }
     }
   }
 }

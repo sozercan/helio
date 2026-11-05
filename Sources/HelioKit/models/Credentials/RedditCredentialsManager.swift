@@ -44,6 +44,14 @@ final class RedditCredentialsManager {
     credentials.first { $0.id == id } ?? credentials.first
   }
 
+  /// Whether the stored selection names a saved credential. It can name one that's gone, such as
+  /// a deleted account or one the keychain didn't keep; `selectedCredential` then falls back to
+  /// the first, but views keyed by the stored ID, such as the subs list, would show nothing.
+  var selectionIsSaved: Bool {
+    let id = Defaults[.GeneralDefSettings].redditCredentialSelectedID
+    return credentials.contains { $0.id == id }
+  }
+
   func syncCredentialsWithKeychain() {
     guard let persistence else { return }
     do {
@@ -189,8 +197,8 @@ final class RedditCredentialsManager {
       updated.append(cred)
     }
     publishCredentials(updated)
-    // Auto-select if no credential is currently selected.
-    if Defaults[.GeneralDefSettings].redditCredentialSelectedID == nil {
+    // Auto-select if no saved credential is currently selected.
+    if !selectionIsSaved {
       Defaults[.GeneralDefSettings].redditCredentialSelectedID = cred.id
     }
     syncCredentialsWithKeychain()
@@ -267,6 +275,10 @@ final class RedditCredentialsManager {
     let previousAuthorization = selectedCredential?.authorizationID
     withAnimation {
       publishCredentials(credentials.filter { $0.id != cred.id })
+    }
+    // Deleting the selected account selects the one `selectedCredential` falls back to.
+    if !selectionIsSaved, let fallback = credentials.first {
+      Defaults[.GeneralDefSettings].redditCredentialSelectedID = fallback.id
     }
     syncCredentialsWithKeychain()
     if previousAuthorization != selectedCredential?.authorizationID {

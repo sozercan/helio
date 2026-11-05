@@ -33,7 +33,12 @@ struct RouterDestinationView: View {
   let dest: Router.NavDest
 
   var body: some View {
-    screen.readableWidth()
+    if case let .web(url) = dest {
+      // A page lays itself out for the column's whole width.
+      WebPageScreen(url: url)
+    } else {
+      screen.readableWidth()
+    }
   }
 
   @ViewBuilder
@@ -83,6 +88,8 @@ struct RouterDestinationView: View {
       case .themes:
         ThemesPanel()
       }
+    case .web:
+      EmptyView()
     }
   }
 }

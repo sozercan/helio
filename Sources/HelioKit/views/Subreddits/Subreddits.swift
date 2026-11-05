@@ -10,12 +10,12 @@ import Defaults
 import SwiftDate
 import SwiftUI
 
-// Mac windows paint the subs list with the window background instead of the theme's, so it
-// continues the title bar above it rather than starting below it in another shade.
+// On Mac, the subs list is on the theme's background like the feed and the post beside it,
+// rather than the sidebar's material, so the window below the title bar is one shade.
 #if targetEnvironment(macCatalyst)
-  private let usesWindowBackground = true
+  private let usesThemeBackgroundInSidebar = true
 #else
-  private let usesWindowBackground = false
+  private let usesThemeBackgroundInSidebar = false
 #endif
 
 struct Subreddits: View, Equatable {
@@ -240,16 +240,11 @@ struct Subreddits: View, Equatable {
           }
         }
         // A sidebar's rows are the system's, which draw its selection.
-        .themedListSection(disable: usesWindowBackground || inSidebar)
+        .themedListSection(disable: usesThemeBackgroundInSidebar || inSidebar)
       }
       .environment(\.isInSidebar, true)
       // On iPad, the sidebar's own material instead of the theme's background.
-      .themedListBG(selectedTheme.lists.bg, disable: usesWindowBackground || inSidebar, keepSystemBackground: inSidebar && !usesWindowBackground)
-      .background {
-        if usesWindowBackground {
-          Color(uiColor: .systemBackground).ignoresSafeArea()
-        }
-      }
+      .themedListBG(selectedTheme.lists.bg, disable: inSidebar && !usesThemeBackgroundInSidebar, keepSystemBackground: inSidebar && !usesThemeBackgroundInSidebar)
       .touchScrollIndicators(.hidden)
       .listStyle(.sidebar)
       .scrollDismissesKeyboard(.immediately)
@@ -261,7 +256,7 @@ struct Subreddits: View, Equatable {
       }))
       .overlay(alignment: .trailing) {
         // Without the sidebar's own shade, a hairline marks where the posts start.
-        if usesWindowBackground {
+        if usesThemeBackgroundInSidebar {
           Color(uiColor: .separator).frame(width: 1).ignoresSafeArea()
         }
       }
@@ -316,12 +311,13 @@ struct Subreddits: View, Equatable {
 
 private extension View {
   /// The subs list's search field and Edit button. iOS keeps them in the navigation bar. On Mac
-  /// that bar floats over the rows, which show through behind it, so the list gets a plain
-  /// header above it instead.
+  /// that bar floats over the rows, which show through behind it, so the list gets its own bar
+  /// instead, which the rows scroll under and fade beneath, like the feed's under its title.
   @ViewBuilder
   func subsSearchAndEdit(_ searchText: Binding<String>, isPresented: Binding<Bool>, focused: FocusState<Bool>.Binding) -> some View {
     #if targetEnvironment(macCatalyst)
-      safeAreaInset(edge: .top, spacing: 0) { MacSubsHeader(searchText: searchText, focusRequested: isPresented) }
+      safeAreaBar(edge: .top, spacing: 0) { MacSubsHeader(searchText: searchText, focusRequested: isPresented) }
+        .scrollEdgeEffectStyle(.soft, for: .top)
         .toolbar(.hidden, for: .navigationBar)
     #else
       searchable(text: searchText, isPresented: isPresented, prompt: "Search my subreddits")
@@ -374,7 +370,6 @@ private extension View {
       }
       .padding(.horizontal, 12)
       .padding(.vertical, 8)
-      .background(Color(uiColor: .systemBackground))
     }
   }
 #endif
