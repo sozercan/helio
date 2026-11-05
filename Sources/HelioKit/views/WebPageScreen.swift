@@ -31,6 +31,9 @@ struct WebPageScreen: View {
           .navigationTitle(page.title.isEmpty ? url.host() ?? url.absoluteString : page.title)
           .navigationBarTitleDisplayMode(.inline)
           .commandTarget(CommandTargets.Target(kind: .web, column: navColumn, refresh: { _ = page.reload() }, actions: [.openInBrowser(page.url ?? url)]), updatingWith: page.url)
+      } else {
+        // Something to appear: an empty group never does, so the page would never be made.
+        Color.clear
       }
     }
     .onAppear {
