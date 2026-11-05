@@ -144,19 +144,35 @@ enum RedditWebSession {
     return pairs.map { "\($0.name)=\($0.value)" }.joined(separator: "; ")
   }
 
-  /// The reddit.com cookies as a `Cookie` header, or `nil` when the session cookie isn't among them.
-  static func cookieHeader(from cookies: [HTTPCookie]) -> String? {
-    let reddit = cookies.filter { cookie in
+  private static func redditCookies(_ cookies: [HTTPCookie]) -> [HTTPCookie] {
+    cookies.filter { cookie in
       let domain = cookie.domain.lowercased()
       return domain == "reddit.com" || domain.hasSuffix(".reddit.com")
     }
-    guard reddit.contains(where: { $0.name == sessionCookieName && !$0.value.isEmpty }) else { return nil }
-    return reddit.map { "\($0.name)=\($0.value)" }.joined(separator: "; ")
+  }
+
+  /// The value of reddit.com's session cookie, or `nil` when there is none.
+  static func sessionCookieValue(from cookies: [HTTPCookie]) -> String? {
+    redditCookies(cookies).first { $0.name == sessionCookieName && !$0.value.isEmpty }?.value
+  }
+
+  /// The reddit.com cookies as a `Cookie` header, or `nil` when the session cookie isn't among them.
+  static func cookieHeader(from cookies: [HTTPCookie]) -> String? {
+    guard sessionCookieValue(from: cookies) != nil else { return nil }
+    return redditCookies(cookies).map { "\($0.name)=\($0.value)" }.joined(separator: "; ")
+  }
+
+  enum SignInResult {
+    case signedIn(RedditCredential)
+    /// The token service says the cookies are a signed-out visitor's.
+    case signedOut
+    /// Anything else, such as a dropped connection or a profile Reddit wouldn't return.
+    case failed
   }
 
   /// Turns `credential` into a web-session credential for the signed-in session and fills in its
-  /// account. Returns `nil` when Reddit doesn't hand out a token for the session.
-  static func signIn(_ credential: RedditCredential, cookies: String, userAgent: String) async -> RedditCredential? {
+  /// account. The token service, not the cookies, decides whether someone is signed in.
+  static func signIn(_ credential: RedditCredential, cookies: String, userAgent: String) async -> SignInResult {
     var signedIn = credential
     // Clearing the API key first: changing it resets the identity set below.
     signedIn.apiAppID = ""
@@ -166,13 +182,23 @@ enum RedditWebSession {
     signedIn.webSessionCookies = cookies
     signedIn.userAgent = userAgent
 
-    guard case let .token(token, renewedCookies) = await mintToken(cookies: cookies, userAgent: userAgent) else { return nil }
+    let token: RedditCredential.AccessToken
+    let renewedCookies: String
+    switch await mintToken(cookies: cookies, userAgent: userAgent) {
+    case let .token(minted, cookies):
+      token = minted
+      renewedCookies = cookies
+    case .signedOut:
+      return .signedOut
+    case .failed:
+      return .failed
+    }
     signedIn.accessToken = token
     signedIn.webSessionCookies = renewedCookies
     // Not `fetchMe`, which would also make this account the app's current one before it's saved.
     let me = await RedditAPI.shared.doRequest("\(RedditAPI.redditApiURLBase)/api/v1/me", method: .get, decodable: UserData.self, altCredential: signedIn, saveToken: false)
-    guard case let .success(me) = me else { return nil }
+    guard case let .success(me) = me else { return .failed }
     signedIn.setProfile(from: me)
-    return signedIn
+    return .signedIn(signedIn)
   }
 }

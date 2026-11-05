@@ -47,6 +47,12 @@ struct WebSessionTests {
     #expect(try RedditWebSession.cookieHeader(from: [cookie("loid", "placeholder-loid")]) == nil)
   }
 
+  @Test func sessionCookieValueIgnoresOtherSitesAndEmptyValues() throws {
+    #expect(try RedditWebSession.sessionCookieValue(from: [cookie("reddit_session", "placeholder-session")]) == "placeholder-session")
+    #expect(try RedditWebSession.sessionCookieValue(from: [cookie("reddit_session", "elsewhere", domain: ".notreddit.com")]) == nil)
+    #expect(try RedditWebSession.sessionCookieValue(from: [cookie("reddit_session", "")]) == nil)
+  }
+
   @Test func webSessionCredentialRoundTripsAndRenewsWithItsCookies() throws {
     var credential = RedditCredential()
     credential.signInMethod = .webSession
