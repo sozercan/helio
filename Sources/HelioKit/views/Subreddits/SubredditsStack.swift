@@ -15,6 +15,7 @@ struct SubredditsStack: View {
   @Default(.BehaviorDefSettings) private var behaviorDefSettings // handle default feed selection routing
   @Default(.GeneralDefSettings) private var generalDefSettings // handle default feed selection routing
   @State private var columnVisibility: NavigationSplitViewVisibility = .all
+  @Environment(\.useTheme) private var selectedTheme
   /// The split view collapses into one stack in compact width.
   @Environment(\.horizontalSizeClass) private var horizontalSizeClass
   /// The split view's measured frame. Follows window resizes, unlike a screen-size calculation.
@@ -56,7 +57,10 @@ struct SubredditsStack: View {
               .id(post)
               .hidesNavigationBarOnMac(layout.showsColumns)
           } else {
+            // On the post view's background, so the column doesn't change shade when a post opens.
             ContentUnavailableView("No Post Selected", systemImage: "doc.text.image", description: Text("Choose a post from the feed."))
+              .frame(maxWidth: .infinity, maxHeight: .infinity)
+              .themedListBG(selectedTheme.posts.bg)
           }
         }
         .attachViewControllerToRouter(tabID: .posts)
