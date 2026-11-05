@@ -1,6 +1,7 @@
 import Foundation
 import Nuke
 import Testing
+import UIKit
 @testable import HelioKit
 
 struct MediaExtractorTests {
@@ -41,6 +42,38 @@ struct MediaExtractorTests {
     // Shown in a square until it loads: a width-only resize would leave it too short to fill one.
     let square = ImageProcessors.Resize(size: CGSize(width: 400, height: 400), unit: .points, contentMode: .aspectFill, crop: false, upscale: true)
     #expect(try resize(nil) == square.identifier)
+  }
+
+  /// Runs a request's decoding and processors on a large JPEG, as the pipeline does, at the
+  /// screen's scale: the image comes out the column's width in points, with the pixels a sharp
+  /// one needs, however wide it is.
+  @Test(arguments: [(4000, 1000), (1200, 1200), (900, 2700)])
+  func decodesASingleImageSharpAtTheWidthItsShown(width: Int, height: Int) throws {
+    // In the app the window's scale comes from its screen, which is also what the renderers and
+    // Nuke use; a test host has no window to report it.
+    WindowMetrics.shared.update(displayScale: UIGraphicsImageRendererFormat.preferred().scale)
+    let format = UIGraphicsImageRendererFormat()
+    format.scale = 1
+    let jpeg = try #require(UIGraphicsImageRenderer(size: CGSize(width: width, height: height), format: format).image { context in
+      UIColor.systemTeal.setFill()
+      context.fill(CGRect(x: 0, y: 0, width: width / 2, height: height))
+    }.jpegData(compressionQuality: 0.8))
+    let preview = ["images": [["source": ["url": "https://preview.redd.it/abc.jpg", "width": width, "height": height]]]]
+    guard case let .imgs(images)? = try extract(["url": "https://i.redd.it/abc.jpg", "domain": "i.redd.it", "preview": preview]),
+          let request = images.first?.request
+    else { Issue.record("expected an image")
+      return
+    }
+    let thumbnail = try #require(request.userInfo[.thumbnailKey] as? ImageRequest.ThumbnailOptions)
+    var image = try #require(thumbnail.makeThumbnail(with: jpeg))
+    for processor in request.processors {
+      image = try #require(processor.process(image))
+    }
+    let scale = CGFloat.screenScale
+    #expect(image.scale == scale, "scale \(image.scale), screen \(scale), \(image.size) points")
+    #expect(abs(image.size.width - 400) <= 1)
+    #expect(try abs(CGFloat(#require(image.cgImage).width) - 400 * scale) <= scale)
+    #expect(abs(image.size.height - 400 * CGFloat(height) / CGFloat(width)) <= 1)
   }
 
   @Test func playsTheFallbackMP4WhenHLSIsMissing() throws {
