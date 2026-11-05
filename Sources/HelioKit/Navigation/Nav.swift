@@ -172,8 +172,8 @@ class Nav: Identifiable, Equatable {
   }
 
   /// Opens a link tapped in a feed or a post. In the posts tab, Reddit posts, subreddits and users
-  /// open from the column the link sits in, like other taps there; anything else, or a link in
-  /// another tab, goes through the app's URL handling as before.
+  /// open from the column the link sits in, like other taps there; on Mac, so do web pages. Anything
+  /// else, or a Reddit link in another tab, goes through the app's URL handling as before.
   static func openLink(_ url: URL, from column: Router.Column?) {
     let dest = linkDestination(for: url)
     if let dest, Nav.shared.activeTab == .posts {
@@ -181,11 +181,24 @@ class Nav: Identifiable, Equatable {
     } else if let dest {
       // From another tab it starts over on the posts tab, as the app's link handling does.
       withAnimation { Nav.fullTo(.posts, dest, true) }
+    } else if opensWebPagesInApp, url.scheme?.lowercased().contains(/^https?$/) == true {
+      // In the app on Mac: from the feed, beside it in the post column, like a post.
+      withAnimation { Nav.to(.web(url), from: column) }
     } else {
       // Not something the app opens (a wiki page, any other site): the page itself.
       Nav.openURL(url)
     }
   }
+
+  /// On Mac, Safari's view (`openURL`) sends the page to the default browser, out of the app, so
+  /// links tapped in feeds and posts open as a screen of the app's (`WebPageScreen`) instead.
+  static let opensWebPagesInApp: Bool = {
+    #if targetEnvironment(macCatalyst)
+      true
+    #else
+      false
+    #endif
+  }()
 
   /// The screen a link opens in the app: a post, a comment in its post, a subreddit or a user.
   /// Nil for anything else (wiki pages, other sites), which opens as the page itself.

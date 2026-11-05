@@ -188,16 +188,19 @@ class Router: Hashable, Equatable, Identifiable {
       switch self {
       case let .reddit(reddit): reddit.id
       case let .setting(setting): setting.id
+      case let .web(url): "web-\(url.absoluteString)"
       }
     }
 
     case reddit(Reddit)
     case setting(Setting)
+    /// A web page, shown in the app (on Mac, where Safari's view can't show in a window).
+    case web(URL)
 
-    /// Posts open in the posts split view's post column.
+    /// Posts, and pages opened from the feed, open in the posts split view's post column.
     var opensInPostColumn: Bool {
       switch self {
-      case .reddit(.post), .reddit(.postHighlighted): true
+      case .reddit(.post), .reddit(.postHighlighted), .web: true
       default: false
       }
     }

@@ -18,7 +18,7 @@ final class CommandTargets {
   struct Target {
     /// `modal`: what covers the screens, such as a reply being written or a full-screen image or
     /// video. The commands must not act on the screens behind it, or close it by moving to another post.
-    enum Kind { case feed, post, subs, search, profile, modal }
+    enum Kind { case feed, post, subs, search, profile, web, modal }
 
     var kind: Kind
     /// The posts split view's column it shows in.

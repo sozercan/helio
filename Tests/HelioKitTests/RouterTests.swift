@@ -254,6 +254,21 @@ struct RouterTests {
     #expect(router.postPath == [user, otherPost])
   }
 
+  @Test func aWebPageFromTheFeedOpensInThePostColumnAndOneFromThePostStacksOnIt() throws {
+    let page = try Router.NavDest.web(#require(URL(string: "https://example.com/article")))
+    let router = Router(id: "test")
+    router.firstSelected = feed("apple")
+    router.navigateTo(post, from: .feed)
+    router.navigateTo(page, from: .feed)
+    #expect(router.fullPath == [feed("apple"), page])
+    #expect(router.postColumn == [page])
+
+    router.navigateTo(post, from: .feed)
+    router.navigateTo(page, from: .post)
+    #expect(router.postColumn == [post, page])
+    #expect(router.postPath == [page])
+  }
+
   @Test func aSubredditFromTheFeedStacksOnTheFeedAndKeepsTheOpenPost() {
     let router = Router(id: "test")
     router.firstSelected = feed("apple")
