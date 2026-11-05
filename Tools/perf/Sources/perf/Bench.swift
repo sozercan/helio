@@ -53,6 +53,7 @@ enum Bench {
     let udid = Simulator.boot()
     let dir = Paths.label(label)
     try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+    try? FileManager.default.removeItem(at: macMarker(label))
     // Checkouts from before the perf tool lack the setup test: append it to the smoke tests for
     // the build.
     let tests = repo.appendingPathComponent("App/HelioUITests")
@@ -106,6 +107,7 @@ enum Bench {
     shell(["/usr/libexec/PlistBuddy", "-c", "Set :CFBundleIdentifier \(macBundleID)", plist])
     shell(["/usr/libexec/PlistBuddy", "-c", "Delete :CFBundleURLTypes", plist], check: false)
     shell(["codesign", "--force", "--deep", "--sign", "-", app.path])
+    FileManager.default.createFile(atPath: macMarker(label).path, contents: Data("mac\n".utf8))
     print("built \(app.path)")
   }
 
@@ -113,8 +115,14 @@ enum Bench {
     Paths.label(label).appendingPathComponent("build/Build/Products/Release-maccatalyst/Helio.app")
   }
 
+  /// Written by the label's last build when it was for Mac. Not the Catalyst app's presence: a
+  /// label built for Mac and then for the simulator still has it.
+  static func macMarker(_ label: String) -> URL {
+    Paths.label(label).appendingPathComponent("platform-mac")
+  }
+
   static func isMac(_ label: String) -> Bool {
-    FileManager.default.fileExists(atPath: macApp(label).path)
+    FileManager.default.fileExists(atPath: macMarker(label).path) && FileManager.default.fileExists(atPath: macApp(label).path)
   }
 
   static let arch: String = {
@@ -227,8 +235,9 @@ enum Bench {
     if text.contains(" no_scroll_view") {
       print("run \(i): nothing to scroll when asked (comments not loaded 5 s after opening the post?)")
     }
-    if text.contains(" no_window") || text.contains(" window_failed") {
-      print("run \(i): couldn't size the window, see \(log.path)")
+    guard !text.contains(" no_window"), !text.contains(" window_failed") else {
+      print("run \(i): couldn't size or resize the window, see \(log.path)")
+      return false
     }
     if let trace, !Profile.export(trace, to: dir.appendingPathComponent("run\(i).tp.xml")) {
       print("run \(i): couldn't export the trace")
