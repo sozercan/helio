@@ -30,6 +30,17 @@ struct ScreenAction: Identifiable, Equatable {
     /// Items set apart in their menu, under an optional heading.
     case section(_ title: String?, [Entry])
 
+    /// The entry at `path`, an index at each level, in `entries`.
+    static func at(_ path: [Int], in entries: [Entry]) -> Entry? {
+      guard let index = path.first, entries.indices.contains(index) else { return nil }
+      let entry = entries[index]
+      guard path.count > 1 else { return entry }
+      switch entry {
+      case .choice: return nil
+      case let .submenu(_, _, children), let .section(_, children): return at(Array(path.dropFirst()), in: children)
+      }
+    }
+
     static func == (lhs: Entry, rhs: Entry) -> Bool {
       switch (lhs, rhs) {
       case let (.choice(lt, li, lOn, _), .choice(rt, ri, rOn, _)): lt == rt && li == ri && lOn == rOn

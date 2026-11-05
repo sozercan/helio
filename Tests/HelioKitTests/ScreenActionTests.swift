@@ -145,4 +145,24 @@ struct ScreenActionTests {
     result.replaceSubrange(edit.range, with: edit.insert)
     #expect(result == desired)
   }
+
+  @Test func findsAMenuEntryByItsPath() {
+    let entries: [ScreenAction.Entry] = [
+      .choice("Hot", isOn: true) {},
+      .section("Top", [.choice("Today", isOn: false) {}, .submenu("More", systemImage: nil, [.choice("All time", isOn: false) {}])]),
+    ]
+    func title(_ path: [Int]) -> String? {
+      switch ScreenAction.Entry.at(path, in: entries) {
+      case let .choice(title, _, _, _)?: title
+      case let .submenu(title, _, _)?: title
+      case let .section(title, _)?: title
+      case nil: nil
+      }
+    }
+    #expect(title([0]) == "Hot")
+    #expect(title([1, 0]) == "Today")
+    #expect(title([1, 1, 0]) == "All time")
+    #expect(title([2]) == nil)
+    #expect(title([0, 0]) == nil)
+  }
 }
