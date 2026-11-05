@@ -22,12 +22,19 @@ final class WebExtensionRuntime: NSObject {
   static let shared = WebExtensionRuntime()
 
   /// Its default data store, which extensions' cookie and data APIs reach, is the pages' own
-  /// (`WebPageStorage`), not the app's.
+  /// (`WebPageStorage`), not the app's. Extensions' own pages (background, settings) keep their
+  /// data in a store of their own instead, which the launch's clearing of the pages' leaves alone.
   @ObservationIgnored let controller: WKWebExtensionController = {
     let configuration = WKWebExtensionController.Configuration.default()
     configuration.defaultWebsiteDataStore = WebPageStorage.store
+    let extensionPages = WKWebViewConfiguration()
+    extensionPages.websiteDataStore = WKWebsiteDataStore(forIdentifier: WebExtensionRuntime.extensionPagesStoreID)
+    configuration.webViewConfiguration = extensionPages
     return WKWebExtensionController(configuration: configuration)
   }()
+
+  /// Fixed, so extensions' pages find their data again each launch.
+  private static let extensionPagesStoreID = UUID(uuidString: "8E3B1F64-2C7D-4A95-B0E8-6D4F2A9C1E73")!
 
   @ObservationIgnored private let window = HostWindow()
   @ObservationIgnored private var tabs: [ObjectIdentifier: HostTab] = [:]
@@ -83,7 +90,8 @@ final class WebExtensionRuntime: NSObject {
       try controller.load(context)
       contexts[id] = context
       if webExtension.hasBackgroundContent {
-        try? await context.loadBackgroundContent()
+        // Loaded, but not working: the panel says so.
+        try await context.loadBackgroundContent()
       }
       logger.info("Loaded extension \(webExtension.displayName ?? id, privacy: .public) \(webExtension.version ?? "", privacy: .public)")
     } catch {

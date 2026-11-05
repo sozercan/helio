@@ -127,11 +127,32 @@ private struct OptionsPage: Identifiable {
 private struct OptionsPageView: UIViewRepresentable {
   let page: OptionsPage
 
-  func makeUIView(context _: Context) -> WKWebView {
+  func makeCoordinator() -> DialogPresenter {
+    DialogPresenter()
+  }
+
+  func makeUIView(context: Context) -> WKWebView {
     let webView = WKWebView(frame: .zero, configuration: page.configuration)
+    webView.uiDelegate = context.coordinator
     webView.load(URLRequest(url: page.url))
     return webView
   }
 
   func updateUIView(_: WKWebView, context _: Context) {}
+
+  /// Settings pages ask before resetting things (`confirm()`), which needs a dialog.
+  @MainActor
+  final class DialogPresenter: NSObject, WKUIDelegate {
+    func webView(_ webView: WKWebView, runJavaScriptAlertPanelWithMessage message: String, initiatedByFrame frame: WKFrameInfo) async {
+      await JavaScriptDialogs.alert(message, by: frame, from: webView)
+    }
+
+    func webView(_ webView: WKWebView, runJavaScriptConfirmPanelWithMessage message: String, initiatedByFrame frame: WKFrameInfo) async -> Bool {
+      await JavaScriptDialogs.confirm(message, by: frame, from: webView)
+    }
+
+    func webView(_ webView: WKWebView, runJavaScriptTextInputPanelWithPrompt prompt: String, defaultText: String?, initiatedByFrame frame: WKFrameInfo) async -> String? {
+      await JavaScriptDialogs.prompt(prompt, defaultText: defaultText, by: frame, from: webView)
+    }
+  }
 }

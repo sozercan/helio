@@ -46,7 +46,8 @@ struct WebPageScreen: View {
       // Once storage is cleared and the extensions loaded, which a link opened just after
       // launch would otherwise beat.
       await WebExtensionRuntime.shared.start()
-      if page == nil {
+      // Not for a screen left while it waited.
+      if !Task.isCancelled, page == nil {
         page = WebPageModel(url: url)
       }
     }
@@ -136,12 +137,20 @@ private final class WebPageModel: NSObject, WKNavigationDelegate, WKUIDelegate {
     Task { @MainActor in WebExtensionRuntime.shared.detach(webView) }
   }
 
-  /// A link to another app (`mailto:`) goes to that app. An extension's own pages
-  /// (`webkit-extension:`) load here, through the controller.
+  /// A link to another app (`mailto:`) goes to that app when the user clicks it; a page can't
+  /// open another app on its own, through a redirect, a script or a frame. An extension's own
+  /// pages (`webkit-extension:`) load in frames, but not as the page itself: WebKit loads those
+  /// only in a web view made from the extension's configuration, which pages aren't.
   func webView(_: WKWebView, decidePolicyFor action: WKNavigationAction) async -> WKNavigationActionPolicy {
     guard let url = action.request.url, let scheme = url.scheme?.lowercased(),
-          !["http", "https", "about", "data", "blob", "webkit-extension"].contains(scheme) else { return .allow }
-    await UIApplication.shared.open(url)
+          !["http", "https", "about", "data", "blob"].contains(scheme) else { return .allow }
+    let mainFrame = action.targetFrame?.isMainFrame ?? true
+    if scheme == "webkit-extension" {
+      return mainFrame ? .cancel : .allow
+    }
+    if action.navigationType == .linkActivated, mainFrame {
+      await UIApplication.shared.open(url)
+    }
     return .cancel
   }
 
@@ -150,5 +159,17 @@ private final class WebPageModel: NSObject, WKNavigationDelegate, WKUIDelegate {
   func webView(_ webView: WKWebView, createWebViewWith _: WKWebViewConfiguration, for action: WKNavigationAction, windowFeatures _: WKWindowFeatures) -> WKWebView? {
     webView.load(action.request)
     return nil
+  }
+
+  func webView(_ webView: WKWebView, runJavaScriptAlertPanelWithMessage message: String, initiatedByFrame frame: WKFrameInfo) async {
+    await JavaScriptDialogs.alert(message, by: frame, from: webView)
+  }
+
+  func webView(_ webView: WKWebView, runJavaScriptConfirmPanelWithMessage message: String, initiatedByFrame frame: WKFrameInfo) async -> Bool {
+    await JavaScriptDialogs.confirm(message, by: frame, from: webView)
+  }
+
+  func webView(_ webView: WKWebView, runJavaScriptTextInputPanelWithPrompt prompt: String, defaultText: String?, initiatedByFrame frame: WKFrameInfo) async -> String? {
+    await JavaScriptDialogs.prompt(prompt, defaultText: defaultText, by: frame, from: webView)
   }
 }
