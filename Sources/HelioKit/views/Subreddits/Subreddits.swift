@@ -311,12 +311,13 @@ struct Subreddits: View, Equatable {
 
 private extension View {
   /// The subs list's search field and Edit button. iOS keeps them in the navigation bar. On Mac
-  /// that bar floats over the rows, which show through behind it, so the list gets a plain
-  /// header above it instead.
+  /// that bar floats over the rows, which show through behind it, so the list gets its own bar
+  /// instead, which the rows scroll under and fade beneath, like the feed's under its title.
   @ViewBuilder
   func subsSearchAndEdit(_ searchText: Binding<String>, isPresented: Binding<Bool>, focused: FocusState<Bool>.Binding) -> some View {
     #if targetEnvironment(macCatalyst)
-      safeAreaInset(edge: .top, spacing: 0) { MacSubsHeader(searchText: searchText, focusRequested: isPresented) }
+      safeAreaBar(edge: .top, spacing: 0) { MacSubsHeader(searchText: searchText, focusRequested: isPresented) }
+        .scrollEdgeEffectStyle(.soft, for: .top)
         .toolbar(.hidden, for: .navigationBar)
     #else
       searchable(text: searchText, isPresented: isPresented, prompt: "Search my subreddits")
@@ -369,7 +370,6 @@ private extension View {
       }
       .padding(.horizontal, 12)
       .padding(.vertical, 8)
-      .background(Color(uiColor: .systemBackground))
     }
   }
 #endif
