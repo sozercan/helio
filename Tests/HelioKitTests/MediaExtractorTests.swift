@@ -1,4 +1,5 @@
 import Foundation
+import Nuke
 import Testing
 @testable import HelioKit
 
@@ -26,6 +27,20 @@ struct MediaExtractorTests {
     guard case .repost = result else { Issue.record("expected repost, got \(String(describing: result))")
       return
     }
+  }
+
+  @Test func sizesASingleImageToItsWidthAndOneOfUnknownSizeToFillItsSquare() throws {
+    func resize(_ preview: Any?) throws -> String? {
+      var overrides: [String: Any] = ["url": "https://i.redd.it/abc.jpg", "domain": "i.redd.it"]
+      overrides["preview"] = preview ?? NSNull()
+      guard case let .imgs(images)? = try extract(overrides) else { return nil }
+      return images.first?.request.processors.first?.identifier
+    }
+    let known = ["images": [["source": ["url": "https://preview.redd.it/abc.jpg", "width": 1200, "height": 400]]]]
+    #expect(try resize(known) == ImageProcessors.Resize(width: 400, unit: .points, upscale: true).identifier)
+    // Shown in a square until it loads: a width-only resize would leave it too short to fill one.
+    let square = ImageProcessors.Resize(size: CGSize(width: 400, height: 400), unit: .points, contentMode: .aspectFill, crop: false, upscale: true)
+    #expect(try resize(nil) == square.identifier)
   }
 
   @Test func playsTheFallbackMP4WhenHLSIsMissing() throws {
