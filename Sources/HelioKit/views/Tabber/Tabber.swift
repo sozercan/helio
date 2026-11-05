@@ -112,7 +112,6 @@ struct Tabber: View {
     .task(priority: .utility) {
       // Before the first page a link opens, which only Mac shows in the app.
       if Nav.opensWebPagesInApp {
-        await WebPageStorage.clear()
         await WebExtensionRuntime.shared.start()
       }
     }

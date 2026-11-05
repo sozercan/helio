@@ -47,7 +47,23 @@ final class WebExtensionStore {
 
   init(directory: URL = WebExtensionStore.defaultDirectory) {
     self.directory = directory
-    extensions = (try? JSONDecoder().decode([ManagedWebExtension].self, from: Data(contentsOf: directory.appending(path: "extensions.json")))) ?? []
+    let listURL = directory.appending(path: "extensions.json")
+    let saved = try? JSONDecoder().decode([ManagedWebExtension].self, from: Data(contentsOf: listURL))
+    extensions = saved ?? []
+    // Only with a list read: without one, no folder can be told apart from a removed one.
+    if saved != nil {
+      deleteRemovedFolders()
+    }
+  }
+
+  /// Deletes the folders of extensions removed before this launch: WebKit kept the ones it had
+  /// loaded running until then, and they still needed their files.
+  private func deleteRemovedFolders() {
+    let kept = Set(extensions.map(\.id))
+    let folders = (try? FileManager.default.contentsOfDirectory(at: directory, includingPropertiesForKeys: [.isDirectoryKey])) ?? []
+    for folder in folders where (try? folder.resourceValues(forKeys: [.isDirectoryKey]).isDirectory) == true && !kept.contains(folder.lastPathComponent) {
+      try? FileManager.default.removeItem(at: folder)
+    }
   }
 
   /// Under the app's own folder: on Mac, Application Support is shared by every app.
@@ -95,32 +111,40 @@ final class WebExtensionStore {
     let ext = ManagedWebExtension(id: id, name: Self.displayName(manifest: manifest, folder: source), version: manifest["version"] as? String, isEnabled: true)
     try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
     try FileManager.default.copyItem(at: source, to: folder(of: ext))
-    extensions.append(ext)
-    save()
+    do {
+      try save(extensions + [ext])
+    } catch {
+      try? FileManager.default.removeItem(at: folder(of: ext))
+      throw error
+    }
     logger.info("Added extension \(ext.name, privacy: .public)")
     return ext
   }
 
-  func remove(_ ext: ManagedWebExtension) {
-    try? FileManager.default.removeItem(at: folder(of: ext))
-    extensions.removeAll { $0.id == ext.id }
-    save()
+  /// Drops it from the list. Its files go at the next launch, as it may be running until then.
+  func remove(_ ext: ManagedWebExtension) throws {
+    try save(extensions.filter { $0.id != ext.id })
   }
 
-  func setEnabled(_ enabled: Bool, for ext: ManagedWebExtension) {
+  func setEnabled(_ enabled: Bool, for ext: ManagedWebExtension) throws {
     guard let index = extensions.firstIndex(where: { $0.id == ext.id }), extensions[index].isEnabled != enabled else { return }
-    extensions[index].isEnabled = enabled
-    save()
+    var updated = extensions
+    updated[index].isEnabled = enabled
+    try save(updated)
   }
 
-  private func save() {
-    changedSinceLaunch = true
+  /// Writes `list` and makes it the list, or, when it can't be written, leaves the list as it
+  /// was: a change the next launch wouldn't see isn't made.
+  private func save(_ list: [ManagedWebExtension]) throws {
     do {
       try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
-      try JSONEncoder().encode(extensions).write(to: listURL, options: .atomic)
+      try JSONEncoder().encode(list).write(to: listURL, options: .atomic)
     } catch {
       logger.error("Couldn't save the extension list: \(error.localizedDescription, privacy: .public)")
+      throw error
     }
+    extensions = list
+    changedSinceLaunch = true
   }
 
   /// The manifest's name, looked up in the extension's default locale when it's a message

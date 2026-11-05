@@ -39,7 +39,14 @@ struct WebPageScreen: View {
     .onAppear {
       if let page {
         WebExtensionRuntime.shared.activate(page.webView)
-      } else {
+      }
+    }
+    .task {
+      guard page == nil else { return }
+      // Once storage is cleared and the extensions loaded, which a link opened just after
+      // launch would otherwise beat.
+      await WebExtensionRuntime.shared.start()
+      if page == nil {
         page = WebPageModel(url: url)
       }
     }
@@ -65,7 +72,8 @@ enum WebPageStorage {
 
   @MainActor static let store = WKWebsiteDataStore(forIdentifier: id)
 
-  /// Drops what sites stored before this launch. Before the first page opens.
+  /// Drops what sites stored before this launch, before the first page opens
+  /// (`WebExtensionRuntime.start`).
   @MainActor
   static func clear() async {
     await store.removeData(ofTypes: WKWebsiteDataStore.allWebsiteDataTypes(), modifiedSince: .distantPast)
@@ -128,10 +136,11 @@ private final class WebPageModel: NSObject, WKNavigationDelegate, WKUIDelegate {
     Task { @MainActor in WebExtensionRuntime.shared.detach(webView) }
   }
 
-  /// A link to another app (`mailto:`) goes to that app.
+  /// A link to another app (`mailto:`) goes to that app. An extension's own pages
+  /// (`webkit-extension:`) load here, through the controller.
   func webView(_: WKWebView, decidePolicyFor action: WKNavigationAction) async -> WKNavigationActionPolicy {
     guard let url = action.request.url, let scheme = url.scheme?.lowercased(),
-          !["http", "https", "about", "data", "blob"].contains(scheme) else { return .allow }
+          !["http", "https", "about", "data", "blob", "webkit-extension"].contains(scheme) else { return .allow }
     await UIApplication.shared.open(url)
     return .cancel
   }

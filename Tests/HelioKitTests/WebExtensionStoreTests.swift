@@ -48,14 +48,33 @@ struct WebExtensionStoreTests {
   @Test func aDisabledOrRemovedExtensionDoesntLoad() throws {
     let store = WebExtensionStore(directory: root.appending(path: "store"))
     let ext = try store.add(from: extensionFolder(["name": "Blocker"]))
-    store.setEnabled(false, for: ext)
+    try store.setEnabled(false, for: ext)
     #expect(store.enabledFolders.isEmpty)
-    store.setEnabled(true, for: ext)
+    try store.setEnabled(true, for: ext)
     #expect(store.enabledFolders.count == 1)
 
-    store.remove(ext)
+    try store.remove(ext)
     #expect(store.extensions.isEmpty)
+    // Its files stay while it may be running, until the next launch.
+    #expect(FileManager.default.fileExists(atPath: store.folder(of: ext).path))
+    _ = WebExtensionStore(directory: store.directory)
     #expect(!FileManager.default.fileExists(atPath: store.folder(of: ext).path))
+  }
+
+  @Test func aChangeThatCantBeSavedIsntMade() throws {
+    let store = WebExtensionStore(directory: root.appending(path: "store"))
+    let ext = try store.add(from: extensionFolder(["name": "Blocker"]))
+    // The list can't be written where a folder stands in for it.
+    let list = store.directory.appending(path: "extensions.json")
+    try FileManager.default.removeItem(at: list)
+    try FileManager.default.createDirectory(at: list, withIntermediateDirectories: true)
+
+    #expect(throws: (any Error).self) { try store.setEnabled(false, for: ext) }
+    #expect(store.extensions.first?.isEnabled == true)
+    #expect(throws: (any Error).self) { try store.add(from: extensionFolder(["name": "Other"])) }
+    #expect(store.extensions.count == 1)
+    #expect(throws: (any Error).self) { try store.remove(ext) }
+    #expect(store.extensions == [ext])
   }
 
   @Test func aLocalizedNameComesFromTheDefaultLocale() throws {

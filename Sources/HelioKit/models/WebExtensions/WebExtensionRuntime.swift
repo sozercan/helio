@@ -17,23 +17,25 @@ import WebKit
 /// the browser's tabs and windows, and finds a page's web view through its tab. Helio has no
 /// tabs, so each page shown registers as a tab of one window.
 @MainActor
+@Observable
 final class WebExtensionRuntime: NSObject {
   static let shared = WebExtensionRuntime()
 
   /// Its default data store, which extensions' cookie and data APIs reach, is the pages' own
   /// (`WebPageStorage`), not the app's.
-  let controller: WKWebExtensionController = {
+  @ObservationIgnored let controller: WKWebExtensionController = {
     let configuration = WKWebExtensionController.Configuration.default()
     configuration.defaultWebsiteDataStore = WebPageStorage.store
     return WKWebExtensionController(configuration: configuration)
   }()
 
-  private let window = HostWindow()
-  private var tabs: [ObjectIdentifier: HostTab] = [:]
-  private var started = false
-  private let logger = Logger(subsystem: "com.sertacozercan.helio", category: "WebExtensions")
+  @ObservationIgnored private let window = HostWindow()
+  @ObservationIgnored private var tabs: [ObjectIdentifier: HostTab] = [:]
+  @ObservationIgnored private var startTask: Task<Void, Never>?
+  @ObservationIgnored private let logger = Logger(subsystem: "com.sertacozercan.helio", category: "WebExtensions")
 
-  /// The loaded extensions, by their id in the store.
+  /// The loaded extensions, by their id in the store. Observed: the Extensions panel shows
+  /// what loaded, which can finish after it opens.
   private(set) var contexts: [String: WKWebExtensionContext] = [:]
   /// Why an enabled extension didn't load, by its id in the store.
   private(set) var loadErrors: [String: String] = [:]
@@ -48,13 +50,19 @@ final class WebExtensionRuntime: NSObject {
     !contexts.isEmpty
   }
 
-  /// Loads the enabled extensions, the first time only.
+  /// Gets pages ready, once per launch: drops what sites stored last time (`WebPageStorage`),
+  /// then loads the enabled extensions. Each page waits for it, so none opens with the last
+  /// launch's site data or without the extensions, whenever it's opened.
   func start(store: WebExtensionStore = .shared) async {
-    guard !started else { return }
-    started = true
-    for (id, url) in store.enabledFolders {
-      await load(id: id, from: url)
+    if startTask == nil {
+      startTask = Task {
+        await WebPageStorage.clear()
+        for (id, url) in store.enabledFolders {
+          await load(id: id, from: url)
+        }
+      }
     }
+    await startTask?.value
   }
 
   private func load(id: String, from url: URL) async {

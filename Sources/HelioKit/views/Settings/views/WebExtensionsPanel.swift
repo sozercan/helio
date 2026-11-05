@@ -14,7 +14,8 @@ import WebKit
 struct WebExtensionsPanel: View {
   @State private var store = WebExtensionStore.shared
   @State private var choosingFolder = false
-  @State private var addError: String?
+  /// What failed, and why: the alert shows it.
+  @State private var failure: (title: String, message: String)?
   @State private var optionsPage: OptionsPage?
   @Environment(\.useTheme) private var theme
 
@@ -40,20 +41,16 @@ struct WebExtensionsPanel: View {
     .themedListBG(theme.lists.bg)
     .navigationBarTitle("Extensions", displayMode: .inline)
     .fileImporter(isPresented: $choosingFolder, allowedContentTypes: [.folder]) { result in
-      do {
-        try store.add(from: result.get())
-      } catch {
-        addError = error.localizedDescription
-      }
+      attempt("Couldn't Add the Extension") { try store.add(from: result.get()) }
     }
-    .alert("Couldn't Add the Extension", isPresented: Binding { addError != nil } set: {
+    .alert(failure?.title ?? "", isPresented: Binding { failure != nil } set: {
       if !$0 {
-        addError = nil
+        failure = nil
       }
     }) {
       Button("OK", role: .cancel) {}
     } message: {
-      Text(addError ?? "")
+      Text(failure?.message ?? "")
     }
     .sheet(item: $optionsPage) { page in
       NavigationStack {
@@ -70,11 +67,22 @@ struct WebExtensionsPanel: View {
     }
   }
 
+  /// Runs a change to the list, showing why it failed if it did.
+  private func attempt(_ title: String, _ change: () throws -> Void) {
+    do {
+      try change()
+    } catch {
+      failure = (title, error.localizedDescription)
+    }
+  }
+
   private func row(_ ext: ManagedWebExtension) -> some View {
     let runtime = WebExtensionRuntime.shared
     let context = runtime.contexts[ext.id]
     return HStack(spacing: 12) {
-      Toggle(isOn: Binding { ext.isEnabled } set: { store.setEnabled($0, for: ext) }) {
+      Toggle(isOn: Binding { ext.isEnabled } set: { enabled in
+        attempt("Couldn't Change the Extension") { try store.setEnabled(enabled, for: ext) }
+      }) {
         VStack(alignment: .leading, spacing: 2) {
           Text(ext.name)
           if let error = runtime.loadErrors[ext.id] {
@@ -96,7 +104,7 @@ struct WebExtensionsPanel: View {
         .buttonStyle(.borderless)
       }
       Button("Remove", systemImage: "trash", role: .destructive) {
-        withAnimation { store.remove(ext) }
+        attempt("Couldn't Remove the Extension") { try withAnimation { try store.remove(ext) } }
       }
       .labelStyle(.iconOnly)
       .buttonStyle(.borderless)
