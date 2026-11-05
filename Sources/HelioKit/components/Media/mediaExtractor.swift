@@ -82,6 +82,16 @@ enum MediaExtractedType: Equatable {
 }
 
 extension MediaExtractedType {
+  /// Whether a feed lets this be tapped. A link's preview card always opens its page, as the
+  /// card says where it goes; other media opens from the feed only with "Open media from feed"
+  /// on, else a tap on it opens the post.
+  func isTappableInFeed(mediaTappable: Bool) -> Bool {
+    if case .link = self {
+      return true
+    }
+    return mediaTappable
+  }
+
   /// Starts loading the post, comment, user or subreddit a post links to.
   func loadLinkedEntity() {
     switch self {

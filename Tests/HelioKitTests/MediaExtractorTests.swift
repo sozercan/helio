@@ -142,6 +142,18 @@ struct MediaExtractorTests {
     #expect(try #require(URL(string: "https://i.redd.it/abc.gif?s=signature")?.isGIF))
     #expect(try !#require(URL(string: "https://i.redd.it/abc.png?x=.gif")?.isGIF))
   }
+
+  @Test func aLinkCardOpensFromTheFeedWhateverTheMediaSetting() throws {
+    let link = try #require(try extract([:]))
+    let video = try #require(try extract(["media": ["reddit_video": ["fallback_url": "https://v.redd.it/abc/DASH_720.mp4", "width": 1280, "height": 720]]]))
+    guard case .link = link else {
+      Issue.record("expected a link, got \(link)")
+      return
+    }
+    #expect(link.isTappableInFeed(mediaTappable: false))
+    #expect(!video.isTappableInFeed(mediaTappable: false))
+    #expect(video.isTappableInFeed(mediaTappable: true))
+  }
 }
 
 /// A canvas feed shows no link previews, so its posts' previews download the linked page only
