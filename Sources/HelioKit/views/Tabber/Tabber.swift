@@ -123,11 +123,16 @@ struct Tabber: View {
 }
 
 private extension View {
-  /// Mac shows the tabs in `MacTabToolbar` instead.
+  /// Mac shows the tabs in `MacTabToolbar` instead. The tab's screens also run up under that
+  /// toolbar, as in Mac apps such as Reminders, so the theme's background fills the window to
+  /// its top edge and the subs sidebar runs its full height, instead of stopping under a band of
+  /// the window's own grey. Each column still keeps its content below the toolbar, which UIKit
+  /// gives it as safe area.
   @ViewBuilder
   func hidesTabBarOnMac() -> some View {
     #if targetEnvironment(macCatalyst)
       toolbar(.hidden, for: .tabBar)
+        .ignoresSafeArea(.container, edges: .top)
     #else
       self
     #endif

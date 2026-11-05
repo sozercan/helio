@@ -248,6 +248,7 @@ struct RedditListingFeed<Header: View, Footer: View, S: Sorting>: View {
       .touchScrollIndicators(.never)
       .listStyle(.plain)
       .navigationTitle(title)
+      .smallTitleOnMac()
       .environment(\.defaultMinListRowHeight, 1)
       .toolbar {
         // Sort and the feed's options share a glass group; the subreddit's icon is its own.
@@ -494,5 +495,17 @@ extension ShallowCachedFilter {
   /// change while it's selected.
   var pickerKey: String {
     "\(type.rawValue)|\(text)"
+  }
+}
+
+private extension View {
+  /// A large title's bar drew a band of its own under the Mac window toolbar, which the screens
+  /// run up under (`hidesTabBarOnMac`); a small one, like a Mac window's title (and Settings').
+  func smallTitleOnMac() -> some View {
+    #if targetEnvironment(macCatalyst)
+      navigationBarTitleDisplayMode(.inline)
+    #else
+      self
+    #endif
   }
 }
