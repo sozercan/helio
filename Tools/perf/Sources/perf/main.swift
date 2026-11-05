@@ -1,9 +1,10 @@
 import Foundation
 
 let usage = """
-Measures Helio in the iOS simulator against fixture Reddit data. See Tools/perf/README.md.
+Measures Helio in the iOS simulator or on this Mac against fixture Reddit data. See Tools/perf/README.md.
 
-  perf build <label> [--repo DIR] [--spm DIR]    Release build of a checkout, for testing
+  perf build <label> [--repo DIR] [--spm DIR] [--mac]
+                                                 Release build of a checkout, for the simulator or Mac
   perf bench <label> [--runs N] [--profile]      run the benchmark on that build (default 3 runs)
   perf summary <label>                           medians of the runs
   perf compare <base> <new>                      two labels side by side
@@ -12,8 +13,9 @@ Measures Helio in the iOS simulator against fixture Reddit data. See Tools/perf/
   perf callers <label> <symbol> [--run N] [--from MARK] [--to MARK] [--depth N] [--top N]
 
 Results go to $HELIO_PERF_DIR (default $TMPDIR/helio-perf)/<label>. Runs use the simulator in
-$HELIO_PERF_SIMULATOR, or a "Helio Perf" iPhone created when missing. Markers: home_open,
-scroll_start, scroll_end, post_open, cscroll_start, cscroll_end, end.
+$HELIO_PERF_SIMULATOR, or a "Helio Perf" iPhone created when missing; a --mac build runs on this
+Mac. Markers: home_open, scroll_start, scroll_end, post_open, cscroll_start, cscroll_end, end, and
+on Mac switch_start, switch_end, resize_start, resize_end.
 """
 
 /// Positional arguments and `--name value` options (`--profile` takes none).
@@ -24,8 +26,8 @@ struct Arguments {
   init(_ arguments: ArraySlice<String>) {
     var rest = arguments.makeIterator()
     while let argument = rest.next() {
-      if argument == "--profile" {
-        options["profile"] = "1"
+      if argument == "--profile" || argument == "--mac" {
+        options[String(argument.dropFirst(2))] = "1"
       } else if argument.hasPrefix("--") {
         options[String(argument.dropFirst(2))] = rest.next() ?? ""
       } else {
@@ -53,7 +55,8 @@ guard commandLine.count > 1, !["-h", "--help", "help"].contains(commandLine[1]) 
 let args = Arguments(commandLine.dropFirst(2))
 switch commandLine[1] {
 case "build":
-  Bench.build(label: args.positional(0), repo: args.options["repo"].map { URL(fileURLWithPath: $0) } ?? Paths.repo, spm: args.options["spm"])
+  Bench.build(label: args.positional(0), repo: args.options["repo"].map { URL(fileURLWithPath: $0) } ?? Paths.repo, spm: args.options["spm"],
+              mac: args.options["mac"] != nil)
 case "bench":
   Bench.run(label: args.positional(0), runs: args.int("runs", 3), profile: args.options["profile"] != nil)
 case "summary":

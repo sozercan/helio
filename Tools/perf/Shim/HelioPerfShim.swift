@@ -12,6 +12,11 @@
 //   (hands the URL to the scene like a tapped link, without the system's "Open in" prompt) and
 //   `<seq> scroll <seconds> <points per second>` (scrolls the largest visible scroll view).
 // - With $PERF_SEED_CREDENTIAL set, stores a placeholder Reddit account in the keychain.
+// - On Mac: `<seq> window <width> <height>` sizes the window, `<seq> resize <seconds> <min width>
+//   <max width>` drags its width from max to min and back like a live resize. With
+//   $PERF_MEMORY_KEYCHAIN set, the keychain is an in-memory store: an unprovisioned Mac Catalyst
+//   build can't use the real one, and runs then never touch the user's. With $PERF_SKIP_WHATS_NEW
+//   set, this version's What's New counts as seen.
 
 import Foundation
 import ObjectiveC
@@ -51,6 +56,10 @@ enum Shim {
 
   static func start() {
     mainThread = mach_thread_self()
+    if env["PERF_SKIP_WHATS_NEW"] != nil, let version = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String {
+      // WhatsNewKit's UserDefaults store: one key per presented version.
+      UserDefaults.standard.set(version, forKey: "WhatsNewKit.\(version)")
+    }
     if env["PERF_SEED_CREDENTIAL"] != nil {
       seedCredential()
     }
@@ -143,12 +152,130 @@ enum Shim {
       kSecAttrService as String: "com.sertacozercan.helio.reddit-multi-credentials",
       kSecAttrAccount as String: credential["id"]!,
     ]
-    SecItemDelete(query as CFDictionary)
     var add = query
     add[kSecValueData as String] = try? JSONSerialization.data(withJSONObject: credential)
-    SecItemAdd(add as CFDictionary, nil)
+    // Calls from this library aren't interposed, so the in-memory store is called directly.
+    if MemoryKeychain.enabled {
+      _ = MemoryKeychain.delete(query)
+      _ = MemoryKeychain.add(add)
+    } else {
+      SecItemDelete(query as CFDictionary)
+      SecItemAdd(add as CFDictionary, nil)
+    }
   }
 }
+
+// MARK: - In-memory keychain
+
+/// Generic and internet passwords kept in memory, in place of the keychain, when
+/// $PERF_MEMORY_KEYCHAIN is set. Enough of SecItem for KeychainAccess: matching by class,
+/// service, account and server, `kSecMatchLimit` one or all, and returning data, attributes or both.
+enum MemoryKeychain {
+  static let enabled = Shim.env["PERF_MEMORY_KEYCHAIN"] != nil
+  private static let lock = NSLock()
+  private nonisolated(unsafe) static var items: [[String: Any]] = []
+  private static let identity = [kSecClass, kSecAttrService, kSecAttrAccount, kSecAttrServer, kSecAttrProtocol, kSecAttrPort, kSecAttrPath]
+    .map { $0 as String }
+  private static let queryOnly = [kSecMatchLimit, kSecReturnData, kSecReturnAttributes, kSecReturnRef, kSecReturnPersistentRef,
+                                  kSecUseDataProtectionKeychain, kSecUseAuthenticationContext]
+    .map { $0 as String }
+
+  private static func matches(_ item: [String: Any], _ query: [String: Any]) -> Bool {
+    identity.allSatisfy { key in
+      guard let wanted = query[key] as? NSObject else { return true }
+      return (item[key] as? NSObject)?.isEqual(wanted) ?? false
+    }
+  }
+
+  private static func dictionary(_ cf: CFDictionary) -> [String: Any] {
+    (cf as NSDictionary) as? [String: Any] ?? [:]
+  }
+
+  static func add(_ attributes: [String: Any]) -> OSStatus {
+    lock.withLock {
+      guard !items.contains(where: { matches($0, attributes.filter { identity.contains($0.key) }) }) else { return errSecDuplicateItem }
+      items.append(attributes.filter { !queryOnly.contains($0.key) })
+      return errSecSuccess
+    }
+  }
+
+  static func copy(_ query: [String: Any], _ result: UnsafeMutablePointer<CFTypeRef?>?) -> OSStatus {
+    let found = lock.withLock { items.filter { matches($0, query) } }
+    guard !found.isEmpty else { return errSecItemNotFound }
+    let all = (query[kSecMatchLimit as String] as? NSObject)?.isEqual(kSecMatchLimitAll) ?? false
+    let data = query[kSecReturnData as String] as? Bool ?? false, attributes = query[kSecReturnAttributes as String] as? Bool ?? false
+    let values: [Any] = found.compactMap { item in
+      if attributes {
+        return data ? item : item.filter { $0.key != kSecValueData as String }
+      }
+      return data ? item[kSecValueData as String] : nil
+    }
+    if let result, !values.isEmpty {
+      result.pointee = (all ? values as NSArray : values[0] as AnyObject) as CFTypeRef
+    }
+    return errSecSuccess
+  }
+
+  static func update(_ query: [String: Any], _ changes: [String: Any]) -> OSStatus {
+    lock.withLock {
+      var updated = false
+      for i in items.indices where matches(items[i], query) {
+        items[i].merge(changes) { $1 }
+        updated = true
+      }
+      return updated ? errSecSuccess : errSecItemNotFound
+    }
+  }
+
+  static func delete(_ query: [String: Any]) -> OSStatus {
+    lock.withLock {
+      let before = items.count
+      items.removeAll { matches($0, query) }
+      return items.count < before ? errSecSuccess : errSecItemNotFound
+    }
+  }
+
+  // The app's calls, through dyld's interpose table below. With the store off they go on to the
+  // keychain: calls from this library aren't interposed.
+  typealias AddOrCopy = @convention(c) (CFDictionary, UnsafeMutablePointer<CFTypeRef?>?) -> OSStatus
+  typealias Update = @convention(c) (CFDictionary, CFDictionary) -> OSStatus
+  typealias Delete = @convention(c) (CFDictionary) -> OSStatus
+
+  static let addItem: AddOrCopy = { enabled ? add(dictionary($0)) : SecItemAdd($0, $1) }
+  static let copyMatching: AddOrCopy = { enabled ? copy(dictionary($0), $1) : SecItemCopyMatching($0, $1) }
+  static let updateItem: Update = { enabled ? update(dictionary($0), dictionary($1)) : SecItemUpdate($0, $1) }
+  static let deleteItem: Delete = { enabled ? delete(dictionary($0)) : SecItemDelete($0) }
+}
+
+@_cdecl("helio_perf_SecItemAdd")
+func perfSecItemAdd(_ attributes: CFDictionary, _ result: UnsafeMutablePointer<CFTypeRef?>?) -> OSStatus {
+  MemoryKeychain.addItem(attributes, result)
+}
+
+@_cdecl("helio_perf_SecItemCopyMatching")
+func perfSecItemCopyMatching(_ query: CFDictionary, _ result: UnsafeMutablePointer<CFTypeRef?>?) -> OSStatus {
+  MemoryKeychain.copyMatching(query, result)
+}
+
+@_cdecl("helio_perf_SecItemUpdate")
+func perfSecItemUpdate(_ query: CFDictionary, _ changes: CFDictionary) -> OSStatus {
+  MemoryKeychain.updateItem(query, changes)
+}
+
+@_cdecl("helio_perf_SecItemDelete")
+func perfSecItemDelete(_ query: CFDictionary) -> OSStatus {
+  MemoryKeychain.deleteItem(query)
+}
+
+/// dyld's interpose table: (replacement, original) pairs.
+@section("__DATA,__interpose") @used
+let interposeSecItemAdd: (MemoryKeychain.AddOrCopy, MemoryKeychain.AddOrCopy) = (perfSecItemAdd, SecItemAdd)
+@section("__DATA,__interpose") @used
+let interposeSecItemCopyMatching: (MemoryKeychain.AddOrCopy, MemoryKeychain.AddOrCopy) = (perfSecItemCopyMatching, SecItemCopyMatching)
+@section("__DATA,__interpose") @used
+let interposeSecItemUpdate: (MemoryKeychain.Update, MemoryKeychain.Update) = (perfSecItemUpdate, SecItemUpdate)
+@section("__DATA,__interpose") @used
+let interposeSecItemDelete: (MemoryKeychain.Delete, MemoryKeychain.Delete) = (perfSecItemDelete, SecItemDelete)
 
 // MARK: - Fixture responses
 
@@ -319,7 +446,10 @@ final class FrameWatch: NSObject {
   }
 
   @objc private func tick(_ link: CADisplayLink) {
-    let expected = link.duration > 0 ? link.duration : 1.0 / 60
+    // The interval the link asked for. `duration` is the display's, which on a 120 Hz Mac display
+    // is half the 60 fps asked for, so every frame would count as a hitch.
+    let interval = link.targetTimestamp - link.timestamp
+    let expected = interval > 0 ? interval : link.duration > 0 ? link.duration : 1.0 / 60
     lock.withLock {
       if last > 0 {
         let delta = link.timestamp - last
@@ -373,6 +503,73 @@ final class Scroller: NSObject {
   }
 }
 
+/// Drags a Mac window's width from wide to narrow and back over `seconds`, a step per frame,
+/// like a live resize: each step lays the window out again. Steps set the AppKit window's frame,
+/// as dragging its edge does; `requestGeometryUpdate` would run each one as an animated size
+/// transition instead. Logs how many steps it took and their average time.
+final class Resizer: NSObject {
+  weak var scene: UIWindowScene?
+  let seconds: Double, wide: Double, narrow: Double
+  private var began: CFTimeInterval = 0
+  private var link: CADisplayLink?
+  private var steps = 0
+  private var stepTime: Double = 0
+
+  init(scene: UIWindowScene, seconds: Double, wide: Double, narrow: Double) {
+    self.scene = scene
+    self.seconds = seconds
+    self.wide = wide
+    self.narrow = narrow
+  }
+
+  func start() {
+    let link = CADisplayLink(target: self, selector: #selector(tick))
+    link.preferredFrameRateRange = CAFrameRateRange(minimum: 60, maximum: 60, preferred: 60)
+    link.add(to: .main, forMode: .common)
+    self.link = link
+  }
+
+  @objc private func tick(_ link: CADisplayLink) {
+    if began == 0 {
+      began = link.timestamp
+    }
+    let progress = min(1, (link.timestamp - began) / seconds)
+    // 1 at both ends, 0 halfway.
+    let toward = abs(1 - 2 * progress)
+    let width = narrow + (wide - narrow) * toward
+    let start = CACurrentMediaTime()
+    if !Self.setAppKitWidth(width) {
+      #if targetEnvironment(macCatalyst)
+        if let scene {
+          let frame = scene.effectiveGeometry.systemFrame
+          scene.requestGeometryUpdate(.Mac(systemFrame: CGRect(x: frame.minX, y: frame.minY, width: width, height: frame.height)))
+        }
+      #endif
+    }
+    steps += 1
+    stepTime += (CACurrentMediaTime() - start) * 1000
+    if progress >= 1 || scene == nil {
+      link.invalidate()
+      self.link = nil
+      Shim.log(String(format: "P %.0f resized", Shim.now))
+      Shim.log(String(format: "P %.0f resize_steps=%d,avg_ms=%.0f", Shim.now, steps, stepTime / Double(max(steps, 1))))
+    }
+  }
+
+  /// Sets the app's AppKit window to `width`, keeping its top left corner. False without one.
+  static func setAppKitWidth(_ width: Double) -> Bool {
+    guard let app = (NSClassFromString("NSApplication") as? NSObject.Type)?.value(forKey: "sharedApplication") as? NSObject,
+          let window = ((app.value(forKey: "windows") as? [NSObject]) ?? []).first(where: { ($0.value(forKey: "isVisible") as? Bool) == true }),
+          let frame = (window.value(forKey: "frame") as? NSValue)?.cgRectValue else { return false }
+    let setFrame = NSSelectorFromString("setFrame:display:")
+    guard let method = class_getInstanceMethod(type(of: window), setFrame) else { return false }
+    typealias SetFrame = @convention(c) (AnyObject, Selector, CGRect, Bool) -> Void
+    // AppKit's origin is the bottom left, so the top stays put with the same height.
+    unsafeBitCast(method_getImplementation(method), to: SetFrame.self)(window, setFrame, CGRect(x: frame.minX, y: frame.minY, width: width, height: frame.height), true)
+    return true
+  }
+}
+
 enum Driver {
   static var lastCommand = 0
   static var scroller: Scroller?
@@ -392,6 +589,12 @@ enum Driver {
       case "scroll" where fields.count >= 4:
         let seconds = Double(fields[2]) ?? 0, speed = Double(fields[3]) ?? 0
         DispatchQueue.main.async { scroll(seconds: seconds, speed: speed) }
+      case "window" where fields.count >= 4:
+        let size = CGSize(width: Double(fields[2]) ?? 0, height: Double(fields[3]) ?? 0)
+        DispatchQueue.main.async { setWindow(size) }
+      case "resize" where fields.count >= 5:
+        let seconds = Double(fields[2]) ?? 0, narrow = Double(fields[3]) ?? 0, wide = Double(fields[4]) ?? 0
+        DispatchQueue.main.async { resize(seconds: seconds, from: wide, to: narrow) }
       default:
         break
       }
@@ -422,9 +625,49 @@ enum Driver {
     self.scroller = scroller
   }
 
+  static var windowScene: UIWindowScene? {
+    UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }.first
+  }
+
+  /// A Mac window's size, at a fixed place on the screen, so every run lays out the same. The app
+  /// comes to the front too: launched from a shell it stays behind other windows, and a covered
+  /// window can stop drawing.
+  static func setWindow(_ size: CGSize) {
+    guard let scene = windowScene else {
+      Shim.log(String(format: "P %.0f no_window", Shim.now))
+      return
+    }
+    #if targetEnvironment(macCatalyst)
+      let activate = NSSelectorFromString("activateIgnoringOtherApps:")
+      if let app = (NSClassFromString("NSApplication") as? NSObject.Type)?.value(forKey: "sharedApplication") as? NSObject,
+         let method = class_getInstanceMethod(type(of: app), activate)
+      {
+        typealias Activate = @convention(c) (AnyObject, Selector, Bool) -> Void
+        unsafeBitCast(method_getImplementation(method), to: Activate.self)(app, activate, true)
+      }
+      scene.requestGeometryUpdate(.Mac(systemFrame: CGRect(origin: CGPoint(x: 40, y: 40), size: size))) { error in
+        Shim.log(String(format: "P %.0f window_failed %@", Shim.now, error.localizedDescription.replacingOccurrences(of: " ", with: "_")))
+      }
+    #endif
+    Shim.log(String(format: "P %.0f window %.0fx%.0f", Shim.now, size.width, size.height))
+  }
+
+  static func resize(seconds: Double, from wide: Double, to narrow: Double) {
+    guard let scene = windowScene else {
+      Shim.log(String(format: "P %.0f no_window", Shim.now))
+      return
+    }
+    let resizer = Resizer(scene: scene, seconds: seconds, wide: wide, narrow: narrow)
+    resizer.start()
+    self.resizer = resizer
+  }
+
+  static var resizer: Resizer?
+
   /// The largest visible scroll view that can scroll vertically: the feed or the post's comments.
   static func mainScrollView() -> UIScrollView? {
-    let window = UIApplication.shared.connectedScenes.compactMap { ($0 as? UIWindowScene)?.keyWindow }.first
+    // A Mac app that isn't frontmost has no key window.
+    let window = windowScene.flatMap { $0.keyWindow ?? $0.windows.first }
     guard let window else { return nil }
     var best: (UIScrollView, CGFloat)?
     func visit(_ view: UIView) {
