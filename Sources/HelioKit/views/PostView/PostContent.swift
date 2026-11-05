@@ -61,6 +61,7 @@ struct PostContent: View, Equatable {
             .accessibilityAddTraits(.isHeader)
             .foregroundColor(postsTheme.titleText.color())
             .fixedSize(horizontal: false, vertical: true)
+            .collapsesOnTap($collapsed)
             .id("post-title")
             .onAppear { Task { await post.toggleSeen(true) } }
             .listRowInsets(EdgeInsets(top: postsTheme.padding.vertical, leading: postsTheme.padding.horizontal, bottom: postsTheme.spacing / 2, trailing: selectedTheme.posts.padding.horizontal))
@@ -92,19 +93,20 @@ struct PostContent: View, Equatable {
 
                     Spacer()
                   }
+                  .collapsesOnTap($collapsed)
                 }
               }
               .nsfw(over18 && defSettings.blurNSFW)
             }
           } else {
             Text("*Collapsed...*").foregroundStyle(.secondary).font(.caption)
+              .frame(maxWidth: .infinity, alignment: .leading)
+              .collapsesOnTap($collapsed)
           }
         }
         .id("post-content")
         .listRowInsets(EdgeInsets(top: postsTheme.spacing / 2, leading: postsTheme.padding.horizontal, bottom: postsTheme.spacing / 2, trailing: postsTheme.spacing / 2))
       }
-      .contentShape(Rectangle())
-      .onTapGesture { withAnimation(.smooth) { collapsed.toggle() } }
 
       BadgeOpt(avatarRequest: helioData.avatarImageRequest, badgeKit: data.badgeKit, showVotes: false, theme: postsTheme.badge,
                openSub: openSubreddit, subName: data.subreddit)
@@ -117,5 +119,14 @@ struct PostContent: View, Equatable {
     }
     .frame(maxWidth: .infinity, alignment: .leading)
     .multilineTextAlignment(.leading)
+  }
+}
+
+private extension View {
+  /// Tapping the post's title or text collapses or expands its content. Not its media: a click
+  /// on a playing video's controls (a web view on Mac) reached the post too, and collapsed it.
+  func collapsesOnTap(_ collapsed: Binding<Bool>) -> some View {
+    contentShape(Rectangle())
+      .onTapGesture { withAnimation(.smooth) { collapsed.wrappedValue.toggle() } }
   }
 }
