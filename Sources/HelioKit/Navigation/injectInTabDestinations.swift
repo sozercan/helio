@@ -87,6 +87,8 @@ struct RouterDestinationView: View {
         FAQPanel()
       case .themes:
         ThemesPanel()
+      case .webExtensions:
+        WebExtensionsPanel()
       }
     case .web:
       EmptyView()
