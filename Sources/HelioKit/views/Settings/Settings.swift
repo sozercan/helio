@@ -31,6 +31,10 @@ struct Settings: View {
             WSNavigationLink(.setting(.behavior), "Behavior", icon: "arrow.triangle.turn.up.right.diamond.fill")
             WSNavigationLink(.setting(.appearance), "Appearance", icon: "theatermask.and.paintbrush.fill")
             WSNavigationLink(.setting(.credentials), "Credentials", icon: "key.horizontal.fill")
+            if Nav.opensWebPagesInApp {
+              // Extensions run in the pages links open, which only Mac shows in the app.
+              WSNavigationLink(.setting(.webExtensions), "Extensions", icon: "puzzlepiece.extension.fill")
+            }
           }
 
           Section {
