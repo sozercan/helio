@@ -56,7 +56,8 @@ struct WebPageScreen: View {
 
 /// Keeps a page's navigation in its screen: a link meant for a new window (`target="_blank"`)
 /// opens in place, as there's no other window to put it in, and one to another app (`mailto:`)
-/// goes to that app.
+/// goes to that app when the user clicks it. A page can't open another app on its own, through a
+/// redirect, a script or a frame.
 @MainActor
 private final class PageOpener: WebPage.NavigationDeciding {
   weak var page: WebPage?
@@ -64,7 +65,9 @@ private final class PageOpener: WebPage.NavigationDeciding {
   func decidePolicy(for action: WebPage.NavigationAction, preferences: inout WebPage.NavigationPreferences) async -> WKNavigationActionPolicy {
     guard let url = action.request.url else { return .allow }
     if let scheme = url.scheme?.lowercased(), !["http", "https", "about", "data", "blob"].contains(scheme) {
-      await UIApplication.shared.open(url)
+      if action.navigationType == .linkActivated, action.target?.isMainFrame ?? true {
+        await UIApplication.shared.open(url)
+      }
       return .cancel
     }
     if action.target == nil {
