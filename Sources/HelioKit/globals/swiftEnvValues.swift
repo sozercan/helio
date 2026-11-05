@@ -57,6 +57,10 @@ private struct CurrentThemeKey: EnvironmentKey {
   static let defaultValue = defaultTheme
 }
 
+private struct NavColumnKey: EnvironmentKey {
+  static let defaultValue: Router.Column? = nil
+}
+
 private struct ContentWidthKey: EnvironmentKey {
   static let defaultValue: Double = .screenW
 }
@@ -111,6 +115,12 @@ extension EnvironmentValues {
   var primaryBGContext: NSManagedObjectContext {
     get { self[PrimaryBGContextKey.self] }
     set { self[PrimaryBGContextKey.self] = newValue }
+  }
+
+  /// The posts split view column this view is in, nil outside it. Pass it to `Nav.to`.
+  var navColumn: Router.Column? {
+    get { self[NavColumnKey.self] }
+    set { self[NavColumnKey.self] = newValue }
   }
 
   var contentWidth: Double {

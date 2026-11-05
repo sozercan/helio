@@ -9,6 +9,7 @@ import Defaults
 import SwiftUI
 
 struct ShortPostLink: View {
+  @Environment(\.navColumn) private var navColumn
   var noHPad = false
   var post: Post
   @Environment(\.useTheme) private var selectedTheme
@@ -28,7 +29,7 @@ struct ShortPostLink: View {
           Spacer()
           Tag(text: "r/\(data.subreddit)")
             .highPriorityGesture(TapGesture().onEnded {
-              Nav.to(.reddit(.subFeed(Subreddit(id: data.subreddit))))
+              Nav.to(.reddit(.subFeed(Subreddit(id: data.subreddit))), from: navColumn)
             })
         }
       }
@@ -39,7 +40,7 @@ struct ShortPostLink: View {
       .mask(RR(20, Color.black))
       .onTapGesture {
         post.layoutIfNeeded()
-        Nav.to(.reddit(.post(post)))
+        Nav.to(.reddit(.post(post)), from: navColumn)
       }
     }
   }

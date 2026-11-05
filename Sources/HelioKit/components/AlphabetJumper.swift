@@ -12,8 +12,8 @@ struct AlphabetJumper: View {
   var proxy: ScrollViewProxy
   @GestureState private var scrollLetter = ""
   @State private var haptic = UIImpactFeedbackGenerator(style: .rigid)
-
-  func goToLetter(_ letter: String, _ disableState: Bool = false) {}
+  /// The letter VoiceOver's swipe up and down moves through.
+  @State private var accessibilityIndex = 0
 
   func scrollTo(_ letter: String) {
     if !letter.isEmpty {
@@ -31,8 +31,6 @@ struct AlphabetJumper: View {
           .offset(x: scrollLetter == letter ? -48 : 0)
           .padding(.vertical, 1)
           .padding(.trailing, 2)
-          .contentShape(Rectangle())
-          .highPriorityGesture(TapGesture().onEnded { goToLetter(letter, true) })
       }
     }
     .animation(spring, value: scrollLetter.isEmpty)
@@ -58,7 +56,24 @@ struct AlphabetJumper: View {
         },
     )
     .onChange(of: scrollLetter, perform: scrollTo)
-    .frame(height: .screenH, alignment: .trailing)
+    // One adjustable element, like UIKit's table index: tapping a letter or dragging over the
+    // letters is the gesture above; VoiceOver users swipe up and down instead.
+    .accessibilityElement(children: .ignore)
+    .accessibilityLabel("Section index")
+    .accessibilityValue(letters.indices.contains(accessibilityIndex) ? letters[accessibilityIndex] : "")
+    .accessibilityAdjustableAction { direction in
+      guard !letters.isEmpty else { return }
+      switch direction {
+      // Clamped both ways: the list may have shrunk since the index was last set.
+      case .increment: accessibilityIndex = min(max(accessibilityIndex + 1, 0), letters.count - 1)
+      case .decrement: accessibilityIndex = min(max(accessibilityIndex - 1, 0), letters.count - 1)
+      @unknown default: return
+      }
+      scrollTo(letters[accessibilityIndex])
+    }
+    .accessibilityHidden(letters.isEmpty)
+    // Centered on the list it's over, such as the sidebar column, not on the window.
+    .frame(maxHeight: .infinity, alignment: .trailing)
     .ignoresSafeArea()
     .foregroundStyle(Color.accentColor)
   }

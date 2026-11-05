@@ -34,6 +34,8 @@ func parseRedditURL(_ rawUrlString: String) -> RedditURLType {
     case "r":
       let subredditName = pathComponents[1]
       if pathComponents.count > 2, pathComponents[2] == "comments" {
+        // A subreddit's comments listing (`/r/<sub>/comments`) has no post to open.
+        guard pathComponents.count > 3 else { return .other(link: urlString) }
         let postId = pathComponents[3]
         if pathComponents.count >= 6 {
           let commentId = pathComponents[5]

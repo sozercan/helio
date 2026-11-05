@@ -10,6 +10,7 @@ import SwiftUI
 
 struct AppContent: View {
   @Environment(\.scenePhase) var scenePhase
+  @Environment(\.managedObjectContext) private var managedObjectContext
 
   //  @Default(.ThemesDefSettings) private var themesDefSettings
   @Default(.GeneralDefSettings) private var generalDefSettings
@@ -84,51 +85,18 @@ struct AppContent: View {
 
       switch newPhase {
       case .active:
-        guard let name = shortcutItemToProcess?.userInfo?["name"] as? String else {
-          return
+        // A quick action that launched the app, applied once.
+        if let action = pendingQuickAction {
+          pendingQuickAction = nil
+          action.perform()
         }
-        switch name {
-        case savedKeyword:
-          print("\(savedKeyword) is selected")
-        case "search":
-          print("search is selected")
-        // MANDRAKE
-        // activeTab = .search // Set the active tab to "Search"
-        default:
-          print("default " + name)
-        }
-      case .inactive:
-        // inactive
-        break
       case .background:
-        addQuickActions()
-      @unknown default:
-        print("default")
+        QuickAction.updateShortcutItems(context: managedObjectContext)
+      default:
+        break
       }
     }
     .blur(radius: CGFloat(lockBlur)) // Set lockscreen blur
     .preferredColorScheme(appearanceDefSettings.colorScheme.colorScheme)
-  }
-
-  func addQuickActions() {
-    @FetchRequest(sortDescriptors: [NSSortDescriptor(key: "name", ascending: true)], animation: .default) var subreddits: FetchedResults<CachedSub>
-
-    var searchUserInfo: [String: NSSecureCoding] {
-      ["name": "search" as NSSecureCoding]
-    }
-    var savedInfo: [String: NSSecureCoding] {
-      ["name": savedKeyword as NSSecureCoding]
-    }
-    var statususerInfo: [String: NSSecureCoding] {
-      ["name": "status" as NSSecureCoding]
-    }
-    var contactuserInfo: [String: NSSecureCoding] {
-      ["name": "contact" as NSSecureCoding]
-    }
-
-    UIApplication.shared.shortcutItems = [
-      UIApplicationShortcutItem(type: "Search", localizedTitle: "Search", localizedSubtitle: "Search a Subreddit", icon: UIApplicationShortcutIcon(type: .search), userInfo: searchUserInfo),
-      UIApplicationShortcutItem(type: "Saved", localizedTitle: "Saved", localizedSubtitle: "", icon: UIApplicationShortcutIcon(type: .bookmark), userInfo: savedInfo),
-    ]
   }
 }

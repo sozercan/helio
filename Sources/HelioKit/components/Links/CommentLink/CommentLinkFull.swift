@@ -9,6 +9,7 @@ import Defaults
 import SwiftUI
 
 struct CommentLinkFull: View {
+  @Environment(\.navColumn) private var navColumn
   var post: Post
   var arrowKinds: [ArrowKind]
   var comment: Comment
@@ -54,9 +55,9 @@ struct CommentLinkFull: View {
       .onTapGesture {
         // Reddit cut the thread off below this stub's parent: open the thread from there.
         if let parentID = data.parent_id, parentID.hasPrefix("t1_") {
-          Nav.to(.reddit(.postHighlighted(post, parentID)))
+          Nav.to(.reddit(.postHighlighted(post, parentID)), from: navColumn)
         } else {
-          Nav.to(.reddit(.post(post)))
+          Nav.to(.reddit(.post(post)), from: navColumn)
         }
       }
       .allowsHitTesting(!loadMoreLoading)

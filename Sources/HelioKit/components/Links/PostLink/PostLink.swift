@@ -58,13 +58,22 @@ extension View {
     let fadeReadPosts = theme.unseenType == .fade
     return self
       .padding(EdgeInsets(top: theme.innerPadding.vertical, leading: theme.innerPadding.horizontal, bottom: theme.innerPadding.vertical, trailing: theme.innerPadding.horizontal))
-      .background(PostLinkBG(theme: theme, stickied: post.data?.stickied, secondary: secondary))
+      .background {
+        PostLinkBG(theme: theme, stickied: post.data?.stickied, secondary: secondary)
+      }
       .overlay(PostLinkGlowDot(unseenType: theme.unseenType, seen: seen, badge: false), alignment: .topTrailing)
       .geometryGroup()
       .contentShape(Rectangle())
       .compositingGroup()
 //      .brightness(isOpen.wrappedValue ? 0.075 : 0)
       .opacity(fadeReadPosts && seen ? theme.unseenFadeOpacity : 1)
+      // Outside the read-post fade: opening a post marks it read, which mustn't hide its mark.
+      // Only the feed's own rows: a crosspost's embedded card has the original's id.
+      .overlay {
+        if !secondary {
+          OpenPostHighlight(postID: post.id, cornerRadius: theme.cornerRadius)
+        }
+      }
       .contextMenu(menuItems: {
         PostLinkContext(post: post)
 
@@ -134,6 +143,35 @@ struct PostLinkGlowDot: View, Equatable {
   }
 }
 
+/// Marks the feed's post that's open beside it in the posts split view, as a list marks its
+/// selection. Only the feed column has one.
+struct OpenPostHighlight: View {
+  let postID: String
+  let cornerRadius: CGFloat
+  /// An outline instead of a tint, for canvas tiles: a tint barely shows over a picture.
+  var outline = false
+  @Environment(\.navColumn) private var navColumn
+
+  var body: some View {
+    // Collapsed into one stack, the post covers the feed: nothing to mark.
+    if isOpenBesideFeed(postID: postID, column: navColumn) {
+      let shape = RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+      Group {
+        if outline {
+          shape.strokeBorder(Color.accentColor, lineWidth: 3)
+        } else {
+          // The tint alone is faint (about 1.2:1 on white), so a bar in the accent color marks it too.
+          shape.fill(Color.accentColor.opacity(0.12))
+            .overlay(alignment: .leading) {
+              Rectangle().fill(Color.accentColor).frame(width: 3)
+            }
+        }
+      }
+      .allowsHitTesting(false)
+    }
+  }
+}
+
 struct PostLinkBG: View, Equatable {
   let theme: PostLinkTheme
   let stickied: Bool?
@@ -161,4 +199,11 @@ struct PostLinkBG: View, Equatable {
     .allowsHitTesting(false)
     .clipShape(RoundedRectangle(cornerRadius: theme.cornerRadius, style: .continuous))
   }
+}
+
+/// Whether the post with `postID`, in a feed column, is the one open beside it.
+@MainActor
+func isOpenBesideFeed(postID: String, column: Router.Column?) -> Bool {
+  // Collapsed into one stack, the post covers the feed: nothing to mark.
+  column == .feed && Nav.shared[.posts].firstIsSidebarSelection && Nav.shared[.posts].postColumn.first?.id == postID
 }

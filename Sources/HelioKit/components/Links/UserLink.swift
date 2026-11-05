@@ -16,6 +16,7 @@ struct UserLinkContainer: View {
 }
 
 struct UserLink: View {
+  @Environment(\.navColumn) private var navColumn
   var noHPad = false
   var user: User
   var body: some View {
@@ -29,7 +30,7 @@ struct UserLink: View {
           Text("u/\(data.name)")
             .fontSize(18, .semibold)
           Text("\(formatBigNumber(data.total_karma ?? ((data.link_karma ?? 0) + (data.comment_karma ?? 0)))) karma")
-            .fontSize(14).opacity(0.5)
+            .fontSize(14).foregroundStyle(Color.secondaryText)
           if let description = data.subreddit?.public_description {
             Text(description.md()).lineLimit(2)
               .fontSize(15).opacity(0.75)
@@ -40,9 +41,11 @@ struct UserLink: View {
       .padding(.vertical, 14)
       .frame(maxWidth: .infinity, alignment: .leading)
       .themedListRowLikeBG()
-      .mask(RR(20, .black))
+      // A flat row in a list; a card where it's embedded in a post.
+      .if(noHPad) { $0.mask(RR(20, .black)) }
+      .if(!noHPad) { $0.hairlineRowSeparator() }
       .onTapGesture {
-        Nav.to(.reddit(.user(user)))
+        Nav.to(.reddit(.user(user)), from: navColumn)
       }
     }
   }

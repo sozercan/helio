@@ -31,9 +31,7 @@ swiftformat . && swiftlint --strict
 ```
 
 - Get simulator destinations from `.github/scripts/simulator-destination.sh` instead of hard-coding a device name; simulator names change with each Xcode release.
-- CI pins Xcode 26.6 (Swift 6.3), SwiftLint 0.65.1 and SwiftFormat 0.64.0. A local Xcode is often newer, so code that builds locally can still fail in CI. Two recurring cases:
-  - APIs from the 27 SDK need `#if compiler(>=6.4)` around the `#available` check (see `Sources/HelioKit/views/Tabber/MacTabToolbar.swift`).
-  - Swift 6.3's type checker gives up on some expressions newer compilers accept, such as a ternary of `.upvote`/`.downvote` passed to `foregroundStyle`. Spell out the type (`Color.upvote`) when it's ambiguous.
+- CI and releases build with Xcode 27.2 (Swift 6.4) on GitHub's `xcode-27` runner, with SwiftLint 0.65.1 and SwiftFormat 0.64.0. Build locally with Xcode 27.2 too: the iOS 27.1 SDK or later is what makes the app run edge to edge on iPhone Duo, with its vertical bars. The deployment target is still 26, so APIs from the 27 SDK still need an `#available` check.
 - Existing SwiftLint violations are recorded in `.swiftlint.baseline.json`, so `--strict` fails only on new ones. After fixing old ones, regenerate it with `swiftlint lint --write-baseline .swiftlint.baseline.json`. Don't apply SwiftLint autocorrect to `let _ =` inside SwiftUI view or `ViewModifier` bodies; it's the only form a ViewBuilder accepts.
 - Formatting is 2-space indentation with implicit `self`; `.swiftformat` documents the disabled rules and why.
 - `perf.yml` runs `Tools/perf` on PRs that touch the app and fails when it makes more Reddit API requests than `Tools/perf/budget.json` allows. For changes to networking or feed and comment rendering, follow the `helio-perf` skill (`.agents/skills/helio-perf/SKILL.md`) and report before/after numbers; lower the budget when request counts drop.

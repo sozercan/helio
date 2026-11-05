@@ -130,10 +130,13 @@ struct VideoPlayerPost: View, Equatable {
   @Environment(\.scenePhase) private var scenePhase
   @State private var observerBag = VideoObserverBag()
   @State private var isVisible = false
+  /// iOS's Auto-Play Video Previews setting, kept as state so changing it redraws the player.
+  @State private var systemAutoplay = UIAccessibility.isVideoAutoplayEnabled
   @StateObject private var holder: VideoPlayerHolder
 
+  /// Off when iOS's Auto-Play Video Previews setting is, too.
   private var autoPlayVideos: Bool {
-    videoDefSettings.autoPlay
+    videoDefSettings.autoPlay && systemAutoplay
   }
 
   private var loopVideos: Bool {
@@ -175,6 +178,7 @@ struct VideoPlayerPost: View, Equatable {
       if let controller {
         AVPlayerRepresentable(fullscreen: $fullscreen, autoPlayVideos: autoPlayVideos, player: player, aspect: .resizeAspectFill, controller: controller)
           .frame(width: compact ? scaledCompactModeThumbSize() : contentWidth, height: compact ? scaledCompactModeThumbSize() : CGFloat(finalHeight))
+          .accessibilityIgnoresInvertColors()
           .mask(RR(cornerRadius, Color.black))
           .allowsHitTesting(false)
           .contentShape(Rectangle())
@@ -199,6 +203,7 @@ struct VideoPlayerPost: View, Equatable {
             }
           }
           .frame(width: compact ? scaledCompactModeThumbSize() : contentWidth, height: compact ? scaledCompactModeThumbSize() : CGFloat(finalHeight))
+          .accessibilityIgnoresInvertColors()
           .overlay {
             // Covers the player's black frame while the video buffers.
             if !holder.isReadyToPlay, let posterURL = sharedVideo.posterURL {
@@ -256,10 +261,13 @@ struct VideoPlayerPost: View, Equatable {
             if holder.hasFailed {
               reload(player)
             }
-            if autoPlayVideos, isVisible, !PictureInPicture.shared.isPlaying(player) {
-              player.play()
-            }
+            // The setting may have changed while the app was in the background. As before,
+            // coming back resumes a fullscreen video too.
+            reconcileAutoplay(player, resumesFullscreen: true)
           }
+        }
+        .onReceive(NotificationCenter.default.publisher(for: UIAccessibility.videoAutoplayStatusDidChangeNotification)) { _ in
+          reconcileAutoplay(player)
         }
         .onDisappear {
           isVisible = false
@@ -298,6 +306,25 @@ struct VideoPlayerPost: View, Equatable {
           FullScreenVP(player: player, size: sharedVideo.size, holder: holder)
         }
       }
+    }
+  }
+
+  /// Plays the inline preview when autoplay is on, and pauses it when Auto-Play Video Previews
+  /// was turned off. Leaves fullscreen and picture-in-picture playback, which the user controls,
+  /// alone, unless `resumesFullscreen` (coming back to the app resumes it, as it always has).
+  func reconcileAutoplay(_ player: AVPlayer, resumesFullscreen: Bool = false) {
+    let systemEnabled = UIAccessibility.isVideoAutoplayEnabled
+    if systemAutoplay != systemEnabled {
+      systemAutoplay = systemEnabled
+    }
+    guard isVisible, !PictureInPicture.shared.isPlaying(player) else { return }
+    if videoDefSettings.autoPlay, systemEnabled {
+      // A setting change doesn't restart a fullscreen video the user paused.
+      if !fullscreen || resumesFullscreen {
+        player.play()
+      }
+    } else if !fullscreen {
+      player.pause()
     }
   }
 
@@ -396,6 +423,7 @@ struct FullScreenVP: View {
   var body: some View {
     let interpolate = interpolatorBuilder([0, 100], value: abs(drag.height))
     FullScreenPlayerView(player: player, holder: holder, onPictureInPictureStart: { dismiss() })
+      .accessibilityIgnoresInvertColors()
       .background(
         size != .zero
           ? nil
@@ -443,6 +471,8 @@ struct FullScreenVP: View {
             }
           },
       )
+      // It covers the post: the menu bar's Post commands mustn't move off it underneath.
+      .commandTarget(CommandTargets.Target(kind: .modal))
   }
 }
 

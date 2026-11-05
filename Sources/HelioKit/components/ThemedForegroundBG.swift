@@ -36,7 +36,9 @@ struct ThemedForegroundRawBG<S: Shape>: View, Equatable {
   @Environment(\.brighterBG) private var brighter
   @Environment(\.isInSidebar) private var isInSidebar
   var body: some View {
-    let isActive = active && isWideLayout && isInSidebar
+    // Marks the row whose screen is opening, in a stack or in the subs list. The subs sidebar's
+    // rows don't pass `active`: its list draws the system selection.
+    let marksActive = active && (!isWideLayout || isInSidebar)
     ZStack {
       if let shiny {
         shape.helioShiny(shiny)
@@ -50,12 +52,8 @@ struct ThemedForegroundRawBG<S: Shape>: View, Equatable {
         }
       }
       shape.fill(isWideLayout && isInSidebar && !brighter ? .clear : theme.color(brighter: !theme.blurry && brighter, brighterRatio: 0.075))
-      shape.fill(Color.primary.opacity(pressed || (!isWideLayout && active) ? 0.1 : 0))
+      shape.fill(Color.primary.opacity(pressed || marksActive ? 0.1 : 0))
         .animation(active ? nil : .default.speed(2), value: active)
-
-      if isActive {
-        shape.fill(Color.accentColor)
-      }
     }
     .if(isWideLayout && isInSidebar) { $0.clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous)) }
   }

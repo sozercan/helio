@@ -21,6 +21,7 @@ struct Onboarding: View {
   @State var appID = ""
   @State var appSecret = ""
   @Environment(\.colorScheme) var colorScheme: ColorScheme
+  @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
   @State var tryingToDismiss = false
 
@@ -129,10 +130,11 @@ struct Onboarding: View {
     .ignoresSafeArea(edges: .bottom)
     .onAppear {
       showStars = true
-      withAnimation(HANG_ANIM) {
+      // The swinging sign settles without the swing under Reduce Motion.
+      withAnimation(reduceMotion ? nil : HANG_ANIM) {
         hanging = false
       }
-      withAnimation(ROT_ANIM) {
+      withAnimation(reduceMotion ? nil : ROT_ANIM) {
         twisted = true
       }
     }
@@ -163,6 +165,7 @@ struct Star: View {
   @State private var timer = Timer.publish(every: 1, on: .current, in: .common).autoconnect()
   @State private var offset = CGFloat.rand(8 ... 16) * ([-1, 1].randomElement())!
   @Environment(\.colorScheme) var colorScheme: ColorScheme
+  @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
   func move() {
     offset = CGFloat.rand(8 ... 16)
@@ -184,6 +187,7 @@ struct Star: View {
       .offset(y: up ? offset : 0)
       .position(position)
       .onReceive(timer) { _ in
+        guard !reduceMotion else { return }
         withAnimation(.easeInOut(duration: duration)) {
           move()
         }
@@ -191,6 +195,12 @@ struct Star: View {
       .onAppear {
         timer.upstream.connect().cancel()
         position.x = (((totalWidth - 48) / CGFloat(starsCount - 1)) * CGFloat(number)) + 24 + (CGFloat.rand(0 ... 24) * ([-1, 1].randomElement())!)
+        // With Reduce Motion, the stars are just there: no rising and no drifting.
+        if reduceMotion {
+          position.y = CGFloat.rand(50 ... CGFloat(200 - Int(size) - 30))
+          rotation = CGFloat.random(in: -20 ... 20)
+          return
+        }
         DispatchQueue.main.asyncAfter(deadline: .now() + CGFloat.random(in: 0 ... 0.75)) {
           withAnimation(.spring(response: CGFloat.random(in: 0.5 ... 0.7), dampingFraction: 2)) {
             timer = Timer.publish(every: duration, on: .current, in: .common).autoconnect()

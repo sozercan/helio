@@ -13,6 +13,7 @@ import YouTubePlayerKit
 struct OnlyURL: View {
   static let height: Double = 22
   var url: URL
+  @Environment(\.navColumn) private var navColumn
   var body: some View {
     HStack(spacing: 4) {
       Image(systemName: "link")
@@ -24,22 +25,23 @@ struct OnlyURL: View {
     .background(Capsule(style: .continuous).fill(Color.accentColor.opacity(0.3)))
     .fontSize(15, .medium)
     .lineLimit(1)
-    .foregroundColor(.white)
+    .foregroundStyle(.white)
     .highPriorityGesture(TapGesture().onEnded {
-      if let newURL = URL(string: url.absoluteString.replacingOccurrences(of: "https://reddit.com/", with: "helioapp://")) {
-        Nav.openURL(newURL)
-      }
+      Nav.openLink(url, from: navColumn)
     })
   }
 }
 
 struct MediaPresenter: View, Equatable {
   static func == (lhs: MediaPresenter, rhs: MediaPresenter) -> Bool {
-    lhs.compact == rhs.compact && lhs.contentWidth == rhs.contentWidth && lhs.badgeKit == rhs.badgeKit && lhs.cornerRadius == rhs.cornerRadius && lhs.media == rhs.media
+    lhs.compact == rhs.compact && lhs.contentWidth == rhs.contentWidth && lhs.badgeKit == rhs.badgeKit && lhs.cornerRadius == rhs.cornerRadius && lhs.media == rhs.media && lhs.pageMediaSize == rhs.pageMediaSize
   }
 
   var helioData: PostHelioData
   var fullPage = false
+  /// The media's size on a post page, from the page's own layout. Not read from the post's
+  /// cache: two pages of the post in different columns would overwrite each other's.
+  var pageMediaSize: CGSize?
   weak var controller: UIViewController?
   let postTitle: String
   let badgeKit: BadgeKit
@@ -55,7 +57,7 @@ struct MediaPresenter: View, Equatable {
   let maxMediaHeightScreenPercentage: CGFloat
 
   var body: some View {
-    let mediaSize = (fullPage ? helioData.postDimensionsForcedNormal : helioData.postDimensions).mediaSize
+    let mediaSize = fullPage ? pageMediaSize : helioData.postDimensions.mediaSize
     switch media {
     case let .imgs(imgsExtracted):
       if !showURLInstead {
@@ -78,6 +80,7 @@ struct MediaPresenter: View, Equatable {
           .progressViewStyle(.circular)
           .frame(maxWidth: .infinity, minHeight: 100)
           .id("streamable-loading")
+          .task { helioData.resolveDeferredMedia() }
           .listRowInsets(EdgeInsets(top: 0, leading: 0, bottom: 0, trailing: 0))
           .listRowSeparator(.hidden)
           .listRowBackground(Color.clear)
@@ -102,7 +105,7 @@ struct MediaPresenter: View, Equatable {
               PreviewLink(url: url, compact: compact, previewModel: .shared(url, compact: compact))
             }
           } else {
-            RedditMediaPost(entity: .post(postExtractedEntity.entity))
+            linkedEntity(.post(postExtractedEntity.entity))
           }
         } else if let sub = postExtractedEntity.subredditID, let postID = postExtractedEntity.postID, let url = URL(string: "https://reddit.com/r/\(sub)/comments/\(postID)") {
           OnlyURL(url: url)
@@ -116,7 +119,7 @@ struct MediaPresenter: View, Equatable {
               PreviewLink(url: url, compact: compact, previewModel: .shared(url, compact: compact))
             }
           } else {
-            RedditMediaPost(entity: .comment(commentExtractedEntity.entity))
+            linkedEntity(.comment(commentExtractedEntity.entity))
           }
         } else if let sub = commentExtractedEntity.subredditID, let postID = commentExtractedEntity.postID, let commentID = commentExtractedEntity.commentID, let url = URL(string: "https://reddit.com/r/\(sub)/comments/\(postID)/comment/\(commentID)") {
           OnlyURL(url: url)
@@ -130,7 +133,7 @@ struct MediaPresenter: View, Equatable {
               PreviewLink(url: url, compact: compact, previewModel: .shared(url, compact: compact))
             }
           } else {
-            RedditMediaPost(entity: .subreddit(subExtractedEntity.entity))
+            linkedEntity(.subreddit(subExtractedEntity.entity))
           }
         } else if let url = URL(string: "https://reddit.com/r/\(subExtractedEntity.subredditID ?? "")") {
           OnlyURL(url: url)
@@ -144,7 +147,7 @@ struct MediaPresenter: View, Equatable {
               PreviewLink(url: url, compact: compact, previewModel: .shared(url, compact: compact))
             }
           } else {
-            RedditMediaPost(entity: .user(userExtractedEntity.entity))
+            linkedEntity(.user(userExtractedEntity.entity))
           }
         } else if let url = URL(string: "https://reddit.com/u/\(userExtractedEntity.userID ?? "")") {
           OnlyURL(url: url)
@@ -153,5 +156,12 @@ struct MediaPresenter: View, Equatable {
     default:
       EmptyView()
     }
+  }
+
+  /// A post, comment, user or subreddit the post links to, loaded once it shows if the post
+  /// deferred it (`PostHelioData.deferredMedia`).
+  private func linkedEntity(_ entity: RedditEntityType) -> some View {
+    RedditMediaPost(entity: entity)
+      .task { helioData.resolveDeferredMedia() }
   }
 }

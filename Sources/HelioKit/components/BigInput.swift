@@ -16,7 +16,7 @@ struct BigInput: View {
   @Environment(\.colorScheme) private var cs
   var body: some View {
     VStack(alignment: .leading, spacing: 5) {
-      Text(l.uppercased()).fontSize(13, .semibold).padding(.horizontal, 12).opacity(0.5)
+      Text(l.uppercased()).fontSize(13, .semibold).padding(.horizontal, 12).foregroundStyle(Color.secondaryText)
       TextField(l, text: $t, prompt: placeholder == nil ? nil : Text(placeholder!))
         .focused($focused)
         .autocorrectionDisabled(true)

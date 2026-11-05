@@ -19,6 +19,8 @@ struct ListBigBtn: View {
   var label: String
   /// The shiny gradient applied to the button.
   var shiny: Gradient?
+  /// Its feed shows: the subs list's selection.
+  var selected = false
   /// The action the button will perform.
   var action: () -> Void
 
@@ -41,9 +43,15 @@ struct ListBigBtn: View {
       .foregroundColor(.primary)
       .themedListRowLikeBG(pressed: pressed, shiny: shiny)
       .mask(RoundedRectangle(cornerRadius: 10).foregroundColor(.black))
+      .overlay {
+        if selected {
+          RoundedRectangle(cornerRadius: 10).strokeBorder(Color.accentColor, lineWidth: 2)
+        }
+      }
       .contentShape(RoundedRectangle(cornerRadius: 13))
       //    .onChange(of: reset) { _ in active = false }
     }
     .buttonStyle(ButtonPressingProviderStyle(pressed: $pressed))
+    .accessibilityAddTraits(selected ? .isSelected : [])
   }
 }

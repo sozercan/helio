@@ -21,12 +21,19 @@ struct PostContent: View, Equatable {
   var forceCollapse: Bool = false
   @State private var collapsed = false
   @State private var showSpoiler = false
+  @State private var youTubePlayer = PageYouTubePlayer()
   @Default(.PostPageDefSettings) private var defSettings
   @Environment(\.useTheme) private var selectedTheme
+  @Environment(\.contentWidth) private var contentWidth
+  /// Markdown sets its own font size, so it's scaled here like `contentFont` scales text.
+  @Environment(\.contentTypeSize) private var contentTypeSize
+
+  @Environment(\.navColumn) private var navColumn
 
   func openSubreddit() {
     if let subName = post.data?.subreddit {
-      Nav.to(.reddit(.subFeed(Subreddit(id: subName))))
+      // From the column the post is in: a post at the feed column's root opens it there.
+      Nav.to(.reddit(.subFeed(Subreddit(id: subName))), from: navColumn)
     }
   }
 
@@ -40,7 +47,9 @@ struct PostContent: View, Equatable {
         VStack {
           ProgressView()
             .progressViewStyle(.circular)
-            .frame(maxWidth: .infinity, minHeight: .screenH - 200)
+            // Fills the post's list until the post loads.
+            .containerRelativeFrame(.vertical) { height, _ in max(0, height - 200) }
+            .frame(maxWidth: .infinity)
             .id("post-loading")
         }
       }
@@ -48,7 +57,8 @@ struct PostContent: View, Equatable {
       Group {
         HStack {
           Text(data.title)
-            .fontSize(postsTheme.titleText.size, .semibold)
+            .contentFont(postsTheme.titleText.size, .semibold, relativeTo: .title)
+            .accessibilityAddTraits(.isHeader)
             .foregroundColor(postsTheme.titleText.color())
             .fixedSize(horizontal: false, vertical: true)
             .id("post-title")
@@ -57,12 +67,7 @@ struct PostContent: View, Equatable {
 
           if MarkdownUtil.containsSpoiler(data.selftext ?? "") {
             Spacer()
-            Image(systemName: showSpoiler ? "eye.slash.fill" : "eye.fill")
-              .onTapGesture {
-                withAnimation {
-                  showSpoiler.toggle()
-                }
-              }
+            SpoilerToggle(showSpoiler: $showSpoiler)
           }
         }
 
@@ -70,17 +75,19 @@ struct PostContent: View, Equatable {
           if !isCollapsed {
             VStack(spacing: 0) {
               VStack(spacing: selectedTheme.posts.spacing) {
-                if let extractedMedia = helioData.extractedMediaForcedNormal {
+                if let layout = post.pageLayout(contentWidth: contentWidth, theme: selectedTheme), let pageMedia = layout.media {
+                  let extractedMedia = youTubePlayer.owning(pageMedia)
                   // The feed's size runs full-bleed images edge to edge; the post page keeps them inset.
                   let feedTheme = selectedTheme.postLinks.theme
                   let fullBleedInset = isFullBleedMedia(extractedMedia, theme: feedTheme, secondary: false, compact: false) ? feedTheme.innerPadding.horizontal * 2 : 0
-                  MediaPresenter(helioData: helioData, fullPage: true, controller: nil, postTitle: data.title, badgeKit: data.badgeKit, avatarImageRequest: helioData.avatarImageRequest, markAsSeen: {}, cornerRadius: selectedTheme.postLinks.theme.mediaCornerRadius, blurPostLinkNSFW: defSettings.blurNSFW, media: extractedMedia, over18: over18, compact: false, contentWidth: (helioData.postDimensionsForcedNormal.mediaSize?.width ?? 0) - fullBleedInset, maxMediaHeightScreenPercentage: Defaults[.PostLinkDefSettings].maxMediaHeightScreenPercentage)
+                  MediaPresenter(helioData: helioData, fullPage: true, pageMediaSize: layout.mediaSize, controller: nil, postTitle: data.title, badgeKit: data.badgeKit, avatarImageRequest: helioData.avatarImageRequest, markAsSeen: {}, cornerRadius: selectedTheme.postLinks.theme.mediaCornerRadius, blurPostLinkNSFW: defSettings.blurNSFW, media: extractedMedia, over18: over18, compact: false, contentWidth: (layout.mediaSize?.width ?? 0) - fullBleedInset, maxMediaHeightScreenPercentage: Defaults[.PostLinkDefSettings].maxMediaHeightScreenPercentage)
                 }
 
                 if !(data.selftext?.isEmpty ?? true) {
                   HStack {
                     Markdown(MarkdownUtil.markdownContent(data.selftext ?? "", showSpoiler: showSpoiler))
-                      .markdownTheme(.helioMarkdown(fontSize: selectedTheme.posts.bodyText.size, lineSpacing: selectedTheme.posts.linespacing, textSelection: true))
+                      .opensLinksInItsColumn()
+                      .markdownTheme(.helioMarkdown(fontSize: ContentTextScale.size(selectedTheme.posts.bodyText.size, dynamicTypeSize: contentTypeSize), lineSpacing: selectedTheme.posts.linespacing, textSelection: true, quoteText: selectedTheme.posts.quoteText, linkText: selectedTheme.posts.linkText))
                       .fixedSize(horizontal: false, vertical: true)
 
                     Spacer()

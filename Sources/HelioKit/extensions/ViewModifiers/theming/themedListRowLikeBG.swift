@@ -46,3 +46,24 @@ extension View {
     self.modifier(ThemedListRowLikeBGModifier(enablePadding: enablePadding, disableBG: disableBG, active: active, pressed: pressed, shiny: shiny, opacity: opacity))
   }
 }
+
+/// A hairline under a flat, full-width list row, like the ones between comments.
+private struct HairlineRowSeparator: ViewModifier {
+  var leading: CGFloat
+  @Environment(\.useTheme) private var theme
+
+  func body(content: Content) -> some View {
+    content.overlay(alignment: .bottom) {
+      theme.lists.dividersColors()
+        .frame(height: 0.5)
+        .padding(.leading, leading)
+        .allowsHitTesting(false)
+    }
+  }
+}
+
+extension View {
+  func hairlineRowSeparator(leading: CGFloat = 16) -> some View {
+    modifier(HairlineRowSeparator(leading: leading))
+  }
+}

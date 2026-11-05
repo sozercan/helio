@@ -31,6 +31,7 @@ struct PostLinkCompactThumbPlaceholder: View, Equatable {
 }
 
 struct PostLinkCompact: View, Equatable, Identifiable {
+  @Environment(\.navColumn) private var navColumn
   static func == (lhs: PostLinkCompact, rhs: PostLinkCompact) -> Bool {
     lhs.id == rhs.id && lhs.theme == rhs.theme && lhs.contentWidth == rhs.contentWidth && lhs.defSettings == rhs.defSettings
   }
@@ -51,12 +52,12 @@ struct PostLinkCompact: View, Equatable, Identifiable {
   }
 
   func openPost() {
-    Nav.to(.reddit(.post(post)))
+    Nav.to(.reddit(.post(post)), from: navColumn)
   }
 
   func openSubreddit() {
     if let subName = post.data?.subreddit {
-      Nav.to(.reddit(.subFeed(Subreddit(id: subName))))
+      Nav.to(.reddit(.subFeed(Subreddit(id: subName))), from: navColumn)
     }
   }
 
@@ -107,6 +108,7 @@ struct PostLinkCompact: View, Equatable, Identifiable {
           VStack(alignment: .leading, spacing: theme.theme.verticalElementsSpacing) {
             VStack(alignment: .leading, spacing: theme.theme.verticalElementsSpacing / 2) {
               PostLinkTitle(attrString: helioData.titleAttr, label: data.title, theme: theme.theme.titleText, size: helioData.postDimensions.titleSize, dimmed: theme.theme.unseenType == .fade && (data.helioSeen ?? false), dimmedColor: theme.theme.badge.statsText.color)
+                .postTitleAccessibility(post: post, data: data, secondary: secondary, open: openPost)
 
               if let extractedMedia = post.helioData?.extractedMedia {
                 if case let .repost(repost) = extractedMedia, let repostData = repost.data, let url = URL(string: "https://reddit.com/r/\(repostData.subreddit)/comments/\(repost.id)") {
@@ -121,8 +123,10 @@ struct PostLinkCompact: View, Equatable, Identifiable {
 
             if showSub, theme.theme.badge.avatar.visible {
               let subName = data.subreddit
-              Tag(subredditIconKit: nil, text: "r/\(subName)")
-                .highPriorityGesture(TapGesture().onEnded(openSubreddit))
+              Button(action: openSubreddit) {
+                Tag(subredditIconKit: nil, text: "r/\(subName)")
+              }
+              .buttonStyle(.plain)
             }
           }
           .frame(maxWidth: .infinity, alignment: .topLeading)

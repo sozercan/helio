@@ -10,11 +10,14 @@ import Foundation
 import NukeUI
 import OpenGraph
 import SwiftUI
+import Synchronization
 
 @Observable
 final class PreviewModel: Equatable {
+  /// The same model, not just the same link: a refresh makes a new one, which a layout cached
+  /// with the old one (`Post.pageLayout`) has to pick up, as the old one may have failed to load.
   static func == (lhs: PreviewModel, rhs: PreviewModel) -> Bool {
-    lhs.url == rhs.url
+    lhs === rhs
   }
 
   var imageReq: ImageRequest?
@@ -37,21 +40,50 @@ final class PreviewModel: Equatable {
   /// the window resizes, and views rebuild their previews on every update; they all share one
   /// model instead of each downloading the page. A model whose download failed is dropped, so a
   /// later layout tries again (`LinkMetadataLoader` waits a while between attempts).
-  static func shared(_ url: URL, compact: Bool) -> PreviewModel {
+  /// Without `fetch`, the page is downloaded only once the preview shows (`loadIfNeeded()`), for
+  /// layouts that don't show previews, such as the canvas.
+  static func shared(_ url: URL, compact: Bool, fetch: Bool = true) -> PreviewModel {
     let key = "\(compact ? "c" : "n")|\(url.absoluteString)" as NSString
     if let model = instances.object(forKey: key) {
+      if fetch {
+        model.loadIfNeeded()
+      }
       return model
     }
-    let model = PreviewModel(url, compact: compact, sharedKey: key)
+    let model = PreviewModel(url, compact: compact, sharedKey: key, fetch: fetch)
     instances.setObject(model, forKey: key)
     return model
   }
 
-  init() {}
+  init() {
+    self.compact = false
+  }
 
-  init(_ url: URL, compact: Bool, sharedKey: NSString? = nil) {
+  init(_ url: URL, compact: Bool, sharedKey: NSString? = nil, fetch: Bool = true) {
     self.previewURL = url
     self.sharedKey = sharedKey
+    self.compact = compact
+    if fetch {
+      loadIfNeeded()
+    }
+  }
+
+  private let compact: Bool
+  /// Layouts are built off the main thread, several at once.
+  private let started = Mutex(false)
+
+  /// Whether the page's metadata has been asked for.
+  var hasStartedLoading: Bool {
+    started.withLock { $0 }
+  }
+
+  /// Downloads the page's metadata, once.
+  func loadIfNeeded() {
+    let first = started.withLock { started in
+      defer { started = true }
+      return !started
+    }
+    guard first else { return }
     Task(priority: .utility) {
       await fetchMetadata(compact: compact)
     }

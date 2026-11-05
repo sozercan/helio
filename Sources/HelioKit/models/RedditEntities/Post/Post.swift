@@ -22,10 +22,10 @@ extension Post {
     Self.prefix
   }
 
-  convenience init(data: T, sub: Subreddit? = nil, contentWidth: Double = .screenW, secondary: Bool = false, theme: HelioTheme? = nil, fetchAvatar: Bool = true) {
+  convenience init(data: T, sub: Subreddit? = nil, contentWidth: Double = .screenW, secondary: Bool = false, theme: HelioTheme? = nil, fetchAvatar: Bool = true, fetchLinkMetadata: Bool? = nil) {
     let theme = theme ?? InMemoryTheme.shared.currentTheme
     self.init(data: data, typePrefix: "\(Post.prefix)_")
-    setupHelioData(data: data, contentWidth: contentWidth, secondary: secondary, theme: theme, sub: sub, fetchAvatar: fetchAvatar)
+    setupHelioData(data: data, contentWidth: contentWidth, secondary: secondary, theme: theme, sub: sub, fetchAvatar: fetchAvatar, fetchLinkMetadata: fetchLinkMetadata)
   }
 
   convenience init(id: String, sub: Subreddit? = nil) {
@@ -71,7 +71,15 @@ extension Post {
   }
 
   static func isCompact(_ data: PostData, sub: Subreddit?) -> Bool {
-    CachedDefaults[.SubredditFeedDefSettings].compactPerSubreddit[sub?.id ?? data.subreddit_id ?? ""] ?? CachedDefaults[.PostLinkDefSettings].compactMode.enabled
+    CachedDefaults[.SubredditFeedDefSettings].compactPerSubreddit[sub?.settingsKey ?? data.subreddit_id ?? ""] ?? CachedDefaults[.PostLinkDefSettings].compactMode.enabled
+  }
+
+  /// Whether link previews download their page, and linked Reddit posts, comments, users and
+  /// subreddits load, while the feed's page is laid out, ahead of showing. A canvas feed shows
+  /// none, so its posts' previews wait until they show, such as when the post opens, instead of
+  /// downloading every linked page.
+  static func fetchesLinkMetadata(_ data: PostData, sub: Subreddit?) -> Bool {
+    !PostLayout.isCanvas(sub?.settingsKey ?? data.subreddit_id ?? "", canvasSubreddits: CachedDefaults[.canvasSubreddits])
   }
 
   func shouldUpdateAvatarFamily(fetchAvatar: Bool) -> Bool {
@@ -86,21 +94,26 @@ extension Post {
 
   /// Without a `contentWidth` (refreshing a post, changing theme), keeps the width the post
   /// was last laid out for: the full window would be wrong in a split view's column.
-  func setupHelioData(data: PostData? = nil, contentWidth: Double? = nil, secondary: Bool = false, theme: HelioTheme, sub: Subreddit? = nil, fetchAvatar: Bool = true) {
+  /// Embedded posts take `fetchLinkMetadata` from the post they're in.
+  func setupHelioData(data: PostData? = nil, contentWidth: Double? = nil, secondary: Bool = false, theme: HelioTheme, sub: Subreddit? = nil, fetchAvatar: Bool = true, fetchLinkMetadata: Bool? = nil) {
     let updateAvatarFamily = shouldUpdateAvatarFamily(fetchAvatar: fetchAvatar)
     let lastWidth = self.helioData?.layoutWidth ?? 0
     let contentWidth = contentWidth ?? (lastWidth > 0 ? lastWidth : .screenW)
+    let textSize = ContentTextScale.dynamicTypeSize
     if let data = data ?? self.data {
       let compact = Post.isCompact(data, sub: sub)
+      let fetchLinkMetadata = fetchLinkMetadata ?? (self.helioData?.deferredMediaShown == true || Post.fetchesLinkMetadata(data, sub: sub))
       if self.helioData == nil {
         self.helioData = .init()
       }
+      self.helioData?.fetchesLinkMetadata = fetchLinkMetadata
+      self.helioData?.deferredMedia = nil
 
       self.helioData?.permaURL = URL(string: "https://reddit.com\(data.permalink.urlEncoded)")
 
-      var extractedMedia = mediaExtractor(compact: compact, contentWidth: contentWidth, data, theme: theme)
+      var extractedMedia = mediaExtractor(compact: compact, contentWidth: contentWidth, data, theme: theme, fetchLinkMetadata: fetchLinkMetadata)
       // Extracting builds players, embedded posts and link previews, so a large row shares its media.
-      var extractedMediaForcedNormal = compact ? mediaExtractor(compact: false, contentWidth: contentWidth, data, theme: theme) : extractedMedia
+      var extractedMediaForcedNormal = compact ? mediaExtractor(compact: false, contentWidth: contentWidth, data, theme: theme, fetchLinkMetadata: fetchLinkMetadata) : extractedMedia
 
       switch extractedMedia {
       case let .streamable(streamable):
@@ -110,21 +123,24 @@ extension Post {
           extractedMedia = .video(sharedVideo)
           extractedMediaForcedNormal = .video(sharedVideo)
         } else {
-          Task(priority: .utility) {
-            if let video = await self.loadStreamableMedia(streamable: streamable) {
-              Caches.streamable.addKeyValue(key: streamable.shortCode, data: { StreamableCached(url: video.url, size: video.size) }, expires: Date().dateByAdding(1, .day).date)
-
-              DispatchQueue.main.async {
-                withAnimation {
-                  self.helioData?.extractedMedia = .video(video)
-                  self.helioData?.extractedMediaForcedNormal = .video(video)
-
-                  // The post may have been laid out again for another width since.
-                  let width = self.helioData?.layoutWidth ?? contentWidth
-                  self.helioData?.postDimensions = getPostDimensions(post: self, helioData: self.helioData, columnWidth: width, secondary: secondary, rawTheme: theme, subId: sub?.id)
-                  self.helioData?.postDimensionsForcedNormal = getPostDimensions(post: self, helioData: self.helioData, columnWidth: width, secondary: secondary, rawTheme: theme, compact: false)
-                }
-              }
+          // A canvas shows no video, so it resolves one only when a preview or the post page shows it.
+          let resolve: () -> Void = { [weak self] in
+            self?.resolveStreamable(streamable, contentWidth: contentWidth, secondary: secondary, theme: theme, sub: sub)
+          }
+          if fetchLinkMetadata {
+            resolve()
+          } else {
+            self.helioData?.deferredMedia = resolve
+          }
+        }
+      case .post, .comment, .user, .subreddit:
+        // Left unloaded by `mediaExtractor`; the large media the post page shows loads it.
+        if !fetchLinkMetadata {
+          self.helioData?.deferredMedia = { [weak self] in
+            // Both copies: compact rows keep their own, which shows if the feed switches to Large.
+            self?.helioData?.extractedMediaForcedNormal?.loadLinkedEntity()
+            if compact {
+              self?.helioData?.extractedMedia?.loadLinkedEntity()
             }
           }
         }
@@ -135,14 +151,16 @@ extension Post {
       self.helioData?.extractedMedia = extractedMedia
       self.helioData?.extractedMediaForcedNormal = extractedMediaForcedNormal
 
-      self.helioData?.postDimensions = getPostDimensions(post: self, helioData: self.helioData, columnWidth: contentWidth, secondary: secondary, rawTheme: theme, subId: sub?.id)
-      self.helioData?.postDimensionsForcedNormal = getPostDimensions(post: self, helioData: self.helioData, columnWidth: contentWidth, secondary: secondary, rawTheme: theme, compact: false)
+      self.helioData?.postDimensions = getPostDimensions(post: self, helioData: self.helioData, columnWidth: contentWidth, secondary: secondary, rawTheme: theme, subId: sub?.settingsKey, dynamicTypeSize: textSize)
+      self.helioData?.postDimensionsForcedNormal = getPostDimensions(post: self, helioData: self.helioData, columnWidth: contentWidth, secondary: secondary, rawTheme: theme, compact: false, dynamicTypeSize: textSize)
       self.helioData?.layoutWidth = contentWidth
+      self.helioData?.layoutDynamicTypeSize = textSize
       self.helioData?.layoutWindowHeight = .screenH
       self.helioData?.layoutSecondary = secondary
       self.helioData?.layoutCompact = compact
 
-      self.helioData?.titleAttr = createTitleTagsAttrString(titleTheme: theme.postLinks.theme.titleText, postData: data, textColor: theme.postLinks.theme.titleText.color.uiColor())
+      self.helioData?.titleAttr = createTitleTagsAttrString(titleTheme: theme.postLinks.theme.titleText, postData: data, textColor: theme.postLinks.theme.titleText.color.uiColor(), uncoloredFlair: theme.postLinks.theme.titleFlair, dynamicTypeSize: textSize)
+      self.helioData?.layoutTitleStyle = theme.postLinks.theme.titleStyle
 
       if let sub {
         self.helioData?.subreddit = sub
@@ -158,11 +176,15 @@ extension Post {
     }
   }
 
-  static func extractFlairData(data: PostData) -> PrependTag? {
+  /// The title's flair tag, in Reddit's colors or, uncolored, in `uncolored` (the theme's).
+  static func extractFlairData(data: PostData, uncolored: PostLinkTheme.TitleFlair? = nil) -> PrependTag? {
     if let flair = data.link_flair_text, let cleansed = flairWithoutEmojis(str: flair), !cleansed.joined().isEmpty {
       if let bgColor = data.link_flair_background_color, !bgColor.isEmpty {
         let textColor = data.link_flair_text_color == "light" ? "FFFFFF" : "000000"
         return PrependTag(label: flair, bgColor: UIColor(hex: bgColor), textColor: UIColor(hex: textColor))
+      }
+      if let uncolored {
+        return PrependTag(label: flair, bgColor: uncolored.background.uiColor(), textColor: uncolored.text.uiColor())
       }
       // Uncolored flair is drawn into an image once, so it can't follow the appearance:
       // a translucent grey reads as Apollo's grey pill on both white and black.
@@ -289,6 +311,28 @@ extension Post {
   //      }
   //    }
   //  }
+
+  /// Turns a Streamable link into its video, then lays the post out for it.
+  private func resolveStreamable(_ streamable: StreamableExtracted, contentWidth: Double, secondary: Bool, theme: HelioTheme, sub: Subreddit?) {
+    Task(priority: .utility) {
+      if let video = await self.loadStreamableMedia(streamable: streamable) {
+        Caches.streamable.addKeyValue(key: streamable.shortCode, data: { StreamableCached(url: video.url, size: video.size) }, expires: Date().dateByAdding(1, .day).date)
+
+        await MainActor.run {
+          withAnimation {
+            self.helioData?.extractedMedia = .video(video)
+            self.helioData?.extractedMediaForcedNormal = .video(video)
+
+            // The post may have been laid out again for another width since.
+            let width = self.helioData?.layoutWidth ?? contentWidth
+            let textSize = self.helioData?.layoutDynamicTypeSize ?? ContentTextScale.dynamicTypeSize
+            self.helioData?.postDimensions = getPostDimensions(post: self, helioData: self.helioData, columnWidth: width, secondary: secondary, rawTheme: theme, subId: sub?.settingsKey, dynamicTypeSize: textSize)
+            self.helioData?.postDimensionsForcedNormal = getPostDimensions(post: self, helioData: self.helioData, columnWidth: width, secondary: secondary, rawTheme: theme, compact: false, dynamicTypeSize: textSize)
+          }
+        }
+      }
+    }
+  }
 
   func loadStreamableMedia(streamable: StreamableExtracted) async -> SharedVideo? {
     let response = await AF.request(
@@ -555,14 +599,21 @@ extension Post {
     return false
   }
 
-  func refreshPost(commentID: String? = nil, sort: CommentSortOption = .confidence, subreddit: String? = nil, full: Bool = true) async -> ([Comment]?, String?)? {
+  /// `appliesDetails`: whether the post's details still apply when they come (`full`), for a
+  /// caller that a newer request can supersede.
+  func refreshPost(commentID: String? = nil, sort: CommentSortOption = .confidence, subreddit: String? = nil, full: Bool = true, appliesDetails: @MainActor @escaping () -> Bool = { true }) async -> ([Comment]?, String?)? {
     if let subreddit = data?.subreddit ?? subreddit, let response = await RedditAPI.shared.fetchPost(subreddit: subreddit, postID: id, commentID: commentID, sort: sort), response.count >= 2 {
       if let post = response[0] {
         switch post {
         case let .first(actualData):
           if full {
             await MainActor.run {
-              let newData = actualData.data?.children?[0].data
+              guard appliesDetails() else { return }
+              var newData = actualData.data?.children?[0].data
+              // Read is kept on the device, not sent by Reddit: keep it.
+              if self.data?.helioSeen == true {
+                newData?.helioSeen = true
+              }
               self.data = newData
               setupHelioData(data: newData, secondary: false, theme: InMemoryTheme.shared.currentTheme)
             }

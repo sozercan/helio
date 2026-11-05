@@ -50,7 +50,6 @@ extension Defaults.Keys {
   static let BehaviorDefSettings = Key<BehaviorDefSettings>("BehaviorDefSettings", default: .init())
   static let GeneralDefSettings = Key<GeneralDefSettings>("GeneralDefSettings", default: .init())
   static let SubredditFeedDefSettings = Key<SubredditFeedDefSettings>("SubredditFeedDefSettings", default: .init())
-  static let showFloatingFeedMenu = Key<Bool>("showFloatingFeedMenu", default: true)
   static let CommentLinkDefSettings = Key<CommentLinkDefSettings>("CommentLinkDefSettings", default: .init())
   static let CommentsSectionDefSettings = Key<CommentsSectionDefSettings>("CommentsSectionDefSettings", default: .init())
   static let PostPageDefSettings = Key<PostPageDefSettings>("PostPageDefSettings", default: .init())
@@ -61,6 +60,13 @@ extension Defaults.Keys {
   static let postsInBox = Key<[PostInBox]>("postsInBox-v2", default: [])
   static let likedButNotSubbed = Key<[Subreddit]>("likedButNotSubbed", default: [])
   /* </Heavy Defaults are kept separated, these should be in CoreData or something> */
+
+  /// Steps content text is moved from the system text size (Settings > Appearance > Text Size).
+  /// Its own key: a new field in an existing settings struct would fail to decode stored values.
+  static let contentTextSizeAdjustment = Key<Int>("contentTextSizeAdjustment", default: 0)
+
+  /// Subreddits whose feed is a canvas of thumbnails (`PostLayout.canvas`), by subreddit id.
+  static let canvasSubreddits = Key<Set<String>>("canvasSubreddits", default: [])
 
   /// When each account's subscriptions and multis were last synced at launch, by credential id
   /// and user name.

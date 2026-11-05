@@ -10,7 +10,6 @@ import Nuke
 import SwiftUI
 import WhatsNewKit
 
-var shortcutItemToProcess: UIApplicationShortcutItem?
 /// The folder in the caches directory that holds downloaded images.
 let imageDataCacheName = "com.sertacozercan.helio.datacache"
 
@@ -24,6 +23,7 @@ public struct HelioScene: Scene {
   public var body: some Scene {
     WindowGroup {
       AppContent()
+        .trackContentTextScale()
         .environment(\.managedObjectContext, persistenceController.container.viewContext)
         .environment(\.primaryBGContext, persistenceController.primaryBGContext)
         .environment(

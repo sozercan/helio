@@ -5,6 +5,7 @@
 
 import Defaults
 import SwiftUI
+import YouTubePlayerKit
 
 extension MediaExtractedType {
   /// Image requests are sized for the column; link previews, videos and embeds aren't, and
@@ -37,26 +38,34 @@ extension MediaExtractedType {
 
 extension Post {
   /// Recomputes media requests and row sizes for a new column width, window height (window
-  /// resized, iPhone Duo folded or unfolded), presentation or compact mode. Does nothing if the
-  /// post was already laid out for all four.
+  /// resized, iPhone Duo folded or unfolded), presentation, compact mode, text size or title
+  /// style (a new theme). Does nothing if the post was already laid out for all six.
   func relayout(contentWidth: Double, theme: HelioTheme, secondary: Bool = false) {
     guard let helioData, let data, contentWidth > 0 else { return }
     let windowHeight = Double.screenH
+    let textSize = ContentTextScale.dynamicTypeSize
     let sub = helioData.subreddit
     let compact = Post.isCompact(data, sub: sub)
     let compactChanged = helioData.layoutCompact != compact
-    guard helioData.layoutWidth != contentWidth || helioData.layoutWindowHeight != windowHeight || helioData.layoutSecondary != secondary || compactChanged else { return }
-    // Compact and large rows extract images and link previews differently, so a compact
-    // change extracts those again.
-    if (compactChanged && helioData.extractedMedia?.dependsOnCompact == true) || helioData.extractedMedia?.dependsOnWidth == true {
-      helioData.extractedMedia = mediaExtractor(compact: compact, contentWidth: contentWidth, data, theme: theme)
-    } else {
-      helioData.extractedMedia = helioData.extractedMedia?.relayoutingParts(contentWidth: contentWidth, theme: theme)
-    }
-    if helioData.extractedMediaForcedNormal?.dependsOnWidth == true {
-      helioData.extractedMediaForcedNormal = mediaExtractor(compact: false, contentWidth: contentWidth, data, theme: theme)
-    } else {
-      helioData.extractedMediaForcedNormal = helioData.extractedMediaForcedNormal?.relayoutingParts(contentWidth: contentWidth, theme: theme)
+    let mediaChanged = helioData.layoutWidth != contentWidth || helioData.layoutWindowHeight != windowHeight || helioData.layoutSecondary != secondary || compactChanged
+    let titleText = theme.postLinks.theme.titleText
+    let titleStyle = theme.postLinks.theme.titleStyle
+    // A new theme can change the title's color or size, or its flair's colors, which are drawn into it.
+    let titleChanged = helioData.layoutDynamicTypeSize != textSize || helioData.layoutTitleStyle != titleStyle
+    guard mediaChanged || titleChanged else { return }
+    if mediaChanged {
+      // Compact and large rows extract images and link previews differently, so a compact
+      // change extracts those again.
+      if (compactChanged && helioData.extractedMedia?.dependsOnCompact == true) || helioData.extractedMedia?.dependsOnWidth == true {
+        helioData.extractedMedia = mediaExtractor(compact: compact, contentWidth: contentWidth, data, theme: theme, fetchLinkMetadata: helioData.fetchesLinkMetadata)
+      } else {
+        helioData.extractedMedia = helioData.extractedMedia?.relayoutingParts(contentWidth: contentWidth, theme: theme)
+      }
+      if helioData.extractedMediaForcedNormal?.dependsOnWidth == true {
+        helioData.extractedMediaForcedNormal = mediaExtractor(compact: false, contentWidth: contentWidth, data, theme: theme, fetchLinkMetadata: helioData.fetchesLinkMetadata)
+      } else {
+        helioData.extractedMediaForcedNormal = helioData.extractedMediaForcedNormal?.relayoutingParts(contentWidth: contentWidth, theme: theme)
+      }
     }
     // Extracting a repost again would build a new embedded post, losing its votes and
     // previews, so lay the existing one out instead.
@@ -65,19 +74,83 @@ extension Post {
         embedded.relayout(contentWidth: contentWidth, theme: theme, secondary: true)
       }
     }
-    helioData.postDimensions = getPostDimensions(post: self, helioData: helioData, columnWidth: contentWidth, secondary: secondary, rawTheme: theme, subId: sub?.id)
-    helioData.postDimensionsForcedNormal = getPostDimensions(post: self, helioData: helioData, columnWidth: contentWidth, secondary: secondary, rawTheme: theme, compact: false)
+    // The title is drawn into a frame its measured size, in fonts scaled for the text size.
+    if titleChanged {
+      helioData.titleAttr = createTitleTagsAttrString(titleTheme: titleText, postData: data, textColor: titleText.color.uiColor(), uncoloredFlair: titleStyle.flair, dynamicTypeSize: textSize)
+    }
+    helioData.postDimensions = getPostDimensions(post: self, helioData: helioData, columnWidth: contentWidth, secondary: secondary, rawTheme: theme, subId: sub?.settingsKey, dynamicTypeSize: textSize)
+    helioData.postDimensionsForcedNormal = getPostDimensions(post: self, helioData: helioData, columnWidth: contentWidth, secondary: secondary, rawTheme: theme, compact: false, dynamicTypeSize: textSize)
     helioData.layoutWidth = contentWidth
     helioData.layoutWindowHeight = windowHeight
     helioData.layoutSecondary = secondary
     helioData.layoutCompact = compact
+    helioData.layoutDynamicTypeSize = textSize
+    helioData.layoutTitleStyle = titleStyle
+  }
+}
+
+/// The post page's full-size media and its size, for the page's column width.
+struct PostPageLayout {
+  struct Key: Equatable {
+    let width: Double
+    let windowHeight: Double
+    let theme: HelioTheme
+    /// The row's full-size media this was derived from. The row's relayouts, or a Streamable
+    /// link resolving to a video, replace it.
+    let source: MediaExtractedType?
+  }
+
+  let key: Key
+  let media: MediaExtractedType?
+  let mediaSize: CGSize?
+}
+
+extension Post {
+  /// The post page's layout for a column `contentWidth` wide. Computed when the width, the
+  /// window height or the row's media change, without touching the row's own layout, so a post
+  /// open beside its feed doesn't make the two lay each other out in turn.
+  func pageLayout(contentWidth: Double, theme: HelioTheme) -> PostPageLayout? {
+    guard let helioData, let data, contentWidth > 0 else { return nil }
+    let source = helioData.extractedMediaForcedNormal
+    let key = PostPageLayout.Key(width: contentWidth, windowHeight: .screenH, theme: theme, source: source)
+    if let layout = helioData.pageLayout, layout.key == key {
+      return layout
+    }
+    // Images are requested at the column's size; other media are shared with the row, which keeps
+    // link previews and videos playing. Each page plays a YouTube embed in its own player
+    // (`PageYouTubePlayer`).
+    let media = source?.dependsOnWidth == true ? mediaExtractor(compact: false, contentWidth: contentWidth, data, theme: theme) : source?.relayoutingParts(contentWidth: contentWidth, theme: theme)
+    // The size depends on the media's own shape, the same in either extraction.
+    let dimensions = getPostDimensions(post: self, helioData: helioData, columnWidth: contentWidth, rawTheme: theme, compact: false)
+    let layout = PostPageLayout(key: key, media: media, mediaSize: dimensions.mediaSize)
+    helioData.pageLayout = layout
+    return layout
+  }
+}
+
+/// A post page's own YouTube player, made once per video for as long as the page shows. Not the
+/// feed row's or another page's: two showing at once (the post beside its feed, or a post at the
+/// feed column's root and its thread beside it) would share one web view, and a video played in
+/// one would move out of the other.
+@MainActor
+final class PageYouTubePlayer {
+  private var current: (videoID: String, player: YouTubePlayer)?
+
+  /// `media` with this page's player, if it's a YouTube embed.
+  func owning(_ media: MediaExtractedType) -> MediaExtractedType {
+    guard case let .yt(yt) = media else { return media }
+    if current?.videoID != yt.videoID {
+      current = (yt.videoID, YouTubePlayer(source: .video(id: yt.videoID)))
+    }
+    guard let player = current?.player else { return media }
+    return .yt(YTMediaExtracted(videoID: yt.videoID, size: yt.size, thumbnailURL: yt.thumbnailURL, thumbnailRequest: yt.thumbnailRequest, player: player, author: yt.author, authorURL: yt.authorURL))
   }
 }
 
 extension View {
   /// Re-lays out `posts` when the column width or window height changes (media height is
   /// capped by the window's), after it has settled: resizing a Mac window changes it every frame.
-  /// Also when compact mode is switched, which changes every row's size.
+  /// Also when compact mode, the text size or the theme's titles change, which change every row.
   func relayoutPosts(_ posts: @escaping () -> [Post], contentWidth: Double, theme: HelioTheme) -> some View {
     modifier(RelayoutPostsModifier(posts: posts, contentWidth: contentWidth, theme: theme))
   }
@@ -90,9 +163,15 @@ private struct RelayoutPostsModifier: ViewModifier {
 
   @Default(.SubredditFeedDefSettings) private var feedDefSettings
   @Default(.PostLinkDefSettings) private var postLinkDefSettings
+  @Environment(\.contentTypeSize) private var dynamicTypeSize
 
   func body(content: Content) -> some View {
     content
+      // Titles are drawn at a measured size, so a new text size measures them again.
+      .onChange(of: dynamicTypeSize) { _, size in
+        ContentTextScale.dynamicTypeSize = size
+        posts().forEach { $0.relayout(contentWidth: contentWidth, theme: theme) }
+      }
       .task(id: [contentWidth, Double.screenH]) {
         try? await Task.sleep(for: .milliseconds(250))
         guard !Task.isCancelled else { return }
@@ -108,6 +187,10 @@ private struct RelayoutPostsModifier: ViewModifier {
       }
       .onChange(of: postLinkDefSettings.compactMode.enabled) {
         withAnimation { posts().forEach { $0.relayout(contentWidth: contentWidth, theme: theme) } }
+      }
+      // Titles and their flair are drawn in the theme's colors: a new theme draws them again.
+      .onChange(of: theme.postLinks.theme.titleStyle) {
+        posts().forEach { $0.relayout(contentWidth: contentWidth, theme: theme) }
       }
   }
 }

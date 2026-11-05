@@ -6,10 +6,11 @@
 //
 
 import Foundation
+import SwiftUI
 
 struct BadgeTheme: Codable, Hashable, Equatable {
   enum CodingKeys: String, CodingKey {
-    case avatar, authorText, subColor, flairText, flairBackground, statsText, spacing, forceSubsAsTags
+    case avatar, authorText, subColor, flairText, flairBackground, statsText, spacing, forceSubsAsTags, upvoteText, downvoteText, newCommentsText, scoreText
   }
 
   var avatar: AvatarTheme
@@ -20,8 +21,29 @@ struct BadgeTheme: Codable, Hashable, Equatable {
   var statsText: ThemeText
   var spacing: CGFloat
   var forceSubsAsTags: Bool
+  /// Voted scores' text; `nil` keeps the app's fixed upvote and downvote colors.
+  var upvoteText: ColorSchemes<ThemeColor>?
+  var downvoteText: ColorSchemes<ThemeColor>?
+  /// The new-comment count (`+3`); `nil` keeps the app's accent color.
+  var newCommentsText: ColorSchemes<ThemeColor>?
+  /// The post page's unvoted score and upvote ratio; `nil` keeps grey.
+  var scoreText: ColorSchemes<ThemeColor>?
 
-  init(avatar: AvatarTheme, authorText: ThemeText, subColor: ColorSchemes<ThemeColor>, flairText: ThemeText, flairBackground: ColorSchemes<ThemeColor>, statsText: ThemeText, spacing: CGFloat, forceSubsAsTags: Bool) {
+  /// The post page's unvoted score and upvote ratio.
+  var neutralScoreColor: Color {
+    scoreText?.color() ?? .gray
+  }
+
+  /// The score's color for a vote (`nil`: none, which keeps `neutral`).
+  func voteColor(_ likes: Bool?, neutral: Color) -> Color {
+    switch likes {
+    case true: upvoteText?.color() ?? .upvoteText
+    case false: downvoteText?.color() ?? .downvoteText
+    default: neutral
+    }
+  }
+
+  init(avatar: AvatarTheme, authorText: ThemeText, subColor: ColorSchemes<ThemeColor>, flairText: ThemeText, flairBackground: ColorSchemes<ThemeColor>, statsText: ThemeText, spacing: CGFloat, forceSubsAsTags: Bool, upvoteText: ColorSchemes<ThemeColor>? = nil, downvoteText: ColorSchemes<ThemeColor>? = nil, newCommentsText: ColorSchemes<ThemeColor>? = nil, scoreText: ColorSchemes<ThemeColor>? = nil) {
     self.avatar = avatar
     self.authorText = authorText
     self.subColor = subColor
@@ -30,6 +52,10 @@ struct BadgeTheme: Codable, Hashable, Equatable {
     self.statsText = statsText
     self.spacing = spacing
     self.forceSubsAsTags = forceSubsAsTags
+    self.upvoteText = upvoteText
+    self.downvoteText = downvoteText
+    self.newCommentsText = newCommentsText
+    self.scoreText = scoreText
   }
 
   func encode(to encoder: Encoder) throws {
@@ -42,6 +68,10 @@ struct BadgeTheme: Codable, Hashable, Equatable {
     try container.encodeIfPresent(statsText, forKey: .statsText)
     try container.encodeIfPresent(spacing, forKey: .spacing)
     try container.encodeIfPresent(forceSubsAsTags, forKey: .forceSubsAsTags)
+    try container.encodeIfPresent(upvoteText, forKey: .upvoteText)
+    try container.encodeIfPresent(downvoteText, forKey: .downvoteText)
+    try container.encodeIfPresent(newCommentsText, forKey: .newCommentsText)
+    try container.encodeIfPresent(scoreText, forKey: .scoreText)
   }
 
   init(from decoder: Decoder) throws {
@@ -55,5 +85,10 @@ struct BadgeTheme: Codable, Hashable, Equatable {
     self.statsText = try container.decodeIfPresent(ThemeText.self, forKey: .statsText) ?? t.statsText
     self.spacing = try container.decodeIfPresent(CGFloat.self, forKey: .spacing) ?? t.spacing
     self.forceSubsAsTags = try container.decodeIfPresent(Bool.self, forKey: .forceSubsAsTags) ?? t.forceSubsAsTags
+    // Optional: themes saved without them keep the app's vote and accent colors.
+    self.upvoteText = try container.decodeIfPresent(ColorSchemes<ThemeColor>.self, forKey: .upvoteText)
+    self.downvoteText = try container.decodeIfPresent(ColorSchemes<ThemeColor>.self, forKey: .downvoteText)
+    self.newCommentsText = try container.decodeIfPresent(ColorSchemes<ThemeColor>.self, forKey: .newCommentsText)
+    self.scoreText = try container.decodeIfPresent(ColorSchemes<ThemeColor>.self, forKey: .scoreText)
   }
 }

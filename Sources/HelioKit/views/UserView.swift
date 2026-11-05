@@ -11,7 +11,6 @@ import SwiftUI
 
 struct UserView: View {
   var user: User
-  @State private var contentWidth: CGFloat = 0
   @Default(.SubredditFeedDefSettings) private var subFeedSettings
   @Environment(\.useTheme) private var selectedTheme
 
@@ -45,7 +44,8 @@ struct UserView: View {
               if let bannerImgFull = data.subreddit?.banner_img, !bannerImgFull.isEmpty, let bannerImg = URL(string: String(bannerImgFull.split(separator: "?")[0])) {
                 URLImage(url: bannerImg)
                   .scaledToFill()
-                  .frame(width: contentWidth, height: 160)
+                  // As wide as the header, which follows the column as it resizes.
+                  .frame(maxWidth: .infinity, minHeight: 160, maxHeight: 160)
                   .mask(RR(16, Color.black))
               }
               if let iconFull = data.subreddit?.icon_img, iconFull != "", let icon = URL(string: String(iconFull.split(separator: "?")[0])) {
@@ -57,11 +57,6 @@ struct UserView: View {
               }
             }
             .frame(maxWidth: .infinity)
-            .background(
-              GeometryReader { geo in
-                Color.clear.onAppear { contentWidth = geo.size.width }
-              },
-            )
             .padding(.bottom, data.subreddit?.banner_img == "" || data.subreddit?.banner_img == nil ? 0 : 78)
 
             if let description = data.subreddit?.public_description {

@@ -10,6 +10,7 @@ import NukeUI
 import SwiftUI
 
 struct PostInBoxLink: View {
+  @Environment(\.navColumn) private var navColumn
   @Default(.postsInBox) private var postsInBox
 
   var postInBox: PostInBox
@@ -68,8 +69,7 @@ struct PostInBoxLink: View {
           }
         }
         .font(.system(size: 13, weight: .medium))
-        .compositingGroup()
-        .opacity(0.5)
+        .foregroundStyle(Color.secondaryText)
 
         Spacer()
         HStack(alignment: .center, spacing: 4) {
@@ -93,17 +93,16 @@ struct PostInBoxLink: View {
     }
     .padding(.horizontal, 13)
     .padding(.vertical, 11)
-    .frame(width: .screenW / 1.75, height: 120, alignment: .topLeading)
-    .background(
-      postInBox.img != nil && postInBox.img != ""
-
-        ? URLImage(url: URL(string: postInBox.img!)!)
-        .scaledToFill()
-        .opacity(0.15)
-        .frame(width: .screenW / 1.75, height: 120)
-        .clipped()
-        : nil,
-    )
+    .frame(maxWidth: .infinity, minHeight: 120, maxHeight: 120, alignment: .topLeading)
+    // A share of the list it scrolls in (the sidebar on wide layouts), not of the window.
+    .containerRelativeFrame(.horizontal) { width, _ in width / 1.75 }
+    .background {
+      if let img = postInBox.img, !img.isEmpty, let url = URL(string: img) {
+        Color.clear
+          .overlay { URLImage(url: url).scaledToFill().opacity(0.15) }
+          .clipped()
+      }
+    }
     .themedListRowLikeBG()
     .mask(RR(20, Color.listBG))
     .offset(y: offsetY ?? 0)
@@ -117,7 +116,7 @@ struct PostInBoxLink: View {
         .scaleEffect(deleting ? 1 : 0.85),
     )
     .onTapGesture {
-      Nav.to(.reddit(.post(post)))
+      Nav.to(.reddit(.post(post)), from: navColumn)
     }
     .gesture(
       LongPressGesture(minimumDuration: 0.5, maximumDistance: 10)

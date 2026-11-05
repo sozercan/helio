@@ -81,8 +81,28 @@ enum MediaExtractedType: Equatable {
   case user(EntityExtracted<UserData, AnyHashable>?)
 }
 
+extension MediaExtractedType {
+  /// Starts loading the post, comment, user or subreddit a post links to.
+  func loadLinkedEntity() {
+    switch self {
+    case let .post(extracted): extracted?.entity.fetchItself()
+    case let .comment(extracted): extracted?.entity.fetchItself()
+    case let .user(extracted): extracted?.entity.fetchItself()
+    case let .subreddit(extracted):
+      if let sub = extracted?.entity {
+        Task(priority: .utility) {
+          await sub.loadIfNeeded()
+        }
+      }
+    default: break
+    }
+  }
+}
+
 /// ORDER MATTERS!
-func mediaExtractor(compact: Bool, contentWidth: Double = .screenW, _ data: PostData, theme: HelioTheme? = nil) -> MediaExtractedType? {
+/// Without `fetchLinkMetadata`, link previews download their page, and linked Reddit posts,
+/// comments, users and subreddits load, only once they show (`PostHelioData.deferredMedia`).
+func mediaExtractor(compact: Bool, contentWidth: Double = .screenW, _ data: PostData, theme: HelioTheme? = nil, fetchLinkMetadata: Bool = true) -> MediaExtractedType? {
   guard !data.is_self else { return nil }
 
   let contentWidth = contentWidth - ((theme?.postLinks.theme.innerPadding.horizontal ?? 0) * 2) - ((theme?.postLinks.theme.outerHPadding ?? 0) * 2)
@@ -91,7 +111,7 @@ func mediaExtractor(compact: Bool, contentWidth: Double = .screenW, _ data: Post
   // v.redd.it link with no `media`), which can't be played from here. Show the original.
   if let postEmbed = data.crosspost_parent_list?.first {
     // The outer post/page owns avatar registration for the complete embedded tree.
-    return .repost(Post(data: postEmbed, contentWidth: contentWidth, secondary: true, theme: theme, fetchAvatar: false))
+    return .repost(Post(data: postEmbed, contentWidth: contentWidth, secondary: true, theme: theme, fetchAvatar: false, fetchLinkMetadata: fetchLinkMetadata))
   }
 
   if let is_gallery = data.is_gallery, is_gallery, let galleryData = data.gallery_data?.items, let metadata = data.media_metadata {
@@ -145,8 +165,7 @@ func mediaExtractor(compact: Bool, contentWidth: Double = .screenW, _ data: Post
     return .yt(newExtracted)
   }
 
-  if let rawImageURL = URL(string: data.url.escape), IMAGES_FORMATS.contains(".\(rawImageURL.pathExtension.lowercased())") {
-    let url = loadableMediaURL(rawImageURL)
+  if let url = directImageURL(data) {
     var actualWidth = 0
     var actualHeight = 0
     if let images = data.preview?.images, !images.isEmpty, let image = images[0].source, let width = image.width, let height = image.height {
@@ -191,6 +210,12 @@ func mediaExtractor(compact: Bool, contentWidth: Double = .screenW, _ data: Post
   }
 
   let pathComponents = urlComponents.path.components(separatedBy: "/").filter { !$0.isEmpty }
+  func linked(_ media: MediaExtractedType) -> MediaExtractedType {
+    if fetchLinkMetadata {
+      media.loadLinkedEntity()
+    }
+    return media
+  }
 
   if urlComponents.host?.hasSuffix("reddit.com") == true, pathComponents.count > 1 {
     switch pathComponents[0] {
@@ -201,40 +226,30 @@ func mediaExtractor(compact: Bool, contentWidth: Double = .screenW, _ data: Post
         if pathComponents.count >= 6 {
           let commentId = pathComponents[5]
           let comment = Comment(id: commentId, typePrefix: Comment.prefix)
-          comment.fetchItself()
-          let entityExtracted = EntityExtracted(subredditID: subredditName, postID: postId, commentID: commentId, entity: comment)
-          return .comment(entityExtracted)
+          return linked(.comment(EntityExtracted(subredditID: subredditName, postID: postId, commentID: commentId, entity: comment)))
         }
         let post = Post(id: postId, typePrefix: Post.prefix)
-        post.fetchItself()
-        let entityExtracted = EntityExtracted(subredditID: subredditName, postID: postId, entity: post)
-        return .post(entityExtracted)
+        return linked(.post(EntityExtracted(subredditID: subredditName, postID: postId, entity: post)))
 //        return .post(id: postId, subreddit: subredditName)
       }
       let sub = Subreddit(id: subredditName)
-      Task(priority: .utility) {
-        await sub.loadIfNeeded()
-      }
-      let entityExtracted = EntityExtracted(subredditID: subredditName, entity: sub)
-      return .subreddit(entityExtracted)
+      return linked(.subreddit(EntityExtracted(subredditID: subredditName, entity: sub)))
 
     case "user", "u":
       let username = pathComponents[1]
       let user = User(id: username, typePrefix: User.prefix)
-      user.fetchItself()
-      let entityExtracted = EntityExtracted(userID: username, entity: user)
-      return .user(entityExtracted)
+      return linked(.user(EntityExtracted(userID: username, entity: user)))
 //      return .user(username: username)
 
     default:
       if !data.is_self, let linkURL = URL(string: data.url) {
-        return .link(PreviewModel.shared(linkURL, compact: compact))
+        return .link(PreviewModel.shared(linkURL, compact: compact, fetch: fetchLinkMetadata))
       }
     }
   }
 
   if data.post_hint == "link" || !data.domain.isEmpty, let linkURL = URL(string: data.url) {
-    return .link(PreviewModel.shared(linkURL, compact: compact))
+    return .link(PreviewModel.shared(linkURL, compact: compact, fetch: fetchLinkMetadata))
   }
 
   return nil
@@ -245,6 +260,13 @@ extension URL {
   var isGIF: Bool {
     pathExtension.lowercased() == "gif"
   }
+}
+
+/// The post's link when it's straight to an image file, by its extension, without tracking
+/// parameters.
+func directImageURL(_ data: PostData) -> URL? {
+  guard let url = URL(string: data.url.escape), IMAGES_FORMATS.contains(".\(url.pathExtension.lowercased())") else { return nil }
+  return loadableMediaURL(url)
 }
 
 /// A YouTube embed's thumbnail, downsampled for the column.

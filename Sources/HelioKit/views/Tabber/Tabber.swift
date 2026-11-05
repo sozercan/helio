@@ -41,6 +41,11 @@ struct Tabber: View {
     }
   }
 
+  /// Me's tab title: the username, if the setting asks for it.
+  private var meTitle: String {
+    appearanceDefSettings.showUsernameInTabBar ? RedditAPI.shared.me?.data?.name ?? "Me" : "Me"
+  }
+
   var body: some View {
     TabView(selection: $nav.activeTab) {
       Tab("Posts", systemImage: "doc.text.image", value: Nav.TabIdentifier.posts) {
@@ -55,20 +60,23 @@ struct Tabber: View {
         WithCredentialOnly(credential: redditCredentialsManager.selectedCredential) {
           Inbox(router: nav[.inbox])
         }
+        .columnContentWidth()
         .measureTabBar(setTabBarHeight)
         .hidesTabBarOnMac()
       }
 
-      Tab(appearanceDefSettings.showUsernameInTabBar ? RedditAPI.shared.me?.data?.name ?? "Me" : "Me", systemImage: "person.fill", value: Nav.TabIdentifier.me) {
+      Tab(meTitle, systemImage: "person.fill", value: Nav.TabIdentifier.me) {
         WithCredentialOnly(credential: redditCredentialsManager.selectedCredential) {
           Me(router: nav[.me])
         }
+        .columnContentWidth()
         .measureTabBar(setTabBarHeight)
         .hidesTabBarOnMac()
       }
 
       Tab("Settings", systemImage: "gearshape.fill", value: Nav.TabIdentifier.settings) {
         Settings(router: nav[.settings])
+          .columnContentWidth()
           .measureTabBar(setTabBarHeight)
           .hidesTabBarOnMac()
       }
@@ -78,6 +86,7 @@ struct Tabber: View {
         WithCredentialOnly(credential: redditCredentialsManager.selectedCredential) {
           Search(router: nav[.search])
         }
+        .columnContentWidth()
         .measureTabBar(setTabBarHeight)
         .hidesTabBarOnMac()
       }
@@ -108,6 +117,7 @@ struct Tabber: View {
     #if targetEnvironment(macCatalyst)
       .background(MacTabToolbarInstaller(toolbar: macTabToolbar))
       .onChange(of: nav.activeTab) { _, tab in macTabToolbar.select(tab) }
+      .onChange(of: meTitle, initial: true) { _, title in macTabToolbar.setTitle(title, for: .me) }
     #endif
   }
 }

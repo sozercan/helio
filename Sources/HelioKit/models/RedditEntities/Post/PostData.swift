@@ -89,6 +89,8 @@ struct PostData: GenericRedditEntityDataType {
   var can_gild: Bool?
   var spoiler: Bool?
   var locked: Bool?
+  /// Whether the user moderates the subreddit, and so can still comment on a locked post.
+  var can_mod_post: Bool?
   var treatment_tags: [String]?
   var visited: Bool?
   var removed_by: String?
@@ -121,6 +123,12 @@ struct PostData: GenericRedditEntityDataType {
 
   var votesKit: VotesKit {
     VotesKit(ups: ups, ratio: upvote_ratio, likes: likes, id: id)
+  }
+
+  /// Whether Reddit takes new comments on the post: not once it's archived, and on a locked post
+  /// only from its subreddit's moderators.
+  var acceptsReplies: Bool {
+    !(archived ?? false) && (!(locked ?? false) || (can_mod_post ?? false))
   }
 }
 

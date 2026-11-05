@@ -45,13 +45,34 @@ struct LightBoxImage: View {
     }
   }
 
+  func close() {
+    withAnimation(.easeOut) {
+      appearBlack = false
+    }
+    dismiss()
+  }
+
+  /// Shows image `index`, for VoiceOver, which can't drag between them.
+  func page(to index: Int) {
+    let index = min(imagesArr.count - 1, max(0, index))
+    guard index != activeIndex else { return }
+    activeIndex = index
+    withAnimation(motionAware(spring)) {
+      xPos = -(CGFloat(index) * (.screenW + SPACING))
+    }
+  }
+
   var body: some View {
     let interpolate = interpolatorBuilder([0, 100], value: abs(drag.height))
     HStack(spacing: SPACING) {
       ForEach(Array(imagesArr.enumerated()), id: \.element.id) { index, img in
         let selected = index == activeIndex
-        LightBoxElementView(el: img, onTap: toggleOverlay, doLiveText: doLiveText, showOverlay: showOverlay, isPinching: $isPinching, isZoomed: $isZoomed)
+        LightBoxElementView(el: img, label: postTitle, onTap: toggleOverlay, doLiveText: doLiveText, showOverlay: showOverlay, isPinching: $isPinching, isZoomed: $isZoomed)
           .allowsHitTesting(selected)
+          .accessibilityHidden(!selected)
+          // The page, which changes as VoiceOver users swipe through the gallery.
+          .accessibilityValue(imagesArr.count > 1 ? "Image \(index + 1) of \(imagesArr.count)" : "")
+          .modifier(LightBoxPaging(pages: imagesArr.count, page: { page(to: activeIndex + $0) }))
           .scaleEffect(!selected ? 1 : interpolate([1, 0.9], true))
           .blur(radius: selected && loading ? 24 : 0)
           .offset(x: !selected ? 0 : dragAxis == .vertical ? drag.width : 0, y: i != activeIndex ? 0 : dragAxis == .vertical ? drag.height : 0)
@@ -100,7 +121,7 @@ struct LightBoxImage: View {
             activeIndex = newActiveIndex
             var initialVel = abs(predictedEnd / distance)
             initialVel = initialVel < 3.75 ? 0 : initialVel * 2
-            withAnimation(.interpolatingSpring(stiffness: 150, damping: 17, initialVelocity: initialVel)) {
+            withAnimation(motionAware(.interpolatingSpring(stiffness: 150, damping: 17, initialVelocity: initialVel))) {
               xPos = finalXPos
               dragAxis = nil
             }
@@ -112,7 +133,7 @@ struct LightBoxImage: View {
                 appearBlack = false
               }
             }
-            withAnimation(.interpolatingSpring(stiffness: 200, damping: 20, initialVelocity: 0)) {
+            withAnimation(motionAware(.interpolatingSpring(stiffness: 200, damping: 20, initialVelocity: 0))) {
               drag = .zero
               dragAxis = nil
               if shouldClose {
@@ -127,17 +148,13 @@ struct LightBoxImage: View {
         LightBoxOverlay(postTitle: postTitle, badgeKit: badgeKit, avatarImageRequest: avatarImageRequest, opacity: !showOverlay || isPinching ? 0 : interpolate([1, 0], false), imagesArr: imagesArr, activeIndex: activeIndex, loading: $loading, done: $done)
       }
     }
+    // Taps on the image show or hide the controls; Close, Escape or a swipe closes it.
     .background(
       !appearBlack
         ? nil
         : Color.black
         .opacity(interpolate([1, 0], false))
-        .onTapGesture {
-          withAnimation(.easeOut) {
-            appearBlack = false
-          }
-        }
-        .allowsHitTesting(appearBlack)
+        .allowsHitTesting(false)
         .transition(.opacity),
     )
     .overlay {
@@ -157,8 +174,30 @@ struct LightBoxImage: View {
       }
     }
     .ignoresSafeArea(edges: .all)
+    .overlay(alignment: .topTrailing) {
+      let chromeOpacity = !showOverlay || isPinching ? 0 : interpolate([1, 0], false)
+      Button(action: close) {
+        // The label fills the circle, so the whole of it takes the tap: with the plain style,
+        // only the label does.
+        Label("Close", systemImage: "xmark")
+          .labelStyle(.iconOnly)
+          .fontSize(17, .semibold)
+          .frame(width: 44, height: 44)
+          .contentShape(Circle())
+      }
+      .buttonStyle(.plain)
+      .foregroundStyle(.white)
+      .glassEffect(.regular.interactive(), in: Circle())
+      .keyboardShortcut(.cancelAction)
+      .padding(.horizontal, 16)
+      .padding(.top, 8)
+      .opacity(chromeOpacity)
+      .allowsHitTesting(chromeOpacity != 0)
+    }
     .compositingGroup()
     .opacity(appearContent ? 1 : 0)
+    // VoiceOver's scrub gesture closes it, since it can't drag it away.
+    .accessibilityAction(.escape) { close() }
     .onChange(of: done) { val in
       if val {
         doThisAfter(0.5) {
@@ -189,6 +228,29 @@ struct LightBoxImage: View {
         }
       }
     }
+    // It covers the post: the menu bar's Post commands mustn't move off it underneath.
+    .commandTarget(CommandTargets.Target(kind: .modal))
     .transition(.opacity)
+  }
+}
+
+/// Swiping up or down with VoiceOver on a gallery's image shows the next or previous one.
+private struct LightBoxPaging: ViewModifier {
+  var pages: Int
+  /// Moves by the given number of pages.
+  var page: (Int) -> Void
+
+  func body(content: Content) -> some View {
+    if pages > 1 {
+      content.accessibilityAdjustableAction { direction in
+        switch direction {
+        case .increment: page(1)
+        case .decrement: page(-1)
+        @unknown default: break
+        }
+      }
+    } else {
+      content
+    }
   }
 }

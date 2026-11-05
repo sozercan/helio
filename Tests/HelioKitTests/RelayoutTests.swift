@@ -1,5 +1,7 @@
 import Foundation
+import Nuke
 import Testing
+import YouTubePlayerKit
 @testable import HelioKit
 
 @MainActor
@@ -134,5 +136,69 @@ struct RelayoutTests {
     post.helioData?.postDimensions = .zero
     post.relayout(contentWidth: 400, theme: theme)
     #expect(post.helioData?.postDimensions == .zero)
+  }
+
+  @Test func thePostPageLaysOutApartFromItsFeedRow() throws {
+    let post = try post()
+    post.setupHelioData(contentWidth: 400, theme: theme, fetchAvatar: false)
+    let row = try #require(post.helioData?.postDimensions)
+
+    // Open beside its feed, in a wider column.
+    let page = try #require(post.pageLayout(contentWidth: 900, theme: theme))
+    #expect(post.helioData?.postDimensions == row)
+    #expect(post.helioData?.layoutWidth == 400)
+    #expect((page.mediaSize?.width ?? 0) > (row.mediaSize?.width ?? 0))
+    guard case let .imgs(pageImages) = page.media, case let .imgs(rowImages) = post.helioData?.extractedMediaForcedNormal else {
+      Issue.record("expected images")
+      return
+    }
+    // Requested at the page's size, not the row's.
+    #expect(pageImages.flatMap { $0.request.processors.map(\.identifier) } != rowImages.flatMap { $0.request.processors.map(\.identifier) })
+  }
+
+  @Test func thePostPageKeepsItsLayoutWhenTheRowRelayouts() throws {
+    let post = try post()
+    post.setupHelioData(contentWidth: 400, theme: theme, fetchAvatar: false)
+    let first = try #require(post.pageLayout(contentWidth: 900, theme: theme))
+
+    // The feed column resized: the row lays out again, and the page keeps its own layout.
+    post.relayout(contentWidth: 500, theme: theme)
+    let second = try #require(post.pageLayout(contentWidth: 900, theme: theme))
+    #expect(second.key == first.key)
+    #expect(second.mediaSize == first.mediaSize)
+    #expect(post.helioData?.layoutWidth == 500)
+  }
+
+  @Test func eachPostPageHasItsOwnYouTubePlayer() throws {
+    let post = try post()
+    post.setupHelioData(contentWidth: 400, theme: theme, fetchAvatar: false)
+    let rowPlayer = YouTubePlayer(source: .video(id: "abc"))
+    let thumbnail = try #require(URL(string: "https://i.ytimg.com/vi/abc/hqdefault.jpg"))
+    post.helioData?.extractedMediaForcedNormal = .yt(YTMediaExtracted(videoID: "abc", size: CGSize(width: 16, height: 9), thumbnailURL: thumbnail, thumbnailRequest: ImageRequest(url: thumbnail), player: rowPlayer, author: "", authorURL: thumbnail))
+    // Two pages of the post showing at once, such as the post at the feed column's root and its
+    // thread beside it.
+    let page = PageYouTubePlayer()
+    let otherPage = PageYouTubePlayer()
+    func player(_ owner: PageYouTubePlayer, width: Double) throws -> YouTubePlayer? {
+      let media = try #require(post.pageLayout(contentWidth: width, theme: theme)?.media)
+      guard case let .yt(video) = owner.owning(media) else { return nil }
+      return video.player
+    }
+    let wide = try #require(try player(page, width: 900))
+    let narrow = try #require(try player(page, width: 600))
+    let other = try #require(try player(otherPage, width: 900))
+    // Not the row's, nor the other page's: they'd share one web view.
+    #expect(wide !== rowPlayer)
+    #expect(other !== wide)
+    // Kept across the page's relayouts, so a playing video doesn't restart.
+    #expect(narrow === wide)
+  }
+
+  @Test func thePostPageFollowsItsColumn() throws {
+    let post = try post()
+    post.setupHelioData(contentWidth: 400, theme: theme, fetchAvatar: false)
+    let wide = try #require(post.pageLayout(contentWidth: 900, theme: theme))
+    let narrow = try #require(post.pageLayout(contentWidth: 600, theme: theme))
+    #expect((narrow.mediaSize?.width ?? 0) < (wide.mediaSize?.width ?? 0))
   }
 }

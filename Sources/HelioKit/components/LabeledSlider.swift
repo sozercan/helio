@@ -19,7 +19,7 @@ struct LabeledSlider: View {
         Text(label)
         Spacer()
         Text(step == 1 ? Int(value).description : String(format: "%.2f", value))
-          .opacity(0.5)
+          .foregroundStyle(Color.secondaryText)
       }
 //      .padding(.vertical, 8)
       HStack {

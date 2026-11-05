@@ -24,58 +24,66 @@ extension View {
   }
 
   func injectInTabDestinations() -> some View {
-    self
-//      .attachViewControllerToRouter()
-      .navigationDestination(for: Router.NavDest.self, destination: { dest in
-        switch dest {
-        case let .reddit(reddDest):
-          switch reddDest {
-          case let .post(post):
-            if let sub = post.helioData?.subreddit {
-              PostView(post: post, subreddit: sub)
-            }
-          case let .postHighlighted(post, highlightID):
-            if let sub = post.helioData?.subreddit {
-              PostView(post: post, subreddit: sub, highlightID: highlightID)
-            }
-          case let .subFeed(sub):
-            SubredditPosts(subreddit: sub)
-          case let .subInfo(sub):
-            SubredditInfo(subreddit: sub)
-          case let .multiFeed(multi):
-            MultiPostsView(multi: multi)
-          case .multiInfo:
-            EmptyView()
-          case let .user(user):
-            UserView(user: user)
-          }
-        case let .setting(settingsDest):
-          switch settingsDest {
-          case .general:
-            GeneralPanel()
-          case .behavior:
-            BehaviorPanel()
-          case .appearance:
-            AppearancePanel()
-          case .credentials:
-            CredentialsPanel()
-          case .about:
-            AboutPanel()
-          case .commentSwipe:
-            CommentSwipePanel()
-          case .postSwipe:
-            PostSwipePanel()
-          case .accessibility:
-            AccessibilityPanel()
-          case .filteredSubreddits:
-            FilteredSubredditsSettings()
-          case .faq:
-            FAQPanel()
-          case .themes:
-            ThemesPanel()
-          }
+    navigationDestination(for: Router.NavDest.self) { RouterDestinationView(dest: $0) }
+  }
+}
+
+/// The screen for a navigation destination.
+struct RouterDestinationView: View {
+  let dest: Router.NavDest
+
+  var body: some View {
+    screen.readableWidth()
+  }
+
+  @ViewBuilder
+  private var screen: some View {
+    switch dest {
+    case let .reddit(reddDest):
+      switch reddDest {
+      case let .post(post):
+        if let sub = post.helioData?.subreddit {
+          PostView(post: post, subreddit: sub)
         }
-      })
+      case let .postHighlighted(post, highlightID):
+        if let sub = post.helioData?.subreddit {
+          PostView(post: post, subreddit: sub, highlightID: highlightID)
+        }
+      case let .subFeed(sub):
+        SubredditPosts(subreddit: sub)
+      case let .subInfo(sub):
+        SubredditInfo(subreddit: sub)
+      case let .multiFeed(multi):
+        MultiPostsView(multi: multi)
+      case .multiInfo:
+        EmptyView()
+      case let .user(user):
+        UserView(user: user)
+      }
+    case let .setting(settingsDest):
+      switch settingsDest {
+      case .general:
+        GeneralPanel()
+      case .behavior:
+        BehaviorPanel()
+      case .appearance:
+        AppearancePanel()
+      case .credentials:
+        CredentialsPanel()
+      case .about:
+        AboutPanel()
+      case .commentSwipe:
+        CommentSwipePanel()
+      case .postSwipe:
+        PostSwipePanel()
+      case .filteredSubreddits:
+        FilteredSubredditsSettings()
+      case .faq:
+        FAQPanel()
+      case .themes:
+        ThemesPanel()
+      }
+    }
   }
 }
 

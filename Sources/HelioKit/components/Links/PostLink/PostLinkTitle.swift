@@ -9,7 +9,7 @@ import SwiftUI
 
 struct PostLinkTitle: View, Equatable {
   static func == (lhs: PostLinkTitle, rhs: PostLinkTitle) -> Bool {
-    lhs.label == rhs.label && lhs.size == rhs.size && lhs.theme == rhs.theme && lhs.dimmed == rhs.dimmed
+    lhs.attrString === rhs.attrString && lhs.label == rhs.label && lhs.size == rhs.size && lhs.theme == rhs.theme && lhs.dimmed == rhs.dimmed
   }
 
   var attrString: NSAttributedString?
@@ -30,5 +30,64 @@ struct PostLinkTitle: View, Equatable {
     //                    .fontSize(theme.size, theme.weight.t)
     //                    .fixedSize(horizontal: false, vertical: true)
     //                    .frame(maxWidth: .infinity, alignment: .topLeading)
+  }
+}
+
+extension View {
+  /// The feed title, drawn by a UIKit label VoiceOver can't read, as a button that opens the
+  /// post, with the post's actions (the ones in its context menu and swipe actions).
+  /// `secondary`: a crosspost's embedded card, which never reads as the open post.
+  func postTitleAccessibility(post: Post, data: PostData, secondary: Bool, open: @escaping () -> Void) -> some View {
+    // The element is a clear view behind the title: the label itself runs taller than the
+    // title (it lays out blank lines below it), and VoiceOver would outline all of it.
+    accessibilityHidden(true)
+      .background {
+        Color.clear
+          .accessibilityElement(children: .ignore)
+          .accessibilityLabel(postTitleAccessibilityLabel(data))
+          .accessibilityAddTraits(.isButton)
+          .modifier(OpenPostSelectedTrait(postID: post.id, marks: !secondary))
+          .accessibilityHint("Opens the post")
+          .accessibilityAction(.default, open)
+          .accessibilityActions { PostMenuItems(post: post) }
+      }
+  }
+}
+
+/// The post's context menu items: its swipe actions and Share. Also its VoiceOver actions.
+struct PostMenuItems: View {
+  var post: Post
+
+  var body: some View {
+    PostLinkContext(post: post)
+    Button("Share", systemImage: "square.and.arrow.up") {
+      if let permalink = post.data?.permalink {
+        ShareUtils.shareItem(item: "https://reddit.com\(permalink.escape.urlEncoded)")
+      }
+    }
+  }
+}
+
+/// The title and the tags drawn after it: "Title, NSFW, Flair".
+func postTitleAccessibilityLabel(_ data: PostData) -> String {
+  var parts = [data.title]
+  if data.over_18 ?? false {
+    parts.append("NSFW")
+  }
+  if let flair = flairWithoutEmojis(str: data.link_flair_text)?.joined(separator: " "), !flair.isEmpty {
+    parts.append(flair)
+  }
+  return parts.joined(separator: ", ")
+}
+
+/// The post open beside the feed reads as selected, as the feed's highlight shows it.
+struct OpenPostSelectedTrait: ViewModifier {
+  let postID: String
+  /// False for a row the highlight doesn't mark.
+  let marks: Bool
+  @Environment(\.navColumn) private var navColumn
+
+  func body(content: Content) -> some View {
+    content.accessibilityAddTraits(marks && isOpenBesideFeed(postID: postID, column: navColumn) ? .isSelected : [])
   }
 }

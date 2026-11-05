@@ -67,7 +67,7 @@ struct PostDimensions: Hashable, Equatable {
   }
 }
 
-func getPostDimensions(post: Post, helioData: PostHelioData? = nil, columnWidth: Double = .screenW, secondary: Bool = false, rawTheme: HelioTheme? = nil, compact: Bool? = nil, subId: String? = nil) -> PostDimensions {
+func getPostDimensions(post: Post, helioData: PostHelioData? = nil, columnWidth: Double = .screenW, secondary: Bool = false, rawTheme: HelioTheme? = nil, compact: Bool? = nil, subId: String? = nil, dynamicTypeSize: DynamicTypeSize = ContentTextScale.dynamicTypeSize) -> PostDimensions {
   if let data = post.data {
     let selectedTheme = rawTheme ?? InMemoryTheme.shared.currentTheme
     let showSelfPostThumbnails = CachedDefaults[.PostLinkDefSettings].compactMode.showPlaceholderThumbnail
@@ -157,9 +157,14 @@ func getPostDimensions(post: Post, helioData: PostHelioData? = nil, columnWidth:
 
     let titleContentWidth = contentWidth - (compact ? compactTitleWidth : 0)
 
+    // Scaled like `createTitleTagsAttrString` draws them.
+    func scaledFont(_ size: CGFloat, _ weight: UIFont.Weight, _ role: ContentTextScale.Role) -> UIFont {
+      ContentTextScale.font(ofSize: size, weight: weight, relativeTo: role, dynamicTypeSize: dynamicTypeSize)
+    }
+    let titleFont = scaledFont(theme.titleText.size + 0.35, theme.titleText.weight.ut, .title)
     var appendStr = ""
-    let titleAttr = NSMutableAttributedString(string: title, attributes: [.font: UIFont.systemFont(ofSize: theme.titleText.size + 0.35, weight: theme.titleText.weight.ut)])
-    let titleAttrBlankSpace = NSAttributedString(string: "   ", attributes: [.font: UIFont.systemFont(ofSize: theme.titleText.size + 0.35, weight: theme.titleText.weight.ut)])
+    let titleAttr = NSMutableAttributedString(string: title, attributes: [.font: titleFont])
+    let titleAttrBlankSpace = NSAttributedString(string: "   ", attributes: [.font: titleFont])
     if data.over_18 ?? false {
       titleAttr.append(titleAttrBlankSpace)
       appendStr += "NSFW"
@@ -168,7 +173,7 @@ func getPostDimensions(post: Post, helioData: PostHelioData? = nil, columnWidth:
       titleAttr.append(titleAttrBlankSpace)
       appendStr += flair
     }
-    let append = NSMutableAttributedString(string: appendStr, attributes: [.font: UIFont.systemFont(ofSize: ((theme.titleText.size - 2) * 100) / 120, weight: .semibold)])
+    let append = NSMutableAttributedString(string: appendStr, attributes: [.font: scaledFont(((theme.titleText.size - 2) * 100) / 120, .semibold, .title)])
     if !appendStr.isEmpty {
       titleAttr.append(append)
       titleAttr.append(titleAttrBlankSpace)
@@ -176,7 +181,8 @@ func getPostDimensions(post: Post, helioData: PostHelioData? = nil, columnWidth:
     ACC_titleHeight = round(titleAttr.boundingRect(with: CGSize(width: titleContentWidth, height: .infinity), options: [.usesLineFragmentOrigin], context: nil).height)
 
     if !body.isEmpty && !compact {
-      ACC_bodyHeight = round(NSString(string: body).boundingRect(with: CGSize(width: contentWidth, height: (theme.bodyText.size * 1.2) * 3), options: [.usesLineFragmentOrigin, .truncatesLastVisibleLine], attributes: [.font: UIFont.systemFont(ofSize: theme.bodyText.size, weight: theme.bodyText.weight.ut)], context: nil).height)
+      let bodyFont = scaledFont(theme.bodyText.size, theme.bodyText.weight.ut, .body)
+      ACC_bodyHeight = round(NSString(string: body).boundingRect(with: CGSize(width: contentWidth, height: (bodyFont.pointSize * 1.2) * 3), options: [.usesLineFragmentOrigin, .truncatesLastVisibleLine], attributes: [.font: bodyFont], context: nil).height)
     }
 
     ACC_mediaSize.width = round(ACC_mediaSize.width)
@@ -185,8 +191,8 @@ func getPostDimensions(post: Post, helioData: PostHelioData? = nil, columnWidth:
     let ACC_SubDividerHeight = SubsNStuffLine.height
 
     let badgeAvatarHeight = theme.badge.avatar.visible ? theme.badge.avatar.size : 0
-    let badgeAuthorHeight = theme.badge.authorText.size * 1.2
-    let badgeStatsFontHeight = theme.badge.statsText.size * 1.2
+    let badgeAuthorHeight = ContentTextScale.size(theme.badge.authorText.size, relativeTo: .meta, dynamicTypeSize: dynamicTypeSize) * 1.2
+    let badgeStatsFontHeight = ContentTextScale.size(theme.badge.statsText.size, relativeTo: .meta, dynamicTypeSize: dynamicTypeSize) * 1.2
     let badgeAuthorStatsSpacing = BadgeView.authorStatsSpacing
 
     let ACC_badgeHeight = round(max(badgeAvatarHeight, (showAuthorOnPostLinks ? badgeAuthorHeight + badgeAuthorStatsSpacing : 0) + badgeStatsFontHeight))

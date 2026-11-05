@@ -143,3 +143,101 @@ struct MediaExtractorTests {
     #expect(try !#require(URL(string: "https://i.redd.it/abc.png?x=.gif")?.isGIF))
   }
 }
+
+/// A canvas feed shows no link previews, so its posts' previews download the linked page only
+/// once they show.
+struct DeferredLinkPreviewTests {
+  private func postData(_ overrides: [String: Any]) throws -> PostData {
+    var json = try #require(try JSONSerialization.jsonObject(with: JSONEncoder().encode(postSampleData)) as? [String: Any])
+    json["is_self"] = false
+    json.merge(overrides) { $1 }
+    return try JSONDecoder().decode(PostData.self, from: JSONSerialization.data(withJSONObject: json))
+  }
+
+  @Test func aDeferredPreviewLoadsWhenItShows() throws {
+    let data = try postData(["url": "https://example.com/deferred-\(UUID().uuidString)", "domain": "example.com"])
+    guard case let .link(model) = mediaExtractor(compact: false, contentWidth: 400, data, fetchLinkMetadata: false) else {
+      Issue.record("expected a link")
+      return
+    }
+    #expect(!model.hasStartedLoading)
+    model.loadIfNeeded()
+    #expect(model.hasStartedLoading)
+  }
+
+  @Test func aLayoutThatShowsPreviewsStartsADeferredOne() throws {
+    let url = try #require(URL(string: "https://example.com/shared-\(UUID().uuidString)"))
+    let deferred = PreviewModel.shared(url, compact: true, fetch: false)
+    #expect(!deferred.hasStartedLoading)
+    #expect(PreviewModel.shared(url, compact: true) === deferred)
+    #expect(deferred.hasStartedLoading)
+  }
+
+  @Test func aCrosspostDefersItsOriginalsPreviewToo() throws {
+    var original = try #require(try JSONSerialization.jsonObject(with: JSONEncoder().encode(postSampleData)) as? [String: Any])
+    original["is_self"] = false
+    original["url"] = "https://example.com/original-\(UUID().uuidString)"
+    original["domain"] = "example.com"
+    let data = try postData(["url": "https://example.com/outer", "crosspost_parent_list": [original]])
+    guard case let .repost(embedded) = mediaExtractor(compact: false, contentWidth: 400, data, fetchLinkMetadata: false),
+          case let .link(model) = embedded.helioData?.extractedMedia
+    else {
+      Issue.record("expected a crosspost of a link")
+      return
+    }
+    #expect(!model.hasStartedLoading)
+  }
+
+  /// Canvas shows no video, so a Streamable link waits until its media shows, and resolves once.
+  @Test func aDeferredStreamableResolvesOnlyWhenItShows() throws {
+    let data = try postData(["url": "https://streamable.com/deferred\(UUID().uuidString.prefix(8))", "domain": "streamable.com"])
+    let post = Post(data: data, contentWidth: 400, theme: defaultTheme, fetchAvatar: false, fetchLinkMetadata: false)
+    let helioData = try #require(post.helioData)
+    guard case .streamable = helioData.extractedMedia else {
+      Issue.record("expected a Streamable link")
+      return
+    }
+    #expect(helioData.deferredMedia != nil)
+
+    // Stands in for the request, which the test doesn't make.
+    var resolved = 0
+    helioData.deferredMedia = { resolved += 1 }
+    helioData.resolveDeferredMedia()
+    helioData.resolveDeferredMedia()
+    #expect(resolved == 1)
+  }
+
+  /// Canvas shows no linked user, post, comment or subreddit, so each loads only once its media
+  /// shows, as on the post page; large and compact feeds load them as they're laid out.
+  @Test(arguments: [
+    "https://www.reddit.com/u/placeholder_user",
+    "https://www.reddit.com/r/apple/comments/abc123/a_title/",
+    "https://www.reddit.com/r/apple/comments/abc123/a_title/def456/",
+    "https://www.reddit.com/r/apple/",
+  ])
+  func aLinkedRedditEntityLoadsOnlyWhenItShows(url: String) throws {
+    let data = try postData(["url": url, "domain": "reddit.com"])
+    let eager = Post(data: data, contentWidth: 400, theme: defaultTheme, fetchAvatar: false, fetchLinkMetadata: true)
+    #expect(eager.helioData?.deferredMedia == nil)
+
+    let post = Post(data: data, contentWidth: 400, theme: defaultTheme, fetchAvatar: false, fetchLinkMetadata: false)
+    let helioData = try #require(post.helioData)
+    switch helioData.extractedMediaForcedNormal {
+    case .post, .comment, .user, .subreddit: break
+    default: Issue.record("expected a linked Reddit entity")
+    }
+    #expect(helioData.deferredMedia != nil)
+
+    // Stands in for the request, which the test doesn't make.
+    var resolved = 0
+    helioData.deferredMedia = { resolved += 1 }
+    helioData.resolveDeferredMedia()
+    helioData.resolveDeferredMedia()
+    #expect(resolved == 1)
+
+    // Refreshing the post once its media has shown, as its page does, loads it right away.
+    post.setupHelioData(theme: defaultTheme, fetchAvatar: false)
+    #expect(helioData.fetchesLinkMetadata)
+    #expect(helioData.deferredMedia == nil)
+  }
+}

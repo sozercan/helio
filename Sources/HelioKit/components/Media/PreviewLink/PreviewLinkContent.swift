@@ -24,6 +24,9 @@ struct PreviewLinkContent: View {
   static let height: CGFloat = 88
   var body: some View {
     PreviewLinkContentRaw(compact: compact, imageReq: viewModel.imageReq, title: viewModel.title, description: viewModel.description, loading: viewModel.loading, url: url)
+      // A canvas post's preview waits until it shows, such as when the post opens. Keyed by the
+      // model, so one a refresh replaces loads too, though this view is already showing.
+      .task(id: ObjectIdentifier(viewModel)) { viewModel.loadIfNeeded() }
   }
 }
 
@@ -39,26 +42,49 @@ struct PreviewLinkContentRaw: View, Equatable {
   var description: String?
   var loading: Bool
   var url: URL
+  @Environment(\.navColumn) private var navColumn
+  @Environment(\.useTheme) private var selectedTheme
+
+  func open() {
+    Nav.openLink(url, from: navColumn)
+  }
 
   var body: some View {
+    Button(action: open) {
+      content
+    }
+    .buttonStyle(.plain)
+    .modifier(CompactLinkLabel(label: compact ? title ?? url.host() ?? url.absoluteString : nil))
+    .contextMenu {
+      Button {
+        UIPasteboard.general.string = url.absoluteString
+      } label: {
+        Label("Copy URL", systemImage: "link")
+      }
+    }
+  }
+
+  private var content: some View {
     HStack(spacing: 16) {
       if !compact {
         VStack(alignment: .leading, spacing: 2) {
           VStack(alignment: .leading, spacing: 0) {
             Text(title ?? "No title detected")
-              .fontSize(17, .medium)
+              .contentFont(17, .medium, relativeTo: .title)
               .lineLimit(1)
               .truncationMode(.tail)
 
             Text(cleanURL(url: url))
-              .fontSize(13)
-              .opacity(0.5)
+              .contentFont(13, relativeTo: .meta)
+              // The theme's secondary text, which High Contrast keeps at 7:1 (Apollo's is the
+              // app's `secondaryText`).
+              .foregroundStyle(selectedTheme.postLinks.theme.badge.statsText.color())
               .lineLimit(1)
           }
           .frame(maxWidth: .infinity, alignment: .leading)
 
           Text(description ?? "No description detected")
-            .fontSize(14)
+            .contentFont(14, relativeTo: .detail)
             .lineLimit(2)
             .opacity(0.75)
         }
@@ -81,25 +107,29 @@ struct PreviewLinkContentRaw: View, Equatable {
       }
       .frame(width: compact ? scaledCompactModeThumbSize() : 76, height: compact ? scaledCompactModeThumbSize() : 76)
       .clipped()
-      .mask(RR(12, Color.black))
-      .background(RR(12, Color.primary.opacity(0.1)))
+      // Concentric with the card: its 16 radius less the 6 padding. Alone in compact rows, 12.
+      .mask(RR(compact ? 12 : 10, Color.black))
+      .background(RR(compact ? 12 : 10, Color.primary.opacity(0.1)))
     }
     .padding(.vertical, compact ? 0 : 6)
     .padding(.leading, compact ? 0 : 10)
     .padding(.trailing, compact ? 0 : 6)
-    .frame(maxWidth: compact ? nil : .infinity, minHeight: compact ? nil : PreviewLinkContent.height, maxHeight: compact ? nil : PreviewLinkContent.height)
+    // As tall as the thumbnail, or taller when larger text needs it.
+    .frame(maxWidth: compact ? nil : .infinity, minHeight: compact ? nil : PreviewLinkContent.height)
     .background(compact ? nil : RR(16, Color.primary.opacity(0.1)))
-    .contextMenu {
-      Button {
-        UIPasteboard.general.string = url.absoluteString
-      } label: {
-        Label("Copy URL", systemImage: "link")
-      }
+    .contentShape(Rectangle())
+  }
+}
+
+/// Compact previews show only the image, so they name the link: its title, or where it goes.
+private struct CompactLinkLabel: ViewModifier {
+  var label: String?
+
+  func body(content: Content) -> some View {
+    if let label {
+      content.accessibilityLabel(label)
+    } else {
+      content
     }
-    .highPriorityGesture(TapGesture().onEnded {
-      if let newURL = URL(string: url.absoluteString.replacingOccurrences(of: "https://reddit.com/", with: "helioapp://")) {
-        Nav.openURL(newURL)
-      }
-    })
   }
 }

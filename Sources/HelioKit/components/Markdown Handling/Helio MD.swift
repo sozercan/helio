@@ -8,10 +8,12 @@
 import MarkdownUI
 import SwiftUI
 
-public extension Theme {
-  /// Helio Markdown theme.
-  static func helioMarkdown(fontSize: CGFloat, lineSpacing: CGFloat = 0.2, textSelection: Bool = false) -> Theme {
-    Theme()
+extension Theme {
+  /// Helio Markdown theme. `quoteText` colors quoted text and `linkText` links (else the app's
+  /// accent color), the selected theme's in posts and comments.
+  static func helioMarkdown(fontSize: CGFloat, lineSpacing: CGFloat = 0.2, textSelection: Bool = false, quoteText: ColorSchemes<ThemeColor> = themeQuoteText, linkText: ColorSchemes<ThemeColor>? = nil) -> Theme {
+    let quoteText = quoteText.color()
+    let theme = Theme()
       .text {
         FontSize(fontSize)
       }
@@ -88,7 +90,7 @@ public extension Theme {
             .fill(Color(rgba: 0x4244_4EFF))
             .relativeFrame(width: .em(0.2))
           configuration.label
-            .markdownTextStyle { ForegroundColor(Color(rgba: 0x9294_A0FF)) }
+            .markdownTextStyle { ForegroundColor(quoteText) }
             .relativePadding(.horizontal, length: .em(1))
         }
         .fixedSize(horizontal: false, vertical: true)
@@ -97,6 +99,9 @@ public extension Theme {
         configuration.label
           .relativePadding(.horizontal, length: .em(isWideLayout ? 4 : 1))
       }
+    guard let linkText else { return theme }
+    let linkColor = linkText.color()
+    return theme.link { ForegroundColor(linkColor) }
   }
 }
 

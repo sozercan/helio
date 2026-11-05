@@ -11,6 +11,8 @@ struct ThemedListBGModifier: ViewModifier {
   var bg: ThemeBG
   var disable = false
   var forceNonBrighter = false
+  /// With `disable`, leaves the list's own background, such as a sidebar's material.
+  var keepSystemBackground = false
 
   @Environment(\.colorScheme) private var cs
   @Environment(\.brighterBG) private var brighter
@@ -23,7 +25,7 @@ struct ThemedListBGModifier: ViewModifier {
   func body(content: Content) -> some View {
     let actuallyBrighter = brighter && !forceNonBrighter
     content
-      .scrollContentBackground(.hidden)
+      .scrollContentBackground(disable && keepSystemBackground ? .automatic : .hidden)
       .onAppear {
         updateImg(bg, cs)
       }
@@ -57,8 +59,8 @@ struct ThemedListBGModifier: ViewModifier {
 }
 
 extension View {
-  func themedListBG(_ bg: ThemeBG, disable: Bool = false, forceNonBrighter: Bool = false) -> some View {
-    self.modifier(ThemedListBGModifier(bg: bg, disable: disable, forceNonBrighter: forceNonBrighter))
+  func themedListBG(_ bg: ThemeBG, disable: Bool = false, forceNonBrighter: Bool = false, keepSystemBackground: Bool = false) -> some View {
+    self.modifier(ThemedListBGModifier(bg: bg, disable: disable, forceNonBrighter: forceNonBrighter, keepSystemBackground: keepSystemBackground))
   }
 }
 

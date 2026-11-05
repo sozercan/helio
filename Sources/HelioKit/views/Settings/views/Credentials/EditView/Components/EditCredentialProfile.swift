@@ -35,7 +35,7 @@ struct EditCredentialProfile: View {
 
           Text(statusInfo.description.fixWidowedLines())
             .fontSize(13)
-            .opacity(0.5)
+            .foregroundStyle(Color.secondaryText)
             .frame(maxWidth: .infinity, alignment: .topLeading)
         }
         .multilineTextAlignment(.leading)

@@ -17,6 +17,7 @@ struct SubredditLinkContainer: View {
 }
 
 struct SubredditLink: View {
+  @Environment(\.navColumn) private var navColumn
   var noHPad = false
   var sub: Subreddit
   var body: some View {
@@ -35,7 +36,7 @@ struct SubredditLink: View {
               .frame(height: 24) // Adjust the height as needed
           }
           Text("\(formatBigNumber(data.subscribers ?? 0)) subscribers")
-            .fontSize(14).opacity(0.5)
+            .fontSize(14).foregroundStyle(Color.secondaryText)
           Text((data.public_description).md()).lineLimit(2)
             .fontSize(15).opacity(0.75)
         }
@@ -44,9 +45,11 @@ struct SubredditLink: View {
       .padding(.vertical, 14)
       .frame(maxWidth: .infinity, alignment: .leading)
       .themedListRowLikeBG(disableBG: noHPad)
-      .mask(RR(20, .black))
+      // A flat row in a list; a card where it's embedded in a post.
+      .if(noHPad) { $0.mask(RR(20, .black)) }
+      .if(!noHPad) { $0.hairlineRowSeparator() }
       .onTapGesture {
-        Nav.to(.reddit(.subFeed(sub)))
+        Nav.to(.reddit(.subFeed(sub)), from: navColumn)
       }
     }
   }

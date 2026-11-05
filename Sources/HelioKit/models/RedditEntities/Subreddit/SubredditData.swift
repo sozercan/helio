@@ -124,6 +124,19 @@ struct SubredditData: Codable, GenericRedditEntityDataType, Defaults.Serializabl
     return SubredditIconKit(url: iconURLStr, initialLetter: String(name.prefix(1)).uppercased(), color: String((firstNonEmptyString(color, "#828282") ?? "").dropFirst(1)))
   }
 
+  /// These details with the account's state from `cached`, the sidebar's copy, which is the
+  /// fresher for it (favorited, subscribed). Only that: the copy fills the fields it doesn't
+  /// keep with placeholders (no description, a public type). Settings don't depend on which
+  /// copy a subreddit holds (`Subreddit.settingsKey`).
+  func takingAccountState(from cached: SubredditData) -> SubredditData {
+    var data = self
+    data.user_has_favorited = cached.user_has_favorited ?? data.user_has_favorited
+    data.user_is_subscriber = cached.user_is_subscriber ?? data.user_is_subscriber
+    data.user_is_moderator = cached.user_is_moderator ?? data.user_is_moderator
+    data.user_is_banned = cached.user_is_banned ?? data.user_is_banned
+    return data
+  }
+
   enum CodingKeys: String, CodingKey {
     case user_flair_background_color, submit_text_html, restrict_posting, user_is_banned, free_form_reports, wiki_enabled, user_is_muted, user_can_flair_in_sr, display_name, header_img, title, allow_galleries, icon_size, primary_color, active_user_count, icon_img, display_name_prefixed, accounts_active, public_traffic, subscribers, name, quarantine, hide_ads, prediction_leaderboard_entry_type, emojis_enabled, advertiser_category, public_description, comment_score_hide_mins, allow_predictions, user_has_favorited, user_flair_template_id, community_icon, banner_background_image, original_content_tag_enabled, community_reviewed, submit_text, description_html, spoilers_enabled, allow_talks, is_enrolled_in_new_modmail, key_color, can_assign_user_flair, created, show_media_preview, user_is_subscriber, allow_videogifs, should_archive_posts, user_flair_type, allow_polls, public_description_html, allow_videos, banner_img, user_flair_text, banner_background_color, show_media, id, user_is_moderator, description, is_chat_post_feature_enabled, submit_link_label, user_flair_text_color, restrict_commenting, user_flair_css_class, allow_images, url, created_utc, user_is_contributor, helioFlairs, subreddit_type, over18
   }

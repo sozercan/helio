@@ -12,14 +12,17 @@ extension View {
     self
       .onOpenURL { url in
         let parsed = parseRedditURL(url.absoluteString)
+        // A link tapped in the posts tab, in a post or its comments, opens on top of it so Back
+        // returns there. From another tab it starts over on the posts tab's feed.
+        let reset = Nav.shared.activeTab != .posts
         withAnimation {
           switch parsed {
           case let .post(postID, subID):
-            Nav.fullTo(.posts, .reddit(.post(Post(id: postID, subID: subID))))
+            Nav.fullTo(.posts, .reddit(.post(Post(id: postID, subID: subID))), reset)
           case let .subreddit(name):
-            Nav.fullTo(.posts, .reddit(.subFeed(Subreddit(id: name))))
+            Nav.fullTo(.posts, .reddit(.subFeed(Subreddit(id: name))), reset)
           case let .user(username):
-            Nav.fullTo(.posts, .reddit(.user(User(id: username))))
+            Nav.fullTo(.posts, .reddit(.user(User(id: username))), reset)
           default:
             let urlStringWithoutScheme = url.absoluteString.replacingOccurrences(of: "helioapp://", with: "")
 
