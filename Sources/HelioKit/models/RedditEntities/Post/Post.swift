@@ -516,9 +516,8 @@ extension Post {
     var ids = [String]()
 
     if let children = comments?.children {
-      for i in 0 ... children.count - 1 {
-        let child = children[i]
-
+      // Not `0 ... count - 1`: a listing with no children, such as empty replies, would trap.
+      for child in children {
         if child.kind == "more" {
           continue
         }
