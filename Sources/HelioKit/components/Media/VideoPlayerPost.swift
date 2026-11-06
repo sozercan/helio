@@ -495,10 +495,6 @@ struct FullScreenVP: View {
         cancelDrag = nil
         scrubber.end()
       }
-      .overlay {
-        ScrubIndicator(position: scrubber.position)
-          .animation(.easeOut(duration: 0.15), value: scrubber.position == nil)
-      }
       // It covers the post: the menu bar's Post commands mustn't move off it underneath.
       .commandTarget(CommandTargets.Target(kind: .modal))
   }

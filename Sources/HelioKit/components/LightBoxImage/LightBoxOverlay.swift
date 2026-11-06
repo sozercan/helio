@@ -16,6 +16,8 @@ struct LightBoxOverlay: View {
   var opacity: CGFloat
   var imagesArr: [ImgExtracted]
   var activeIndex: Int
+  /// A lone GIF's progress bar, above the buttons.
+  var gifScrubber: GIFScrubber?
   @Binding var loading: Bool
   @Environment(\.dismiss) var dismiss
   @Binding var done: Bool
@@ -44,6 +46,12 @@ struct LightBoxOverlay: View {
           .background(Capsule(style: .continuous).fill(.regularMaterial))
           .frame(maxWidth: .infinity)
           .allowsHitTesting(false)
+      }
+
+      if let gifScrubber {
+        GIFProgressBar(scrubber: gifScrubber)
+          .padding(.horizontal, 12)
+          .padding(.bottom, 8)
       }
 
       HStack(spacing: 12) {

@@ -14,17 +14,18 @@ enum MediaScrub {
     return min(max(start + Double(translation / width) * span, 0), duration)
   }
 
-  /// "0:03 / 0:10", with hours only when the clip has them.
-  static func label(_ time: Double, of duration: Double) -> String {
-    let pattern: Duration.TimeFormatStyle.Pattern = duration >= 3600 ? .hourMinuteSecond : .minuteSecond
-    func format(_ seconds: Double) -> String {
-      Duration.seconds(max(0, seconds)).formatted(.time(pattern: pattern))
-    }
-    return "\(format(time)) / \(format(duration))"
+  /// "0:03", whole seconds as the video player shows them.
+  static func timestamp(_ seconds: Double) -> String {
+    Duration.seconds(max(0, seconds)).formatted(.time(pattern: .minuteSecond))
+  }
+
+  /// Elapsed time rounds down and the time left rounds up, so the two add up to the length.
+  static func timestamps(_ time: Double, of duration: Double) -> (elapsed: String, remaining: String) {
+    (timestamp(time.rounded(.down)), "-" + timestamp((duration - time).rounded(.up)))
   }
 }
 
-/// Where a scrub has moved the playhead, for the indicator.
+/// Where a scrub has moved the playhead.
 struct ScrubPosition: Equatable {
   var time: Double
   var duration: Double
@@ -34,19 +35,87 @@ struct ScrubPosition: Equatable {
   }
 }
 
-/// Pauses a player while a swipe scrubs it and plays it again after, if it was playing.
-/// Seeks are exact, so each one can take a moment on a stream; while one is running, only
-/// the latest position is kept and sought next, so the frame keeps up with the finger.
-/// Only the indicator reads `position`, so a scrub doesn't redraw the player's view.
-@MainActor @Observable
+/// A GIF's progress, laid out like the video player's bar: the track, with the elapsed time under
+/// its leading end and the time left under its trailing end. Dragging along it scrubs.
+struct GIFProgressBar: View {
+  let scrubber: GIFScrubber
+  @State private var dragging = false
+
+  var body: some View {
+    if let position = scrubber.position {
+      VStack(spacing: 6) {
+        GeometryReader { geometry in
+          let width = geometry.size.width
+          Capsule()
+            .fill(.white.opacity(0.3))
+            .overlay(alignment: .leading) {
+              Capsule()
+                .fill(.white)
+                .frame(width: width * min(max(position.progress, 0), 1))
+            }
+            .frame(height: dragging ? 10 : 6)
+            .frame(maxHeight: .infinity)
+            .contentShape(Rectangle())
+            .gesture(
+              DragGesture(minimumDistance: 0)
+                .onChanged { value in
+                  if !dragging {
+                    guard scrubber.begin() else { return }
+                    withAnimation(.easeOut(duration: 0.15)) { dragging = true }
+                  }
+                  scrubber.scrub(toFraction: width > 0 ? value.location.x / width : 0)
+                }
+                .onEnded { _ in
+                  guard dragging else { return }
+                  scrubber.end()
+                  withAnimation(.easeOut(duration: 0.15)) { dragging = false }
+                },
+            )
+        }
+        .frame(height: 24)
+        let times = MediaScrub.timestamps(position.time, of: position.duration)
+        HStack {
+          Text(times.elapsed)
+          Spacer()
+          Text(times.remaining)
+        }
+        .font(.caption.weight(.medium).monospacedDigit())
+        .foregroundStyle(.white.opacity(0.8))
+      }
+      .accessibilityElement(children: .ignore)
+      .accessibilityLabel("Playback position")
+      .accessibilityValue("\(MediaScrub.timestamp(position.time)) of \(MediaScrub.timestamp(position.duration))")
+      .accessibilityAdjustableAction { direction in
+        let step = direction == .increment ? 0.1 : -0.1
+        guard scrubber.begin() else { return }
+        scrubber.scrub(toFraction: min(max(position.progress + step, 0), 1))
+        scrubber.end()
+      }
+    }
+  }
+}
+
+/// Pauses a player while a swipe scrubs it, and plays it again after if it was playing.
+///
+/// An exact seek on a stream takes about a fifth of a second, so seeking exactly to each finger
+/// position shows only a few frames a second. While the finger moves, a seek may land anywhere
+/// within how far the finger went since the last one, which takes a few hundredths of a second
+/// and is no less accurate than the finger. When the finger rests or lifts, an exact seek settles
+/// it. Only the latest position is kept while a seek runs, so seeks never queue up.
+@MainActor
 final class VideoScrubber {
-  private(set) var position: ScrubPosition?
-  @ObservationIgnored private weak var player: AVPlayer?
-  @ObservationIgnored private var start: Double = 0
-  @ObservationIgnored private var duration: Double = 0
-  @ObservationIgnored private var resumes = false
-  @ObservationIgnored private var pending: CMTime?
-  @ObservationIgnored private var seeking = false
+  /// The most a seek may miss by, however fast the finger moves.
+  static let maxTolerance = 0.5
+
+  private weak var player: AVPlayer?
+  private var start: Double = 0
+  private var duration: Double = 0
+  private var resumes = false
+  /// Where the finger points.
+  private var target: Double?
+  /// The last seek's time, and whether it was exact.
+  private var sought: (time: Double, exact: Bool)?
+  private var seeking = false
 
   /// False when the video's length isn't known yet, so there's nothing to scrub.
   func begin(_ player: AVPlayer) -> Bool {
@@ -54,6 +123,8 @@ final class VideoScrubber {
     self.player = player
     self.duration = duration
     start = player.currentTime().seconds
+    sought = (start, true)
+    target = nil
     resumes = player.rate != 0
     player.pause()
     return true
@@ -61,72 +132,38 @@ final class VideoScrubber {
 
   func update(translation: CGFloat, width: CGFloat) {
     guard player != nil else { return }
-    let time = MediaScrub.time(from: start, translation: translation, width: width, duration: duration)
-    pending = CMTime(seconds: time, preferredTimescale: 600)
-    seekToPending()
-    position = ScrubPosition(time: time, duration: duration)
+    target = MediaScrub.time(from: start, translation: translation, width: width, duration: duration)
+    seekToTarget()
   }
 
   func end() {
-    position = nil
     guard let player else { return }
-    // Seek straight to where the finger stopped, replacing any seek still running.
-    if let pending {
-      self.pending = nil
-      player.seek(to: pending, toleranceBefore: .zero, toleranceAfter: .zero)
+    // Settle exactly where the finger lifted, replacing any seek still running.
+    if let target, sought?.time != target || sought?.exact != true {
+      player.seek(to: CMTime(seconds: target, preferredTimescale: 600), toleranceBefore: .zero, toleranceAfter: .zero)
     }
     if resumes {
       player.play()
     }
     self.player = nil
+    target = nil
   }
 
-  private func seekToPending() {
-    guard !seeking, let player, let target = pending else { return }
-    pending = nil
+  private func seekToTarget() {
+    guard !seeking, let player, let target else { return }
+    let resting = sought?.time == target
+    if resting, sought?.exact == true {
+      return
+    }
+    let tolerance = resting ? 0 : min(abs(target - (sought?.time ?? target)), Self.maxTolerance)
+    let window = CMTime(seconds: tolerance, preferredTimescale: 600)
+    sought = (target, tolerance == 0)
     seeking = true
-    player.seek(to: target, toleranceBefore: .zero, toleranceAfter: .zero) { [weak self] _ in
+    player.seek(to: CMTime(seconds: target, preferredTimescale: 600), toleranceBefore: window, toleranceAfter: window) { [weak self] _ in
       Task { @MainActor in
         self?.seeking = false
-        self?.seekToPending()
+        self?.seekToTarget()
       }
     }
-  }
-}
-
-/// The playhead's place while scrubbing: a bar, with the time for videos.
-struct ScrubIndicator: View {
-  var position: ScrubPosition?
-  var showsTime = true
-
-  var body: some View {
-    if let position {
-      bar(position)
-        .transition(.opacity)
-    }
-  }
-
-  private func bar(_ position: ScrubPosition) -> some View {
-    HStack(spacing: 10) {
-      if showsTime {
-        Text(MediaScrub.label(position.time, of: position.duration))
-          .font(.system(.subheadline, design: .rounded).weight(.semibold).monospacedDigit())
-      }
-      Capsule()
-        .fill(.white.opacity(0.3))
-        .frame(width: 120, height: 4)
-        .overlay(alignment: .leading) {
-          Capsule()
-            .fill(.white)
-            .frame(width: 120 * min(max(position.progress, 0), 1), height: 4)
-        }
-    }
-    .foregroundStyle(.white)
-    .padding(.horizontal, 16)
-    .padding(.vertical, 10)
-    .glassEffect(.regular, in: Capsule())
-    .environment(\.colorScheme, .dark)
-    .allowsHitTesting(false)
-    .accessibilityHidden(true)
   }
 }

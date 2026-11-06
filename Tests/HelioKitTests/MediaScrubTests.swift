@@ -24,9 +24,10 @@ struct MediaScrubTests {
     #expect(MediaScrub.time(from: 3, translation: 400, width: 400, duration: 0) == 3)
   }
 
-  @Test func labelsShowHoursOnlyForLongVideos() {
-    #expect(MediaScrub.label(3, of: 10) == "0:03 / 0:10")
-    #expect(MediaScrub.label(65, of: 3700) == "0:01:05 / 1:01:40")
+  @Test func elapsedAndRemainingTimesAddUpToTheLength() {
+    #expect(MediaScrub.timestamps(1.8, of: 4) == ("0:01", "-0:03"))
+    #expect(MediaScrub.timestamps(0, of: 4) == ("0:00", "-0:04"))
+    #expect(MediaScrub.timestamps(65.2, of: 90) == ("1:05", "-0:25"))
   }
 
   @Test func framesStartWhereThePreviousOnesEnd() {
@@ -51,10 +52,13 @@ struct MediaScrubTests {
     let view = try ScrubbableGIFView(data: Self.gif(delays: [0.5, 0.5, 1]))
     #expect(view.timeline.starts == [0, 0.5, 1])
     #expect(view.intrinsicContentSize == CGSize(width: 4, height: 2))
+    var reported: [Double] = []
+    view.onPlayhead = { reported.append($0) }
     #expect(view.beginScrub())
-    let position = view.scrub(translation: 300, width: 400)
-    #expect(position.time == 1.5)
-    #expect(position.duration == 2)
+    view.scrub(translation: 300, width: 400)
+    view.scrub(to: 5)
+    view.scrub(to: 0.25)
+    #expect(reported == [1.5, 2, 0.25])
     view.endScrub()
     #expect(!view.isScrubbing)
   }

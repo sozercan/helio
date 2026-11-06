@@ -164,18 +164,19 @@ struct LightBoxImage: View {
           }
         },
     )
+    // Ends a scrub whose drag ended without `onEnded`, whatever the axis now says: a resize
+    // can clear the axis mid-scrub.
     .onChange(of: dragging) { _, dragging in
-      if !dragging, dragAxis == .scrub {
-        endScrub()
+      guard !dragging else { return }
+      gifScrubber.end()
+      if dragAxis == .scrub {
+        dragOffset = nil
+        dragAxis = nil
       }
     }
     .overlay {
-      ScrubIndicator(position: gifScrubber.position, showsTime: false)
-        .animation(.easeOut(duration: 0.15), value: gifScrubber.position == nil)
-    }
-    .overlay {
       if let postTitle, let badgeKit {
-        LightBoxOverlay(postTitle: postTitle, badgeKit: badgeKit, avatarImageRequest: avatarImageRequest, opacity: !showOverlay || isPinching ? 0 : interpolate([1, 0], false), imagesArr: imagesArr, activeIndex: activeIndex, loading: $loading, done: $done)
+        LightBoxOverlay(postTitle: postTitle, badgeKit: badgeKit, avatarImageRequest: avatarImageRequest, opacity: !showOverlay || isPinching ? 0 : interpolate([1, 0], false), imagesArr: imagesArr, activeIndex: activeIndex, gifScrubber: scrubsGIF ? gifScrubber : nil, loading: $loading, done: $done)
       }
     }
     // Taps on the image show or hide the controls; Close, Escape or a swipe closes it.
@@ -240,6 +241,9 @@ struct LightBoxImage: View {
     }
     // Pages are a window wide, so a resize moves them: keep the current one in view.
     .onChange(of: CGFloat.screenW) {
+      if dragAxis == .scrub {
+        gifScrubber.end()
+      }
       drag = .zero
       dragOffset = nil
       dragAxis = nil
