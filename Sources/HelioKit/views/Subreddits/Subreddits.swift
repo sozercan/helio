@@ -268,7 +268,7 @@ struct Subreddits: View, Equatable {
       }
       #endif
       .refreshable { await refresh() }
-      .navigationTitle("Subs")
+      .navigationTitle("Subreddits")
     }
   }
 
