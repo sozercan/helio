@@ -5,7 +5,7 @@
 //  A screen's state carried over when the posts tab rebuilds its screens in another layout.
 //
 
-import Foundation
+import SwiftUI
 
 /// The state screens keep across a change of layout. Folding or unfolding the iPhone Duo switches
 /// the posts tab between its split view and its two panes (`SubredditsStack`), which builds every
@@ -13,11 +13,12 @@ import Foundation
 /// a web page would lose its history.
 ///
 /// A screen asks for its model with `lease(_:owner:make:)` from its initializer, and calls
-/// `adopt()` on the lease it keeps once it shows. Outside a handoff each lease makes its own model,
-/// so two screens of the same feed never share one. When the layout changes (`beginHandoff()`),
-/// the screens built for the new layout in the next moment take over the models of the screens
-/// showing then, matched by name and owner: the subreddit, post or other entity the screen shows,
-/// by identity, as its id changes once its details load.
+/// `adopt(in:)` with its `screenStateScope` on the lease it keeps once it shows. Outside a
+/// handoff each lease makes its own model, so two screens of the same feed never share one. When
+/// a layout changes (`beginHandoff(in:)`), the screens built for the new layout in the next moment
+/// take over the models of the screens showing in it then, matched by name and owner: the
+/// subreddit, post or other entity the screen shows, by identity, as its id changes once its
+/// details load.
 @MainActor
 final class ScreenStates {
   static let shared = ScreenStates()
@@ -28,6 +29,8 @@ final class ScreenStates {
 
   final class Entry {
     let name: String
+    /// The layout the screen is in (`screenStateScope`).
+    fileprivate weak var scope: AnyObject?
     /// Weak, so an entity made later at the same address never matches.
     private weak var owner: AnyObject?
     private let hasOwner: Bool
@@ -37,8 +40,9 @@ final class ScreenStates {
     /// The handoff a screen of the new layout took it over in, so a second screen doesn't.
     fileprivate var claimedIn: Int?
 
-    fileprivate init(name: String, owner: AnyObject?, model: AnyObject) {
+    fileprivate init(name: String, scope: AnyObject, owner: AnyObject?, model: AnyObject) {
       self.name = name
+      self.scope = scope
       self.owner = owner
       self.hasOwner = owner != nil
       self.model = model
@@ -59,13 +63,14 @@ final class ScreenStates {
   /// if those screens go first.
   private var handedOff: [Entry] = []
 
-  /// The layout changed: the screens built in the next moment take over the state of those
-  /// showing now. Tests end it themselves (`endsItself: false`), as the main actor can be busy
-  /// with other tests for longer than a handoff.
-  func beginHandoff(now: Date = .now, endsItself: Bool = true) {
+  /// The layout of `scope` changed: the screens built in the next moment take over the state of
+  /// those showing in it now; not of screens elsewhere, such as in other tabs, which stay. Tests
+  /// end it themselves (`endsItself: false`), as the main actor can be busy with other tests for
+  /// longer than a handoff.
+  func beginHandoff(in scope: AnyObject, now: Date = .now, endsItself: Bool = true) {
     handoff += 1
     handoffEnds = now.addingTimeInterval(Self.handoffDuration)
-    handedOff = entries
+    handedOff = entries.filter { $0.scope === scope }
     guard endsItself else { return }
     let current = handoff
     Task { [weak self] in
@@ -91,8 +96,8 @@ final class ScreenStates {
     return ScreenStateLease(model: make(), name: name, owner: owner, store: self, entry: nil)
   }
 
-  fileprivate func register(name: String, owner: AnyObject?, model: AnyObject) -> Entry {
-    let entry = Entry(name: name, owner: owner, model: model)
+  fileprivate func register(name: String, scope: AnyObject, owner: AnyObject?, model: AnyObject) -> Entry {
+    let entry = Entry(name: name, scope: scope, owner: owner, model: model)
     entries.append(entry)
     return entry
   }
@@ -149,14 +154,16 @@ final class ScreenStateLease<Model: AnyObject> {
     self.init(model: model, name: "", owner: nil, store: nil, entry: nil)
   }
 
-  /// The screen shows with this lease: a screen of the next layout can take its model over.
-  func adopt() {
+  /// The screen shows with this lease, in the layout `scope`: a screen of that layout's next one
+  /// can take its model over. Nothing without a scope, outside a layout that changes.
+  func adopt(in scope: AnyObject?) {
     guard !adopted, let store else { return }
-    adopted = true
     if let entry {
+      adopted = true
       store.takeOver(entry)
-    } else {
-      entry = store.register(name: name, owner: owner, model: model)
+    } else if let scope {
+      adopted = true
+      entry = store.register(name: name, scope: scope, owner: owner, model: model)
     }
   }
 
@@ -171,4 +178,10 @@ final class ScreenStateLease<Model: AnyObject> {
     guard adopted, let entry, let store else { return }
     Task { @MainActor in store.release(entry) }
   }
+}
+
+extension EnvironmentValues {
+  /// The layout whose screens hand their state over when it changes (`ScreenStates`): the posts
+  /// tab's. Nil elsewhere, where screens keep theirs only as long as they show.
+  @Entry var screenStateScope: AnyObject?
 }

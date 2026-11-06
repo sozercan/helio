@@ -25,6 +25,8 @@ struct PostReplies: View {
   @Binding var topVisibleCommentId: String?
   @Binding var previousScrollTarget: String?
   @Binding var comments: [Comment]
+  /// Told which rows show, for where the page goes back to after the layout changes.
+  var session: PostSession
 
   var body: some View {
     let theme = selectedTheme.comments
@@ -36,6 +38,8 @@ struct PostReplies: View {
           CommentTreeRowView(row: row, post: post, postFullname: postFullname, highlightID: ignoreSpecificComment ? nil : highlightID, seenComments: seenComments, comments: $comments)
             .listRowBackground(Color.clear)
             .listRowInsets(EdgeInsets(top: 0, leading: horPad, bottom: 0, trailing: horPad))
+            .onAppear { session.rowShown(row.id) }
+            .onDisappear { session.rowHidden(row.id) }
         }
         Section {
           Spacer()

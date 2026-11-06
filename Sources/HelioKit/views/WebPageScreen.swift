@@ -16,6 +16,7 @@ import WebKit
 struct WebPageScreen: View {
   let url: URL
   @Environment(\.navColumn) private var navColumn
+  @Environment(\.screenStateScope) private var screenStateScope
   /// The page, with its history, taken over from the screen this one replaces when the layout
   /// changes (`ScreenStates`).
   @State private var lease: ScreenStateLease<WebPageSlot>
@@ -61,7 +62,7 @@ struct WebPageScreen: View {
       }
     }
     .onAppear {
-      lease.adopt()
+      lease.adopt(in: screenStateScope)
       if let page {
         WebExtensionRuntime.shared.activate(page.webView)
       }

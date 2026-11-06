@@ -63,6 +63,7 @@ struct RedditListingFeed<Header: View, Footer: View, S: Sorting>: View {
   @Environment(\.useTheme) private var selectedTheme
   @Environment(\.contentWidth) private var contentWidth
   @Environment(\.navColumn) private var navColumn
+  @Environment(\.screenStateScope) private var screenStateScope
 
   @Default(.PostLinkDefSettings) private var postLinkDefSettings
   @Default(.SubredditFeedDefSettings) private var feedDefSettings
@@ -349,7 +350,7 @@ struct RedditListingFeed<Header: View, Footer: View, S: Sorting>: View {
           }
         }
         .onAppear {
-          lease.adopt()
+          lease.adopt(in: screenStateScope)
           // Taken over from the screen this one replaced: fetches through this one, and back to
           // where that one was.
           if lease.takeHandedOver() {

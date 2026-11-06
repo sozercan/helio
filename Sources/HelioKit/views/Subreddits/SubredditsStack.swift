@@ -41,6 +41,7 @@ struct SubredditsStack: View {
         splitView(layout)
       }
     }
+    .environment(\.screenStateScope, layoutSwitch)
     .onGeometryChange(for: CGRect.self) { $0.frame(in: .global) } action: { newFrame in
       frame = newFrame
       chooseLaunchFeed(in: newFrame)
@@ -65,7 +66,7 @@ struct SubredditsStack: View {
 
     func show(usesPanes: Bool) {
       if let shown = self.usesPanes, shown != usesPanes {
-        ScreenStates.shared.beginHandoff()
+        ScreenStates.shared.beginHandoff(in: self)
       }
       self.usesPanes = usesPanes
     }

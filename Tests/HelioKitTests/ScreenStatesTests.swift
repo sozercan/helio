@@ -9,6 +9,8 @@ struct ScreenStatesTests {
 
   private let start = Date(timeIntervalSinceReferenceDate: 0)
   private let home = Owner()
+  /// The posts tab's layout.
+  private let posts = Owner()
 
   /// The lease lets go on the main actor after it's released.
   private func letLeasesGo() async {
@@ -20,7 +22,7 @@ struct ScreenStatesTests {
   @Test func screensOfTheSameFeedKeepTheirOwnStateOutsideALayoutChange() {
     let states = ScreenStates()
     let first = states.lease("feed", owner: home, now: start) { Model() }
-    first.adopt()
+    first.adopt(in: posts)
     let second = states.lease("feed", owner: home, now: start) { Model() }
     #expect(first.model !== second.model)
     #expect(!second.takeHandedOver())
@@ -29,10 +31,10 @@ struct ScreenStatesTests {
   @Test func theScreenBuiltForTheNewLayoutTakesOverTheOneItReplaces() {
     let states = ScreenStates()
     let old = states.lease("feed", owner: home, now: start) { Model() }
-    old.adopt()
-    states.beginHandoff(now: start, endsItself: false)
+    old.adopt(in: posts)
+    states.beginHandoff(in: posts, now: start, endsItself: false)
     let new = states.lease("feed", owner: home, now: start) { Model() }
-    new.adopt()
+    new.adopt(in: posts)
     #expect(new.model === old.model)
     #expect(new.takeHandedOver())
     // Once: the screen restores its scroll position on its first appearance only.
@@ -42,10 +44,10 @@ struct ScreenStatesTests {
   @Test func oneOldScreenHandsItsStateToOneNewScreen() {
     let states = ScreenStates()
     let old = states.lease("feed", owner: home, now: start) { Model() }
-    old.adopt()
-    states.beginHandoff(now: start, endsItself: false)
+    old.adopt(in: posts)
+    states.beginHandoff(in: posts, now: start, endsItself: false)
     let new = states.lease("feed", owner: home, now: start) { Model() }
-    new.adopt()
+    new.adopt(in: posts)
     let another = states.lease("feed", owner: home, now: start) { Model() }
     #expect(new.model === old.model)
     #expect(another.model !== old.model)
@@ -54,8 +56,8 @@ struct ScreenStatesTests {
   @Test func anInitializationSwiftUIDropsDoesNotUseUpTheHandoff() {
     let states = ScreenStates()
     let old = states.lease("feed", owner: home, now: start) { Model() }
-    old.adopt()
-    states.beginHandoff(now: start, endsItself: false)
+    old.adopt(in: posts)
+    states.beginHandoff(in: posts, now: start, endsItself: false)
     // Made and dropped without showing.
     _ = states.lease("feed", owner: home, now: start) { Model() }
     let new = states.lease("feed", owner: home, now: start) { Model() }
@@ -65,7 +67,7 @@ struct ScreenStatesTests {
   @Test func aLeaseNoScreenKeptIsNotHandedOver() {
     let states = ScreenStates()
     let unused = states.lease("feed", owner: home, now: start) { Model() }
-    states.beginHandoff(now: start, endsItself: false)
+    states.beginHandoff(in: posts, now: start, endsItself: false)
     let new = states.lease("feed", owner: home, now: start) { Model() }
     #expect(new.model !== unused.model)
   }
@@ -73,8 +75,8 @@ struct ScreenStatesTests {
   @Test func otherFeedsDoNotTakeEachOthersState() {
     let states = ScreenStates()
     let first = states.lease("feed", owner: home, now: start) { Model() }
-    first.adopt()
-    states.beginHandoff(now: start, endsItself: false)
+    first.adopt(in: posts)
+    states.beginHandoff(in: posts, now: start, endsItself: false)
     let popular = states.lease("feed", owner: Owner(), now: start) { Model() }
     #expect(popular.model !== first.model)
   }
@@ -82,8 +84,8 @@ struct ScreenStatesTests {
   @Test func screensWithoutAnOwnerMatchByName() {
     let states = ScreenStates()
     let old = states.lease("web:https://example.com", owner: nil, now: start) { Model() }
-    old.adopt()
-    states.beginHandoff(now: start, endsItself: false)
+    old.adopt(in: posts)
+    states.beginHandoff(in: posts, now: start, endsItself: false)
     let other = states.lease("web:https://example.org", owner: nil, now: start) { Model() }
     let new = states.lease("web:https://example.com", owner: nil, now: start) { Model() }
     #expect(other.model !== old.model)
@@ -93,8 +95,8 @@ struct ScreenStatesTests {
   @Test func theHandoffEndsShortlyAfterTheLayoutChanges() {
     let states = ScreenStates()
     let old = states.lease("feed", owner: home, now: start) { Model() }
-    old.adopt()
-    states.beginHandoff(now: start, endsItself: false)
+    old.adopt(in: posts)
+    states.beginHandoff(in: posts, now: start, endsItself: false)
     let later = start.addingTimeInterval(ScreenStates.handoffDuration + 1)
     let new = states.lease("feed", owner: home, now: later) { Model() }
     #expect(new.model !== old.model)
@@ -103,9 +105,9 @@ struct ScreenStatesTests {
   @Test func aScreenPushedAfterTheOldOneWentAwayStillTakesItsStateOver() async {
     let states = ScreenStates()
     var old: ScreenStateLease<Model>? = states.lease("feed", owner: home, now: start) { Model() }
-    old?.adopt()
+    old?.adopt(in: posts)
     let model = old?.model
-    states.beginHandoff(now: start, endsItself: false)
+    states.beginHandoff(in: posts, now: start, endsItself: false)
     old = nil
     await letLeasesGo()
     let new = states.lease("feed", owner: home, now: start.addingTimeInterval(1)) { Model() }
@@ -115,14 +117,14 @@ struct ScreenStatesTests {
   @Test func aScreenClosedBeforeTheLayoutChangesHandsNothingOver() async {
     let states = ScreenStates()
     var closed: ScreenStateLease<Model>? = states.lease("feed", owner: home, now: start) { Model() }
-    closed?.adopt()
+    closed?.adopt(in: posts)
     let closedModel = closed?.model
     closed = nil
     await letLeasesGo()
     // Opened again, then the layout changes: the new screen gets the open one's, not the closed one's.
     let reopened = states.lease("feed", owner: home, now: start) { Model() }
-    reopened.adopt()
-    states.beginHandoff(now: start, endsItself: false)
+    reopened.adopt(in: posts)
+    states.beginHandoff(in: posts, now: start, endsItself: false)
     let new = states.lease("feed", owner: home, now: start) { Model() }
     #expect(new.model === reopened.model)
     #expect(new.model !== closedModel)
@@ -131,7 +133,7 @@ struct ScreenStatesTests {
   @Test func aClosedScreensModelGoesRightAway() async {
     let states = ScreenStates()
     var old: ScreenStateLease<Model>? = states.lease("feed", owner: home) { Model() }
-    old?.adopt()
+    old?.adopt(in: posts)
     #expect(states.count("feed") == 1)
     old = nil
     await letLeasesGo()
@@ -141,8 +143,8 @@ struct ScreenStatesTests {
   @Test func aModelNoScreenTookOverGoesWhenTheHandoffEnds() async {
     let states = ScreenStates()
     var old: ScreenStateLease<Model>? = states.lease("feed", owner: home, now: start) { Model() }
-    old?.adopt()
-    states.beginHandoff(now: start, endsItself: false)
+    old?.adopt(in: posts)
+    states.beginHandoff(in: posts, now: start, endsItself: false)
     old = nil
     await letLeasesGo()
     #expect(states.count("feed") == 1)
@@ -150,11 +152,30 @@ struct ScreenStatesTests {
     #expect(states.count("feed") == 0)
   }
 
+  @Test func screensOutsideTheLayoutThatChangedKeepTheirState() {
+    let states = ScreenStates()
+    // The same subreddit open in another tab.
+    let elsewhere = states.lease("feed", owner: home, now: start) { Model() }
+    elsewhere.adopt(in: Owner())
+    let old = states.lease("feed", owner: home, now: start) { Model() }
+    old.adopt(in: posts)
+    states.beginHandoff(in: posts, now: start, endsItself: false)
+    let new = states.lease("feed", owner: home, now: start) { Model() }
+    #expect(new.model === old.model)
+  }
+
+  @Test func aScreenOutsideALayoutThatChangesKeepsNothing() {
+    let states = ScreenStates()
+    let screen = states.lease("feed", owner: home, now: start) { Model() }
+    screen.adopt(in: nil)
+    #expect(states.count("feed") == 0)
+  }
+
   @Test func aPreviewNeverHandsItsStateOver() {
     let states = ScreenStates()
     let preview = ScreenStateLease(unshared: Model())
-    preview.adopt()
-    states.beginHandoff(now: start, endsItself: false)
+    preview.adopt(in: posts)
+    states.beginHandoff(in: posts, now: start, endsItself: false)
     let new = states.lease("post|", owner: home, now: start) { Model() }
     #expect(new.model !== preview.model)
   }

@@ -32,6 +32,7 @@ struct PostView: View, Equatable {
   @Environment(\.globalLoaderDismiss) private var globalLoaderDismiss
   @Environment(\.contentWidth) private var contentWidth
   @Environment(\.navColumn) private var navColumn
+  @Environment(\.screenStateScope) private var screenStateScope
   /// The comments and how they're shown, taken over from the screen this one replaces when the
   /// layout changes (`ScreenStates`).
   @State private var lease: ScreenStateLease<PostSession>
@@ -173,7 +174,7 @@ struct PostView: View, Equatable {
             .listRowBackground(Color.clear)
 
             if !hideElements {
-              PostReplies(commentsLoad: commentsLoad, seenComments: seenComments, post: post, subreddit: subreddit, ignoreSpecificComment: ignoreSpecificComment, highlightID: highlightID, sort: sort, proxy: proxy, topVisibleCommentId: Bindable(session).topVisibleCommentId, previousScrollTarget: Bindable(session).previousScrollTarget, comments: Bindable(session).comments)
+              PostReplies(commentsLoad: commentsLoad, seenComments: seenComments, post: post, subreddit: subreddit, ignoreSpecificComment: ignoreSpecificComment, highlightID: highlightID, sort: sort, proxy: proxy, topVisibleCommentId: Bindable(session).topVisibleCommentId, previousScrollTarget: Bindable(session).previousScrollTarget, comments: Bindable(session).comments, session: session)
             }
 
             if !ignoreSpecificComment, highlightID != nil {
@@ -227,13 +228,19 @@ struct PostView: View, Equatable {
         .onChange(of: sort) { _ in
           updatePost()
         }
+        // Where it's back to after the layout changes.
+        .onScrollPhaseChange { _, phase in
+          if phase == .idle {
+            session.saveScrollAnchor()
+          }
+        }
         .onAppear {
-          lease.adopt()
-          // Taken over from the screen this one replaced: back to the comment that one showed at
-          // its top, rather than to the one a link opened.
+          lease.adopt(in: screenStateScope)
+          // Taken over from the screen this one replaced: back to the comment row that one showed
+          // at its top, rather than to the one a link opened.
           if lease.takeHandedOver(), !hideElements {
-            if let topVisibleCommentId {
-              doThisAfter(0.1) { proxy.scrollTo(topVisibleCommentId, anchor: .top) }
+            if let anchor = session.scrollAnchorRowID {
+              doThisAfter(0.1) { proxy.scrollTo(anchor, anchor: .top) }
             }
           } else {
             doThisAfter(0.5) {
@@ -366,9 +373,32 @@ final class PostSession {
   /// The comment at the top of the list, which the comment skipper jumps from.
   @ObservationIgnored var topVisibleCommentId: String?
   @ObservationIgnored var previousScrollTarget: String?
+  /// The comment rows the list shows: the topmost, reply or not, is where the page goes back to
+  /// after the layout changes.
+  @ObservationIgnored private var shownRowIDs: Set<String> = []
+  /// The row at the top of the list when it last stopped scrolling.
+  @ObservationIgnored private(set) var scrollAnchorRowID: String?
 
   init(sort: CommentSortOption) {
     self.sort = sort
+  }
+
+  func rowShown(_ id: String) {
+    shownRowIDs.insert(id)
+  }
+
+  func rowHidden(_ id: String) {
+    shownRowIDs.remove(id)
+  }
+
+  /// Saved when the list stops scrolling, not as rows go: the list hides all its rows when a
+  /// screen covers it. Nil while no comment shows, as at the post's top.
+  func saveScrollAnchor() {
+    guard !shownRowIDs.isEmpty else {
+      scrollAnchorRowID = nil
+      return
+    }
+    scrollAnchorRowID = CommentTree.rows(for: comments).first { shownRowIDs.contains($0.id) }?.id
   }
 }
 
