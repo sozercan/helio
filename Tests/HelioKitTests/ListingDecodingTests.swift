@@ -60,4 +60,15 @@ struct ListingDecodingTests {
     let encoded = try #require(try JSONSerialization.jsonObject(with: JSONEncoder().encode(decoded.data)) as? [String: Any])
     #expect(encoded["skippedChildren"] == nil)
   }
+
+  @MainActor
+  @Test func collectsCommentIDsPastAnEmptyRepliesListing() throws {
+    var comment = try #require(try JSONSerialization.jsonObject(with: JSONEncoder().encode(getCommentSampleData(false))) as? [String: Any])
+    comment["id"] = "c1"
+    comment["replies"] = ["kind": "Listing", "data": ["children": [Any]()]]
+    let data = try JSONSerialization.data(withJSONObject: ["kind": "Listing", "data": ["children": [["kind": "t1", "data": comment]]]])
+    let listing = try JSONDecoder().decode(Listing<CommentData>.self, from: data)
+
+    #expect(Post(id: "p", subID: "pics").getCommentIds(comments: listing.data) == ["c1"])
+  }
 }

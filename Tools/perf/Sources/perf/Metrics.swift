@@ -51,8 +51,10 @@ struct RunLog {
 }
 
 enum Metrics {
-  /// The measured windows: scrolling Home, opening a post and scrolling its comments, everything.
-  static let windows = [("feed", "scroll_start", "scroll_end"), ("post", "post_open", "cscroll_end"), ("all", "home_open", "end")]
+  /// The measured windows: scrolling Home, opening a post and scrolling its comments, everything,
+  /// and on Mac opening posts one after another and resizing the window.
+  static let windows = [("feed", "scroll_start", "scroll_end"), ("post", "post_open", "cscroll_end"), ("switch", "switch_start", "switch_end"),
+                        ("resize", "resize_start", "resize_end"), ("all", "home_open", "end")]
 
   /// The endpoint a request went to. `image` and `link_preview` aren't Reddit API requests.
   static func category(method: String, url: String) -> String {

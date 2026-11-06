@@ -26,6 +26,10 @@ Don't build while a benchmark runs; the build takes the CPU the measurement need
 - `Defaults[key]` and `@Default` decode JSON on every read, and each `@Default` sets up an observer per view instance.
 - An animated insert of a long `List` builds and measures every new row in one frame (a ~230 ms stall for a comment thread).
 - What's left while scrolling is mostly SwiftUI creating and sizing `List` cells. Expect the next wins from simpler row view trees, not from app logic.
+- On Mac (`perf build <label> --mac`), resizing the window costs about 250 ms a step with a post open and 110 ms without: each step runs `NavigationSplitView`'s split-view transition, which updates every column's `List`. Removing app-side body updates (window metrics, column widths, geometry readers) didn't move it; the remaining lever is the split view itself.
+- Nuke decompresses only what its decoder returns. The last processor's image goes to the screen as it is, so it must be display-ready: `ScaleFixer`'s redraw does that, and replacing it with a scale-only copy cut memory but put format conversions, and stalls, on the main thread.
+- Size image requests to what's shown: filling a square made a wide feed image about three times the pixels it's drawn with.
+- Mac timings drift between batches as the machine's load changes. Measure base and head back to back, and re-measure base before calling a difference real.
 
 ## Rules for Helio code
 

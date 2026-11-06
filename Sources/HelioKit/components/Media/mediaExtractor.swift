@@ -109,6 +109,37 @@ extension MediaExtractedType {
   }
 }
 
+/// Decodes an image at the size its `Resize` processor fills, a square `side` points wide, so a
+/// large image isn't decoded whole and then redrawn smaller: ImageIO reads it at that size. Not
+/// for GIFs, which would lose their frames.
+func decodingFilling(_ side: Double) -> ImageRequest.ThumbnailOptions {
+  ImageRequest.ThumbnailOptions(size: CGSize(width: side, height: side), unit: .points, contentMode: .aspectFill)
+}
+
+/// A single image's processing. A compact row's thumbnail fills its square, and so does an image
+/// whose size Reddit didn't give, which shows in a square until it loads. Otherwise the image is
+/// `contentWidth` points wide, the width it's shown at (narrower when its height is capped):
+/// filling a square instead, as gallery cells do, made a wide image several times the pixels it's
+/// shown with. ImageIO decodes it at that size, unless it's a GIF (`compactThumbnailsGIFs` keeps
+/// a compact thumbnail's decoding for one).
+func singleImageProcessing(compact: Bool, contentWidth: Double, url: URL, knownSize: Bool = true, compactThumbnailsGIFs: Bool = false) -> (processors: [ImageProcessing], userInfo: [ImageRequest.UserInfoKey: Any]) {
+  guard contentWidth > 0 || compact else { return ([], [:]) }
+  guard compact else {
+    guard knownSize else {
+      let square = CGSize(width: contentWidth, height: contentWidth)
+      let processors: [ImageProcessing] = [ImageProcessors.Resize(size: square, unit: .points, contentMode: .aspectFill, crop: false, upscale: true)]
+      return (processors, url.isGIF ? [:] : [.thumbnailKey: decodingFilling(contentWidth)])
+    }
+    let processors: [ImageProcessing] = [ImageProcessors.Resize(width: contentWidth, unit: .points, upscale: true)]
+    guard !url.isGIF else { return (processors, [:]) }
+    return (processors, [.thumbnailKey: ImageRequest.ThumbnailOptions(size: CGSize(width: contentWidth, height: 1_000_000), unit: .points, contentMode: .aspectFit)])
+  }
+  let square = CGSize(width: scaledCompactModeThumbSize(), height: scaledCompactModeThumbSize())
+  let processors: [ImageProcessing] = contentWidth == 0 ? [] : [ImageProcessors.Resize(size: square, unit: .points, contentMode: .aspectFill, crop: false, upscale: true)]
+  guard compactThumbnailsGIFs || !url.isGIF else { return (processors, [:]) }
+  return (processors, [.thumbnailKey: ImageRequest.ThumbnailOptions(size: square, unit: .points, contentMode: .aspectFill)])
+}
+
 /// ORDER MATTERS!
 /// Without `fetchLinkMetadata`, link previews download their page, and linked Reddit posts,
 /// comments, users and subreddits load, only once they show (`PostHelioData.deferredMedia`).
@@ -147,6 +178,8 @@ func mediaExtractor(compact: Bool, contentWidth: Double = .screenW, _ data: Post
         var userInfo: [ImageRequest.UserInfoKey: Any] = [:]
         if compact, !imgURL.isGIF {
           userInfo[.thumbnailKey] = ImageRequest.ThumbnailOptions(size: .init(width: scaledCompactModeThumbSize(), height: scaledCompactModeThumbSize()), unit: .points, contentMode: .aspectFill)
+        } else if contentWidth != 0, !imgURL.isGIF {
+          userInfo[.thumbnailKey] = decodingFilling(sizeSimple)
         }
         return ImgExtracted(url: imgURL, size: CGSize(width: size.x, height: size.y), request: ImageRequest(url: imgURL, processors: processors + [ImageProcessors.ScaleFixer()], userInfo: userInfo))
       }
@@ -183,12 +216,7 @@ func mediaExtractor(compact: Bool, contentWidth: Double = .screenW, _ data: Post
       actualHeight = height
     }
 
-    let size = compact ? scaledCompactModeThumbSize() : contentWidth
-    let processors: [ImageProcessing] = contentWidth == 0 ? [] : [ImageProcessors.Resize(size: CGSize(width: size, height: size), unit: .points, contentMode: .aspectFill, crop: false, upscale: true)]
-    var userInfo: [ImageRequest.UserInfoKey: Any] = [:]
-    if compact && !url.isGIF {
-      userInfo[.thumbnailKey] = ImageRequest.ThumbnailOptions(size: .init(width: scaledCompactModeThumbSize(), height: scaledCompactModeThumbSize()), unit: .points, contentMode: .aspectFill)
-    }
+    let (processors, userInfo) = singleImageProcessing(compact: compact, contentWidth: contentWidth, url: url, knownSize: actualWidth > 0 && actualHeight > 0)
     let posterURL = url.isGIF ? previewPosterURL(data) : nil
     let imgExtracted = ImgExtracted(url: url, size: CGSize(width: actualWidth, height: actualHeight), request: ImageRequest(url: url, processors: processors + [ImageProcessors.ScaleFixer()], userInfo: userInfo), posterURL: posterURL)
     return .imgs([imgExtracted])
@@ -196,12 +224,7 @@ func mediaExtractor(compact: Bool, contentWidth: Double = .screenW, _ data: Post
 
   // Prefer the full-size i.redd.it image, falling back to the (signed) preview URL.
   if let images = data.preview?.images, !images.isEmpty, let image = images[0].source, let rawSrc = image.url, !rawSrc.contains("external-preview"), let imgURL = rootURL(rawSrc.replacing("/preview.", with: "/i.").escape) ?? loadableMediaURL(rawSrc.escape), let width = image.width, let height = image.height {
-    let size = compact ? scaledCompactModeThumbSize() : contentWidth
-    let processors: [ImageProcessing] = contentWidth == 0 ? [] : [ImageProcessors.Resize(size: CGSize(width: size, height: size), unit: .points, contentMode: .aspectFill, crop: false, upscale: true)]
-    var userInfo: [ImageRequest.UserInfoKey: Any] = [:]
-    if compact {
-      userInfo[.thumbnailKey] = ImageRequest.ThumbnailOptions(size: .init(width: scaledCompactModeThumbSize(), height: scaledCompactModeThumbSize()), unit: .points, contentMode: .aspectFill)
-    }
+    let (processors, userInfo) = singleImageProcessing(compact: compact, contentWidth: contentWidth, url: imgURL, compactThumbnailsGIFs: true)
     let imgExtracted = ImgExtracted(url: imgURL, size: CGSize(width: width, height: height), request: ImageRequest(url: imgURL, processors: processors + [ImageProcessors.ScaleFixer()], userInfo: userInfo))
     return .imgs([imgExtracted])
   }

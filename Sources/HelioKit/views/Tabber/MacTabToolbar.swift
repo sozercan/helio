@@ -30,6 +30,8 @@
     private weak var toolbar: NSToolbar?
     /// The screen actions the toolbar shows, by item.
     private var actions: [NSToolbarItem.Identifier: ScreenAction] = [:]
+    /// The action each item was last set up to show (see `syncItems`).
+    private var shown: [ObjectIdentifier: ScreenAction] = [:]
 
     /// Gives the scene's window this toolbar, once.
     func install(in scene: UIWindowScene) {
@@ -117,16 +119,28 @@
           toolbar.insertItem(withItemIdentifier: id, at: edit.range.lowerBound + offset)
         }
       }
+      var configured: [ObjectIdentifier: ScreenAction] = [:]
       for item in toolbar.items {
-        if let action = actions[item.itemIdentifier] {
+        guard let action = actions[item.itemIdentifier] else { continue }
+        // Only items that look different are set up again: screens register their actions
+        // again whenever their state changes, and each item set up lays the toolbar out again
+        // and builds its menu again. An item kept as it was still runs the current action:
+        // buttons and menu items look it up when chosen.
+        let key = ObjectIdentifier(item)
+        if shown[key] != action {
           configure(item, for: action)
-          // Like the menu bar's: not while a reply or a sheet covers the screens, which the
-          // reply sheet leaves clickable around it. Toolbar validation would re-enable an item
-          // with a target and action, so these set their state themselves.
-          item.autovalidates = false
-          item.isEnabled = !Self.screensCovered
+        }
+        configured[key] = action
+        // Like the menu bar's: not while a reply or a sheet covers the screens, which the
+        // reply sheet leaves clickable around it. Toolbar validation would re-enable an item
+        // with a target and action, so these set their state themselves.
+        item.autovalidates = false
+        let enabled = !Self.screensCovered
+        if item.isEnabled != enabled {
+          item.isEnabled = enabled
         }
       }
+      shown = configured
     }
 
     /// A reply, a full-screen viewer or an app sheet covers the screens (the observable part of
@@ -147,19 +161,33 @@
         item.target = self
         item.action = #selector(actionPicked(_:))
       case let .menu(entries):
-        (item as? NSMenuToolbarItem)?.itemMenu = UIMenu(children: entries.map(Self.menuElement))
+        let id = item.itemIdentifier
+        (item as? NSMenuToolbarItem)?.itemMenu = UIMenu(children: entries.enumerated().map { menuElement($1, path: [$0], in: id) })
       }
     }
 
-    private static func menuElement(_ entry: ScreenAction.Entry) -> UIMenuElement {
-      switch entry {
-      case let .choice(title, systemImage, isOn, select):
-        UIAction(title: title, image: systemImage.flatMap { UIImage(systemName: $0) }, state: isOn ? .on : .off) { _ in select() }
-      case let .submenu(title, systemImage, entries):
-        UIMenu(title: title, image: systemImage.flatMap { UIImage(systemName: $0) }, children: entries.map(menuElement))
-      case let .section(title, entries):
-        UIMenu(title: title ?? "", options: .displayInline, children: entries.map(menuElement))
+    /// A menu item that, when chosen, runs the entry at `path` in the item's current action
+    /// rather than this one's: the menu is kept while the action looks the same.
+    private func menuElement(_ entry: ScreenAction.Entry, path: [Int], in id: NSToolbarItem.Identifier) -> UIMenuElement {
+      func children(_ entries: [ScreenAction.Entry]) -> [UIMenuElement] {
+        entries.enumerated().map { menuElement($1, path: path + [$0], in: id) }
       }
+      switch entry {
+      case let .choice(title, systemImage, isOn, _):
+        return UIAction(title: title, image: systemImage.flatMap { UIImage(systemName: $0) }, state: isOn ? .on : .off) { [weak self] _ in
+          self?.choose(path, in: id)
+        }
+      case let .submenu(title, systemImage, entries):
+        return UIMenu(title: title, image: systemImage.flatMap { UIImage(systemName: $0) }, children: children(entries))
+      case let .section(title, entries):
+        return UIMenu(title: title ?? "", options: .displayInline, children: children(entries))
+      }
+    }
+
+    private func choose(_ path: [Int], in id: NSToolbarItem.Identifier) {
+      guard case let .menu(entries)? = actions[id]?.content, let entry = ScreenAction.Entry.at(path, in: entries),
+            case let .choice(_, _, _, select) = entry else { return }
+      select()
     }
 
     @objc private func actionPicked(_ sender: NSToolbarItem) {
