@@ -165,4 +165,49 @@ struct ScreenActionTests {
     #expect(title([2]) == nil)
     #expect(title([0, 0]) == nil)
   }
+
+  @MainActor
+  @Test func theAccountsMenuListsOtherAccountsOnlyWhenThereAreAnyAndAlwaysLogsOut() {
+    func account(_ name: String, signedIn: Bool = true) -> RedditCredential {
+      RedditCredential(apiAppID: "placeholder-client-id", refreshToken: signedIn ? "placeholder-refresh-token" : nil, userName: name)
+    }
+    func titles(_ action: ScreenAction?) -> [[String]] {
+      guard case let .menu(entries)? = action?.content else { return [] }
+      return entries.map { entry in
+        guard case let .section(_, items) = entry else { return [] }
+        return items.compactMap {
+          if case let .choice(title, _, _, _) = $0 {
+            title
+          } else {
+            nil
+          }
+        }
+      }
+    }
+
+    #expect(ScreenAction.switchAccount(manager: RedditCredentialsManager(credentials: [])) == nil)
+
+    let only = account("placeholder-one")
+    var loggedOut: RedditCredential?
+    let single = ScreenAction.switchAccount(manager: RedditCredentialsManager(credentials: [only]), selectedID: only.id) { loggedOut = $0 }
+    #expect(titles(single) == [["Log Out u/placeholder-one"]])
+    guard case let .menu(entries)? = single?.content, case let .section(_, items)? = entries.last,
+          case let .choice(_, _, isOn, select)? = items.first
+    else {
+      Issue.record("Expected a Log Out item")
+      return
+    }
+    #expect(!isOn)
+    select()
+    #expect(loggedOut == only)
+
+    let other = account("placeholder-two")
+    let two = ScreenAction.switchAccount(manager: RedditCredentialsManager(credentials: [only, other]), selectedID: other.id) { _ in }
+    #expect(titles(two) == [["placeholder-one", "placeholder-two"], ["Log Out u/placeholder-two"]])
+
+    // Reddit signed the selected account out: the other one is still offered.
+    let signedOut = account("placeholder-signed-out", signedIn: false)
+    let fallback = ScreenAction.switchAccount(manager: RedditCredentialsManager(credentials: [signedOut, other]), selectedID: signedOut.id) { _ in }
+    #expect(titles(fallback) == [["placeholder-two"], ["Log Out u/placeholder-signed-out"]])
+  }
 }

@@ -11,7 +11,7 @@ import SwiftUI
 /// takes a key from a text field; the arrows also take Option, which text fields don't use.
 struct NavCommands: Commands {
   private let targets = CommandTargets.shared
-  /// Observed so Switch Account's check mark follows the selected account, which can change
+  /// Observed so the Accounts menu's check mark follows the selected account, which can change
   /// while nothing else in the menu bar does.
   @Default(.GeneralDefSettings) private var generalDefSettings
 
@@ -42,7 +42,8 @@ struct NavCommands: Commands {
       Button("Settings…", systemImage: "gearshape") { Nav.shared.activeTab = .settings }
         .keyboardShortcut(",")
       // From any tab, not only Me, where the toolbar has it.
-      actionMenu(ScreenAction.switchAccount(selectedID: generalDefSettings.redditCredentialSelectedID), title: "Switch Account")
+      // Not while something covers the screens: Log Out's alert couldn't show over a sheet.
+      actionMenu(targets.isCoveredObservably() ? nil : ScreenAction.switchAccount(selectedID: generalDefSettings.redditCredentialSelectedID)?.guarded { !targets.isCovered() }, title: "Accounts")
     }
 
     // Edit > Find. Not in place of the system's `.textEditing` items: on iPad that group never
