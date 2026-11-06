@@ -135,6 +135,7 @@ struct SubredditsStack: View {
           RouterDestinationView(dest: post)
             .id(post)
             .hidesNavigationBarOnMac(layout.showsColumns)
+            .closesWebPage(post, router: router)
         } else {
           // On the post view's background, so the column doesn't change shade when a post opens.
           ContentUnavailableView("No Post Selected", systemImage: "doc.text.image", description: Text("Choose a post from the feed."))
@@ -309,6 +310,27 @@ private extension View {
       toolbar(hidden ? .hidden : .automatic, for: .navigationBar)
     #else
       self
+    #endif
+  }
+
+  /// A web page opened from the feed, at the post column's root, has no post to go back to, so it
+  /// gets Close. Not on Mac, where the column hides its bar and the window toolbar has its actions.
+  @ViewBuilder
+  func closesWebPage(_ dest: Router.NavDest, router: Router) -> some View {
+    #if targetEnvironment(macCatalyst)
+      self
+    #else
+      if case .web = dest {
+        toolbar {
+          ToolbarItem(placement: .topBarLeading) {
+            Button("Close", systemImage: "xmark") {
+              withAnimation { router.closePost() }
+            }
+          }
+        }
+      } else {
+        self
+      }
     #endif
   }
 

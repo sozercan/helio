@@ -32,6 +32,15 @@ struct WebPageScreen: View {
           .navigationTitle(page.title.isEmpty ? url.host() ?? url.absoluteString : page.title)
           .navigationBarTitleDisplayMode(.inline)
           .commandTarget(CommandTargets.Target(kind: .web, column: navColumn, refresh: { page.webView.reload() }, actions: [.openInBrowser(page.url ?? url)]), updatingWith: page.url)
+        #if !targetEnvironment(macCatalyst)
+          // On Mac these are in the window toolbar (`MacTabToolbar`).
+          .toolbar { PageToolbar(page: page, url: url) }
+          // The bar's title and buttons follow the app's appearance, the page under it its own,
+          // so in dark mode a light page under the bar's soft edge left white text on a light
+          // band. The bar gets the app's own background instead.
+          .toolbarBackground(Color(uiColor: .systemBackground), for: .navigationBar)
+          .toolbarBackgroundVisibility(.visible, for: .navigationBar)
+        #endif
       } else {
         // Something to appear: an empty group never does, so the page would never be made.
         Color.clear
@@ -50,6 +59,34 @@ struct WebPageScreen: View {
       // Not for a screen left while it waited.
       if !Task.isCancelled, page == nil {
         page = WebPageModel(url: url)
+      }
+    }
+  }
+}
+
+/// The page's previous and next page, reload or stop, share and Open in Browser, outside Mac.
+private struct PageToolbar: ToolbarContent {
+  let page: WebPageModel
+  let url: URL
+
+  var body: some ToolbarContent {
+    let pageURL = page.url ?? url
+    ToolbarItemGroup(placement: .bottomBar) {
+      Button("Previous Page", systemImage: "chevron.backward") { page.webView.goBack() }
+        .disabled(!page.canGoBack)
+      Button("Next Page", systemImage: "chevron.forward") { page.webView.goForward() }
+        .disabled(!page.canGoForward)
+      Spacer()
+      if page.isLoading {
+        Button("Stop", systemImage: "xmark") { page.webView.stopLoading() }
+      } else {
+        Button("Reload", systemImage: "arrow.clockwise") { page.webView.reload() }
+      }
+    }
+    ToolbarItemGroup(placement: .primaryAction) {
+      ShareLink(item: pageURL)
+      Button("Open in Browser", systemImage: "safari") {
+        UIApplication.shared.open(pageURL)
       }
     }
   }
@@ -91,6 +128,8 @@ private final class WebPageModel: NSObject, WKNavigationDelegate, WKUIDelegate {
   private(set) var url: URL?
   private(set) var isLoading = false
   private(set) var progress = 0.0
+  private(set) var canGoBack = false
+  private(set) var canGoForward = false
   @ObservationIgnored private var observations: [NSKeyValueObservation] = []
 
   init(url: URL) {
@@ -126,6 +165,12 @@ private final class WebPageModel: NSObject, WKNavigationDelegate, WKUIDelegate {
       },
       webView.observe(\.estimatedProgress, options: .new) { [weak self] webView, _ in
         MainActor.assumeIsolated { self?.progress = webView.estimatedProgress }
+      },
+      webView.observe(\.canGoBack, options: .new) { [weak self] webView, _ in
+        MainActor.assumeIsolated { self?.canGoBack = webView.canGoBack }
+      },
+      webView.observe(\.canGoForward, options: .new) { [weak self] webView, _ in
+        MainActor.assumeIsolated { self?.canGoForward = webView.canGoForward }
       },
     ]
     runtime.attach(webView)
