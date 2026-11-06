@@ -2,7 +2,7 @@
 //  WebExtensionStore.swift
 //  Helio
 //
-//  The web extensions the user added, for web pages opened in the app on Mac.
+//  The web extensions the user added, for web pages opened in the app.
 //
 
 import Foundation
@@ -77,6 +77,12 @@ final class WebExtensionStore {
 
   func folder(of ext: ManagedWebExtension) -> URL {
     directory.appending(path: ext.id, directoryHint: .isDirectory)
+  }
+
+  /// Whether any extension is turned on. Links then open in the app's web pages, which run them,
+  /// instead of Safari's view, which doesn't.
+  var hasEnabledExtensions: Bool {
+    extensions.contains(where: \.isEnabled)
   }
 
   /// The enabled extensions whose folders are still there, in the order they were added.

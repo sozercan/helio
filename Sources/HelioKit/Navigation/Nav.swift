@@ -172,9 +172,10 @@ class Nav: Identifiable, Equatable {
   }
 
   /// Opens a link tapped in a feed or a post. In the posts tab, Reddit posts, subreddits and users
-  /// open from the column the link sits in, like other taps there; on Mac, and where the post shows
-  /// beside the feed (the open iPhone Duo, iPad), so do web pages. Anything else, or a Reddit link
-  /// in another tab, goes through the app's URL handling as before.
+  /// open from the column the link sits in, like other taps there; so do web pages where the app
+  /// shows them (`opensWebPageInApp`). Anything else, or a Reddit link in another tab, goes
+  /// through the app's URL handling as before.
+  @MainActor
   static func openLink(_ url: URL, from column: Router.Column?) {
     let dest = linkDestination(for: url)
     if let dest, Nav.shared.activeTab == .posts {
@@ -202,10 +203,15 @@ class Nav: Identifiable, Equatable {
   }()
 
   /// Whether a web link tapped in `column` opens as a screen of the app's (`WebPageScreen`). Beside
-  /// the feed, it opens in the post column, where Safari's sheet would cover both columns. In one
-  /// stack, and outside the posts tab's columns, phones keep Safari's sheet.
+  /// the feed, it opens in the post column, where Safari's sheet would cover both columns. With a
+  /// web extension turned on, it opens there everywhere, as Safari's view runs none of the app's.
+  /// Otherwise, in one stack and outside the posts tab's columns, phones keep Safari's sheet.
+  @MainActor
   static func opensWebPageInApp(from column: Router.Column?) -> Bool {
-    opensWebPagesInApp || (column != nil && Nav.shared.activeTab == .posts && Nav.shared[.posts].showsPostBesideFeed)
+    if opensWebPagesInApp || WebExtensionStore.shared.hasEnabledExtensions {
+      return true
+    }
+    return column != nil && Nav.shared.activeTab == .posts && Nav.shared[.posts].showsPostBesideFeed
   }
 
   /// The screen a link opens in the app: a post, a comment in its post, a subreddit or a user.

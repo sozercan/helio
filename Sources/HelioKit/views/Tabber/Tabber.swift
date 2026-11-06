@@ -109,8 +109,9 @@ struct Tabber: View {
       }
     }
     .task(priority: .utility) {
-      // Before the first page a link opens, which only Mac shows in the app.
-      if Nav.opensWebPagesInApp {
+      // Before the first page a link opens in the app: on Mac each one, elsewhere each one while
+      // an extension is on.
+      if Nav.opensWebPagesInApp || WebExtensionStore.shared.hasEnabledExtensions {
         await WebExtensionRuntime.shared.start()
       }
     }

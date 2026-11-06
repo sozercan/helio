@@ -9,8 +9,9 @@ import SwiftUI
 import WebKit
 
 /// A web page opened from a link in a feed or a post (`Nav.openLink`): on Mac, where Safari's
-/// view would leave the app, and beside the feed (the open iPhone Duo, iPad), where its sheet would
-/// cover both columns. Pages keep their sites' data apart from the Reddit sign-in's, and
+/// view would leave the app; beside the feed (the open iPhone Duo, iPad), where its sheet would
+/// cover both columns; and anywhere while a web extension is on, as Safari's view runs none of the
+/// app's. Pages keep their sites' data apart from the Reddit sign-in's, and
 /// only until Helio next launches (`WebPageStorage`). The user's web extensions
 /// (`WebExtensionRuntime`) run in them.
 struct WebPageScreen: View {
@@ -24,6 +25,11 @@ struct WebPageScreen: View {
   private var page: WebPageModel? {
     get { lease.model.page }
     nonmutating set { lease.model.page = newValue }
+  }
+
+  /// In the post column beside the feed (iPad, the open iPhone Duo), not filling the window.
+  private var showsBesideFeed: Bool {
+    navColumn == .post && Nav.shared[.posts].showsPostBesideFeed
   }
 
   init(url: URL) {
@@ -57,6 +63,9 @@ struct WebPageScreen: View {
           // band. The bar gets the app's own background instead.
           .toolbarBackground(Color(uiColor: .systemBackground), for: .navigationBar)
           .toolbarBackgroundVisibility(.visible, for: .navigationBar)
+          // Where the page fills the window, the tab bar would cover its bottom bar: previous
+          // and next page, reload and stop. Beside the feed, the tab bar stays for both columns.
+          .toolbar(showsBesideFeed ? .automatic : .hidden, for: .tabBar)
         #endif
       } else {
         // Something to appear: an empty group never does, so the page would never be made.

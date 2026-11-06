@@ -2,7 +2,7 @@
 //  WebExtensionRuntime.swift
 //  Helio
 //
-//  Runs the user's web extensions in the web pages the app shows on Mac.
+//  Runs the user's web extensions in the web pages the app shows.
 //
 
 import Foundation
