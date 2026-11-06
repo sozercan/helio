@@ -70,6 +70,9 @@ final class ScreenStates {
   func beginHandoff(in scope: AnyObject, now: Date = .now, endsItself: Bool = true) {
     handoff += 1
     handoffEnds = now.addingTimeInterval(Self.handoffDuration)
+    // Only screens showing now: a model the last handoff kept for a screen that never came back
+    // would otherwise go to a later visit.
+    entries.removeAll { $0.holders <= 0 }
     handedOff = entries.filter { $0.scope === scope }
     guard endsItself else { return }
     let current = handoff

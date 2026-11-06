@@ -163,6 +163,22 @@ struct ScreenStatesTests {
     #expect(new.model !== closedModel)
   }
 
+  @Test func aSecondLayoutChangeHandsOverOnlyWhatShowsThen() async {
+    let states = ScreenStates()
+    var gone: ScreenStateLease<Model>? = states.lease("web:https://example.com", owner: nil, now: start) { Model() }
+    gone?.adopt(in: posts)
+    let goneModel = gone?.model
+    states.beginHandoff(in: posts, now: start, endsItself: false)
+    // Closed during the first change, before any screen took it over.
+    gone = nil
+    await letLeasesGo()
+    // Folded back before that handoff ended: a page opened at that address since gets a new one.
+    states.beginHandoff(in: posts, now: start, endsItself: false)
+    let new = states.lease("web:https://example.com", owner: nil, now: start) { Model() }
+    new.adopt(in: posts)
+    #expect(new.model !== goneModel)
+  }
+
   @Test func aClosedScreensModelGoesRightAway() async {
     let states = ScreenStates()
     var old: ScreenStateLease<Model>? = states.lease("feed", owner: home) { Model() }
