@@ -76,6 +76,9 @@ struct PostView: View, Equatable {
 
   /// The reply sheet opened by the menu bar's Reply; the post's bar has its own.
   @State private var showReplyModal = false
+  /// Scrolls to the comment a link opened once the comments come: taken over from a screen that
+  /// was loading them.
+  @State private var awaitsHighlight = false
 
   init(post: Post, subreddit: Subreddit, forceCollapse: Bool = false, isPreview: Bool = false, highlightID: String? = nil) {
     self.post = post
@@ -228,6 +231,12 @@ struct PostView: View, Equatable {
         .onChange(of: sort) { _ in
           updatePost()
         }
+        .onChange(of: commentsLoad.loaded) { _, loaded in
+          // While the comments are hidden, the scroll once they show does it.
+          guard loaded, awaitsHighlight, !hideElements else { return }
+          awaitsHighlight = false
+          doThisAfter(0.1) { scrollToHighlight(proxy) }
+        }
         // Where it's back to after the layout changes.
         .onScrollPhaseChange { _, phase in
           if phase == .idle {
@@ -238,11 +247,15 @@ struct PostView: View, Equatable {
           lease.adopt(in: screenStateScope)
           // Taken over from the screen this one replaced: back to the comment row that one showed
           // at its top, rather than to the one a link opened.
-          if lease.takeHandedOver(), !hideElements {
-            if let anchor = session.scrollAnchorRowID {
-              doThisAfter(0.1) { proxy.scrollTo(anchor, anchor: .top) }
-            }
+          let handedOver = lease.takeHandedOver()
+          if handedOver, !hideElements, let anchor = session.scrollAnchorRowID {
+            doThisAfter(0.1) { proxy.scrollTo(anchor, anchor: .top) }
           } else {
+            // The comments the old screen is still loading would scroll its own list to the one a
+            // link opened once they come; this one does instead.
+            if handedOver, highlightID != nil, !commentsLoad.loaded {
+              awaitsHighlight = true
+            }
             doThisAfter(0.5) {
               hideElements = false
               doThisAfter(0.1) {
