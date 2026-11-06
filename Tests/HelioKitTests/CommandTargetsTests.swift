@@ -87,6 +87,7 @@ struct AdjacentPostTests {
   private func router(open: Int, columns: Bool, above: [Router.NavDest] = []) -> Router {
     let router = Router(id: "test")
     router.firstIsSidebarSelection = columns
+    router.showsPostBesideFeed = columns
     router.fullPath = [home, .reddit(.post(feed[open]))] + above
     return router
   }

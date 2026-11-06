@@ -340,6 +340,40 @@ struct RouterTests {
     #expect(router.postColumn == [otherPost])
   }
 
+  // MARK: The open Duo's panes
+
+  @Test func theFeedPaneHoldsTheFeedAndItsScreensButNotThePost() {
+    let router = Router(id: "test")
+    router.firstSelected = feed("apple")
+    router.navigateTo(sub, from: .feed)
+    router.navigateTo(post, from: .feed)
+    #expect(router.feedPanePath == [feed("apple"), sub])
+    // Popping a screen stacked on the feed keeps the open post.
+    router.feedPanePath = [feed("apple")]
+    #expect(router.fullPath == [feed("apple"), post])
+  }
+
+  @Test func goingBackToTheSubsListInTheFeedPaneClosesThePost() {
+    let router = Router(id: "test")
+    router.firstSelected = feed("apple")
+    router.navigateTo(post, from: .feed)
+    router.feedPanePath = []
+    #expect(router.fullPath.isEmpty)
+  }
+
+  @Test func backInTheDuoPanesClosesThePostThenTheFeed() {
+    // The feed is pushed on the subs list there, so Back can leave it.
+    let router = Router(id: "test")
+    router.showsPostBesideFeed = true
+    router.firstSelected = feed("apple")
+    router.navigateTo(post, from: .feed)
+    router.goBack()
+    #expect(router.fullPath == [feed("apple")])
+    #expect(router.canGoBack)
+    router.goBack()
+    #expect(router.fullPath.isEmpty)
+  }
+
   @Test func feedPathIgnoresPushesWithoutAFeed() {
     let router = Router(id: "test")
     router.feedPath = [sub]
@@ -379,7 +413,35 @@ struct SplitLayoutTests {
       let layout = SplitLayout(sizeClass: sizeClass, frame: frame(668), division: hinge)
       #expect(layout.showsColumns)
       #expect(layout.hingeFeedWidth == 330)
+      #expect(layout.hingeWidth == 8)
+      // A hinge nearer than a feed column's width: the panes meet in its middle.
+      #expect(layout.feedPaneWidth == 334)
     }
+  }
+
+  @Test func theOpenDuoKeepsTheFeedPaneToAFeedColumnsWidth() {
+    // The Duo's measured inner screen: the hinge's middle is 475 pt in, the post pane gets the rest.
+    let layout = SplitLayout(sizeClass: .regular, frame: frame(867), division: CGRect(x: 455.5, y: 0, width: 40, height: 669))
+    #expect(layout.feedPaneWidth == SplitLayout.idealFeedWidth)
+  }
+
+  @Test func theOpenDuoUsesTwoPanesInsteadOfTheSplitView() {
+    // Each half is narrower than the split view tiles a feed and a post, so it would overlay them.
+    let layout = SplitLayout(sizeClass: .regular, frame: frame(668), division: CGRect(x: 330, y: 0, width: 8, height: 900))
+    #expect(layout.usesPanes)
+    #expect(!layout.fitsSidebar)
+    // The subs list is the feed pane's first screen, not a sidebar beside the feed.
+    #expect(!layout.sidebarBesideFeed)
+  }
+
+  @Test func wideWindowsKeepTheSplitView() {
+    for width in [820.0, 1366] {
+      let layout = SplitLayout(sizeClass: .regular, frame: frame(width), division: nil)
+      #expect(!layout.usesPanes)
+      #expect(layout.sidebarBesideFeed)
+    }
+    #expect(!SplitLayout(sizeClass: .compact, frame: frame(390), division: nil).usesPanes)
+    #expect(!SplitLayout(sizeClass: .regular, frame: frame(668), division: CGRect(x: 0, y: 440, width: 668, height: 8)).usesPanes)
   }
 
   @Test func aHorizontalHingeDoesNotSizeTheFeed() {
@@ -400,13 +462,32 @@ struct SplitLayoutTests {
 }
 
 struct ReadableWidthTests {
-  @Test func wideColumnsAreCapped() {
-    #expect(ReadableWidth.contentWidth(column: 1200, hasDivision: false) == ReadableWidth.max)
-    #expect(ReadableWidth.contentWidth(column: 500, hasDivision: false) == 500)
+  private func column(_ x: CGFloat, _ width: CGFloat) -> CGRect {
+    CGRect(x: x, y: 0, width: width, height: 900)
   }
 
-  @Test func theOpenDuoUsesItsWholeWidth() {
-    #expect(ReadableWidth.contentWidth(column: 1200, hasDivision: true) == 1200)
+  @Test func wideColumnsAreCapped() {
+    #expect(ReadableWidth.contentWidth(column: column(0, 1200), visibleWidth: 1200, division: nil) == ReadableWidth.max)
+    #expect(ReadableWidth.contentWidth(column: column(0, 500), visibleWidth: 500, division: nil) == 500)
+  }
+
+  @Test func aColumnAcrossTheOpenDuosHingeUsesItsWholeWidth() {
+    let hinge = CGRect(x: 580, y: 0, width: 40, height: 900)
+    #expect(ReadableWidth.contentWidth(column: column(0, 1200), visibleWidth: 1200, division: hinge) == 1200)
+  }
+
+  @Test func theOpenDuosPanesGetTheirOwnWidth() {
+    // The open Duo flat on its back: the side tab bar takes the window's right 84 pt, and the
+    // hinge is 40 pt wide in the middle of the window.
+    let hinge = CGRect(x: 455.5, y: 0, width: 40, height: 669)
+    let feedPane = column(0, 455.5)
+    let postPane = CGRect(x: 495.5, y: 0, width: 455.5, height: 669)
+    #expect(ReadableWidth.contentWidth(column: feedPane, visibleWidth: 455.5, division: hinge) == 455.5)
+    // The post pane runs under the tab bar; its content stops at the window's safe area.
+    #expect(ReadableWidth.contentWidth(column: postPane, visibleWidth: 371.5, division: hinge) == 371.5)
+    // A pane on one side of the hinge is capped like any column.
+    let farHinge = CGRect(x: 1000, y: 0, width: 40, height: 900)
+    #expect(ReadableWidth.contentWidth(column: column(0, 1000), visibleWidth: 1000, division: farHinge) == ReadableWidth.max)
   }
 }
 

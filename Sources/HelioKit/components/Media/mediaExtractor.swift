@@ -82,14 +82,17 @@ enum MediaExtractedType: Equatable {
 }
 
 extension MediaExtractedType {
-  /// Whether a feed lets this be tapped. A link's preview card always opens its page, as the
-  /// card says where it goes; other media opens from the feed only with "Open media from feed"
-  /// on, else a tap on it opens the post.
-  func isTappableInFeed(mediaTappable: Bool) -> Bool {
-    if case .link = self {
-      return true
+  /// Whether a feed lets this be tapped. A link always opens: a page's card or address, or a card
+  /// for the Reddit post, subreddit or user the post links to, as the card says where it goes.
+  /// Pictures and videos open from the feed only with "Open media from feed" on, else a tap on
+  /// them opens the post. A linked comment shows as the comment itself in large rows (a tap
+  /// collapses it), and as a link only in compact ones.
+  func isTappableInFeed(mediaTappable: Bool, compact: Bool) -> Bool {
+    switch self {
+    case .link, .post, .subreddit, .user: true
+    case .comment: compact || mediaTappable
+    default: mediaTappable
     }
-    return mediaTappable
   }
 
   /// Starts loading the post, comment, user or subreddit a post links to.

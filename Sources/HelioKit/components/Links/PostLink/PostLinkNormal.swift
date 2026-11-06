@@ -67,7 +67,7 @@ struct PostLinkNormal: View, Equatable, Identifiable {
       if let extractedMedia = helioData.extractedMedia {
         let fullBleed = isFullBleedMedia(extractedMedia, theme: theme.theme, secondary: secondary, compact: false)
         MediaPresenter(helioData: helioData, controller: controller, postTitle: data.title, badgeKit: data.badgeKit, avatarImageRequest: helioData.avatarImageRequest, markAsSeen: !defSettings.lightboxReadsPost ? nil : markAsRead, cornerRadius: fullBleed ? 0 : theme.theme.mediaCornerRadius, blurPostLinkNSFW: defSettings.blurNSFW, media: extractedMedia, over18: over18, compact: false, contentWidth: helioData.postDimensions.mediaSize?.width ?? 0, maxMediaHeightScreenPercentage: defSettings.maxMediaHeightScreenPercentage)
-          .allowsHitTesting(extractedMedia.isTappableInFeed(mediaTappable: defSettings.isMediaTappable))
+          .allowsHitTesting(extractedMedia.isTappableInFeed(mediaTappable: defSettings.isMediaTappable, compact: false))
           .padding(.horizontal, fullBleed ? -theme.theme.innerPadding.horizontal : 0)
 
         if case let .repost(repost) = extractedMedia {

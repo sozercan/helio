@@ -198,9 +198,11 @@ struct MediaExtractorTests {
       Issue.record("expected a link, got \(link)")
       return
     }
-    #expect(link.isTappableInFeed(mediaTappable: false))
-    #expect(!video.isTappableInFeed(mediaTappable: false))
-    #expect(video.isTappableInFeed(mediaTappable: true))
+    for compact in [false, true] {
+      #expect(link.isTappableInFeed(mediaTappable: false, compact: compact))
+      #expect(!video.isTappableInFeed(mediaTappable: false, compact: compact))
+      #expect(video.isTappableInFeed(mediaTappable: true, compact: compact))
+    }
   }
 }
 
@@ -299,5 +301,20 @@ struct DeferredLinkPreviewTests {
     post.setupHelioData(theme: defaultTheme, fetchAvatar: false)
     #expect(helioData.fetchesLinkMetadata)
     #expect(helioData.deferredMedia == nil)
+  }
+}
+
+struct FeedLinkTapTests {
+  @Test func linkedRedditCardsOpenFromTheFeedWhilePicturesFollowTheSetting() {
+    for compact in [false, true] {
+      #expect(MediaExtractedType.post(nil).isTappableInFeed(mediaTappable: false, compact: compact))
+      #expect(MediaExtractedType.subreddit(nil).isTappableInFeed(mediaTappable: false, compact: compact))
+      #expect(MediaExtractedType.user(nil).isTappableInFeed(mediaTappable: false, compact: compact))
+      #expect(!MediaExtractedType.imgs([]).isTappableInFeed(mediaTappable: false, compact: compact))
+    }
+    // A large row shows a linked comment as the comment, which a tap collapses; a compact row
+    // shows its address.
+    #expect(!MediaExtractedType.comment(nil).isTappableInFeed(mediaTappable: false, compact: false))
+    #expect(MediaExtractedType.comment(nil).isTappableInFeed(mediaTappable: false, compact: true))
   }
 }

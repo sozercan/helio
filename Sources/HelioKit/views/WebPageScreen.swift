@@ -8,20 +8,38 @@
 import SwiftUI
 import WebKit
 
-/// A web page opened from a link in a feed or a post (`Nav.openLink`), on Mac, where Safari's
-/// view would leave the app. Pages keep their sites' data apart from the Reddit sign-in's, and
+/// A web page opened from a link in a feed or a post (`Nav.openLink`): on Mac, where Safari's
+/// view would leave the app, and beside the feed (the open iPhone Duo, iPad), where its sheet would
+/// cover both columns. Pages keep their sites' data apart from the Reddit sign-in's, and
 /// only until Helio next launches (`WebPageStorage`). The user's web extensions
 /// (`WebExtensionRuntime`) run in them.
 struct WebPageScreen: View {
   let url: URL
   @Environment(\.navColumn) private var navColumn
+  @Environment(\.screenStateScope) private var screenStateScope
+  /// The page, with its history, taken over from the screen this one replaces when the layout
+  /// changes (`ScreenStates`).
+  @State private var lease: ScreenStateLease<WebPageSlot>
   /// Made once the screen shows, not each time SwiftUI rebuilds this view.
-  @State private var page: WebPageModel?
+  private var page: WebPageModel? {
+    get { lease.model.page }
+    nonmutating set { lease.model.page = newValue }
+  }
+
+  init(url: URL) {
+    self.url = url
+    _lease = State(initialValue: ScreenStates.shared.lease("web:\(url.absoluteString)", owner: nil) { WebPageSlot() })
+  }
 
   var body: some View {
     Group {
-      if let page {
+      // Once the lease settles: until then it may hold another screen's page, whose web view it
+      // would take from that screen.
+      if let page, lease.settled {
         PageView(webView: page.webView)
+          // To the bottom edge: the web view keeps its page clear of the home indicator itself, so
+          // inside the safe area it left a black band under the page.
+          .ignoresSafeArea(.container, edges: .bottom)
           .overlay(alignment: .top) {
             if page.isLoading {
               ProgressView(value: page.progress)
@@ -31,12 +49,22 @@ struct WebPageScreen: View {
           .navigationTitle(page.title.isEmpty ? url.host() ?? url.absoluteString : page.title)
           .navigationBarTitleDisplayMode(.inline)
           .commandTarget(CommandTargets.Target(kind: .web, column: navColumn, refresh: { page.webView.reload() }, actions: [.openInBrowser(page.url ?? url)]), updatingWith: page.url)
+        #if !targetEnvironment(macCatalyst)
+          // On Mac these are in the window toolbar (`MacTabToolbar`).
+          .toolbar { PageToolbar(page: page, url: url) }
+          // The bar's title and buttons follow the app's appearance, the page under it its own,
+          // so in dark mode a light page under the bar's soft edge left white text on a light
+          // band. The bar gets the app's own background instead.
+          .toolbarBackground(Color(uiColor: .systemBackground), for: .navigationBar)
+          .toolbarBackgroundVisibility(.visible, for: .navigationBar)
+        #endif
       } else {
         // Something to appear: an empty group never does, so the page would never be made.
         Color.clear
       }
     }
     .onAppear {
+      lease.adopt(in: screenStateScope)
       if let page {
         WebExtensionRuntime.shared.activate(page.webView)
       }
@@ -54,14 +82,66 @@ struct WebPageScreen: View {
   }
 }
 
+/// The page's previous and next page, reload or stop, share and Open in Browser, outside Mac.
+private struct PageToolbar: ToolbarContent {
+  let page: WebPageModel
+  let url: URL
+
+  var body: some ToolbarContent {
+    let pageURL = page.url ?? url
+    ToolbarItemGroup(placement: .bottomBar) {
+      Button("Previous Page", systemImage: "chevron.backward") { page.webView.goBack() }
+        .disabled(!page.canGoBack)
+      Button("Next Page", systemImage: "chevron.forward") { page.webView.goForward() }
+        .disabled(!page.canGoForward)
+      Spacer()
+      if page.isLoading {
+        Button("Stop", systemImage: "xmark") { page.webView.stopLoading() }
+      } else {
+        Button("Reload", systemImage: "arrow.clockwise") { page.webView.reload() }
+      }
+    }
+    ToolbarItemGroup(placement: .primaryAction) {
+      ShareLink(item: pageURL)
+      Button("Open in Browser", systemImage: "safari") {
+        UIApplication.shared.open(pageURL)
+      }
+    }
+  }
+}
+
+/// The page's web view, in a view of its own: a screen built for another layout takes the web view
+/// over while the old screen's view may still be on screen, and taking the web view itself as the
+/// representable's view would let the old one's teardown remove it.
 private struct PageView: UIViewRepresentable {
   let webView: WKWebView
 
-  func makeUIView(context _: Context) -> WKWebView {
-    webView
+  func makeUIView(context _: Context) -> UIView {
+    let container = UIView()
+    attach(to: container)
+    return container
   }
 
-  func updateUIView(_: WKWebView, context _: Context) {}
+  /// Only once the web view has no other view: an old screen's view still updating would take it
+  /// back from the new one.
+  func updateUIView(_ container: UIView, context _: Context) {
+    if webView.superview == nil {
+      attach(to: container)
+    }
+  }
+
+  private func attach(to container: UIView) {
+    webView.frame = container.bounds
+    webView.autoresizingMask = [.flexibleWidth, .flexibleHeight]
+    container.addSubview(webView)
+  }
+}
+
+/// Where a screen keeps its page, so a screen that replaces it takes the page over.
+@MainActor
+@Observable
+private final class WebPageSlot {
+  var page: WebPageModel?
 }
 
 /// Where pages keep their sites' data (cookies, storage, cache): one store of their own, apart
@@ -90,6 +170,8 @@ private final class WebPageModel: NSObject, WKNavigationDelegate, WKUIDelegate {
   private(set) var url: URL?
   private(set) var isLoading = false
   private(set) var progress = 0.0
+  private(set) var canGoBack = false
+  private(set) var canGoForward = false
   @ObservationIgnored private var observations: [NSKeyValueObservation] = []
 
   init(url: URL) {
@@ -125,6 +207,12 @@ private final class WebPageModel: NSObject, WKNavigationDelegate, WKUIDelegate {
       },
       webView.observe(\.estimatedProgress, options: .new) { [weak self] webView, _ in
         MainActor.assumeIsolated { self?.progress = webView.estimatedProgress }
+      },
+      webView.observe(\.canGoBack, options: .new) { [weak self] webView, _ in
+        MainActor.assumeIsolated { self?.canGoBack = webView.canGoBack }
+      },
+      webView.observe(\.canGoForward, options: .new) { [weak self] webView, _ in
+        MainActor.assumeIsolated { self?.canGoForward = webView.canGoForward }
       },
     ]
     runtime.attach(webView)

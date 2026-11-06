@@ -59,7 +59,7 @@ class FeedItemsManager<S> {
   var selectedFilter: ShallowCachedFilter?
 
   var chunkSize: Int
-  private let fetchFn: ItemsFetchFn
+  @ObservationIgnored private var fetchFn: ItemsFetchFn
   private let currentCredential: @MainActor () -> RedditCredential?
   @ObservationIgnored private var authorization: RedditCredential.AuthorizationID?
   private let prefetchRange = 2
@@ -265,6 +265,38 @@ class FeedItemsManager<S> {
     let reqs = getImgReqsFrom(toPrefetch)
 
     Post.prefetcher.startPrefetching(with: reqs)
+  }
+
+  /// The rows the list shows, by id: the topmost is where the feed goes back to after the
+  /// layout changes (`ScreenStates`).
+  /// Counted, as the old screen's list and the new one's share it while the layout changes.
+  @ObservationIgnored private var shownRowIDs: [String: Int] = [:]
+  /// The row at the top of the list when it last stopped scrolling; nil at the top of the feed.
+  @ObservationIgnored private(set) var scrollAnchorID: String?
+
+  /// Fetches through `fetchFn` from now on: the screen that took this feed over when the layout
+  /// changed, as the one that made it is gone (`ScreenStates`).
+  func replaceFetch(_ fetchFn: @escaping ItemsFetchFn) {
+    self.fetchFn = fetchFn
+  }
+
+  func rowShown(_ id: String) {
+    shownRowIDs[id, default: 0] += 1
+  }
+
+  func rowHidden(_ id: String) {
+    if let count = shownRowIDs[id], count > 1 {
+      shownRowIDs[id] = count - 1
+    } else {
+      shownRowIDs[id] = nil
+    }
+  }
+
+  /// Saved when the list stops scrolling, not as rows go: the list hides all its rows when a
+  /// screen covers it, which would leave its last row as the top.
+  func saveScrollAnchor() {
+    let top = shownRowIDs.keys.compactMap { id in indexByID[id].map { (id, $0) } }.min { $0.1 < $1.1 }
+    scrollAnchorID = top.flatMap { $0.1 == 0 ? nil : $0.0 }
   }
 
   func elementDisappeared(entity: RedditEntityType) {

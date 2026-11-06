@@ -205,5 +205,5 @@ struct PostLinkBG: View, Equatable {
 @MainActor
 func isOpenBesideFeed(postID: String, column: Router.Column?) -> Bool {
   // Collapsed into one stack, the post covers the feed: nothing to mark.
-  column == .feed && Nav.shared[.posts].firstIsSidebarSelection && Nav.shared[.posts].postColumn.first?.id == postID
+  column == .feed && Nav.shared[.posts].showsPostBesideFeed && Nav.shared[.posts].postColumn.first?.id == postID
 }

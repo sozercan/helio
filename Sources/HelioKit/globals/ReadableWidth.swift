@@ -12,10 +12,26 @@ enum ReadableWidth {
   /// The widest rows get.
   static let max: CGFloat = 700
 
-  /// The width content gets in a column `width` wide. The open iPhone Duo uses its whole width:
-  /// a centered column would straddle the hinge.
-  static func contentWidth(column width: CGFloat, hasDivision: Bool) -> CGFloat {
-    hasDivision ? width : min(width, max)
+  /// The width content gets in `column`, of which `visibleWidth` is inside the window's safe
+  /// area. A column across the open iPhone Duo's hinge uses its whole width: a centered column
+  /// would straddle the hinge. A pane on one side of it is capped like any other column.
+  static func contentWidth(column: CGRect, visibleWidth: CGFloat, division: CGRect?) -> CGFloat {
+    let spansHinge = division.map { column.minX < $0.midX && $0.midX < column.maxX } ?? false
+    return spansHinge ? visibleWidth : min(visibleWidth, max)
+  }
+}
+
+private struct PaneHingeEdgesKey: EnvironmentKey {
+  static let defaultValue: Edge.Set = []
+}
+
+extension EnvironmentValues {
+  /// The side of an open iPhone Duo pane that's at the hinge (`SubredditsStack`), whose safe-area
+  /// inset its screens ignore. A navigation stack in a pane gets the window's inset on that side
+  /// too, such as the side tab bar's in the feed pane, though nothing of the system's is there.
+  var paneHingeEdges: Edge.Set {
+    get { self[PaneHingeEdgesKey.self] }
+    set { self[PaneHingeEdgesKey.self] = newValue }
   }
 }
 
@@ -41,7 +57,7 @@ private struct ColumnContentWidth: ViewModifier {
     // the window's safe area, so only the part inside that counts.
     let visible = frame.intersection(metrics.contentFrame).width
     let width = frame.width > 0 ? (visible > 0 ? visible : frame.width) : metrics.contentWidth
-    let contentWidth = ReadableWidth.contentWidth(column: width, hasDivision: metrics.divisionFrame != nil)
+    let contentWidth = ReadableWidth.contentWidth(column: frame.width > 0 ? frame : metrics.contentFrame, visibleWidth: width, division: metrics.divisionFrame)
     content
       .environment(\.contentWidth, contentWidth)
       .environment(\.readableInset, ((width - contentWidth) / 2).rounded(.down))
@@ -62,6 +78,22 @@ extension View {
   /// background, across the whole column. Apply to each screen in a `columnContentWidth()` stack.
   func readableWidth() -> some View {
     modifier(ReadableInsetModifier())
+  }
+
+  /// Lays a screen in an open iPhone Duo pane out to the hinge, past the safe-area inset its stack
+  /// gets on that side (`paneHingeEdges`). Otherwise a list there would inset its rows by the side
+  /// tab bar's width while they're laid out for the whole pane, and they'd run off its other edge.
+  /// Apply to each screen in a pane's stack.
+  func ignoresPaneHingeInsets() -> some View {
+    modifier(PaneHingeInsetsModifier())
+  }
+}
+
+private struct PaneHingeInsetsModifier: ViewModifier {
+  @Environment(\.paneHingeEdges) private var edges
+
+  func body(content: Content) -> some View {
+    content.ignoresSafeArea(.container, edges: edges)
   }
 }
 

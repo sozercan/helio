@@ -18,6 +18,9 @@ struct RedditListingFeed<Header: View, Footer: View, S: Sorting>: View {
   private var footer: () -> Footer
   private var subreddit: Subreddit?
   private var disableSearch: Bool
+  /// Kept to hand to a manager taken over from the screen this one replaced, whose own fetches
+  /// read that screen's state.
+  private let fetch: FeedItemsManager<S>.ItemsFetchFn
   var forceRefresh: Binding<Bool>?
   @Default(.SubredditFeedDefSettings) private var subredditFeedDefSettings
   @Default(.GeneralDefSettings) private var generalDefSettings
@@ -26,7 +29,7 @@ struct RedditListingFeed<Header: View, Footer: View, S: Sorting>: View {
     RedditCredentialsManager.shared.selectedCredential(id: generalDefSettings.redditCredentialSelectedID)?.authorizationID
   }
 
-  init(feedId: String, showSubInPosts: Bool = false, title: String, theme: ThemeBG, fetch: @escaping FeedItemsManager<S>.ItemsFetchFn, @ViewBuilder header: @escaping () -> Header = { EmptyView() }, @ViewBuilder footer: @escaping () -> Footer = { EmptyView() }, initialSorting: S? = nil, disableSearch: Bool = true, subreddit: Subreddit? = nil, forceRefresh: Binding<Bool>? = nil, hideReadPosts: Bool = false) where S == SubListingSortOption {
+  init(feedId: String, showSubInPosts: Bool = false, title: String, theme: ThemeBG, fetch: @escaping FeedItemsManager<S>.ItemsFetchFn, @ViewBuilder header: @escaping () -> Header = { EmptyView() }, @ViewBuilder footer: @escaping () -> Footer = { EmptyView() }, initialSorting: S? = nil, disableSearch: Bool = true, subreddit: Subreddit? = nil, forceRefresh: Binding<Bool>? = nil, hideReadPosts: Bool = false, stateOwner: AnyObject? = nil) where S == SubListingSortOption {
     self.showSubInPosts = showSubInPosts
     self.title = title
     self.theme = theme
@@ -35,7 +38,11 @@ struct RedditListingFeed<Header: View, Footer: View, S: Sorting>: View {
     self.subreddit = subreddit
     self.disableSearch = disableSearch
     self.forceRefresh = forceRefresh // Assign the optional forceRefresh Binding
-    self._itemsManager = .init(initialValue: FeedItemsManager(sorting: initialSorting, hideReadPosts: hideReadPosts, fetchFn: fetch))
+    self.fetch = fetch
+    let make = { FeedItemsManager(sorting: initialSorting, hideReadPosts: hideReadPosts, fetchFn: fetch) }
+    // With an owner, taken over from the screen this one replaces when the layout changes
+    // (`ScreenStates`).
+    self._lease = .init(initialValue: stateOwner.map { ScreenStates.shared.lease("feed", owner: $0, make: make) } ?? ScreenStateLease(unshared: make()))
     self._filters = FetchRequest<CachedFilter>(sortDescriptors: [NSSortDescriptor(key: "text", ascending: true)], predicate: NSPredicate(format: "subID == %@", (subreddit?.data?.display_name ?? feedId) as CVarArg), animation: .default)
   }
 
@@ -43,7 +50,11 @@ struct RedditListingFeed<Header: View, Footer: View, S: Sorting>: View {
 
   @SilentState private var fetchedFilters: Bool = false
 
-  @State private var itemsManager: FeedItemsManager<S>
+  @State private var lease: ScreenStateLease<FeedItemsManager<S>>
+  private var itemsManager: FeedItemsManager<S> {
+    lease.model
+  }
+
   /// The search field's state, which the menu bar's Find sets.
   @State private var searchPresented = false
   /// Find focuses the field even while it's presented, after its keyboard was dismissed.
@@ -52,6 +63,7 @@ struct RedditListingFeed<Header: View, Footer: View, S: Sorting>: View {
   @Environment(\.useTheme) private var selectedTheme
   @Environment(\.contentWidth) private var contentWidth
   @Environment(\.navColumn) private var navColumn
+  @Environment(\.screenStateScope) private var screenStateScope
 
   @Default(.PostLinkDefSettings) private var postLinkDefSettings
   @Default(.SubredditFeedDefSettings) private var feedDefSettings
@@ -88,251 +100,282 @@ struct RedditListingFeed<Header: View, Footer: View, S: Sorting>: View {
     let paddingV = selectedTheme.postLinks.spacing / (isThereDivider ? 4 : 2)
     let canvas = subreddit.map { PostLayout.isCanvas($0.settingsKey, canvasSubreddits: canvasSubreddits) } ?? false
     GeometryReader { geo in
-      List {
-        header()
+      ScrollViewReader { proxy in
+        List {
+          header()
 
-        //        getPinnedSection()
+          //        getPinnedSection()
 
-        Group {
-          switch itemsManager.displayMode {
-          case .loading:
-            Section {
-              ProgressView()
-                .frame(maxWidth: .infinity, minHeight: geo.size.height)
-                .padding(.bottom, 32)
-                .id("initial-loading-indicator")
-            }
-          case .empty:
-            Text("Nothing around here :(")
-              .frame(maxWidth: .infinity)
-          case .error, .endOfFeed, .items, .onlyReadPosts:
-            if canvas {
+          Group {
+            switch itemsManager.displayMode {
+            case .loading:
               Section {
-                canvasRows(grid: canvasGrid(geo), settings: postLinkSettings)
+                ProgressView()
+                  .frame(maxWidth: .infinity, minHeight: geo.size.height)
+                  .padding(.bottom, 32)
+                  .id("initial-loading-indicator")
               }
-            }
-            Section {
-              // In a canvas, the posts are its tiles instead.
-              ForEach(canvas ? [] : itemsManager.entities) { el in
-                Group {
-                  switch el {
-                  case let .post(post):
-                    if let helioData = post.helioData, let sub = helioData.subreddit ?? subreddit {
-                      PostLink(id: post.id, theme: selectedTheme.postLinks, showSub: showSubInPosts, compactPerSubreddit: compactPerSubreddit[sub.settingsKey], contentWidth: contentWidth, defSettings: postLinkSettings)
-                        .environment(\.contextPost, post)
-                        .environment(\.contextSubreddit, sub)
-                        .environment(\.contextPostHelioData, helioData)
-                        .listRowInsets(EdgeInsets(top: paddingV, leading: paddingH, bottom: paddingV, trailing: paddingH))
+            case .empty:
+              Text("Nothing around here :(")
+                .frame(maxWidth: .infinity)
+            case .error, .endOfFeed, .items, .onlyReadPosts:
+              if canvas {
+                Section {
+                  canvasRows(grid: canvasGrid(geo), settings: postLinkSettings)
+                }
+              }
+              Section {
+                // In a canvas, the posts are its tiles instead.
+                ForEach(canvas ? [] : itemsManager.entities) { el in
+                  Group {
+                    switch el {
+                    case let .post(post):
+                      if let helioData = post.helioData, let sub = helioData.subreddit ?? subreddit {
+                        PostLink(id: post.id, theme: selectedTheme.postLinks, showSub: showSubInPosts, compactPerSubreddit: compactPerSubreddit[sub.settingsKey], contentWidth: contentWidth, defSettings: postLinkSettings)
+                          .environment(\.contextPost, post)
+                          .environment(\.contextSubreddit, sub)
+                          .environment(\.contextPostHelioData, helioData)
+                          .listRowInsets(EdgeInsets(top: paddingV, leading: paddingH, bottom: paddingV, trailing: paddingH))
 
-                      if isThereDivider {
-                        // Compact rows get Apollo's inset hairline instead of the thick band.
-                        let compact = compactPerSubreddit[sub.settingsKey] ?? postLinkSettings.compactMode.enabled
-                        Group {
-                          if compact, paddingH == 0 {
-                            selectedTheme.lists.dividersColors()
-                              .frame(height: 0.5)
-                              .padding(.leading, selectedTheme.postLinks.theme.innerPadding.horizontal)
-                              .background(selectedTheme.postLinks.theme.bg.color())
-                          } else {
-                            NiceDivider(divider: selectedTheme.postLinks.divider)
+                        if isThereDivider {
+                          // Compact rows get Apollo's inset hairline instead of the thick band.
+                          let compact = compactPerSubreddit[sub.settingsKey] ?? postLinkSettings.compactMode.enabled
+                          Group {
+                            if compact, paddingH == 0 {
+                              selectedTheme.lists.dividersColors()
+                                .frame(height: 0.5)
+                                .padding(.leading, selectedTheme.postLinks.theme.innerPadding.horizontal)
+                                .background(selectedTheme.postLinks.theme.bg.color())
+                            } else {
+                              NiceDivider(divider: selectedTheme.postLinks.divider)
+                            }
                           }
+                          .id("\(post.id)-divider")
+                          .listRowInsets(EdgeInsets(top: 0, leading: 0, bottom: 0, trailing: 0))
                         }
-                        .id("\(post.id)-divider")
-                        .listRowInsets(EdgeInsets(top: 0, leading: 0, bottom: 0, trailing: 0))
                       }
-                    }
-                  case let .subreddit(sub):
-                    SubredditLink(sub: sub)
-                      .listRowInsets(EdgeInsets())
-                  case .multi: EmptyView()
-                  case let .comment(comment):
-                    VStack(spacing: 8) {
-                      ShortCommentPostLink(comment: comment)
-                        .padding(.horizontal, 12)
-                      if let commentHelioData = comment.helioData {
-                        CommentLink(showReplies: false, comment: comment, commentHelioData: commentHelioData, children: comment.childrenHelio)
+                    case let .subreddit(sub):
+                      SubredditLink(sub: sub)
+                        .listRowInsets(EdgeInsets())
+                    case .multi: EmptyView()
+                    case let .comment(comment):
+                      VStack(spacing: 8) {
+                        ShortCommentPostLink(comment: comment)
+                          .padding(.horizontal, 12)
+                        if let commentHelioData = comment.helioData {
+                          CommentLink(showReplies: false, comment: comment, commentHelioData: commentHelioData, children: comment.childrenHelio)
+                        }
                       }
-                    }
-                    .padding(.vertical, 12)
-                    .background(PostLinkBG(theme: selectedTheme.postLinks.theme, stickied: false, secondary: false))
-                    .mask(RR(selectedTheme.postLinks.theme.cornerRadius, Color.black))
-                    .allowsHitTesting(false)
-                    .contentShape(Rectangle())
-                    .onTapGesture {
-                      if let data = comment.data, let link_id = data.link_id, let subID = data.subreddit {
-                        // `link_id` is the post's fullname (t3_…); posts are made from the bare id, as
-                        // the feed's are, so the open post matches its row there.
-                        let postID = link_id.hasPrefix("t3_") ? String(link_id.dropFirst(3)) : link_id
-                        Nav.to(.reddit(.postHighlighted(Post(id: postID, subID: subID), comment.id)), from: navColumn)
+                      .padding(.vertical, 12)
+                      .background(PostLinkBG(theme: selectedTheme.postLinks.theme, stickied: false, secondary: false))
+                      .mask(RR(selectedTheme.postLinks.theme.cornerRadius, Color.black))
+                      .allowsHitTesting(false)
+                      .contentShape(Rectangle())
+                      .onTapGesture {
+                        if let data = comment.data, let link_id = data.link_id, let subID = data.subreddit {
+                          // `link_id` is the post's fullname (t3_…); posts are made from the bare id, as
+                          // the feed's are, so the open post matches its row there.
+                          let postID = link_id.hasPrefix("t3_") ? String(link_id.dropFirst(3)) : link_id
+                          Nav.to(.reddit(.postHighlighted(Post(id: postID, subID: subID), comment.id)), from: navColumn)
+                        }
                       }
+                      .listRowInsets(EdgeInsets(top: paddingV, leading: paddingH, bottom: paddingV, trailing: paddingH))
+                    case let .user(user):
+                      UserLink(user: user)
+                        .listRowInsets(EdgeInsets())
+                    case let .message(message):
+                      // Flat, full-width rows with hairlines between them, like comments.
+                      MessageLink(message: message)
+                        .listRowInsets(EdgeInsets())
                     }
-                    .listRowInsets(EdgeInsets(top: paddingV, leading: paddingH, bottom: paddingV, trailing: paddingH))
-                  case let .user(user):
-                    UserLink(user: user)
-                      .listRowInsets(EdgeInsets())
-                  case let .message(message):
-                    // Flat, full-width rows with hairlines between them, like comments.
-                    MessageLink(message: message)
-                      .listRowInsets(EdgeInsets())
+                  }
+                  .onAppear {
+                    itemsManager.elementAppeared(entity: el)
+                    itemsManager.rowShown(el.id)
+                  }
+                  .onDisappear {
+                    itemsManager.elementDisappeared(entity: el)
+                    itemsManager.rowHidden(el.id)
                   }
                 }
-                .onAppear { itemsManager.elementAppeared(entity: el) }
-                .onDisappear { itemsManager.elementDisappeared(entity: el) }
               }
-            }
 
-            if itemsManager.displayMode == .endOfFeed {
-              Section {
-                EndOfFeedView()
-              }
-            }
-
-            if itemsManager.displayMode == .onlyReadPosts {
-              Section {
-                VStack {
-                  Text("Only posts you've read so far")
-
-                  Button("Load more", systemImage: "arrow.down") {
-                    Task { await itemsManager.loadMore() }
-                  }
-                  .buttonStyle(.actionSecondary)
+              if itemsManager.displayMode == .endOfFeed {
+                Section {
+                  EndOfFeedView()
                 }
-                .frame(maxWidth: .infinity)
-                .compositingGroup()
-                .opacity(0.5)
-                .id("only-read-load-more")
               }
-            }
 
-            if itemsManager.displayMode == .error {
-              Section {
-                VStack {
-                  if let limitedUntil = RedditRateLimit.shared.limitedUntil(account: RedditAPI.accountID(nil), authorization: RedditAPI.accountAuthorization(nil)) {
-                    Text(RedditRateLimit.retryText(until: limitedUntil))
-                      .multilineTextAlignment(.center)
-                  } else {
-                    Text("There was an error")
-                  }
+              if itemsManager.displayMode == .onlyReadPosts {
+                Section {
+                  VStack {
+                    Text("Only posts you've read so far")
 
-                  Button("Manually reload", systemImage: "arrow.clockwise") {
-                    Task { await itemsManager.retry() }
+                    Button("Load more", systemImage: "arrow.down") {
+                      Task { await itemsManager.loadMore() }
+                    }
+                    .buttonStyle(.actionSecondary)
                   }
-                  .buttonStyle(.actionSecondary)
+                  .frame(maxWidth: .infinity)
+                  .compositingGroup()
+                  .opacity(0.5)
+                  .id("only-read-load-more")
                 }
-                .frame(maxWidth: .infinity)
-                .compositingGroup()
-                .opacity(0.5)
-                .id("error-load-more-manual")
+              }
+
+              if itemsManager.displayMode == .error {
+                Section {
+                  VStack {
+                    if let limitedUntil = RedditRateLimit.shared.limitedUntil(account: RedditAPI.accountID(nil), authorization: RedditAPI.accountAuthorization(nil)) {
+                      Text(RedditRateLimit.retryText(until: limitedUntil))
+                        .multilineTextAlignment(.center)
+                    } else {
+                      Text("There was an error")
+                    }
+
+                    Button("Manually reload", systemImage: "arrow.clockwise") {
+                      Task { await itemsManager.retry() }
+                    }
+                    .buttonStyle(.actionSecondary)
+                  }
+                  .frame(maxWidth: .infinity)
+                  .compositingGroup()
+                  .opacity(0.5)
+                  .id("error-load-more-manual")
+                }
+              }
+              //          default: EmptyView()
+            }
+
+            if itemsManager.isLoadingMore {
+              Section {
+                ProgressView()
+                  .frame(maxWidth: .infinity, minHeight: 150)
+                  .id("loading-more-indicator")
               }
             }
-            //          default: EmptyView()
           }
+          .listRowSeparator(.hidden)
+          .listRowBackground(Color.clear)
 
-          if itemsManager.isLoadingMore {
-            Section {
-              ProgressView()
-                .frame(maxWidth: .infinity, minHeight: 150)
-                .id("loading-more-indicator")
+          footer()
+        }
+        .themedListBG(theme)
+        // In the toolbar (the default in a split view's detail on iOS 26+), closing search
+        // re-focuses it as soon as the dismiss animation ends.
+        .if(!disableSearch) { $0.searchable(text: Bindable(itemsManager).searchQuery.value, isPresented: $searchPresented, placement: .navigationBarDrawer(displayMode: .automatic)).searchFocused($searchFocused) }
+        .touchScrollIndicators(.never)
+        .listStyle(.plain)
+        .navigationTitle(title)
+        .smallTitleOnMac()
+        .environment(\.defaultMinListRowHeight, 1)
+        .toolbar {
+          // Sort and the feed's options share a glass group; the subreddit's icon is its own.
+          // On Mac they're in the window toolbar (`actions`).
+          if ScreenAction.showsInNavigationBar, itemsManager.sorting != nil {
+            ToolbarItem(placement: .topBarTrailing) {
+              FeedSortMenu(sorting: Bindable(itemsManager).sorting)
+            }
+          }
+          if ScreenAction.showsInNavigationBar, let subreddit {
+            ToolbarItem(placement: .topBarTrailing) {
+              FeedOptionsMenu(subId: subreddit.settingsKey, filters: shallowCachedFilters, selectedFilter: Bindable(itemsManager).selectedFilter)
+            }
+          }
+          if ScreenAction.showsInNavigationBar, let sub = subreddit, let data = sub.data {
+            ToolbarSpacer(.fixed, placement: .topBarTrailing)
+            ToolbarItem(placement: .topBarTrailing) {
+              Button {
+                Nav.to(.reddit(.subInfo(sub)), from: navColumn)
+              } label: {
+                SubredditIcon(subredditIconKit: data.subredditIconKit)
+              }
+              .accessibilityLabel("About r/\(data.display_name ?? sub.id)")
             }
           }
         }
-        .listRowSeparator(.hidden)
-        .listRowBackground(Color.clear)
-
-        footer()
-      }
-      .themedListBG(theme)
-      // In the toolbar (the default in a split view's detail on iOS 26+), closing search
-      // re-focuses it as soon as the dismiss animation ends.
-      .if(!disableSearch) { $0.searchable(text: $itemsManager.searchQuery.value, isPresented: $searchPresented, placement: .navigationBarDrawer(displayMode: .automatic)).searchFocused($searchFocused) }
-      .touchScrollIndicators(.never)
-      .listStyle(.plain)
-      .navigationTitle(title)
-      .smallTitleOnMac()
-      .environment(\.defaultMinListRowHeight, 1)
-      .toolbar {
-        // Sort and the feed's options share a glass group; the subreddit's icon is its own.
-        // On Mac they're in the window toolbar (`actions`).
-        if ScreenAction.showsInNavigationBar, itemsManager.sorting != nil {
-          ToolbarItem(placement: .topBarTrailing) {
-            FeedSortMenu(sorting: $itemsManager.sorting)
-          }
-        }
-        if ScreenAction.showsInNavigationBar, let subreddit {
-          ToolbarItem(placement: .topBarTrailing) {
-            FeedOptionsMenu(subId: subreddit.settingsKey, filters: shallowCachedFilters, selectedFilter: $itemsManager.selectedFilter)
-          }
-        }
-        if ScreenAction.showsInNavigationBar, let sub = subreddit, let data = sub.data {
-          ToolbarSpacer(.fixed, placement: .topBarTrailing)
-          ToolbarItem(placement: .topBarTrailing) {
-            Button {
-              Nav.to(.reddit(.subInfo(sub)), from: navColumn)
-            } label: {
-              SubredditIcon(subredditIconKit: data.subredditIconKit)
-            }
-            .accessibilityLabel("About r/\(data.display_name ?? sub.id)")
-          }
-        }
-      }
-      .relayoutPosts({ itemsManager.entities.compactMap {
-        if case let .post(post) = $0 {
-          post
-        } else {
-          nil
-        }
-      } }, contentWidth: contentWidth, theme: selectedTheme)
-      // A feed opened by name gains its fullname with its details, and with it the compact
-      // setting kept under it: lay its posts out again for it.
-      .onChange(of: subreddit?.settingsKey) {
-        withAnimation {
-          for case let .post(post) in itemsManager.entities {
-            post.relayout(contentWidth: contentWidth, theme: selectedTheme)
-          }
-        }
-      }
-      //    .onChange(of: itemsManager.selectedFilter) { searchEnabled = $1?.type != .custom }
-      .refreshable { await refetch() }
-      .feedCommandTarget(CommandTargets.Target(
-        kind: .feed,
-        column: navColumn,
-        refresh: { Task { await refetch() } },
-        focusSearch: disableSearch ? nil : {
-          searchPresented = true
-          searchFocused = true
-        },
-        posts: { itemsManager.entities.compactMap {
+        .relayoutPosts({ itemsManager.entities.compactMap {
           if case let .post(post) = $0 {
             post
           } else {
             nil
           }
-        } },
-        canLoadMore: { itemsManager.canLoadMore },
-        loadMore: { await itemsManager.loadMore() },
-        actions: actions(filters: shallowCachedFilters, compactPerSubreddit: compactPerSubreddit, compactByDefault: postLinkSettings.compactMode.enabled, canvasSubreddits: canvasSubreddits),
-      ))
-      .onChange(of: selectedAuthorization) { _, _ in
-        Task { await refetch(clearItems: true) }
-      }
-      .onChange(of: subredditFeedDefSettings.chunkLoadSize) { itemsManager.chunkSize = $1 }
-      .onChange(of: forceRefresh?.wrappedValue) { newValue in
-        if newValue == true {
-          Task {
-            await refetch()
-            forceRefresh?.wrappedValue = false // Reset
+        } }, contentWidth: contentWidth, theme: selectedTheme)
+        // A feed opened by name gains its fullname with its details, and with it the compact
+        // setting kept under it: lay its posts out again for it.
+        .onChange(of: subreddit?.settingsKey) {
+          withAnimation {
+            for case let .post(post) in itemsManager.entities {
+              post.relayout(contentWidth: contentWidth, theme: selectedTheme)
+            }
           }
         }
-      }
-      .onAppear {
-        // The manager owns the initial request, independent of navigation task cancellation.
-        Task {
-          await itemsManager.loadIfNeeded()
-          await fetchFiltersIfNeeded()
+        //    .onChange(of: itemsManager.selectedFilter) { searchEnabled = $1?.type != .custom }
+        .refreshable { await refetch() }
+        .feedCommandTarget(CommandTargets.Target(
+          kind: .feed,
+          column: navColumn,
+          refresh: { Task { await refetch() } },
+          focusSearch: disableSearch ? nil : {
+            searchPresented = true
+            searchFocused = true
+          },
+          posts: { itemsManager.entities.compactMap {
+            if case let .post(post) = $0 {
+              post
+            } else {
+              nil
+            }
+          } },
+          canLoadMore: { itemsManager.canLoadMore },
+          loadMore: { await itemsManager.loadMore() },
+          actions: actions(filters: shallowCachedFilters, compactPerSubreddit: compactPerSubreddit, compactByDefault: postLinkSettings.compactMode.enabled, canvasSubreddits: canvasSubreddits),
+        ))
+        .onChange(of: selectedAuthorization) { _, _ in
+          Task { await refetch(clearItems: true) }
         }
-      }
-      .onChange(of: [itemsManager.searchQuery.debounced, itemsManager.selectedFilter?.text, itemsManager.selectedFilter?.type.rawValue, itemsManager.sorting?.meta.apiValue]) {
-        Task { await refetch() }
+        .onChange(of: subredditFeedDefSettings.chunkLoadSize) { itemsManager.chunkSize = $1 }
+        .onChange(of: forceRefresh?.wrappedValue) { newValue in
+          if newValue == true {
+            Task {
+              await refetch()
+              forceRefresh?.wrappedValue = false // Reset
+            }
+          }
+        }
+        // Where it's back to after the layout changes: the row at the top when it stopped scrolling.
+        .onScrollPhaseChange { _, phase in
+          if phase == .idle {
+            itemsManager.saveScrollAnchor()
+          }
+        }
+        .onAppear {
+          lease.adopt(in: screenStateScope)
+          // Taken over from the screen this one replaced: fetches through this one, and back to
+          // where that one was.
+          if lease.takeHandedOver() {
+            itemsManager.replaceFetch(fetch)
+            if let anchor = itemsManager.scrollAnchorID {
+              if canvas {
+                // The row of tiles holding that post, by the row's id, as the grid is laid out again.
+                let rowID: String?? = canvasGrid(geo).rows(canvasPosts).first { $0.contains { $0.id == anchor } }.map(\.first?.id)
+                if let rowID {
+                  doThisAfter(0.1) { proxy.scrollTo(rowID, anchor: .top) }
+                }
+              } else {
+                doThisAfter(0.1) { proxy.scrollTo(anchor, anchor: .top) }
+              }
+            }
+          }
+          // The manager owns the initial request, independent of navigation task cancellation.
+          Task {
+            await itemsManager.loadIfNeeded()
+            await fetchFiltersIfNeeded()
+          }
+        }
+        .onChange(of: [itemsManager.searchQuery.debounced, itemsManager.selectedFilter?.text, itemsManager.selectedFilter?.type.rawValue, itemsManager.sorting?.meta.apiValue]) {
+          Task { await refetch() }
+        }
       }
     }
   }
@@ -350,23 +393,29 @@ extension RedditListingFeed {
     return CanvasGrid(width: contentWidth, division: division)
   }
 
-  /// The feed's posts as rows of canvas tiles. Tiles load their thumbnails as they show, without
-  /// prefetching the media of the posts around them.
-  @ViewBuilder
-  private func canvasRows(grid: CanvasGrid, settings: PostLinkDefSettings) -> some View {
-    let posts = itemsManager.entities.compactMap { entity -> Post? in
+  private var canvasPosts: [Post] {
+    itemsManager.entities.compactMap { entity -> Post? in
       if case let .post(post) = entity {
         post
       } else {
         nil
       }
     }
-    ForEach(grid.rows(posts), id: \.first?.id) { row in
+  }
+
+  /// The feed's posts as rows of canvas tiles. Tiles load their thumbnails as they show, without
+  /// prefetching the media of the posts around them.
+  private func canvasRows(grid: CanvasGrid, settings: PostLinkDefSettings) -> some View {
+    ForEach(grid.rows(canvasPosts), id: \.first?.id) { row in
       CanvasRow(posts: row, grid: grid) { post in
         if let sub = post.helioData?.subreddit ?? subreddit {
           CanvasTile(post: post, sub: sub, size: grid.tileSize, theme: selectedTheme.postLinks.theme, showSub: showSubInPosts, blurNSFW: settings.blurNSFW, readOnScroll: settings.readOnScroll)
             .equatable()
-            .onAppear { itemsManager.elementAppeared(entity: .post(post), prefetchMedia: false) }
+            .onAppear {
+              itemsManager.elementAppeared(entity: .post(post), prefetchMedia: false)
+              itemsManager.rowShown(post.id)
+            }
+            .onDisappear { itemsManager.rowHidden(post.id) }
         }
       }
       .listRowInsets(EdgeInsets(top: 0, leading: 0, bottom: CanvasGrid.spacing, trailing: 0))

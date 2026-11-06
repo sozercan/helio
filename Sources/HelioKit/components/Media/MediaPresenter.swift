@@ -29,6 +29,8 @@ struct OnlyURL: View {
     .highPriorityGesture(TapGesture().onEnded {
       Nav.openLink(url, from: navColumn)
     })
+    .accessibilityElement(children: .combine)
+    .accessibilityAddTraits(.isLink)
   }
 }
 
