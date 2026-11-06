@@ -414,9 +414,15 @@ struct SplitLayoutTests {
       #expect(layout.showsColumns)
       #expect(layout.hingeFeedWidth == 330)
       #expect(layout.hingeWidth == 8)
-      // The panes meet in the middle of the hinge.
+      // A hinge nearer than a feed column's width: the panes meet in its middle.
       #expect(layout.feedPaneWidth == 334)
     }
+  }
+
+  @Test func theOpenDuoKeepsTheFeedPaneToAFeedColumnsWidth() {
+    // The Duo's measured inner screen: the hinge's middle is 475 pt in, the post pane gets the rest.
+    let layout = SplitLayout(sizeClass: .regular, frame: frame(867), division: CGRect(x: 455.5, y: 0, width: 40, height: 669))
+    #expect(layout.feedPaneWidth == SplitLayout.idealFeedWidth)
   }
 
   @Test func theOpenDuoUsesTwoPanesInsteadOfTheSplitView() {

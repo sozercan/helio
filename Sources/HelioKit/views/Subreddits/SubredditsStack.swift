@@ -10,7 +10,7 @@ import SwiftUI
 
 /// The posts tab: the subs sidebar, the feed, and the open post. Wide windows show the feed and
 /// the post side by side; narrow ones collapse the three into one stack of the same path. The open
-/// iPhone Duo shows them as two panes, one on each side of its hinge.
+/// iPhone Duo shows them as two panes: the feed on the left and the post filling the rest.
 struct SubredditsStack: View {
   @State var router: Router
   @Default(.BehaviorDefSettings) private var behaviorDefSettings // handle default feed selection routing
@@ -21,9 +21,6 @@ struct SubredditsStack: View {
   @Environment(\.horizontalSizeClass) private var horizontalSizeClass
   /// The split view's measured frame. Follows window resizes, unlike a screen-size calculation.
   @State private var frame: CGRect = .zero
-  /// The window's safe-area insets where this shows, which the open Duo's panes keep clear of
-  /// (the side tab bar's).
-  @State private var safeAreaInsets = EdgeInsets()
 
   init(router: Router) {
     self._router = .init(initialValue: router)
@@ -44,7 +41,6 @@ struct SubredditsStack: View {
       frame = newFrame
       chooseLaunchFeed(in: newFrame)
     }
-    .onGeometryChange(for: EdgeInsets.self) { $0.safeAreaInsets } action: { safeAreaInsets = $0 }
     .onChange(of: layout.showsColumns, initial: true) { _, showsColumns in
       router.showsPostBesideFeed = showsColumns
     }
@@ -79,29 +75,30 @@ struct SubredditsStack: View {
     .environment(\.horizontalSizeClass, layout.showsColumns ? .regular : .compact)
   }
 
-  /// The open iPhone Duo: the subs list and the feed on the left of the hinge, the post on the
+  /// The open iPhone Duo: the subs list and the feed on the left, the post filling the rest on the
   /// right, each its own stack. The split view would cover the post with the feed there, as
   /// neither half is as wide as its columns need.
   ///
   /// Not `ArrangementView`: lying flat, it splits the space left of the side tab bar in half, so
   /// the post pane ran across the hinge.
   ///
-  /// The panes meet in the middle of the hinge with a hairline between them: leaving the hinge's
-  /// whole width empty drew a wide black bar between them. Each keeps clear of the window's side
-  /// insets (the side tab bar) itself, so its screens ignore them: a navigation stack in a pane
-  /// gets them anyway, which narrowed lists twice at the hinge, and a web page doesn't keep its
-  /// content clear of them at all.
+  /// The feed pane takes a feed column's width, up to the hinge, and the post pane the rest, with
+  /// a hairline between them.
+  ///
+  /// This view is laid out inside the safe area, left of the side tab bar. Each pane's screens
+  /// ignore the inset on their hinge side: a navigation stack in the feed pane gets the tab bar's
+  /// inset though it ends at the hinge, which narrowed its lists twice. The post pane keeps the tab
+  /// bar's inset; ignoring it there ran the post under the tab bar.
   private func panes(_ layout: SplitLayout) -> some View {
     HStack(spacing: 0) {
       feedPane
-        .padding(.leading, safeAreaInsets.leading)
+        .environment(\.paneHingeEdges, .trailing)
         .frame(width: layout.feedPaneWidth)
       Divider()
       postColumn(layout)
+        .environment(\.paneHingeEdges, .leading)
         .environment(\.horizontalSizeClass, .compact)
-        .padding(.trailing, safeAreaInsets.trailing)
     }
-    .environment(\.paneHingeEdges, .horizontal)
   }
 
   /// The subs list with the feed and what's opened from it stacked on it, as in one stack.
@@ -271,9 +268,10 @@ struct SplitLayout: Equatable {
   /// The hinge's width, between the two panes.
   let hingeWidth: CGFloat
 
-  /// The first pane's width: to the middle of the hinge, where the panes meet.
+  /// The first pane's width: a feed column's, so the post gets the rest, but no further than the
+  /// middle of the hinge.
   var feedPaneWidth: CGFloat? {
-    hingeFeedWidth.map { $0 + hingeWidth / 2 }
+    hingeFeedWidth.map { min($0 + hingeWidth / 2, Self.idealFeedWidth) }
   }
 
   /// The subs list shows beside the feed, as the split view's sidebar. In one stack, and in the

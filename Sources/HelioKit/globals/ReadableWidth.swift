@@ -26,9 +26,9 @@ private struct PaneHingeEdgesKey: EnvironmentKey {
 }
 
 extension EnvironmentValues {
-  /// The sides of an open iPhone Duo pane whose safe-area insets its screens ignore
-  /// (`SubredditsStack`). A navigation stack in a pane gets the window's side insets, such as the
-  /// side tab bar's, though each pane keeps clear of them itself.
+  /// The side of an open iPhone Duo pane that's at the hinge (`SubredditsStack`), whose safe-area
+  /// inset its screens ignore. A navigation stack in a pane gets the window's inset on that side
+  /// too, such as the side tab bar's in the feed pane, though nothing of the system's is there.
   var paneHingeEdges: Edge.Set {
     get { self[PaneHingeEdgesKey.self] }
     set { self[PaneHingeEdgesKey.self] = newValue }
@@ -80,10 +80,9 @@ extension View {
     modifier(ReadableInsetModifier())
   }
 
-  /// Lays a screen in an open iPhone Duo pane out to the pane's edges, past the side insets its
-  /// stack gets (`paneHingeEdges`), which the pane keeps clear of already. Otherwise a list there
-  /// would inset its rows by the side tab bar's width while they're laid out for the whole pane,
-  /// and they'd run off its other edge.
+  /// Lays a screen in an open iPhone Duo pane out to the hinge, past the safe-area inset its stack
+  /// gets on that side (`paneHingeEdges`). Otherwise a list there would inset its rows by the side
+  /// tab bar's width while they're laid out for the whole pane, and they'd run off its other edge.
   /// Apply to each screen in a pane's stack.
   func ignoresPaneHingeInsets() -> some View {
     modifier(PaneHingeInsetsModifier())
