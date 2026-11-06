@@ -23,6 +23,14 @@ struct PostLinkContext: View {
     //        if let perma = post.helioData?.permaURL {
     //          ShareLink(item: perma) { Label("Share", systemImage: "square.and.arrow.up") }
     //        }
+    if let reason = post.helioData?.forYouReason, let subreddit = post.data?.subreddit {
+      Section("Suggested · \(reason.text)") {
+        Button("Not Interested", systemImage: "hand.thumbsdown") {
+          ForYouFeed.dismiss(subreddit)
+        }
+      }
+    }
+
     ForEach(allPostSwipeActions) { action in
       let active = action.active(post)
       if action.enabled(post) {

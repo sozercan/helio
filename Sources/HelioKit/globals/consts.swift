@@ -27,7 +27,7 @@ let compactModeThumbSize: CGFloat = 75
 let colorLottieKeypath = AnimationKeypath(keypath: "**.Color")
 let emptyColorLottieKeypath = AnimationKeypath(keypath: "**.EmptyKeyPath")
 let savedKeyword = "helioSaved"
-let feedsAndSuch = ["home", savedKeyword, "all", "popular"]
+let feedsAndSuch = ["home", ForYouFeed.id, savedKeyword, "all", "popular"]
 let IMAGES_FORMATS = [".gif", ".png", ".jpg", ".jpeg", ".webp", ".bmp", ".tiff", ".svg", ".ico", ".heic", ".heif"]
 let VIDEOS_FORMATS = [".mov", ".mp4", ".avi", ".mkv", ".flv", ".wmv", ".mpg", ".mpeg", ".webm"]
 

@@ -41,6 +41,8 @@ extension Defaults.Keys {
   /* <Heavy Defaults are kept separated, these should be in CoreData or something> */
   static let filteredSubreddits = Key<[String]>("filteredSubreddits", default: [])
   static let likedButNotSubbed = Key<[Subreddit]>("likedButNotSubbed", default: [])
+  /// Subreddits For You no longer suggests ("Not interested").
+  static let forYouDismissedSubs = Key<[String]>("forYouDismissedSubs", default: [])
   /* </Heavy Defaults are kept separated, these should be in CoreData or something> */
 
   /// Steps content text is moved from the system text size (Settings > Appearance > Text Size).
