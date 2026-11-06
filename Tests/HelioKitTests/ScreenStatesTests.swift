@@ -195,6 +195,22 @@ struct ScreenStatesTests {
     #expect(!new.takeHandedOver())
   }
 
+  @Test func aCoveredScreenTakesItsStateOverWhenItShowsAfterTheHandoff() async {
+    let states = ScreenStates()
+    var old: ScreenStateLease<Model>? = states.lease("post|", owner: home, now: start) { Model() }
+    old?.adopt(in: posts)
+    let oldModel = old?.model
+    states.beginHandoff(in: posts, now: start, endsItself: false)
+    // Built under a web page, so it shows only once Back uncovers it.
+    let covered = states.lease("post|", owner: home, now: start) { Model() }
+    old = nil
+    await letLeasesGo()
+    states.endHandoff()
+    covered.adopt(in: posts)
+    #expect(covered.model === oldModel)
+    #expect(covered.takeHandedOver())
+  }
+
   @Test func aClosedScreensModelGoesRightAway() async {
     let states = ScreenStates()
     var old: ScreenStateLease<Model>? = states.lease("feed", owner: home) { Model() }
