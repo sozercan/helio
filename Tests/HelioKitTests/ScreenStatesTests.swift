@@ -76,7 +76,9 @@ struct ScreenStatesTests {
     states.beginHandoff(now: start)
     old = nil
     // The lease lets go on the main actor after it's released.
-    for _ in 0 ..< 5 { await Task.yield() }
+    for _ in 0 ..< 5 {
+      await Task.yield()
+    }
     let new = states.lease("feed:home", now: start.addingTimeInterval(1)) { Model() }
     #expect(new.model === model)
   }
@@ -86,7 +88,9 @@ struct ScreenStatesTests {
     var old: ScreenStateLease<Model>? = states.lease("feed:home") { Model() }
     old?.adopt()
     old = nil
-    for _ in 0 ..< 5 { await Task.yield() }
+    for _ in 0 ..< 5 {
+      await Task.yield()
+    }
     #expect(states.count("feed:home") == 1)
     _ = states.lease("feed:other", now: Date.now.addingTimeInterval(ScreenStates.handoffDuration + 1)) { Model() }
     #expect(states.count("feed:home") == 0)
