@@ -27,6 +27,11 @@ struct WebPageScreen: View {
     nonmutating set { lease.model.page = newValue }
   }
 
+  /// In the post column beside the feed (iPad, the open iPhone Duo), not filling the window.
+  private var showsBesideFeed: Bool {
+    navColumn == .post && Nav.shared[.posts].showsPostBesideFeed
+  }
+
   init(url: URL) {
     self.url = url
     _lease = State(initialValue: ScreenStates.shared.lease("web:\(url.absoluteString)", owner: nil) { WebPageSlot() })
@@ -58,6 +63,9 @@ struct WebPageScreen: View {
           // band. The bar gets the app's own background instead.
           .toolbarBackground(Color(uiColor: .systemBackground), for: .navigationBar)
           .toolbarBackgroundVisibility(.visible, for: .navigationBar)
+          // Where the page fills the window, the tab bar would cover its bottom bar: previous
+          // and next page, reload and stop. Beside the feed, the tab bar stays for both columns.
+          .toolbar(showsBesideFeed ? .automatic : .hidden, for: .tabBar)
         #endif
       } else {
         // Something to appear: an empty group never does, so the page would never be made.
