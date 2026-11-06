@@ -63,6 +63,34 @@ struct ForYouSources: Sendable {
   }
 }
 
+/// How a page's suggestions were narrowed down, for the settings' explanation.
+struct ForYouPageStats: Sendable {
+  /// The relevance a suggestion had to reach; nil without the embedding.
+  var threshold: Double?
+  /// Posts from the suggested subreddits.
+  var fetched = 0
+  /// Left after followed, excluded, NSFW and pinned posts.
+  var eligible = 0
+  /// Left after the relevance threshold.
+  var relevant = 0
+  var shown = 0
+}
+
+/// What For You worked out for an account and why, shown in Settings.
+struct ForYouDiagnostics: Sendable {
+  let builtAt: Date
+  let seeds: [String]
+  let relatedFailures: Int
+  /// nil when they failed to load.
+  let upvotedCount: Int?
+  let savedCount: Int?
+  /// nil without the embedding.
+  let likedTitles: Int?
+  let candidates: [ForYouCandidate]
+  let unqualified: [ForYouCandidate]
+  let lastPage: ForYouPageStats?
+}
+
 /// A page of For You: Home's page with suggested posts mixed in, and why each was suggested.
 struct ForYouPage {
   var posts: [PostData]
@@ -79,13 +107,35 @@ struct ForYouPage {
 actor ForYouEngine {
   static let shared = ForYouEngine()
 
+  /// What For You keeps its state by: an account's sign-in, not just its credential, as signing
+  /// in again on a credential can put another account behind the same id.
+  struct Account: Hashable, Sendable {
+    let credentialID: UUID
+    let authorization: RedditCredential.AuthorizationID?
+
+    init(_ credential: RedditCredential) {
+      credentialID = credential.id
+      authorization = credential.authorizationID
+    }
+  }
+
   struct Profile {
     let builtAt: Date
     var candidates: [ForYouCandidate]
+    /// Subreddits the signals point at too weakly to suggest, for the settings' explanation.
+    let unqualified: [ForYouCandidate]
     let subscribed: Set<String>
-    let scorer: InterestScorer?
+    let scorer: (any TitleScoring)?
+    let seeds: [String]
+    let relatedFailures: Int
+    /// nil when they failed to load.
+    let upvotedCount: Int?
+    let savedCount: Int?
+
     /// Whether the account's upvotes or saves loaded; without them it's rebuilt sooner.
-    let complete: Bool
+    var complete: Bool {
+      upvotedCount != nil || savedCount != nil
+    }
   }
 
   static let freshFor: TimeInterval = 6 * 60 * 60
@@ -94,18 +144,27 @@ actor ForYouEngine {
   static let suggestEvery = 4
   static let suggestionsPageSize = 25
   static let maxCrossposts = 200
+  static let maxCandidates = 15
   /// Suggestion pages in a row with nothing to show, once Home ran out, before giving up.
   static let maxEmptySuggestionPages = 5
 
   private let sources: ForYouSources
   private let now: @Sendable () -> Date
-  private var profiles: [UUID: Profile] = [:]
-  private var building: [UUID: Task<Profile, Never>] = [:]
-  private var crossposts: [UUID: [ForYouSignals.Crosspost]] = [:]
+  private var profiles: [Account: Profile] = [:]
+  private var building: [Account: Task<Profile, Never>] = [:]
+  private var crossposts: [Account: [ForYouSignals.Crosspost]] = [:]
+  /// The relevance a suggestion has to reach, from the last page with Home posts to judge by.
+  private var thresholds: [Account: Double] = [:]
+  private var lastPageStats: [Account: ForYouPageStats] = [:]
 
-  init(sources: ForYouSources = .live, now: @escaping @Sendable () -> Date = { Date() }) {
+  private let makeScorer: @Sendable (_ likedTitles: [String]) -> (any TitleScoring)?
+
+  init(sources: ForYouSources = .live, now: @escaping @Sendable () -> Date = { Date() },
+       makeScorer: @escaping @Sendable (_ likedTitles: [String]) -> (any TitleScoring)? = { InterestScorer(likedTitles: $0) })
+  {
     self.sources = sources
     self.now = now
+    self.makeScorer = makeScorer
   }
 
   /// The first page without `after`. nil when Home fails to load, when the suggestions do once
@@ -116,24 +175,25 @@ actor ForYouEngine {
     var suggested: ([PostData], String?)?
     let subs: [String]
     let profile: Profile?
+    // Whether this page asked for suggestions, as opposed to having none left to ask for.
+    let wantsSuggestions: Bool
+    let account = Account(credential)
 
     if let after {
       guard let cursor = ForYouCursor(encoded: after) else { return nil }
       subs = cursor.subs
+      wantsSuggestions = cursor.suggested != nil && !subs.isEmpty
       async let homePage = fetchHome(sort: sort, after: cursor.home, limit: limit, credential: credential, wanted: cursor.home != nil)
-      async let suggestedPage = fetchSuggestions(subs: cursor.suggested == nil ? [] : subs, after: cursor.suggested, credential: credential)
+      async let suggestedPage = fetchSuggestions(subs: wantsSuggestions ? subs : [], after: cursor.suggested, credential: credential)
       if cursor.home != nil {
         guard let page = await homePage else { return nil }
         home = page
       }
       suggested = await suggestedPage
-      // With Home run out, the suggestions failing fails the page, so its retry can resume.
-      if cursor.home == nil, suggested == nil {
-        return nil
-      }
-      profile = profiles[credential.id]
-    } else if let fresh = freshProfile(credential.id) {
+      profile = profiles[account]
+    } else if let fresh = freshProfile(account) {
       subs = fresh.candidates.map(\.name)
+      wantsSuggestions = !subs.isEmpty
       async let homePage = fetchHome(sort: sort, after: nil, limit: limit, credential: credential, wanted: true)
       async let suggestedPage = fetchSuggestions(subs: subs, after: nil, credential: credential)
       guard let page = await homePage else { return nil }
@@ -146,22 +206,35 @@ actor ForYouEngine {
       home = page
       let built = await buildProfileIfNeeded(credential: credential, home: page.0)
       subs = built.candidates.map(\.name)
+      wantsSuggestions = !subs.isEmpty
       suggested = await fetchSuggestions(subs: subs, after: nil, credential: credential)
       profile = built
     }
 
     let homePosts = home?.0 ?? []
+    // Without Home posts, the suggestions are the page, so their failing fails it and its
+    // retry can resume, rather than reading as an empty feed or its end.
+    if homePosts.isEmpty, wantsSuggestions, suggested == nil {
+      return nil
+    }
+    // Read for each page, so a suggested subreddit stops being suggested once it's followed.
+    let followed = await followedSubreddits(credential: credential, profile: profile)
+    let threshold = relevanceThreshold(home: homePosts, profile: profile, account: account)
+    let filter = SuggestionFilter(followed: followed, threshold: threshold)
     var suggestedAfter = suggested?.1
-    var picked = profile.map { pickSuggestions(from: suggested?.0 ?? [], home: homePosts, profile: $0) } ?? []
+    var stats = ForYouPageStats(threshold: threshold)
+    var picked = profile.map { pickSuggestions(from: suggested?.0 ?? [], home: homePosts, profile: $0, filter: filter, stats: &stats) } ?? []
     // With Home run out, the suggestions are the feed, and a page whose suggestions were all
-    // filtered out would read as its end: look further, as the feed does past read posts.
+    // filtered out would read as its end: look further, as the feed does past read posts. The
+    // search is bounded: after this many pages with nothing relevant, the feed ends.
     var emptyPages = 0
     while homePosts.isEmpty, picked.isEmpty, let after = suggestedAfter, let profile, emptyPages < Self.maxEmptySuggestionPages {
       guard let next = await fetchSuggestions(subs: subs, after: after, credential: credential) else { return nil }
       suggestedAfter = next.1
-      picked = pickSuggestions(from: next.0, home: [], profile: profile)
+      picked = pickSuggestions(from: next.0, home: [], profile: profile, filter: filter, stats: &stats)
       emptyPages += 1
     }
+    lastPageStats[account] = stats
 
     var reasons: [String: ForYouReason] = [:]
     if let profile {
@@ -174,24 +247,80 @@ actor ForYouEngine {
     return ForYouPage(posts: ForYouRanking.interleave(homePosts, picked, every: Self.suggestEvery), reasons: reasons, after: cursor.encoded)
   }
 
+  /// The subreddits the account follows now, by lowercased name; the ones it followed when the
+  /// profile was built until the subscriptions first sync.
+  private func followedSubreddits(credential: RedditCredential, profile: Profile?) async -> Set<String> {
+    let current = await Set(sources.subscribed(credential).map { $0.lowercased() })
+    return current.isEmpty ? profile?.subscribed ?? [] : current
+  }
+
   private static func reasonBySub(_ profile: Profile) -> [String: ForYouReason] {
     Dictionary(profile.candidates.map { ($0.name.lowercased(), $0.reason) }, uniquingKeysWith: { first, _ in first })
   }
 
+  /// How close to the account's interests a suggestion has to be: as close as a typical post of
+  /// this page's Home, or of the last page that had Home posts. nil without the embedding.
+  private func relevanceThreshold(home: [PostData], profile: Profile?, account: Account) -> Double? {
+    guard let scorer = profile?.scorer else { return nil }
+    if let threshold = ForYouRanking.relevanceThreshold(homeScores: home.compactMap { scorer.score($0.title) }) {
+      thresholds[account] = threshold
+    }
+    return thresholds[account]
+  }
+
+  /// What a page's suggestions are checked against.
+  private struct SuggestionFilter {
+    /// Lowercased names of the subreddits the account follows.
+    let followed: Set<String>
+    /// The relevance a suggestion has to reach; nil without the embedding.
+    let threshold: Double?
+  }
+
   /// The suggestions to show beside `home`: one per few Home posts, or all of them once Home
-  /// ran out, leaving out followed, excluded, NSFW and pinned posts.
-  private func pickSuggestions(from posts: [PostData], home: [PostData], profile: Profile) -> [PostData] {
+  /// ran out. Leaves out followed, excluded, NSFW and pinned posts, and, with the embedding,
+  /// posts less relevant than the threshold.
+  private func pickSuggestions(from posts: [PostData], home: [PostData], profile: Profile, filter: SuggestionFilter, stats: inout ForYouPageStats) -> [PostData] {
     let reasonBySub = Self.reasonBySub(profile)
     let homeIDs = Set(home.map(\.name))
     let excluded = sources.excluded()
     let eligible = posts.filter { post in
       let sub = post.subreddit.lowercased()
       return !(post.over_18 ?? false) && !(post.stickied ?? false) && !homeIDs.contains(post.name)
-        && !excluded.contains(sub) && !profile.subscribed.contains(sub) && reasonBySub[sub] != nil
+        && !excluded.contains(sub) && !filter.followed.contains(sub) && reasonBySub[sub] != nil
     }
     let scores = Dictionary(eligible.compactMap { post in profile.scorer?.score(post.title).map { (post.name, $0) } }, uniquingKeysWith: { first, _ in first })
-    return ForYouRanking.pick(eligible, count: home.isEmpty ? eligible.count : home.count / Self.suggestEvery,
-                              perSub: home.isEmpty ? .max : 2, sub: \.subreddit, score: { scores[$0.name] })
+    let relevant = filter.threshold.map { threshold in eligible.filter { scores[$0.name].map { $0 >= threshold } ?? false } } ?? eligible
+    let picked = ForYouRanking.pick(relevant, count: home.isEmpty ? relevant.count : home.count / Self.suggestEvery,
+                                    perSub: home.isEmpty ? .max : 2, sub: \.subreddit, score: { scores[$0.name] })
+    stats.fetched += posts.count
+    stats.eligible += eligible.count
+    stats.relevant += relevant.count
+    stats.shown += picked.count
+    return picked
+  }
+
+  /// What For You worked out for `account`, for the settings' explanation. nil before it's
+  /// been opened.
+  func diagnostics(account: Account) -> ForYouDiagnostics? {
+    guard let profile = profiles[account] else { return nil }
+    return ForYouDiagnostics(
+      builtAt: profile.builtAt,
+      seeds: profile.seeds,
+      relatedFailures: profile.relatedFailures,
+      upvotedCount: profile.upvotedCount,
+      savedCount: profile.savedCount,
+      likedTitles: profile.scorer?.likedCount,
+      candidates: profile.candidates,
+      unqualified: profile.unqualified,
+      lastPage: lastPageStats[account],
+    )
+  }
+
+  /// Works the suggestions out again the next time For You loads.
+  func invalidate() {
+    profiles = [:]
+    thresholds = [:]
+    lastPageStats = [:]
   }
 
   /// Stops suggesting `subreddit`, from the next page on.
@@ -203,7 +332,7 @@ actor ForYouEngine {
     }
   }
 
-  private func freshProfile(_ account: UUID) -> Profile? {
+  private func freshProfile(_ account: Account) -> Profile? {
     guard let profile = profiles[account] else { return nil }
     let lifetime = profile.complete ? Self.freshFor : Self.incompleteFreshFor
     return now().timeIntervalSince(profile.builtAt) < lifetime ? profile : nil
@@ -211,7 +340,7 @@ actor ForYouEngine {
 
   private func fetchHome(sort: SubListingSortOption, after: String?, limit: Int, credential: RedditCredential, wanted: Bool) async -> ([PostData], String?)? {
     guard wanted, let page = await sources.home(sort, after, limit, credential) else { return nil }
-    noteCrossposts(in: page.0, account: credential.id)
+    noteCrossposts(in: page.0, account: Account(credential))
     return page
   }
 
@@ -221,7 +350,7 @@ actor ForYouEngine {
   }
 
   /// Crossposts in Home, for the next time the profile is built.
-  private func noteCrossposts(in posts: [PostData], account: UUID) {
+  private func noteCrossposts(in posts: [PostData], account: Account) {
     let found = posts.compactMap { post in
       post.crosspost_parent_list?.first.map { ForYouSignals.Crosspost(from: $0.subreddit, into: post.subreddit) }
     }
@@ -234,17 +363,17 @@ actor ForYouEngine {
 
   /// One build at a time per account, shared by the pages that need it.
   private func buildProfileIfNeeded(credential: RedditCredential, home: [PostData]) async -> Profile {
-    if let fresh = freshProfile(credential.id) {
+    if let fresh = freshProfile(Account(credential)) {
       return fresh
     }
-    if let task = building[credential.id] {
+    if let task = building[Account(credential)] {
       return await task.value
     }
     let task = Task { await self.buildProfile(credential: credential, home: home) }
-    building[credential.id] = task
+    building[Account(credential)] = task
     let profile = await task.value
-    building[credential.id] = nil
-    profiles[credential.id] = profile
+    building[Account(credential)] = nil
+    profiles[Account(credential)] = profile
     return profile
   }
 
@@ -270,18 +399,19 @@ actor ForYouEngine {
     let saved = await savedFetch
 
     let seeds = ForYouRanking.seeds(upvoted: upvoted?.map(\.subreddit) ?? [], home: home.map(\.subreddit), subscribed: subscribed)
-    let related = await withTaskGroup(of: (Int, [ForYouSignals.Related]).self) { group in
+    let lookups = await withTaskGroup(of: (Int, [ForYouSignals.Related]?).self) { group in
       for (index, seed) in seeds.enumerated() {
         group.addTask {
-          await (index, (sources.related(seed, credential) ?? []).map { ForYouSignals.Related(seed: seed, sub: $0) })
+          await (index, sources.related(seed, credential)?.map { ForYouSignals.Related(seed: seed, sub: $0) })
         }
       }
-      var results: [(Int, [ForYouSignals.Related])] = []
+      var results: [(Int, [ForYouSignals.Related]?)] = []
       for await result in group {
         results.append(result)
       }
-      return results.sorted { $0.0 < $1.0 }.flatMap(\.1)
+      return results.sorted { $0.0 < $1.0 }.map(\.1)
     }
+    let related = lookups.flatMap { $0 ?? [] }
 
     let signals = ForYouSignals(
       subscribed: subscribed,
@@ -289,14 +419,16 @@ actor ForYouEngine {
       upvoted: upvoted?.map(\.subreddit) ?? [],
       saved: saved?.map(\.subreddit) ?? [],
       related: related,
-      crossposts: crossposts[credential.id] ?? [],
+      crossposts: crossposts[Account(credential)] ?? [],
     )
     let likedTitles = (upvoted?.map(\.title) ?? []) + (saved?.compactMap(\.title) ?? [])
-    let candidates = ForYouRanking.candidates(from: signals)
-    forYouLogger.info("Built For You from \(seeds.count) seeds: \(candidates.count) subreddits to suggest")
-    return Profile(builtAt: now(), candidates: candidates, subscribed: subscribed,
-                   scorer: InterestScorer(likedTitles: Array(likedTitles.prefix(200))),
-                   complete: upvoted != nil || saved != nil)
+    let ranked = ForYouRanking.ranked(from: signals)
+    let candidates = Array(ranked.qualified.prefix(Self.maxCandidates))
+    let relatedFailures = lookups.count { $0 == nil }
+    forYouLogger.info("Built For You from \(seeds.count) seeds (\(relatedFailures) related lookups failed): \(candidates.count) subreddits to suggest")
+    return Profile(builtAt: now(), candidates: candidates, unqualified: Array(ranked.unqualified.prefix(20)), subscribed: subscribed,
+                   scorer: makeScorer(Array(likedTitles.prefix(200))), seeds: seeds, relatedFailures: relatedFailures,
+                   upvotedCount: upvoted?.count, savedCount: saved?.count)
   }
 }
 
@@ -321,5 +453,12 @@ enum ForYouFeed {
       Defaults[.forYouDismissedSubs].append(subreddit)
     }
     Task { await ForYouEngine.shared.dismiss(subreddit) }
+  }
+
+  /// Lets For You suggest `subreddit` again, once it works its suggestions out again.
+  @MainActor
+  static func undismiss(_ subreddit: String) {
+    Defaults[.forYouDismissedSubs].removeAll { $0.caseInsensitiveCompare(subreddit) == .orderedSame }
+    Task { await ForYouEngine.shared.invalidate() }
   }
 }

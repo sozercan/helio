@@ -244,7 +244,7 @@ class Router: Hashable, Equatable, Identifiable {
         self.rawValue
       }
 
-      case behavior, appearance, credentials, about, commentSwipe, postSwipe, faq, general, themes, filteredSubreddits, webExtensions
+      case behavior, appearance, credentials, about, commentSwipe, postSwipe, faq, general, themes, filteredSubreddits, webExtensions, forYou
     }
   }
 

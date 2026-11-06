@@ -113,9 +113,7 @@ struct BadgeView: View, Equatable {
               .accessibilityLabel("r/\(subName)")
 
               if suggested {
-                Image(systemName: "sparkles")
-                  .foregroundStyle(theme.subColor())
-                  .accessibilityLabel("Suggested")
+                SuggestedMarker(color: theme.subColor())
               }
             }
 
@@ -161,6 +159,10 @@ struct BadgeView: View, Equatable {
               Tag(subredditIconKit: nil, text: "r/\(subName)", fontSize: theme.statsText.size, backgroundColor: theme.subColor())
             }
             .buttonStyle(.plain)
+
+            if suggested {
+              SuggestedMarker(color: theme.subColor())
+            }
           }
 
           // The numbers read as one element, "4.8K points, 1.3K comments, 2 hours ago".
@@ -254,5 +256,16 @@ struct BadgeOpt: View, Equatable {
 
   var body: some View {
     BadgeView(avatarRequest: avatarRequest, saved: badgeKit.saved, usernameColor: usernameColor, author: badgeKit.author, userFlair: badgeKit.userFlair, created: badgeKit.created, avatarURL: avatarURL, theme: theme, commentsCount: formatBigNumber(badgeKit.numComments), votesCount: !showVotes ? nil : formatBigNumber(badgeKit.ups), openSub: openSub, subName: subName)
+  }
+}
+
+/// Marks a For You suggestion, by its subreddit's name or tag.
+struct SuggestedMarker: View {
+  var color: Color
+
+  var body: some View {
+    Image(systemName: "sparkles")
+      .foregroundStyle(color)
+      .accessibilityLabel("Suggested")
   }
 }

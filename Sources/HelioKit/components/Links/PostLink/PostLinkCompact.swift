@@ -123,10 +123,17 @@ struct PostLinkCompact: View, Equatable, Identifiable {
 
             if showSub, theme.theme.badge.avatar.visible {
               let subName = data.subreddit
-              Button(action: openSubreddit) {
-                Tag(subredditIconKit: nil, text: "r/\(subName)")
+              HStack(spacing: 4) {
+                Button(action: openSubreddit) {
+                  Tag(subredditIconKit: nil, text: "r/\(subName)")
+                }
+                .buttonStyle(.plain)
+
+                if helioData.forYouReason != nil {
+                  SuggestedMarker(color: theme.theme.badge.subColor())
+                    .font(.caption)
+                }
               }
-              .buttonStyle(.plain)
             }
           }
           .frame(maxWidth: .infinity, alignment: .topLeading)

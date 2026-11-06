@@ -6,15 +6,28 @@
 import Foundation
 import NaturalLanguage
 
+/// Scores how close a post title is to the account's interests. Tests replace the embedding.
+protocol TitleScoring: AnyObject {
+  /// Higher is closer. nil when the title can't be judged.
+  func score(_ title: String) -> Double?
+  /// The liked titles it compares against.
+  var likedCount: Int { get }
+}
+
 /// How close a post title is to the posts the account upvoted and saved, from Apple's
 /// on-device sentence embedding. Nothing leaves the device.
 ///
 /// A title scores by its few nearest liked titles rather than the average of them all, so
 /// someone into home servers and coffee gets both, not a blend of neither.
-final class InterestScorer {
+final class InterestScorer: TitleScoring {
   private let embedding: NLEmbedding
   private let liked: [[Double]]
   private let neighbors = 3
+
+  /// The liked titles it compares against.
+  var likedCount: Int {
+    liked.count
+  }
 
   /// nil without the embedding (it ships for English) or any liked title it can read.
   init?(likedTitles: [String], embedding: NLEmbedding? = NLEmbedding.sentenceEmbedding(for: .english)) {
