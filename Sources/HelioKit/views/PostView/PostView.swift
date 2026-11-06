@@ -245,11 +245,13 @@ struct PostView: View, Equatable {
         }
         .onAppear {
           lease.adopt(in: screenStateScope)
-          // Taken over from the screen this one replaced: back to the comment row that one showed
-          // at its top, rather than to the one a link opened.
+          // Taken over from the screen this one replaced: back to where the reader left that one,
+          // a comment row or the post's top, rather than to the comment a link opened.
           let handedOver = lease.takeHandedOver()
-          if handedOver, !hideElements, let anchor = session.scrollAnchorRowID {
-            doThisAfter(0.1) { proxy.scrollTo(anchor, anchor: .top) }
+          if handedOver, !hideElements, session.scrolled {
+            if let anchor = session.scrollAnchorRowID {
+              doThisAfter(0.1) { proxy.scrollTo(anchor, anchor: .top) }
+            }
           } else {
             // The comments the old screen is still loading would scroll its own list to the one a
             // link opened once they come; this one does instead.
@@ -392,6 +394,9 @@ final class PostSession {
   @ObservationIgnored private var shownRowIDs: [String: Int] = [:]
   /// The row at the top of the list when it last stopped scrolling.
   @ObservationIgnored private(set) var scrollAnchorRowID: String?
+  /// The list stopped scrolling at least once: no anchor then means the post's top, not a page
+  /// still to scroll to the comment a link opened.
+  @ObservationIgnored private(set) var scrolled = false
 
   init(sort: CommentSortOption) {
     self.sort = sort
@@ -412,6 +417,7 @@ final class PostSession {
   /// Saved when the list stops scrolling, not as rows go: the list hides all its rows when a
   /// screen covers it. Nil while no comment shows, as at the post's top.
   func saveScrollAnchor() {
+    scrolled = true
     guard !shownRowIDs.isEmpty else {
       scrollAnchorRowID = nil
       return
