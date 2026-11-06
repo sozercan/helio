@@ -73,6 +73,8 @@ struct BadgeView: View, Equatable {
   var likes: Bool?
   var openSub: (() -> Void)?
   var subName: String?
+  /// A For You suggestion, from a subreddit the account doesn't follow: marked by its name.
+  var suggested = false
   /// Makes the numbers line its own tap target. Without one, a tap on it goes to the nearest
   /// tappable view, the author's name, instead of the row.
   var onTapStats: (() -> Void)?
@@ -109,6 +111,12 @@ struct BadgeView: View, Equatable {
               }
               .buttonStyle(.plain)
               .accessibilityLabel("r/\(subName)")
+
+              if suggested {
+                Image(systemName: "sparkles")
+                  .foregroundStyle(theme.subColor())
+                  .accessibilityLabel("Suggested")
+              }
             }
 
             if showAuthorOnPostLinks {

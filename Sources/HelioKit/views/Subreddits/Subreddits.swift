@@ -141,12 +141,13 @@ struct Subreddits: View, Equatable {
           VStack(spacing: 12) {
             HStack(spacing: 12) {
               feedTile("Home", icon: "house.circle.fill", color: .blue, id: "home")
-              feedTile("Popular", icon: "chart.line.uptrend.xyaxis.circle.fill", color: .red, id: "popular")
+              feedTile("For You", icon: "heart.circle.fill", color: .pink, id: ForYouFeed.id)
             }
             HStack(spacing: 12) {
+              feedTile("Popular", icon: "chart.line.uptrend.xyaxis.circle.fill", color: .red, id: "popular")
               feedTile("All", icon: "signpost.right.and.left.circle.fill", color: .orange, id: "all")
-              feedTile("Saved", icon: "bookmark.circle.fill", color: .green, id: savedKeyword)
             }
+            feedTile("Saved", icon: "bookmark.circle.fill", color: .green, id: savedKeyword)
           }
           .environment(\.isInSidebar, false)
           .frame(maxWidth: .infinity)
