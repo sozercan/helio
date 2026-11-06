@@ -375,7 +375,8 @@ final class PostSession {
   @ObservationIgnored var previousScrollTarget: String?
   /// The comment rows the list shows: the topmost, reply or not, is where the page goes back to
   /// after the layout changes.
-  @ObservationIgnored private var shownRowIDs: Set<String> = []
+  /// Counted, as the old screen's list and the new one's share it while the layout changes.
+  @ObservationIgnored private var shownRowIDs: [String: Int] = [:]
   /// The row at the top of the list when it last stopped scrolling.
   @ObservationIgnored private(set) var scrollAnchorRowID: String?
 
@@ -384,11 +385,15 @@ final class PostSession {
   }
 
   func rowShown(_ id: String) {
-    shownRowIDs.insert(id)
+    shownRowIDs[id, default: 0] += 1
   }
 
   func rowHidden(_ id: String) {
-    shownRowIDs.remove(id)
+    if let count = shownRowIDs[id], count > 1 {
+      shownRowIDs[id] = count - 1
+    } else {
+      shownRowIDs[id] = nil
+    }
   }
 
   /// Saved when the list stops scrolling, not as rows go: the list hides all its rows when a
@@ -398,7 +403,7 @@ final class PostSession {
       scrollAnchorRowID = nil
       return
     }
-    scrollAnchorRowID = CommentTree.rows(for: comments).first { shownRowIDs.contains($0.id) }?.id
+    scrollAnchorRowID = CommentTree.rows(for: comments).first { shownRowIDs[$0.id] != nil }?.id
   }
 }
 

@@ -53,6 +53,36 @@ struct ScreenStatesTests {
     #expect(another.model !== old.model)
   }
 
+  @Test func twoNewScreensInitializedTogetherDoNotShareOneOldScreensState() {
+    let states = ScreenStates()
+    let old = states.lease("feed", owner: home, now: start) { Model() }
+    old.adopt(in: posts)
+    states.beginHandoff(in: posts, now: start, endsItself: false)
+    let first = states.lease("feed", owner: home, now: start) { Model() }
+    let second = states.lease("feed", owner: home, now: start) { Model() }
+    first.adopt(in: posts)
+    second.adopt(in: posts)
+    #expect(first.model === old.model)
+    #expect(second.model !== old.model)
+    #expect(first.takeHandedOver())
+    #expect(!second.takeHandedOver())
+  }
+
+  @Test func twoNewScreensTakeOverTwoOldScreensOfTheSameFeed() {
+    let states = ScreenStates()
+    let oldA = states.lease("feed", owner: home, now: start) { Model() }
+    oldA.adopt(in: posts)
+    let oldB = states.lease("feed", owner: home, now: start) { Model() }
+    oldB.adopt(in: posts)
+    states.beginHandoff(in: posts, now: start, endsItself: false)
+    let first = states.lease("feed", owner: home, now: start) { Model() }
+    let second = states.lease("feed", owner: home, now: start) { Model() }
+    first.adopt(in: posts)
+    second.adopt(in: posts)
+    #expect(first.model === oldA.model)
+    #expect(second.model === oldB.model)
+  }
+
   @Test func anInitializationSwiftUIDropsDoesNotUseUpTheHandoff() {
     let states = ScreenStates()
     let old = states.lease("feed", owner: home, now: start) { Model() }
