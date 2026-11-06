@@ -252,8 +252,9 @@ struct PostView: View, Equatable {
           // A saved row however the list got there, the reader's scrolling or a jump to a comment;
           // the post's top only if the reader scrolled there.
           let handedOver = lease.takeHandedOver()
-          if handedOver, !hideElements, session.scrollAnchorRowID != nil || session.scrolled {
-            if let anchor = session.scrollAnchorRowID {
+          let anchor = handedOver ? session.scrollAnchorRowID() : nil
+          if handedOver, !hideElements, anchor != nil || session.scrolled {
+            if let anchor {
               doThisAfter(0.1) { proxy.scrollTo(anchor, anchor: .top) }
             }
           } else {
@@ -396,8 +397,8 @@ final class PostSession {
   /// after the layout changes.
   /// Counted, as the old screen's list and the new one's share it while the layout changes.
   @ObservationIgnored private var shownRowIDs: [String: Int] = [:]
-  /// The row at the top of the list when it last stopped scrolling.
-  @ObservationIgnored private(set) var scrollAnchorRowID: String?
+  /// The rows the list showed when it last stopped scrolling.
+  @ObservationIgnored private var savedRowIDs: Set<String> = []
   /// The reader scrolled the list: no anchor then means the post's top, not a page still to
   /// scroll to the comment a link opened. Not the page's own scrolls, such as to the comments
   /// loading.
@@ -425,12 +426,17 @@ final class PostSession {
     scrolled = true
   }
 
+  /// Only which rows showed: the topmost of them is found once, when a fold needs it, rather than
+  /// flattening the whole thread each time the list stops.
   func saveScrollAnchor() {
-    guard !shownRowIDs.isEmpty else {
-      scrollAnchorRowID = nil
-      return
-    }
-    scrollAnchorRowID = CommentTree.rows(for: comments).first { shownRowIDs[$0.id] != nil }?.id
+    savedRowIDs = Set(shownRowIDs.keys)
+  }
+
+  /// The row at the top of the list when it last stopped scrolling. Nil while no comment showed,
+  /// as at the post's top.
+  func scrollAnchorRowID() -> String? {
+    guard !savedRowIDs.isEmpty else { return nil }
+    return CommentTree.rows(for: comments).first { savedRowIDs.contains($0.id) }?.id
   }
 }
 
