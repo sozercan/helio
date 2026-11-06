@@ -40,6 +40,8 @@ struct ScrubPosition: Equatable {
 struct GIFProgressBar: View {
   let scrubber: GIFScrubber
   @State private var dragging = false
+  /// Resets when the drag ends or is cancelled; a cancelled drag skips `onEnded`.
+  @GestureState private var touching = false
 
   var body: some View {
     if let position = scrubber.position {
@@ -58,6 +60,7 @@ struct GIFProgressBar: View {
             .contentShape(Rectangle())
             .gesture(
               DragGesture(minimumDistance: 0)
+                .updating($touching) { _, touching, _ in touching = true }
                 .onChanged { value in
                   if !dragging {
                     guard scrubber.begin() else { return }
@@ -65,11 +68,7 @@ struct GIFProgressBar: View {
                   }
                   scrubber.scrub(toFraction: width > 0 ? value.location.x / width : 0)
                 }
-                .onEnded { _ in
-                  guard dragging else { return }
-                  scrubber.end()
-                  withAnimation(.easeOut(duration: 0.15)) { dragging = false }
-                },
+                .onEnded { _ in endDrag() },
             )
         }
         .frame(height: 24)
@@ -82,6 +81,11 @@ struct GIFProgressBar: View {
         .font(.caption.weight(.medium).monospacedDigit())
         .foregroundStyle(.white.opacity(0.8))
       }
+      .onChange(of: touching) { _, touching in
+        if !touching {
+          endDrag()
+        }
+      }
       .accessibilityElement(children: .ignore)
       .accessibilityLabel("Playback position")
       .accessibilityValue("\(MediaScrub.timestamp(position.time)) of \(MediaScrub.timestamp(position.duration))")
@@ -92,6 +96,12 @@ struct GIFProgressBar: View {
         scrubber.end()
       }
     }
+  }
+
+  private func endDrag() {
+    guard dragging else { return }
+    scrubber.end()
+    withAnimation(.easeOut(duration: 0.15)) { dragging = false }
   }
 }
 
