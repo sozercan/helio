@@ -423,6 +423,9 @@ struct FullScreenVP: View {
   var body: some View {
     let interpolate = interpolatorBuilder([0, 100], value: abs(drag.height))
     FullScreenPlayerView(player: player, holder: holder, onPictureInPictureStart: { dismiss() })
+      // The whole screen, as the player keeps its own controls inside the safe area. Inset, the
+      // video stopped short of the Duo's tab bar and bars and left a band under the status bar.
+      .ignoresSafeArea()
       .accessibilityIgnoresInvertColors()
       .background(
         size != .zero
