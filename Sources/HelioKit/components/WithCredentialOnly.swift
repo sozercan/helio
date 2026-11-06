@@ -32,8 +32,8 @@ struct WithCredentialOnly<Content: View>: View {
         .buttonStyle(.actionOutlined)
         .opacity(0.5)
 
-        // The Me tab's switcher sits behind this screen, so offer the other accounts here.
-        if !RedditCredentialsManager.shared.validCredentials.isEmpty {
+        // The Me tab's switcher sits behind this screen, so offer the other accounts and Log Out here.
+        if credential != nil {
           AccountSwitcherMenu()
             .buttonStyle(.actionOutlined)
         }
@@ -67,10 +67,9 @@ struct WithCredentialOnly<Content: View>: View {
       }
       .buttonStyle(.action)
 
-      if RedditCredentialsManager.shared.validCredentials.contains(where: { $0.id != credential.id }) {
-        AccountSwitcherMenu()
-          .buttonStyle(.actionOutlined)
-      }
+      // The other accounts, and Log Out for this one.
+      AccountSwitcherMenu()
+        .buttonStyle(.actionOutlined)
     }
     .compositingGroup()
     .multilineTextAlignment(.center)
