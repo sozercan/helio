@@ -161,20 +161,29 @@ extension ScreenAction {
     })
   }
 
-  /// Switches between the signed-in accounts. Nil with only one.
+  /// Switches between the signed-in accounts, when there's another, and logs out of the
+  /// selected one. Nil without an account.
   /// Pass the observed selection where the caller watches it (the menu bar), so the check mark
   /// follows a switch made elsewhere.
   @MainActor
-  static func switchAccount(manager: RedditCredentialsManager = .shared, selectedID: UUID? = nil) -> ScreenAction? {
-    let credentials = manager.validCredentials
-    guard credentials.count > 1 else { return nil }
+  static func switchAccount(manager: RedditCredentialsManager = .shared, selectedID: UUID? = nil, logOut: @escaping @MainActor (RedditCredential) -> Void = { LogOutConfirmation.shared.ask($0) }) -> ScreenAction? {
     // The manager falls back to the first account when the stored one is gone (deleted).
-    let selected = selectedID.map { manager.selectedCredential(id: $0)?.id } ?? manager.selectedCredential?.id
-    return ScreenAction(id: .switchAccount, title: "Switch Account", systemImage: "person.2.circle", content: .menu(credentials.map { cred in
-      .choice(cred.userName ?? "Account", isOn: cred.id == selected) {
-        Defaults[.GeneralDefSettings].redditCredentialSelectedID = cred.id
-      }
-    }))
+    guard let selected = selectedID.map({ manager.selectedCredential(id: $0) }) ?? manager.selectedCredential else { return nil }
+    let credentials = manager.validCredentials
+    var entries: [Entry] = []
+    // Also with one other account while the selected one is signed out.
+    if credentials.contains(where: { $0.id != selected.id }) {
+      entries.append(.section(nil, credentials.map { cred in
+        .choice(cred.userName ?? "Account", isOn: cred.id == selected.id) {
+          Defaults[.GeneralDefSettings].redditCredentialSelectedID = cred.id
+        }
+      }))
+    }
+    // Never checked, so it reads as a plain item.
+    entries.append(.section(nil, [.choice(LogOutConfirmation.title(selected), systemImage: "rectangle.portrait.and.arrow.right", isOn: false) {
+      logOut(selected)
+    }]))
+    return ScreenAction(id: .switchAccount, title: "Accounts", systemImage: "person.2.circle", content: .menu(entries))
   }
 }
 

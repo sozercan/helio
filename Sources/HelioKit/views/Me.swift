@@ -42,7 +42,7 @@ struct Me: View {
       .readableWidth()
       .toolbar {
         // On Mac it's in the window toolbar.
-        if ScreenAction.showsInNavigationBar, RedditCredentialsManager.shared.validCredentials.count > 1 {
+        if ScreenAction.showsInNavigationBar, RedditCredentialsManager.shared.selectedCredential != nil {
           ToolbarItem(placement: .topBarLeading) { AccountSwitcherMenu() }
         }
       }
@@ -54,25 +54,36 @@ struct Me: View {
   }
 }
 
-/// Switches between the signed-in Reddit accounts.
+/// Switches between the signed-in Reddit accounts and logs out of the selected one.
 struct AccountSwitcherMenu: View {
   var body: some View {
     let manager = RedditCredentialsManager.shared
+    let selected = manager.selectedCredential
     Menu {
-      Picker("Account", selection: Binding(
-        get: { manager.selectedCredential?.id },
-        set: {
-          if let id = $0 {
-            Defaults[.GeneralDefSettings].redditCredentialSelectedID = id
+      // Also with one other account while the selected one is signed out.
+      if manager.validCredentials.contains(where: { $0.id != selected?.id }) {
+        Picker("Account", selection: Binding(
+          get: { selected?.id },
+          set: {
+            if let id = $0 {
+              Defaults[.GeneralDefSettings].redditCredentialSelectedID = id
+            }
+          },
+        )) {
+          ForEach(manager.validCredentials) { cred in
+            Text(cred.userName ?? "Account").tag(Optional(cred.id))
           }
-        },
-      )) {
-        ForEach(manager.validCredentials) { cred in
-          Text(cred.userName ?? "Account").tag(Optional(cred.id))
+        }
+      }
+      if let selected {
+        Section {
+          Button(LogOutConfirmation.title(selected), systemImage: "rectangle.portrait.and.arrow.right", role: .destructive) {
+            LogOutConfirmation.shared.ask(selected)
+          }
         }
       }
     } label: {
-      Label("Switch Account", systemImage: "person.2.circle")
+      Label("Accounts", systemImage: "person.2.circle")
     }
   }
 }

@@ -34,6 +34,7 @@ struct AppContent: View {
       Tabber(theme: InMemoryTheme.shared.currentTheme)
     }
     .whatsNewSheet()
+    .logOutConfirmation()
     .environment(\.tabBarHeight, tabBarHeight)
     .environment(\.setTabBarHeight, setTabBarHeight)
     // The current width for every tab's feeds; the posts column overrides it with its own.
