@@ -1064,22 +1064,6 @@
         }
       }
     },
-    "DISCARD" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "VERWERFEN"
-          }
-        },
-        "it" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "SCARTA"
-          }
-        }
-      }
-    },
     "Do you really wanna delete this credential?" : {
 
     },
@@ -2823,22 +2807,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Post"
-          }
-        }
-      }
-    },
-    "Posts Box" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Briefkasten"
-          }
-        },
-        "it" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Casella Postale"
           }
         }
       }

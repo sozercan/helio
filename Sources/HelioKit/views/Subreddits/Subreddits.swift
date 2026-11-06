@@ -168,11 +168,6 @@ struct Subreddits: View, Equatable {
           ////            .listRowBackground(Color.clear)
           //          .listRowInsets(EdgeInsets(top: 0, leading: 0, bottom: 0, trailing: 0))
 
-          PostsInBoxView()
-            .scrollIndicators(.hidden)
-            //            .listRowInsets(EdgeInsets(top: 0, leading: 16, bottom: 0, trailing: 16))
-            .listRowBackground(Color.clear)
-
           if !multis.isEmpty {
             Section("Multis") {
               ScrollView(.horizontal) {
@@ -273,9 +268,6 @@ struct Subreddits: View, Equatable {
   }
 
   private func refresh() async {
-    Task(priority: .utility) {
-      await updatePostsInBox(force: true)
-    }
     Task(priority: .utility) {
       _ = await RedditAPI.shared.fetchMyMultis()
     }

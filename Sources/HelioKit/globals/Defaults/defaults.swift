@@ -10,23 +10,6 @@ import Foundation
 import SwiftUI
 import UIKit
 
-struct PostInBox: Codable, Identifiable, Hashable, Defaults.Serializable {
-  var id: String
-  var fullname: String
-  var title: String
-  var body: String?
-  var subredditIconURL: String?
-  var img: String?
-  var subredditName: String
-  var authorName: String
-  var subColor: String?
-  var score: Int?
-  var commentsCount: Int?
-  var newCommentsCount: Int?
-  var createdAt: Double?
-  var lastUpdatedAt: Double?
-}
-
 let DEFAULT_POST_SWIPE_ACTIONS = SwipeActionsSet(
   id: "post-swipe-actions",
   leftFirst: AnySwipeAction(UpvotePostAction()),
@@ -57,7 +40,6 @@ extension Defaults.Keys {
 
   /* <Heavy Defaults are kept separated, these should be in CoreData or something> */
   static let filteredSubreddits = Key<[String]>("filteredSubreddits", default: [])
-  static let postsInBox = Key<[PostInBox]>("postsInBox-v2", default: [])
   static let likedButNotSubbed = Key<[Subreddit]>("likedButNotSubbed", default: [])
   /* </Heavy Defaults are kept separated, these should be in CoreData or something> */
 

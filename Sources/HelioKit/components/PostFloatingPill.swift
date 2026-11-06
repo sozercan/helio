@@ -5,8 +5,6 @@
 //  Created by Igor Marcossi on 06/07/23.
 //
 
-import AlertToast
-import Defaults
 import SwiftUI
 
 struct PostFloatingPill: View {
@@ -14,64 +12,22 @@ struct PostFloatingPill: View {
   var subreddit: Subreddit
   var updateComments: (() -> Void)?
   var showUpVoteRatio: Bool
-  /// Narrow windows: Share, Posts Box and Reply fold into one menu so the votes stay in reach.
+  /// Narrow windows: Share, Save and Reply fold into one menu so the votes stay in reach.
   var compact: Bool = false
 
-  @Default(.postsInBox) private var postsInBox
   @Environment(\.useTheme) private var selectedTheme
   @State private var showReplyModal = false
-  @State private var showAddedToast: Bool = false
-  @State private var showRemovedToast: Bool = false
-  private var thisPinnedPost: Bool {
-    postsInBox.contains { $0.id == post.id }
+
+  private func saveLabel(_ data: PostData) -> String {
+    data.saved ? "Unsave" : "Save"
   }
 
-  private var boxLabel: String {
-    thisPinnedPost ? "Remove from Posts Box" : "Add to Posts Box"
+  private func saveIcon(_ data: PostData) -> String {
+    data.saved ? "bookmark.fill" : "bookmark"
   }
 
-  private var boxIcon: String {
-    thisPinnedPost ? "shippingbox.and.arrow.backward.fill" : "shippingbox"
-  }
-
-  private func togglePostsBox(_ data: PostData) {
-    if thisPinnedPost {
-      withAnimation(spring) {
-        postsInBox = postsInBox.filter { $0.id != post.id }
-      }
-      withAnimation(nil) {
-        showRemovedToast.toggle()
-      }
-    } else {
-      var subIcon: String?
-      if let subData = subreddit.data {
-        let communityIcon = subData.community_icon?.split(separator: "?") ?? []
-        subIcon = (subData.icon_img ?? "").isEmpty ? !communityIcon.isEmpty ? String(communityIcon[0]) : "" : subData.icon_img
-      }
-      let newPostInBox = PostInBox(
-        id: data.id, fullname: data.name,
-        title: data.title, body: data.selftext ?? "",
-        subredditIconURL: subIcon, img: nil,
-        subredditName: data.subreddit, authorName: data.author,
-        score: data.ups, commentsCount: data.num_comments,
-        createdAt: data.created, lastUpdatedAt: Date().timeIntervalSince1970,
-      )
-      withAnimation(spring) {
-        postsInBox.append(newPostInBox)
-      }
-      withAnimation(nil) {
-        showAddedToast.toggle()
-      }
-    }
-  }
-
-  /// The box icon alone doesn't say what it does: the pointer and a long press name it.
-  private func postsBoxButton(_ data: PostData) -> some View {
-    LightBoxButton(icon: boxIcon, label: boxLabel) { togglePostsBox(data) }
-      .help(boxLabel)
-      .contextMenu {
-        Button(boxLabel, systemImage: boxIcon) { togglePostsBox(data) }
-      }
+  private func toggleSave() {
+    Task { await post.saveToggle() }
   }
 
   var body: some View {
@@ -87,7 +43,7 @@ struct PostFloatingPill: View {
                 Button("Share", systemImage: "square.and.arrow.up") {
                   ShareUtils.shareItem(item: permalink)
                 }
-                Button(boxLabel, systemImage: boxIcon) { togglePostsBox(data) }
+                Button(saveLabel(data), systemImage: saveIcon(data)) { toggleSave() }
                 Button("Reply", systemImage: "arrowshape.turn.up.left") {
                   withAnimation(spring) {
                     showReplyModal = true
@@ -108,7 +64,7 @@ struct PostFloatingPill: View {
                   ShareUtils.shareItem(item: permalink)
                 }
 
-                postsBoxButton(data)
+                LightBoxButton(icon: saveIcon(data), label: saveLabel(data)) { toggleSave() }
 
                 LightBoxButton(icon: "arrowshape.turn.up.left", label: "Reply") {
                   withAnimation(spring) {
@@ -125,12 +81,8 @@ struct PostFloatingPill: View {
           .floating()
         } else {
           HStack { // Set spacing to 0 to make buttons stretch evenly
-            LightBoxButton(icon: data.saved ? "bookmark.fill" : "bookmark", label: data.saved ? "Unsave" : "Save") {
-              Task {
-                await post.saveToggle()
-              }
-            }
-            .padding(.vertical, -2)
+            LightBoxButton(icon: saveIcon(data), label: saveLabel(data)) { toggleSave() }
+              .padding(.vertical, -2)
 
             Spacer()
 
@@ -138,11 +90,6 @@ struct PostFloatingPill: View {
               ShareUtils.shareItem(item: permalink)
             }
             .padding(.vertical, -2)
-
-            Spacer()
-
-            postsBoxButton(data)
-              .padding(.vertical, -2)
 
             Spacer()
 

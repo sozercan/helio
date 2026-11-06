@@ -13,7 +13,6 @@ struct FAQPanel: View {
   var body: some View {
     List {
       Section {
-        QuestionAnswer(question: "What does the Box Icon do?", answer: "Save posts in the Posts Box to be read later. These will live in Helio and won't be synced to Reddit.", systemImage: "shippingbox")
         QuestionAnswer(question: "What's Helio Everywhere?", answer: "Helio Everywhere is a Safari extension that automatically redirects Reddit links to Helio.", systemImage: "safari")
         QuestionAnswer(question: "Is Helio against Reddit's TOS?", answer: "Helio uses your own Reddit API key, which is within Reddit's API terms. It's open source and free, and works similarly to any other API client.", systemImage: "checkmark.shield")
         QuestionAnswer(question: "Why do I need my own API key?", answer: "Reddit requires each app to use API credentials. Helio lets you create your own so you're not dependent on anyone else's quota or keys.", systemImage: "key.horizontal")
