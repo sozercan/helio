@@ -33,7 +33,9 @@ struct WebPageScreen: View {
 
   var body: some View {
     Group {
-      if let page {
+      // Once the lease settles: until then it may hold another screen's page, whose web view it
+      // would take from that screen.
+      if let page, lease.settled {
         PageView(webView: page.webView)
           // To the bottom edge: the web view keeps its page clear of the home indicator itself, so
           // inside the safe area it left a black band under the page.

@@ -60,12 +60,15 @@ struct ScreenStatesTests {
     states.beginHandoff(in: posts, now: start, endsItself: false)
     let first = states.lease("feed", owner: home, now: start) { Model() }
     let second = states.lease("feed", owner: home, now: start) { Model() }
+    // Both start out with the old screen's, until they show.
+    #expect(second.model === old.model && !second.settled)
     first.adopt(in: posts)
     second.adopt(in: posts)
     #expect(first.model === old.model)
     #expect(second.model !== old.model)
     #expect(first.takeHandedOver())
     #expect(!second.takeHandedOver())
+    #expect(first.settled && second.settled)
   }
 
   @Test func twoNewScreensTakeOverTwoOldScreensOfTheSameFeed() {
@@ -199,6 +202,7 @@ struct ScreenStatesTests {
     let screen = states.lease("feed", owner: home, now: start) { Model() }
     screen.adopt(in: nil)
     #expect(states.count("feed") == 0)
+    #expect(screen.settled)
   }
 
   @Test func aPreviewNeverHandsItsStateOver() {

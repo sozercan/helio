@@ -150,6 +150,9 @@ final class ScreenStateLease<Model: AnyObject> {
   @ObservationIgnored private var adopted = false
   /// Taken over from a screen of the layout before; read once with `takeHandedOver()`.
   @ObservationIgnored private var handedOver: Bool
+  /// The screen showed and `model` won't change again: a screen showing a view that can only be
+  /// in one place (a web view) waits for it.
+  private(set) var settled = false
 
   fileprivate init(model: Model, make: @escaping () -> Model, name: String, owner: AnyObject?, store: ScreenStates?, entry: ScreenStates.Entry?) {
     self.model = model
@@ -170,6 +173,11 @@ final class ScreenStateLease<Model: AnyObject> {
   /// The screen shows with this lease, in the layout `scope`: a screen of that layout's next one
   /// can take its model over. Nothing without a scope, outside a layout that changes.
   func adopt(in scope: AnyObject?) {
+    defer {
+      if !settled {
+        settled = true
+      }
+    }
     guard !adopted, let store else { return }
     if let candidate = entry {
       entry = nil
