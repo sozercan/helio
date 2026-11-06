@@ -14,20 +14,20 @@ struct BadgeTheme: Codable, Hashable, Equatable {
   }
 
   var avatar: AvatarTheme
-  var authorText: ThemeText
-  var subColor: ColorSchemes<ThemeColor>
-  var flairText: ThemeText
-  var flairBackground: ColorSchemes<ThemeColor>
-  var statsText: ThemeText
+  @Boxed var authorText: ThemeText
+  @Boxed var subColor: ColorSchemes<ThemeColor>
+  @Boxed var flairText: ThemeText
+  @Boxed var flairBackground: ColorSchemes<ThemeColor>
+  @Boxed var statsText: ThemeText
   var spacing: CGFloat
   var forceSubsAsTags: Bool
   /// Voted scores' text; `nil` keeps the app's fixed upvote and downvote colors.
-  var upvoteText: ColorSchemes<ThemeColor>?
-  var downvoteText: ColorSchemes<ThemeColor>?
+  @Boxed var upvoteText: ColorSchemes<ThemeColor>?
+  @Boxed var downvoteText: ColorSchemes<ThemeColor>?
   /// The new-comment count (`+3`); `nil` keeps the app's accent color.
-  var newCommentsText: ColorSchemes<ThemeColor>?
+  @Boxed var newCommentsText: ColorSchemes<ThemeColor>?
   /// The post page's unvoted score and upvote ratio; `nil` keeps grey.
-  var scoreText: ColorSchemes<ThemeColor>?
+  @Boxed var scoreText: ColorSchemes<ThemeColor>?
 
   /// The post page's unvoted score and upvote ratio.
   var neutralScoreColor: Color {
