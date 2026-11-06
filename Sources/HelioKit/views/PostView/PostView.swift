@@ -239,7 +239,9 @@ struct PostView: View, Equatable {
         }
         // Where it's back to after the layout changes.
         .onScrollPhaseChange { _, phase in
-          if phase == .idle {
+          if phase == .interacting {
+            session.readerScrolled()
+          } else if phase == .idle {
             session.saveScrollAnchor()
           }
         }
@@ -394,8 +396,9 @@ final class PostSession {
   @ObservationIgnored private var shownRowIDs: [String: Int] = [:]
   /// The row at the top of the list when it last stopped scrolling.
   @ObservationIgnored private(set) var scrollAnchorRowID: String?
-  /// The list stopped scrolling at least once: no anchor then means the post's top, not a page
-  /// still to scroll to the comment a link opened.
+  /// The reader scrolled the list: no anchor then means the post's top, not a page still to
+  /// scroll to the comment a link opened. Not the page's own scrolls, such as to the comments
+  /// loading.
   @ObservationIgnored private(set) var scrolled = false
 
   init(sort: CommentSortOption) {
@@ -416,8 +419,11 @@ final class PostSession {
 
   /// Saved when the list stops scrolling, not as rows go: the list hides all its rows when a
   /// screen covers it. Nil while no comment shows, as at the post's top.
-  func saveScrollAnchor() {
+  func readerScrolled() {
     scrolled = true
+  }
+
+  func saveScrollAnchor() {
     guard !shownRowIDs.isEmpty else {
       scrollAnchorRowID = nil
       return
