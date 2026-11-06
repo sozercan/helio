@@ -420,11 +420,6 @@ struct FullScreenVP: View {
   @State private var anchor: UnitPoint = .zero
   @State private var offset: CGSize = .zero
   @State private var altSize: CGSize = .zero
-  /// A sideways swipe scrubs. Nil while it isn't scrubbing, or the video's length isn't known.
-  @State private var scrubOrigin: CGFloat?
-  @State private var scrubber = VideoScrubber()
-  /// Resets when the drag ends or is cancelled; a cancelled drag skips `onEnded`.
-  @GestureState private var dragging = false
   var body: some View {
     let interpolate = interpolatorBuilder([0, 100], value: abs(drag.height))
     FullScreenPlayerView(player: player, holder: holder, onPictureInPictureStart: { dismiss() })
@@ -445,17 +440,10 @@ struct FullScreenVP: View {
         scale != 1.0
           ? nil
           : DragGesture(minimumDistance: 10)
-          .updating($dragging) { _, dragging, _ in dragging = true }
           .onChanged { val in
+            // Sideways drags are the player view's to scrub with (`FullScreenPlayerView`).
             if cancelDrag == nil {
               cancelDrag = abs(val.translation.width) > abs(val.translation.height)
-              if cancelDrag == true, scrubber.begin(player) {
-                scrubOrigin = val.translation.width
-              }
-            }
-            if let scrubOrigin {
-              scrubber.update(translation: val.translation.width - scrubOrigin, width: .screenW)
-              return
             }
             if cancelDrag == nil || cancelDrag! {
               return
@@ -472,11 +460,6 @@ struct FullScreenVP: View {
           .onEnded { val in
             let prevCancelDrag = cancelDrag
             cancelDrag = nil
-            if scrubOrigin != nil {
-              scrubOrigin = nil
-              scrubber.end()
-              return
-            }
             if prevCancelDrag == nil || prevCancelDrag! {
               return
             }
@@ -489,12 +472,6 @@ struct FullScreenVP: View {
             }
           },
       )
-      .onChange(of: dragging) { _, dragging in
-        guard !dragging, scrubOrigin != nil else { return }
-        scrubOrigin = nil
-        cancelDrag = nil
-        scrubber.end()
-      }
       // It covers the post: the menu bar's Post commands mustn't move off it underneath.
       .commandTarget(CommandTargets.Target(kind: .modal))
   }
@@ -536,7 +513,7 @@ final class PictureInPicture {
 }
 
 /// The fullscreen player, with a Picture in Picture button. PiP only starts from that button,
-/// not automatically when the app goes to the background.
+/// not automatically when the app goes to the background. A sideways swipe across it scrubs.
 struct FullScreenPlayerView: UIViewControllerRepresentable {
   let player: AVPlayer
   let holder: VideoPlayerHolder
@@ -548,6 +525,11 @@ struct FullScreenPlayerView: UIViewControllerRepresentable {
     controller.allowsPictureInPicturePlayback = true
     controller.canStartPictureInPictureAutomaticallyFromInline = false
     controller.delegate = context.coordinator
+    // A UIKit recognizer, not a SwiftUI drag: AVKit's own recognizers hold back a SwiftUI
+    // gesture over the player until the finger lifts, so the video only jumped at the end.
+    let pan = UIPanGestureRecognizer(target: context.coordinator, action: #selector(Coordinator.scrub(_:)))
+    pan.delegate = context.coordinator
+    controller.view.addGestureRecognizer(pan)
     PictureInPicture.shared.fullscreenPlayers += 1
     return controller
   }
@@ -564,10 +546,55 @@ struct FullScreenPlayerView: UIViewControllerRepresentable {
     Coordinator(parent: self)
   }
 
-  final class Coordinator: NSObject, AVPlayerViewControllerDelegate {
+  final class Coordinator: NSObject, AVPlayerViewControllerDelegate, UIGestureRecognizerDelegate {
     var parent: FullScreenPlayerView
+    private let scrubber = VideoScrubber()
+    /// The swipe's translation when it began scrubbing, or nil while it isn't.
+    private var scrubOrigin: CGFloat?
+
     init(parent: FullScreenPlayerView) {
       self.parent = parent
+    }
+
+    @objc func scrub(_ pan: UIPanGestureRecognizer) {
+      guard let view = pan.view else { return }
+      let translation = pan.translation(in: view).x
+      switch pan.state {
+      case .began:
+        scrubOrigin = scrubber.begin(parent.player) ? translation : nil
+      case .changed:
+        if let scrubOrigin {
+          scrubber.update(translation: translation - scrubOrigin, width: view.bounds.width)
+        }
+      default:
+        if scrubOrigin != nil {
+          scrubOrigin = nil
+          scrubber.end()
+        }
+      }
+    }
+
+    /// Only a mostly sideways swipe scrubs; a vertical one closes the player.
+    func gestureRecognizerShouldBegin(_ gestureRecognizer: UIGestureRecognizer) -> Bool {
+      guard let pan = gestureRecognizer as? UIPanGestureRecognizer else { return true }
+      let velocity = pan.velocity(in: pan.view)
+      return abs(velocity.x) > abs(velocity.y)
+    }
+
+    /// The player's own buttons and timeline keep their touches.
+    func gestureRecognizer(_ gestureRecognizer: UIGestureRecognizer, shouldReceive touch: UITouch) -> Bool {
+      var view = touch.view
+      while let current = view, current !== gestureRecognizer.view {
+        if current is UIControl {
+          return false
+        }
+        view = current.superview
+      }
+      return true
+    }
+
+    func gestureRecognizer(_ gestureRecognizer: UIGestureRecognizer, shouldRecognizeSimultaneouslyWith otherGestureRecognizer: UIGestureRecognizer) -> Bool {
+      true
     }
 
     func playerViewControllerDidStartPictureInPicture(_ controller: AVPlayerViewController) {
