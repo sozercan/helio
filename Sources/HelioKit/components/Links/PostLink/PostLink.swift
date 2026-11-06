@@ -23,7 +23,7 @@ struct PostLink: View, Equatable, Identifiable {
   var secondary = false
   let compactPerSubreddit: Bool?
   let contentWidth: CGFloat
-  var defSettings: PostLinkDefSettings = Defaults[.PostLinkDefSettings]
+  var defSettings: PostLinkDefSettings = CachedDefaults[.PostLinkDefSettings]
 
   var body: some View {
     if compactPerSubreddit ?? defSettings.compactMode.enabled {

@@ -16,20 +16,20 @@ struct PostLinkTheme: Codable, Hashable, Equatable {
   var mediaCornerRadius: CGFloat
   var innerPadding: ThemePadding
   var outerHPadding: CGFloat
-  var stickyPostBorderColor: LineTheme
-  var titleText: ThemeText
-  var bodyText: ThemeText
+  @Boxed var stickyPostBorderColor: LineTheme
+  @Boxed var titleText: ThemeText
+  @Boxed var bodyText: ThemeText
   var linespacing: CGFloat
-  var badge: BadgeTheme
+  @Boxed var badge: BadgeTheme
   var verticalElementsSpacing: CGFloat
-  var bg: ThemeForegroundBG
+  @Boxed var bg: ThemeForegroundBG
   var unseenType: UnseenType
   var unseenFadeOpacity: CGFloat
-  var compactSelftextPostLinkPlaceholderImg: CompactSelftextPostLinkPlaceholderImg
+  @Boxed var compactSelftextPostLinkPlaceholderImg: CompactSelftextPostLinkPlaceholderImg
   var showDivider: Bool
   /// Uncolored flair in titles. It's drawn into the title once, so it looks the same in light
   /// and dark mode; `nil` keeps a translucent grey that reads as a grey pill on either.
-  var titleFlair: TitleFlair?
+  @Boxed var titleFlair: TitleFlair?
 
   /// What titles are drawn with (`createTitleTagsAttrString`): a new style draws them again.
   var titleStyle: TitleStyle {

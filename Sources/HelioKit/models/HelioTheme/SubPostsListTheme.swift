@@ -12,12 +12,12 @@ struct SubPostsListTheme: Codable, Equatable, Hashable {
     case theme, spacing, divider, bg, stickyFilters, filterText, filterPadding, filterOpacity
   }
 
-  var theme: PostLinkTheme
+  @Boxed var theme: PostLinkTheme
   var spacing: CGFloat
-  var divider: LineTheme
-  var bg: ThemeBG
+  @Boxed var divider: LineTheme
+  @Boxed var bg: ThemeBG
   var stickyFilters: Bool
-  var filterText: ThemeText
+  @Boxed var filterText: ThemeText
   var filterPadding: ThemePadding
   var filterOpacity: CGFloat
 

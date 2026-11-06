@@ -14,15 +14,15 @@ struct PostTheme: Codable, Hashable, Equatable {
 
   var padding: ThemePadding
   var spacing: CGFloat
-  var badge: BadgeTheme
-  var bg: ThemeBG
+  @Boxed var badge: BadgeTheme
+  @Boxed var bg: ThemeBG
   var commentsDistance: CGFloat
-  var titleText: ThemeText
-  var bodyText: ThemeText
+  @Boxed var titleText: ThemeText
+  @Boxed var bodyText: ThemeText
   /// Quoted text in the body's Markdown.
-  var quoteText: ColorSchemes<ThemeColor>
+  @Boxed var quoteText: ColorSchemes<ThemeColor>
   /// Links in the body's Markdown; `nil` draws them in the app's accent color.
-  var linkText: ColorSchemes<ThemeColor>?
+  @Boxed var linkText: ColorSchemes<ThemeColor>?
   var linespacing: CGFloat
   var inlineFloatingPill: Bool
 

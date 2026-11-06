@@ -12,9 +12,9 @@ struct CommentsSectionTheme: Codable, Hashable, Equatable {
     case theme, spacing, divider
   }
 
-  var theme: CommentTheme
+  @Boxed var theme: CommentTheme
   var spacing: CGFloat
-  var divider: LineTheme
+  @Boxed var divider: LineTheme
 
   init(theme: CommentTheme, spacing: CGFloat, divider: LineTheme) {
     self.theme = theme
@@ -47,26 +47,26 @@ struct CommentTheme: Codable, Hashable, Equatable {
   var outerHPadding: CGFloat
   var repliesSpacing: CGFloat
   var indentCurve: CGFloat
-  var indentColor: ColorSchemes<ThemeColor>
+  @Boxed var indentColor: ColorSchemes<ThemeColor>
   /// One color per reply depth, cycled. When set, replies get a straight colored bar per
   /// depth instead of the curved `indentColor` guides. `indentCurve` is then the indent step.
   var indentColors: [ColorSchemes<ThemeColor>]
   var cornerRadius: CGFloat
-  var badge: BadgeTheme
-  var bodyText: ThemeText
+  @Boxed var badge: BadgeTheme
+  @Boxed var bodyText: ThemeText
   /// Quoted text in the body's Markdown.
-  var quoteText: ColorSchemes<ThemeColor>
+  @Boxed var quoteText: ColorSchemes<ThemeColor>
   /// Links in the body's Markdown; `nil` draws them in the app's accent color.
-  var linkText: ColorSchemes<ThemeColor>?
+  @Boxed var linkText: ColorSchemes<ThemeColor>?
   var bodyAuthorSpacing: CGFloat
   var linespacing: CGFloat
-  var bg: ColorSchemes<ThemeColor>
+  @Boxed var bg: ColorSchemes<ThemeColor>
 
   var loadMoreInnerPadding: ThemePadding
-  var loadMoreText: ThemeText
-  var loadMoreBackground: ColorSchemes<ThemeColor>
+  @Boxed var loadMoreText: ThemeText
+  @Boxed var loadMoreBackground: ColorSchemes<ThemeColor>
 
-  var unseenDot: ColorSchemes<ThemeColor>
+  @Boxed var unseenDot: ColorSchemes<ThemeColor>
 
   init(innerPadding: ThemePadding, outerHPadding: CGFloat, repliesSpacing: CGFloat, indentCurve: CGFloat, indentColor: ColorSchemes<ThemeColor>, indentColors: [ColorSchemes<ThemeColor>] = [], cornerRadius: CGFloat, badge: BadgeTheme, bodyText: ThemeText, quoteText: ColorSchemes<ThemeColor>, linkText: ColorSchemes<ThemeColor>? = nil, bodyAuthorSpacing: CGFloat, linespacing: CGFloat, bg: ColorSchemes<ThemeColor>, loadMoreInnerPadding: ThemePadding, loadMoreText: ThemeText, loadMoreBackground: ColorSchemes<ThemeColor>, unseenDot: ColorSchemes<ThemeColor>) {
     self.innerPadding = innerPadding

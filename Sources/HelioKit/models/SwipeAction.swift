@@ -30,10 +30,10 @@ struct SwipeActionsSet: Codable, Defaults.Serializable, Equatable, Hashable, Ide
   }
 
   var id: String
-  var leftFirst: AnySwipeAction
-  var leftSecond: AnySwipeAction
-  var rightFirst: AnySwipeAction
-  var rightSecond: AnySwipeAction
+  @Boxed var leftFirst: AnySwipeAction
+  @Boxed var leftSecond: AnySwipeAction
+  @Boxed var rightFirst: AnySwipeAction
+  @Boxed var rightSecond: AnySwipeAction
 }
 
 let allPostSwipeActions: [AnySwipeAction] = [
