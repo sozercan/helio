@@ -15,12 +15,14 @@ struct LightBoxElementView: View {
   var onTap: (() -> Void)?
   var doLiveText: Bool
   var showOverlay: Bool
+  /// Set when a sideways swipe scrubs this GIF.
+  var gifScrubber: GIFScrubber?
   @Binding var isPinching: Bool
   @State private var altSize: CGSize = .zero
   @Binding var isZoomed: Bool
   var body: some View {
     ZoomableScrollView(onTap: onTap, isZoomed: $isZoomed) {
-      URLImage(url: el.url, doLiveText: doLiveText, showOverlay: showOverlay)
+      URLImage(url: el.url, doLiveText: doLiveText, showOverlay: showOverlay, gifScrubber: gifScrubber)
         .scaledToFit()
     }
     .modifier(LightBoxImageAccessibility(label: label ?? "Image", keepsLiveText: doLiveText))

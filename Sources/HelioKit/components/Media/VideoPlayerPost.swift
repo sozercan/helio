@@ -420,6 +420,11 @@ struct FullScreenVP: View {
   @State private var anchor: UnitPoint = .zero
   @State private var offset: CGSize = .zero
   @State private var altSize: CGSize = .zero
+  /// A sideways swipe scrubs. Nil while it isn't scrubbing, or the video's length isn't known.
+  @State private var scrubOrigin: CGFloat?
+  @State private var scrubber = VideoScrubber()
+  /// Resets when the drag ends or is cancelled; a cancelled drag skips `onEnded`.
+  @GestureState private var dragging = false
   var body: some View {
     let interpolate = interpolatorBuilder([0, 100], value: abs(drag.height))
     FullScreenPlayerView(player: player, holder: holder, onPictureInPictureStart: { dismiss() })
@@ -440,9 +445,17 @@ struct FullScreenVP: View {
         scale != 1.0
           ? nil
           : DragGesture(minimumDistance: 10)
+          .updating($dragging) { _, dragging, _ in dragging = true }
           .onChanged { val in
             if cancelDrag == nil {
               cancelDrag = abs(val.translation.width) > abs(val.translation.height)
+              if cancelDrag == true, scrubber.begin(player) {
+                scrubOrigin = val.translation.width
+              }
+            }
+            if let scrubOrigin {
+              scrubber.update(translation: val.translation.width - scrubOrigin, width: .screenW)
+              return
             }
             if cancelDrag == nil || cancelDrag! {
               return
@@ -459,6 +472,11 @@ struct FullScreenVP: View {
           .onEnded { val in
             let prevCancelDrag = cancelDrag
             cancelDrag = nil
+            if scrubOrigin != nil {
+              scrubOrigin = nil
+              scrubber.end()
+              return
+            }
             if prevCancelDrag == nil || prevCancelDrag! {
               return
             }
@@ -471,6 +489,16 @@ struct FullScreenVP: View {
             }
           },
       )
+      .onChange(of: dragging) { _, dragging in
+        guard !dragging, scrubOrigin != nil else { return }
+        scrubOrigin = nil
+        cancelDrag = nil
+        scrubber.end()
+      }
+      .overlay {
+        ScrubIndicator(position: scrubber.position)
+          .animation(.easeOut(duration: 0.15), value: scrubber.position == nil)
+      }
       // It covers the post: the menu bar's Post commands mustn't move off it underneath.
       .commandTarget(CommandTargets.Target(kind: .modal))
   }
