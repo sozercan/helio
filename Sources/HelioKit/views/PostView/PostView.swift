@@ -249,8 +249,10 @@ struct PostView: View, Equatable {
           lease.adopt(in: screenStateScope)
           // Taken over from the screen this one replaced: back to where the reader left that one,
           // a comment row or the post's top, rather than to the comment a link opened.
+          // A saved row however the list got there, the reader's scrolling or a jump to a comment;
+          // the post's top only if the reader scrolled there.
           let handedOver = lease.takeHandedOver()
-          if handedOver, !hideElements, session.scrolled {
+          if handedOver, !hideElements, session.scrollAnchorRowID != nil || session.scrolled {
             if let anchor = session.scrollAnchorRowID {
               doThisAfter(0.1) { proxy.scrollTo(anchor, anchor: .top) }
             }
