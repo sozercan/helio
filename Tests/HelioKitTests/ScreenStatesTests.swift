@@ -179,6 +179,22 @@ struct ScreenStatesTests {
     #expect(new.model !== goneModel)
   }
 
+  @Test func aScreenBuiltBeforeAnotherLayoutChangeDoesNotGetWhatThatOneDropped() async {
+    let states = ScreenStates()
+    var old: ScreenStateLease<Model>? = states.lease("feed", owner: home, now: start) { Model() }
+    old?.adopt(in: posts)
+    let oldModel = old?.model
+    states.beginHandoff(in: posts, now: start, endsItself: false)
+    let new = states.lease("feed", owner: home, now: start) { Model() }
+    old = nil
+    await letLeasesGo()
+    // The layout changes again before the new screen shows.
+    states.beginHandoff(in: posts, now: start, endsItself: false)
+    new.adopt(in: posts)
+    #expect(new.model !== oldModel)
+    #expect(!new.takeHandedOver())
+  }
+
   @Test func aClosedScreensModelGoesRightAway() async {
     let states = ScreenStates()
     var old: ScreenStateLease<Model>? = states.lease("feed", owner: home) { Model() }

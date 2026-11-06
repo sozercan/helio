@@ -113,7 +113,9 @@ final class ScreenStates {
   /// first (both were initialized before either showed), another old screen's of the same name and
   /// owner. Nil when none is left: the screen gets a model of its own.
   fileprivate func takeOver<Model: AnyObject>(_ entry: Entry, name: String, owner: AnyObject?, as _: Model.Type) -> Entry? {
-    guard let chosen = entry.claimedIn != handoff ? entry : unclaimed(name: name, owner: owner, as: Model.self) else { return nil }
+    // Only from this handoff: a lease made before another layout change may hold one it dropped.
+    let current = entry.claimedIn != handoff && handedOff.contains { $0 === entry }
+    guard let chosen = current ? entry : unclaimed(name: name, owner: owner, as: Model.self) else { return nil }
     chosen.claimedIn = handoff
     chosen.holders += 1
     if !entries.contains(where: { $0 === chosen }) {
