@@ -12,7 +12,9 @@ import SwiftUI
 
 struct PostView: View, Equatable {
   static func == (lhs: PostView, rhs: PostView) -> Bool {
-    lhs.post == rhs.post && lhs.subreddit.id == rhs.subreddit.id && lhs.hideElements == rhs.hideElements && lhs.ignoreSpecificComment == rhs.ignoreSpecificComment && lhs.sort == rhs.sort && lhs.comments.count == rhs.comments.count
+    // Not the comments and their sort: those are in the observed session, whose changes update
+    // the page themselves.
+    lhs.post == rhs.post && lhs.subreddit.id == rhs.subreddit.id
   }
 
   var post: Post
@@ -29,19 +31,50 @@ struct PostView: View, Equatable {
   @Environment(\.globalLoaderStart) private var globalLoaderStart
   @Environment(\.globalLoaderDismiss) private var globalLoaderDismiss
   @Environment(\.contentWidth) private var contentWidth
-  @State private var ignoreSpecificComment = false
   @Environment(\.navColumn) private var navColumn
-  @State private var hideElements = true
-  @State private var sort: CommentSortOption
-  @State private var commentsLoad = CommentsLoad()
-  /// The comments seen before this visit (`PostReplies`).
-  @State private var seenComments: String?
+  /// The comments and how they're shown, taken over from the screen this one replaces when the
+  /// layout changes (`ScreenStates`).
+  @State private var lease: ScreenStateLease<PostSession>
+  private var session: PostSession {
+    lease.model
+  }
+
+  private var ignoreSpecificComment: Bool {
+    get { session.ignoreSpecificComment }
+    nonmutating set { session.ignoreSpecificComment = newValue }
+  }
+
+  private var hideElements: Bool {
+    get { session.hideElements }
+    nonmutating set { session.hideElements = newValue }
+  }
+
+  private var sort: CommentSortOption {
+    get { session.sort }
+    nonmutating set { session.sort = newValue }
+  }
+
+  private var commentsLoad: CommentsLoad {
+    session.commentsLoad
+  }
+
+  private var seenComments: String? {
+    get { session.seenComments }
+    nonmutating set { session.seenComments = newValue }
+  }
+
+  private var topVisibleCommentId: String? {
+    get { session.topVisibleCommentId }
+    nonmutating set { session.topVisibleCommentId = newValue }
+  }
+
+  private var comments: [Comment] {
+    get { session.comments }
+    nonmutating set { session.comments = newValue }
+  }
+
   /// The reply sheet opened by the menu bar's Reply; the post's bar has its own.
   @State private var showReplyModal = false
-
-  @SilentState private var topVisibleCommentId: String? = nil
-  @SilentState private var previousScrollTarget: String? = nil
-  @State private var comments: [Comment] = []
 
   init(post: Post, subreddit: Subreddit, forceCollapse: Bool = false, isPreview: Bool = false, highlightID: String? = nil) {
     self.post = post
@@ -53,7 +86,8 @@ struct PostView: View, Equatable {
     let defSettings = CachedDefaults[.PostPageDefSettings]
     let commentsDefSettings = CachedDefaults[.CommentsSectionDefSettings]
 
-    _sort = State(initialValue: defSettings.perPostSort ? (defSettings.postSorts[post.id] ?? commentsDefSettings.preferredSort) : commentsDefSettings.preferredSort)
+    let sort = defSettings.perPostSort ? (defSettings.postSorts[post.id] ?? commentsDefSettings.preferredSort) : commentsDefSettings.preferredSort
+    _lease = State(initialValue: isPreview ? ScreenStateLease(unshared: PostSession(sort: sort)) : ScreenStates.shared.lease("post:\(post.id)|\(highlightID ?? "")") { PostSession(sort: sort) })
   }
 
   /// Loads the comments, and with `full` the post's details. Every load (the first one, pull to
@@ -139,7 +173,7 @@ struct PostView: View, Equatable {
             .listRowBackground(Color.clear)
 
             if !hideElements {
-              PostReplies(commentsLoad: commentsLoad, seenComments: seenComments, post: post, subreddit: subreddit, ignoreSpecificComment: ignoreSpecificComment, highlightID: highlightID, sort: sort, proxy: proxy, topVisibleCommentId: $topVisibleCommentId, previousScrollTarget: $previousScrollTarget, comments: $comments)
+              PostReplies(commentsLoad: commentsLoad, seenComments: seenComments, post: post, subreddit: subreddit, ignoreSpecificComment: ignoreSpecificComment, highlightID: highlightID, sort: sort, proxy: proxy, topVisibleCommentId: Bindable(session).topVisibleCommentId, previousScrollTarget: Bindable(session).previousScrollTarget, comments: Bindable(session).comments)
             }
 
             if !ignoreSpecificComment, highlightID != nil {
@@ -189,16 +223,25 @@ struct PostView: View, Equatable {
         .navigationBarTitleDisplayMode(.inline)
         // Not `relayoutPosts`: the page lays its media out on its own (`Post.pageLayout`), and
         // relaying out the post would fight its feed row when the two are side by side.
-        .toolbar { Toolbar(hideElements: hideElements, subreddit: subreddit, post: post, sort: $sort, column: navColumn) }
+        .toolbar { Toolbar(hideElements: hideElements, subreddit: subreddit, post: post, sort: Bindable(session).sort, column: navColumn) }
         .onChange(of: sort) { _ in
           updatePost()
         }
         .onAppear {
-          doThisAfter(0.5) {
-            hideElements = false
-            doThisAfter(0.1) {
-              if highlightID != nil, !scrollToHighlight(proxy) {
-                withAnimation { proxy.scrollTo("loading-comments") }
+          lease.adopt()
+          // Taken over from the screen this one replaced: back to the comment that one showed at
+          // its top, rather than to the one a link opened.
+          if lease.takeHandedOver(), !hideElements {
+            if let topVisibleCommentId {
+              doThisAfter(0.1) { proxy.scrollTo(topVisibleCommentId, anchor: .top) }
+            }
+          } else {
+            doThisAfter(0.5) {
+              hideElements = false
+              doThisAfter(0.1) {
+                if highlightID != nil, !scrollToHighlight(proxy) {
+                  withAnimation { proxy.scrollTo("loading-comments") }
+                }
               }
             }
           }
@@ -272,7 +315,7 @@ struct PostView: View, Equatable {
       GlassEffectContainer(spacing: 12) {
         HStack(spacing: 12) {
           if showSkipper, skipperOnLeft {
-            CommentSkipper(topVisibleCommentId: $topVisibleCommentId, previousScrollTarget: $previousScrollTarget, comments: comments, reader: proxy)
+            CommentSkipper(topVisibleCommentId: Bindable(session).topVisibleCommentId, previousScrollTarget: Bindable(session).previousScrollTarget, comments: comments, reader: proxy)
           }
           if inlineActions {
             // Only the skipper shows: keep it on its side.
@@ -292,7 +335,7 @@ struct PostView: View, Equatable {
             .frame(maxWidth: .infinity, alignment: .trailing)
           }
           if showSkipper, !skipperOnLeft {
-            CommentSkipper(topVisibleCommentId: $topVisibleCommentId, previousScrollTarget: $previousScrollTarget, comments: comments, reader: proxy)
+            CommentSkipper(topVisibleCommentId: Bindable(session).topVisibleCommentId, previousScrollTarget: Bindable(session).previousScrollTarget, comments: comments, reader: proxy)
           }
         }
       }
@@ -304,6 +347,28 @@ struct PostView: View, Equatable {
   private func pill(showRatio: Bool, compact: Bool) -> some View {
     PostFloatingPill(post: post, subreddit: subreddit, showUpVoteRatio: showRatio, compact: compact)
       .fixedSize()
+  }
+}
+
+/// A post page's comments and how they're shown, kept apart from the page so a page built for
+/// another layout takes them over (`ScreenStates`).
+@MainActor
+@Observable
+final class PostSession {
+  var sort: CommentSortOption
+  let commentsLoad = CommentsLoad()
+  var comments: [Comment] = []
+  /// The comments seen before this visit (`PostReplies`).
+  var seenComments: String?
+  var ignoreSpecificComment = false
+  /// Until the push animation ends.
+  var hideElements = true
+  /// The comment at the top of the list, which the comment skipper jumps from.
+  @ObservationIgnored var topVisibleCommentId: String?
+  @ObservationIgnored var previousScrollTarget: String?
+
+  init(sort: CommentSortOption) {
+    self.sort = sort
   }
 }
 

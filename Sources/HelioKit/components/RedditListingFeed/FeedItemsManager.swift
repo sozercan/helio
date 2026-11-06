@@ -267,6 +267,27 @@ class FeedItemsManager<S> {
     Post.prefetcher.startPrefetching(with: reqs)
   }
 
+  /// The rows the list shows, by id: the topmost is where the feed goes back to after the
+  /// layout changes (`ScreenStates`).
+  @ObservationIgnored private var shownRowIDs: Set<String> = []
+  /// The row at the top of the list when it last stopped scrolling; nil at the top of the feed.
+  @ObservationIgnored private(set) var scrollAnchorID: String?
+
+  func rowShown(_ id: String) {
+    shownRowIDs.insert(id)
+  }
+
+  func rowHidden(_ id: String) {
+    shownRowIDs.remove(id)
+  }
+
+  /// Saved when the list stops scrolling, not as rows go: the list hides all its rows when a
+  /// screen covers it, which would leave its last row as the top.
+  func saveScrollAnchor() {
+    let top = shownRowIDs.compactMap { id in indexByID[id].map { (id, $0) } }.min { $0.1 < $1.1 }
+    scrollAnchorID = top.flatMap { $0.1 == 0 ? nil : $0.0 }
+  }
+
   func elementDisappeared(entity: RedditEntityType) {
     let reqs = getImgReqsFrom([entity])
     Post.prefetcher.stopPrefetching(with: reqs)

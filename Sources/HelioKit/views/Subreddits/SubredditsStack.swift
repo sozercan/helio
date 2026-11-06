@@ -27,9 +27,13 @@ struct SubredditsStack: View {
   }
 
   @State private var loaded = false
+  /// Which of the two layouts shows, to hand the screens' state to the other one's.
+  @State private var layoutSwitch = LayoutSwitch()
 
   var body: some View {
     let layout = SplitLayout(sizeClass: horizontalSizeClass, frame: frame, division: WindowMetrics.shared.divisionFrame)
+    // Before the new layout's screens are built, so they take over the old ones' state.
+    let _ = layoutSwitch.show(usesPanes: layout.usesPanes)
     Group {
       if layout.usesPanes {
         panes(layout)
@@ -49,6 +53,21 @@ struct SubredditsStack: View {
     }
     .onChange(of: layout.fitsSidebar, initial: true) { _, fits in
       columnVisibility = fits ? .all : .doubleColumn
+    }
+  }
+
+  /// Switching between the panes and the split view builds every screen anew: tells
+  /// `ScreenStates`, so the new screens keep the feed's place, the post's comments and the web
+  /// page's history. Not observed, as it changes while the view updates.
+  @MainActor
+  private final class LayoutSwitch {
+    private var usesPanes: Bool?
+
+    func show(usesPanes: Bool) {
+      if let shown = self.usesPanes, shown != usesPanes {
+        ScreenStates.shared.beginHandoff()
+      }
+      self.usesPanes = usesPanes
     }
   }
 
@@ -304,7 +323,6 @@ private extension View {
   /// Beside the feed on Mac, the open post needs no bar of its own under the window toolbar:
   /// its actions are in that toolbar (`MacTabToolbar`), its subreddit is in its header, and at
   /// the column's root there's no Back. Screens opened over it get their bar, with Back.
-  @ViewBuilder
   func hidesNavigationBarOnMac(_ hidden: Bool) -> some View {
     #if targetEnvironment(macCatalyst)
       toolbar(hidden ? .hidden : .automatic, for: .navigationBar)
@@ -335,7 +353,6 @@ private extension View {
   }
 
   /// The Mac window toolbar has the sidebar button (`MacTabToolbar`).
-  @ViewBuilder
   func hidesSidebarToggleOnMac() -> some View {
     #if targetEnvironment(macCatalyst)
       toolbar(removing: .sidebarToggle)

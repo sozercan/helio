@@ -16,8 +16,19 @@ import WebKit
 struct WebPageScreen: View {
   let url: URL
   @Environment(\.navColumn) private var navColumn
+  /// The page, with its history, taken over from the screen this one replaces when the layout
+  /// changes (`ScreenStates`).
+  @State private var lease: ScreenStateLease<WebPageSlot>
   /// Made once the screen shows, not each time SwiftUI rebuilds this view.
-  @State private var page: WebPageModel?
+  private var page: WebPageModel? {
+    get { lease.model.page }
+    nonmutating set { lease.model.page = newValue }
+  }
+
+  init(url: URL) {
+    self.url = url
+    _lease = State(initialValue: ScreenStates.shared.lease("web:\(url.absoluteString)") { WebPageSlot() })
+  }
 
   var body: some View {
     Group {
@@ -50,6 +61,7 @@ struct WebPageScreen: View {
       }
     }
     .onAppear {
+      lease.adopt()
       if let page {
         WebExtensionRuntime.shared.activate(page.webView)
       }
@@ -95,14 +107,38 @@ private struct PageToolbar: ToolbarContent {
   }
 }
 
+/// The page's web view, in a view of its own: a screen built for another layout takes the web view
+/// over while the old screen's view may still be on screen, and taking the web view itself as the
+/// representable's view would let the old one's teardown remove it.
 private struct PageView: UIViewRepresentable {
   let webView: WKWebView
 
-  func makeUIView(context _: Context) -> WKWebView {
-    webView
+  func makeUIView(context _: Context) -> UIView {
+    let container = UIView()
+    attach(to: container)
+    return container
   }
 
-  func updateUIView(_: WKWebView, context _: Context) {}
+  /// Only once the web view has no other view: an old screen's view still updating would take it
+  /// back from the new one.
+  func updateUIView(_ container: UIView, context _: Context) {
+    if webView.superview == nil {
+      attach(to: container)
+    }
+  }
+
+  private func attach(to container: UIView) {
+    webView.frame = container.bounds
+    webView.autoresizingMask = [.flexibleWidth, .flexibleHeight]
+    container.addSubview(webView)
+  }
+}
+
+/// Where a screen keeps its page, so a screen that replaces it takes the page over.
+@MainActor
+@Observable
+private final class WebPageSlot {
+  var page: WebPageModel?
 }
 
 /// Where pages keep their sites' data (cookies, storage, cache): one store of their own, apart
