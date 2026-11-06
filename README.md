@@ -6,7 +6,7 @@
 ![GitHub issues](https://img.shields.io/github/issues-raw/sozercan/helio)
 ![GitHub release](https://img.shields.io/github/v/release/sozercan/helio)
 
-Helio is a privacy-focused, open-source Reddit client for iOS and Mac. No analytics, no tracking, no ads, no third-party data collection — your data stays on your device and your account talks only to Reddit. Its design is inspired by Apollo and Alien Blue, and it builds on the [Winston](https://github.com/lo-cafe/winston) app and its community.
+Helio is a privacy-focused, open-source Reddit client for iOS and Mac. No analytics, no tracking, no ads, no third-party data collection — your data stays on your device and your account talks only to Reddit.
 
 ## Screenshots
 
@@ -19,8 +19,6 @@ Helio is a privacy-focused, open-source Reddit client for iOS and Mac. No analyt
   <img src="docs/screenshots/iphone-duo.png" alt="Helio on an unfolded iPhone Duo in landscape and dark mode: subreddits sidebar and Home feed on the left, tab bar along the right edge" width="43%">
   <img src="docs/screenshots/iphone.png" alt="Helio on iPhone: Home feed" width="13.5%">
 </p>
-
-<sub>Screenshots use sample posts and a placeholder account.</sub>
 
 ## Privacy
 
