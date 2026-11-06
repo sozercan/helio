@@ -13,7 +13,7 @@ import VisionKit
 
 struct URLImage: View, Equatable {
   static func == (lhs: URLImage, rhs: URLImage) -> Bool {
-    lhs.url == rhs.url && lhs.imgRequest?.url == rhs.imgRequest?.url && lhs.showOverlay == rhs.showOverlay
+    lhs.url == rhs.url && lhs.imgRequest?.url == rhs.imgRequest?.url && lhs.showOverlay == rhs.showOverlay && lhs.gifScrubber === rhs.gifScrubber
   }
 
   let url: URL
@@ -24,6 +24,8 @@ struct URLImage: View, Equatable {
   var size: CGSize?
   /// Static preview shown behind the spinner while a GIF loads.
   var posterURL: URL?
+  /// Plays a GIF with `ScrubbableGIF`, so a swipe can scrub it.
+  var gifScrubber: GIFScrubber?
 
   var body: some View {
     // Photos keep their colors under Smart Invert.
@@ -35,9 +37,15 @@ struct URLImage: View, Equatable {
     if url.isGIF {
       LazyImageOpt(url: url) { state in
         if let imageData = state.imageContainer?.data {
-          GIFImage(data: imageData, size: size)
-            .scaledToFit()
-            .frame(width: size?.width, height: size?.height)
+          if let gifScrubber {
+            ScrubbableGIF(data: imageData, scrubber: gifScrubber)
+              .scaledToFit()
+              .frame(width: size?.width, height: size?.height)
+          } else {
+            GIFImage(data: imageData, size: size)
+              .scaledToFit()
+              .frame(width: size?.width, height: size?.height)
+          }
         } else if state.error != nil {
           Color.red.opacity(0.1)
             .overlay(Image(systemName: "xmark.circle.fill").foregroundColor(.red))

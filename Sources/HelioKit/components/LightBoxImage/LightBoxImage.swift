@@ -33,10 +33,26 @@ struct LightBoxImage: View {
   @State private var isPinching: Bool = false
   @State private var isZoomed: Bool = false
   @State private var scale: CGFloat = 1.0
+  @State private var gifScrubber = GIFScrubber()
+  /// Resets when the drag ends or is cancelled; a cancelled drag skips `onEnded`.
+  @GestureState private var dragging = false
 
   private enum Axis {
     case horizontal
     case vertical
+    /// Sideways across a lone GIF, which has no other page to go to.
+    case scrub
+  }
+
+  /// A single GIF scrubs when swiped sideways. In a gallery, the swipe still changes pages.
+  private var scrubsGIF: Bool {
+    imagesArr.count == 1 && imagesArr[0].url.isGIF
+  }
+
+  private func endScrub() {
+    gifScrubber.end()
+    dragOffset = nil
+    dragAxis = nil
   }
 
   func toggleOverlay() {
@@ -67,7 +83,7 @@ struct LightBoxImage: View {
     HStack(spacing: SPACING) {
       ForEach(Array(imagesArr.enumerated()), id: \.element.id) { index, img in
         let selected = index == activeIndex
-        LightBoxElementView(el: img, label: postTitle, onTap: toggleOverlay, doLiveText: doLiveText, showOverlay: showOverlay, isPinching: $isPinching, isZoomed: $isZoomed)
+        LightBoxElementView(el: img, label: postTitle, onTap: toggleOverlay, doLiveText: doLiveText, showOverlay: showOverlay, gifScrubber: scrubsGIF ? gifScrubber : nil, isPinching: $isPinching, isZoomed: $isZoomed)
           .allowsHitTesting(selected)
           .accessibilityHidden(!selected)
           // The page, which changes as VoiceOver users swipe through the gallery.
@@ -85,17 +101,20 @@ struct LightBoxImage: View {
       scale > 1
         ? nil
         : DragGesture(minimumDistance: 20)
+        .updating($dragging) { _, dragging, _ in dragging = true }
         .onChanged { val in
           if dragAxis == nil || dragOffset == nil {
             dragOffset = val.translation
             if abs(val.predictedEndTranslation.width) > abs(val.predictedEndTranslation.height) {
-              dragAxis = .horizontal
+              dragAxis = scrubsGIF && !isZoomed && gifScrubber.begin() ? .scrub : .horizontal
             } else if abs(val.predictedEndTranslation.width) < abs(val.predictedEndTranslation.height) {
               dragAxis = .vertical
             }
           }
 
-          if let dragAxis, let dragOffset {
+          if dragAxis == .scrub, let dragOffset {
+            gifScrubber.update(translation: val.translation.width - dragOffset.width, width: .screenW)
+          } else if let dragAxis, let dragOffset {
             var transaction = Transaction()
             transaction.isContinuous = true
             transaction.animation = .interpolatingSpring(stiffness: 1000, damping: 100, initialVelocity: 0)
@@ -110,7 +129,9 @@ struct LightBoxImage: View {
           }
         }
         .onEnded { val in
-          if dragAxis == .horizontal {
+          if dragAxis == .scrub {
+            endScrub()
+          } else if dragAxis == .horizontal {
             let predictedEnd = val.predictedEndTranslation.width - (dragOffset?.width ?? 0)
             drag = .zero
             xPos += val.translation.width - (dragOffset?.width ?? 0)
@@ -143,9 +164,19 @@ struct LightBoxImage: View {
           }
         },
     )
+    // Ends a scrub whose drag ended without `onEnded`, whatever the axis now says: a resize
+    // can clear the axis mid-scrub.
+    .onChange(of: dragging) { _, dragging in
+      guard !dragging else { return }
+      gifScrubber.end()
+      if dragAxis == .scrub {
+        dragOffset = nil
+        dragAxis = nil
+      }
+    }
     .overlay {
       if let postTitle, let badgeKit {
-        LightBoxOverlay(postTitle: postTitle, badgeKit: badgeKit, avatarImageRequest: avatarImageRequest, opacity: !showOverlay || isPinching ? 0 : interpolate([1, 0], false), imagesArr: imagesArr, activeIndex: activeIndex, loading: $loading, done: $done)
+        LightBoxOverlay(postTitle: postTitle, badgeKit: badgeKit, avatarImageRequest: avatarImageRequest, opacity: !showOverlay || isPinching ? 0 : interpolate([1, 0], false), imagesArr: imagesArr, activeIndex: activeIndex, gifScrubber: scrubsGIF ? gifScrubber : nil, loading: $loading, done: $done)
       }
     }
     // Taps on the image show or hide the controls; Close, Escape or a swipe closes it.
@@ -210,6 +241,9 @@ struct LightBoxImage: View {
     }
     // Pages are a window wide, so a resize moves them: keep the current one in view.
     .onChange(of: CGFloat.screenW) {
+      if dragAxis == .scrub {
+        gifScrubber.end()
+      }
       drag = .zero
       dragOffset = nil
       dragAxis = nil
