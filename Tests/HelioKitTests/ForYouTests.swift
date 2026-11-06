@@ -117,7 +117,7 @@ struct ForYouRankingTests {
 struct ForYouEngineTests {
   private static let credential = RedditCredential(apiAppID: "placeholder-client-id", accessToken: "placeholder-access-token", refreshToken: "placeholder-grant", expiration: 3600, lastRefresh: Date(), userName: "placeholder_user")
 
-  private static func post(_ id: String, sub: String, title: String = "A post", over18: Bool = false) -> PostData {
+  private static func post(_ id: String, sub: String, title: String = "A post", over18: Bool = false, crosspostOf original: PostData? = nil) -> PostData {
     guard let encoded = try? JSONEncoder().encode(postSampleData),
           var json = (try? JSONSerialization.jsonObject(with: encoded)) as? [String: Any]
     else { fatalError("The sample post doesn't encode") }
@@ -128,6 +128,9 @@ struct ForYouEngineTests {
     json["over_18"] = over18
     json["stickied"] = false
     json["crosspost_parent_list"] = nil
+    if let original, let parent = try? JSONSerialization.jsonObject(with: JSONEncoder().encode(original)) {
+      json["crosspost_parent_list"] = [parent]
+    }
     guard let data = try? JSONSerialization.data(withJSONObject: json), let post = try? JSONDecoder().decode(PostData.self, from: data)
     else { fatalError("The sample post doesn't decode") }
     return post
@@ -146,6 +149,7 @@ struct ForYouEngineTests {
     suggestionsFail: Bool = false,
     homeAfter: String? = "t3_h8",
     homeCount: Int = 8,
+    homeCrosspostFrom: String? = nil,
     suggestionPage: (@Sendable (_ after: String?) -> ([PostData], String?)?)? = nil,
     scorer: (@Sendable (_ title: String) -> Double?)? = nil,
   ) -> ForYouEngine {
@@ -153,7 +157,10 @@ struct ForYouEngineTests {
       home: { _, after, _, _ in
         calls.home.withLock { $0.append(after) }
         guard !homeFails else { return nil }
-        let posts = (0 ..< homeCount).map { Self.post("h\($0)\(after ?? "")", sub: "homelab") }
+        var posts = (0 ..< homeCount).map { Self.post("h\($0)\(after ?? "")", sub: "homelab") }
+        if let homeCrosspostFrom {
+          posts.append(Self.post("xp\(after ?? "")", sub: "homelab", crosspostOf: Self.post("orig", sub: homeCrosspostFrom)))
+        }
         return (posts, after == nil ? homeAfter : nil)
       },
       suggestions: { subs, after, _, _ in
@@ -316,6 +323,42 @@ struct ForYouEngineTests {
     _ = await engine.page(after: nil, sort: .best, limit: 8, credential: reauthorized)
     #expect(calls.upvoted.withLock { $0 } == 2)
     #expect(await engine.diagnostics(account: ForYouEngine.Account(Self.credential)) != nil)
+  }
+
+  @Test func crosspostsOfNSFWPostsAreNotSuggested() async throws {
+    let calls = Calls()
+    let engine = engine(calls: calls, homeAfter: nil) { _ in
+      ([Self.post("xnsfw", sub: "selfhosted", crosspostOf: Self.post("orig", sub: "elsewhere", over18: true)), Self.post("ok", sub: "espresso")], nil)
+    }
+    let page = try #require(await engine.page(after: nil, sort: .best, limit: 8, credential: Self.credential))
+    #expect(Set(page.reasons.keys) == ["t3_ok"])
+  }
+
+  @Test func workingSuggestionsOutAgainKeepsAPagingFeedGoing() async throws {
+    let calls = Calls()
+    let engine = engine(calls: calls, homeAfter: nil)
+    let first = try #require(await engine.page(after: nil, sort: .best, limit: 8, credential: Self.credential))
+    await engine.invalidate()
+    #expect(await engine.diagnostics(account: ForYouEngine.Account(Self.credential)) == nil)
+
+    let next = try #require(await engine.page(after: first.after, sort: .best, limit: 8, credential: Self.credential))
+    #expect(next.reasons.count == 2)
+    #expect(calls.upvoted.withLock { $0 } == 1)
+
+    _ = await engine.page(after: nil, sort: .best, limit: 8, credential: Self.credential)
+    #expect(calls.upvoted.withLock { $0 } == 2)
+  }
+
+  @Test func aCrosspostSeenAgainOnRefreshCountsOnce() async throws {
+    let calls = Calls()
+    let engine = engine(calls: calls, homeCrosspostFrom: "DataHoarder")
+    _ = await engine.page(after: nil, sort: .best, limit: 8, credential: Self.credential)
+    _ = await engine.page(after: nil, sort: .best, limit: 8, credential: Self.credential)
+    await engine.invalidate()
+    _ = await engine.page(after: nil, sort: .best, limit: 8, credential: Self.credential)
+    let diagnostics = try #require(await engine.diagnostics(account: ForYouEngine.Account(Self.credential)))
+    #expect(diagnostics.unqualified.first { $0.name == "DataHoarder" }?.breakdown.crossposted.count == 1)
+    #expect(!diagnostics.candidates.contains { $0.name == "DataHoarder" })
   }
 
   @Test func homeFailingFailsThePage() async {

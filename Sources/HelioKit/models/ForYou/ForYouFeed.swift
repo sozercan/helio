@@ -131,6 +131,9 @@ actor ForYouEngine {
     /// nil when they failed to load.
     let upvotedCount: Int?
     let savedCount: Int?
+    /// Asked to be worked out again: the next first page rebuilds it, while a feed already
+    /// paging keeps using it.
+    var stale = false
 
     /// Whether the account's upvotes or saves loaded; without them it's rebuilt sooner.
     var complete: Bool {
@@ -152,7 +155,13 @@ actor ForYouEngine {
   private let now: @Sendable () -> Date
   private var profiles: [Account: Profile] = [:]
   private var building: [Account: Task<Profile, Never>] = [:]
-  private var crossposts: [Account: [ForYouSignals.Crosspost]] = [:]
+  private struct NotedCrosspost {
+    /// The fullname of the post in Home.
+    let homePost: String
+    let crosspost: ForYouSignals.Crosspost
+  }
+
+  private var crossposts: [Account: [NotedCrosspost]] = [:]
   /// The relevance a suggestion has to reach, from the last page with Home posts to judge by.
   private var thresholds: [Account: Double] = [:]
   private var lastPageStats: [Account: ForYouPageStats] = [:]
@@ -285,7 +294,9 @@ actor ForYouEngine {
     let excluded = sources.excluded()
     let eligible = posts.filter { post in
       let sub = post.subreddit.lowercased()
-      return !(post.over_18 ?? false) && !(post.stickied ?? false) && !homeIDs.contains(post.name)
+      // A crosspost shows its original, which may be NSFW when the crosspost isn't marked.
+      let over18 = (post.over_18 ?? false) || (post.crosspost_parent_list?.first?.over_18 ?? false)
+      return !over18 && !(post.stickied ?? false) && !homeIDs.contains(post.name)
         && !excluded.contains(sub) && !filter.followed.contains(sub) && reasonBySub[sub] != nil
     }
     let scores = Dictionary(eligible.compactMap { post in profile.scorer?.score(post.title).map { (post.name, $0) } }, uniquingKeysWith: { first, _ in first })
@@ -302,7 +313,7 @@ actor ForYouEngine {
   /// What For You worked out for `account`, for the settings' explanation. nil before it's
   /// been opened.
   func diagnostics(account: Account) -> ForYouDiagnostics? {
-    guard let profile = profiles[account] else { return nil }
+    guard let profile = profiles[account], !profile.stale else { return nil }
     return ForYouDiagnostics(
       builtAt: profile.builtAt,
       seeds: profile.seeds,
@@ -316,11 +327,12 @@ actor ForYouEngine {
     )
   }
 
-  /// Works the suggestions out again the next time For You loads.
+  /// Works the suggestions out again the next time For You loads from the top. A feed already
+  /// showing keeps paging with the suggestions it started with.
   func invalidate() {
-    profiles = [:]
-    thresholds = [:]
-    lastPageStats = [:]
+    for account in profiles.keys {
+      profiles[account]?.stale = true
+    }
   }
 
   /// Stops suggesting `subreddit`, from the next page on.
@@ -333,7 +345,7 @@ actor ForYouEngine {
   }
 
   private func freshProfile(_ account: Account) -> Profile? {
-    guard let profile = profiles[account] else { return nil }
+    guard let profile = profiles[account], !profile.stale else { return nil }
     let lifetime = profile.complete ? Self.freshFor : Self.incompleteFreshFor
     return now().timeIntervalSince(profile.builtAt) < lifetime ? profile : nil
   }
@@ -349,16 +361,16 @@ actor ForYouEngine {
     return await sources.suggestions(subs, after, Self.suggestionsPageSize, credential)
   }
 
-  /// Crossposts in Home, for the next time the profile is built.
+  /// Crossposts in Home, for the next time the profile is built. Each Home post counts once,
+  /// however often a refresh shows it again.
   private func noteCrossposts(in posts: [PostData], account: Account) {
-    let found = posts.compactMap { post in
-      post.crosspost_parent_list?.first.map { ForYouSignals.Crosspost(from: $0.subreddit, into: post.subreddit) }
+    var noted = crossposts[account, default: []]
+    var seen = Set(noted.map(\.homePost))
+    for post in posts {
+      guard let original = post.crosspost_parent_list?.first, seen.insert(post.name).inserted else { continue }
+      noted.append(NotedCrosspost(homePost: post.name, crosspost: ForYouSignals.Crosspost(from: original.subreddit, into: post.subreddit)))
     }
-    guard !found.isEmpty else { return }
-    crossposts[account, default: []].append(contentsOf: found)
-    if let count = crossposts[account]?.count, count > Self.maxCrossposts {
-      crossposts[account]?.removeFirst(count - Self.maxCrossposts)
-    }
+    crossposts[account] = Array(noted.suffix(Self.maxCrossposts))
   }
 
   /// One build at a time per account, shared by the pages that need it.
@@ -419,7 +431,7 @@ actor ForYouEngine {
       upvoted: upvoted?.map(\.subreddit) ?? [],
       saved: saved?.map(\.subreddit) ?? [],
       related: related,
-      crossposts: crossposts[Account(credential)] ?? [],
+      crossposts: crossposts[Account(credential)]?.map(\.crosspost) ?? [],
     )
     let likedTitles = (upvoted?.map(\.title) ?? []) + (saved?.compactMap(\.title) ?? [])
     let ranked = ForYouRanking.ranked(from: signals)
