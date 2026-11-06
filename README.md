@@ -8,12 +8,9 @@
 
 No analytics, no tracking, no ads. Your account talks only to Reddit.
 
-[![Build](https://github.com/sozercan/helio/actions/workflows/build.yml/badge.svg)](https://github.com/sozercan/helio/actions/workflows/build.yml)
-[![Release](https://img.shields.io/github/v/release/sozercan/helio)](https://github.com/sozercan/helio/releases)
-![Platforms](https://img.shields.io/badge/platforms-iOS%20·%20iPadOS%20·%20macOS-blue)
-[![License](https://img.shields.io/github/license/sozercan/helio)](LICENSE.md)
+[![Build](https://github.com/sozercan/helio/actions/workflows/build.yml/badge.svg)](https://github.com/sozercan/helio/actions/workflows/build.yml) ![Platforms](https://img.shields.io/badge/platforms-iOS%20·%20iPadOS%20·%20macOS-blue) [![License](https://img.shields.io/github/license/sozercan/helio)](LICENSE.md)
 
-[Download](https://github.com/sozercan/helio/releases) · [Install](#install) · [Report a bug](https://github.com/sozercan/helio/issues) · [Contributing](CONTRIBUTING.md)
+[Install](#install) · [Report a bug](https://github.com/sozercan/helio/issues) · [Contributing](CONTRIBUTING.md)
 
 </div>
 
