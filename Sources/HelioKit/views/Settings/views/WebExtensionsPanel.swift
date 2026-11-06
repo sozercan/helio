@@ -2,7 +2,7 @@
 //  WebExtensionsPanel.swift
 //  Helio
 //
-//  The web extensions the user added, on Mac.
+//  The web extensions the user added.
 //
 
 import SwiftUI

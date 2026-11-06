@@ -9,8 +9,9 @@ import SwiftUI
 import WebKit
 
 /// A web page opened from a link in a feed or a post (`Nav.openLink`): on Mac, where Safari's
-/// view would leave the app, and beside the feed (the open iPhone Duo, iPad), where its sheet would
-/// cover both columns. Pages keep their sites' data apart from the Reddit sign-in's, and
+/// view would leave the app; beside the feed (the open iPhone Duo, iPad), where its sheet would
+/// cover both columns; and anywhere while a web extension is on, as Safari's view runs none of the
+/// app's. Pages keep their sites' data apart from the Reddit sign-in's, and
 /// only until Helio next launches (`WebPageStorage`). The user's web extensions
 /// (`WebExtensionRuntime`) run in them.
 struct WebPageScreen: View {
