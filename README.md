@@ -15,9 +15,9 @@ Helio is a privacy-focused, open-source Reddit client for iOS and Mac. No analyt
 </p>
 
 <p align="center">
-  <img src="docs/screenshots/ipad.png" alt="Helio on iPad in dark mode: subreddits sidebar, Home feed and an open post with comments" width="52%">
-  <img src="docs/screenshots/iphone.png" alt="Helio on iPhone: Home feed" width="18%">
-  <img src="docs/screenshots/iphone-duo.png" alt="Helio on a folded iPhone Duo in dark mode: an open post, with the tab bar along the right edge" width="27%">
+  <img src="docs/screenshots/ipad.png" alt="Helio on iPad in dark mode: subreddits sidebar, Home feed and an open post with comments" width="41%">
+  <img src="docs/screenshots/iphone-duo.png" alt="Helio on an unfolded iPhone Duo in landscape and dark mode: an open post, with the tab bar along the right edge" width="43%">
+  <img src="docs/screenshots/iphone.png" alt="Helio on iPhone: Home feed" width="13.5%">
 </p>
 
 <sub>Screenshots use sample posts and a placeholder account.</sub>
