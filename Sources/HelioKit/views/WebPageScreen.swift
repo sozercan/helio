@@ -23,6 +23,9 @@ struct WebPageScreen: View {
     Group {
       if let page {
         PageView(webView: page.webView)
+          // To the bottom edge: the web view keeps its page clear of the home indicator itself, so
+          // inside the safe area it left a black band under the page.
+          .ignoresSafeArea(.container, edges: .bottom)
           .overlay(alignment: .top) {
             if page.isLoading {
               ProgressView(value: page.progress)
