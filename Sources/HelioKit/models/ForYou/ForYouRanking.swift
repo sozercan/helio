@@ -17,17 +17,43 @@ enum ForYouReason: Hashable, Sendable {
   var text: String {
     switch self {
     case let .related(seed): "Similar to r/\(seed)"
-    case .upvoted: "You upvoted posts from here"
-    case .saved: "You saved posts from here"
+    case .upvoted: "From posts you upvoted"
+    case .saved: "From things you saved"
     case let .crossposted(sub): "Crossposted to r/\(sub)"
     }
   }
 }
 
 struct ForYouCandidate: Hashable, Sendable {
+  /// The signals behind a candidate. Upvotes and saves count recent ones only.
+  struct Breakdown: Hashable, Sendable {
+    var upvoted = 0
+    var saved = 0
+    var relatedTo: [String] = []
+    var crossposted: [String] = []
+
+    var summary: String {
+      var parts: [String] = []
+      if upvoted > 0 {
+        parts.append(upvoted == 1 ? "1 upvote" : "\(upvoted) upvotes")
+      }
+      if saved > 0 {
+        parts.append(saved == 1 ? "1 save" : "\(saved) saves")
+      }
+      if !relatedTo.isEmpty {
+        parts.append("related to " + relatedTo.map { "r/\($0)" }.joined(separator: ", "))
+      }
+      if !crossposted.isEmpty {
+        parts.append(crossposted.count == 1 ? "1 crosspost" : "\(crossposted.count) crossposts")
+      }
+      return parts.joined(separator: " · ")
+    }
+  }
+
   let name: String
   let score: Double
   let reason: ForYouReason
+  var breakdown = Breakdown()
 }
 
 /// A community a subreddit's sidebar lists as related.
@@ -53,9 +79,9 @@ struct ForYouSignals: Sendable {
   var subscribed: Set<String> = []
   /// Lowercased names never to suggest: dismissed and filtered subreddits.
   var excluded: Set<String> = []
-  /// The subreddit of each upvoted post.
+  /// The subreddit of each upvoted post, most recently upvoted first.
   var upvoted: [String] = []
-  /// The subreddit of each saved post or comment.
+  /// The subreddit of each saved post or comment, most recently saved first.
   var saved: [String] = []
   var related: [Related] = []
   var crossposts: [Crosspost] = []
@@ -65,15 +91,31 @@ enum ForYouRanking {
   /// Related communities this small are usually inactive.
   static let minRelatedSubscribers = 1000
 
-  /// Subreddits to suggest, strongest first. Several kinds of signal add up, each capped so one
-  /// binge of upvotes in a sub doesn't outweigh everything else.
+  /// Upvotes and saves past this many, counted from the latest, are too old to say much.
+  static let recentItems = 50
+  /// A sub needs this many upvotes, saves and crossposts between them, unless a subreddit you
+  /// follow lists it as related: one stray upvote or old save isn't an interest.
+  static let minWeakSignals = 2
+
+  /// How much an upvote or save counts by how recent it is: Reddit lists them newest first.
+  static func recencyWeight(_ index: Int) -> Double {
+    index < recentItems / 2 ? 1 : index < recentItems ? 0.5 : 0
+  }
+
+  /// Subreddits to suggest, strongest first.
   static func candidates(from signals: ForYouSignals, limit: Int = 15) -> [ForYouCandidate] {
+    Array(ranked(from: signals).qualified.prefix(limit))
+  }
+
+  /// Every subreddit the signals point at, strongest first: the ones with enough signal to
+  /// suggest, and the ones without. Several kinds of signal add up, each capped so one binge
+  /// in a sub doesn't outweigh everything else.
+  static func ranked(from signals: ForYouSignals) -> (qualified: [ForYouCandidate], unqualified: [ForYouCandidate]) {
     struct Tally {
       var name: String
-      var upvoted = 0
-      var saved = 0
-      var relatedSeeds: [String] = []
-      var crosspostedInto: [String] = []
+      var upvoted = 0.0
+      var saved = 0.0
+      var breakdown = ForYouCandidate.Breakdown()
     }
     var tallies: [String: Tally] = [:]
     func record(_ name: String, _ update: (inout Tally) -> Void) {
@@ -83,36 +125,61 @@ enum ForYouRanking {
       update(&tallies[key, default: Tally(name: name)])
     }
 
-    for sub in signals.upvoted {
-      record(sub) { $0.upvoted += 1 }
+    for (index, sub) in signals.upvoted.enumerated() where recencyWeight(index) > 0 {
+      record(sub) { tally in
+        tally.upvoted += recencyWeight(index)
+        tally.breakdown.upvoted += 1
+      }
     }
-    for sub in signals.saved {
-      record(sub) { $0.saved += 1 }
+    for (index, sub) in signals.saved.enumerated() where recencyWeight(index) > 0 {
+      record(sub) { tally in
+        tally.saved += recencyWeight(index)
+        tally.breakdown.saved += 1
+      }
     }
     for related in signals.related where !related.sub.over18 && (related.sub.subscribers ?? minRelatedSubscribers) >= minRelatedSubscribers {
       record(related.sub.name) { tally in
-        if !tally.relatedSeeds.contains(where: { $0.caseInsensitiveCompare(related.seed) == .orderedSame }) {
-          tally.relatedSeeds.append(related.seed)
+        if !tally.breakdown.relatedTo.contains(where: { $0.caseInsensitiveCompare(related.seed) == .orderedSame }) {
+          tally.breakdown.relatedTo.append(related.seed)
         }
       }
     }
     for crosspost in signals.crossposts {
-      record(crosspost.from) { $0.crosspostedInto.append(crosspost.into) }
+      record(crosspost.from) { $0.breakdown.crossposted.append(crosspost.into) }
     }
 
-    let ranked = tallies.values.map { tally -> ForYouCandidate in
+    var qualified: [ForYouCandidate] = []
+    var unqualified: [ForYouCandidate] = []
+    for tally in tallies.values {
+      let breakdown = tally.breakdown
       // In order of preference when two kinds weigh the same.
       let parts: [(Double, ForYouReason?)] = [
-        (Double(min(tally.saved, 5)) * 1.5, .saved),
-        (Double(min(tally.relatedSeeds.count, 3)) * 2, tally.relatedSeeds.first.map { .related(to: $0) }),
-        (Double(min(tally.upvoted, 5)), .upvoted),
-        (Double(min(tally.crosspostedInto.count, 4)), tally.crosspostedInto.first.map { .crossposted(into: $0) }),
+        (Double(min(breakdown.relatedTo.count, 3)) * 2, breakdown.relatedTo.first.map { .related(to: $0) }),
+        (min(tally.saved, 5) * 1.5, breakdown.saved > 0 ? .saved : nil),
+        (min(tally.upvoted, 5), breakdown.upvoted > 0 ? .upvoted : nil),
+        (Double(min(breakdown.crossposted.count, 4)), breakdown.crossposted.first.map { .crossposted(into: $0) }),
       ]
       let score = parts.reduce(0) { $0 + $1.0 }
       let strongest = parts.filter { $0.1 != nil }.max { $0.0 < $1.0 }
-      return ForYouCandidate(name: tally.name, score: score, reason: strongest?.1 ?? .upvoted)
+      let candidate = ForYouCandidate(name: tally.name, score: score, reason: strongest?.1 ?? .upvoted, breakdown: breakdown)
+      let weakSignals = breakdown.upvoted + breakdown.saved + breakdown.crossposted.count
+      if !breakdown.relatedTo.isEmpty || weakSignals >= minWeakSignals {
+        qualified.append(candidate)
+      } else {
+        unqualified.append(candidate)
+      }
     }
-    return Array(ranked.sorted { $0.score != $1.score ? $0.score > $1.score : $0.name.lowercased() < $1.name.lowercased() }.prefix(limit))
+    let order: (ForYouCandidate, ForYouCandidate) -> Bool = { $0.score != $1.score ? $0.score > $1.score : $0.name.lowercased() < $1.name.lowercased() }
+    return (qualified.sorted(by: order), unqualified.sorted(by: order))
+  }
+
+  /// The score a suggested post's title has to reach: the median of Home's, so a suggestion is
+  /// at least as close to what the account likes as a typical post from its own subreddits.
+  static func relevanceThreshold(homeScores: [Double]) -> Double? {
+    guard !homeScores.isEmpty else { return nil }
+    let sorted = homeScores.sorted()
+    let middle = sorted.count / 2
+    return sorted.count.isMultiple(of: 2) ? (sorted[middle - 1] + sorted[middle]) / 2 : sorted[middle]
   }
 
   /// Followed subreddits to look up related communities for: the ones the account upvotes in

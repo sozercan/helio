@@ -18,20 +18,46 @@ struct ForYouRankingTests {
       crossposts: [.init(from: "DataHoarder", into: "homelab")],
     )
 
-    let candidates = ForYouRanking.candidates(from: signals)
+    let ranked = ForYouRanking.ranked(from: signals)
 
-    // selfhosted: 2 upvotes and a related listing, 4; espresso: a save, 1.5; then 1 each, by name.
-    #expect(candidates.map(\.name) == ["selfhosted", "espresso", "DataHoarder", "MechanicalKeyboards"])
-    #expect(candidates.first?.score == 4)
-    #expect(candidates.first?.reason == .related(to: "homelab"))
-    #expect(candidates.first { $0.name == "espresso" }?.reason == .saved)
-    #expect(candidates.first { $0.name == "DataHoarder" }?.reason == .crossposted(into: "homelab"))
+    // selfhosted: 2 upvotes and a related listing, 4. The rest have one weak signal each.
+    #expect(ranked.qualified.map(\.name) == ["selfhosted"])
+    #expect(ranked.qualified.first?.score == 4)
+    #expect(ranked.qualified.first?.reason == .related(to: "homelab"))
+    #expect(ranked.qualified.first?.breakdown == .init(upvoted: 2, relatedTo: ["homelab"]))
+    #expect(ranked.unqualified.map(\.name) == ["espresso", "DataHoarder", "MechanicalKeyboards"])
+    #expect(ranked.unqualified.first { $0.name == "espresso" }?.reason == .saved)
+    #expect(ranked.unqualified.first { $0.name == "DataHoarder" }?.reason == .crossposted(into: "homelab"))
+  }
+
+  @Test func aRelatedListingAloneIsEnoughButOneUpvoteIsNot() {
+    let signals = ForYouSignals(
+      subscribed: ["homelab"],
+      upvoted: ["canada"],
+      saved: ["espresso", "espresso"],
+      related: [.init(seed: "homelab", sub: ForYouRelatedSub(name: "selfhosted", subscribers: 500_000, over18: false))],
+    )
+    #expect(Set(ForYouRanking.candidates(from: signals).map(\.name)) == ["selfhosted", "espresso"])
+  }
+
+  @Test func olderUpvotesCountLessAndTheOldestNotAtAll() {
+    let filler = (0 ..< 30).map { "filler\($0)" }
+    let older = filler + ["older", "older"] + (0 ..< 20).map { "more\($0)" } + ["oldest", "oldest"]
+    let ranked = ForYouRanking.ranked(from: ForYouSignals(upvoted: older))
+    #expect(ranked.qualified.first { $0.name == "older" }?.score == 1)
+    #expect(!(ranked.qualified + ranked.unqualified).contains { $0.name == "oldest" })
   }
 
   @Test func capsEachKindOfSignal() {
     let binge = ForYouSignals(upvoted: Array(repeating: "binge", count: 40), saved: ["a", "a", "b", "b"])
     let candidates = ForYouRanking.candidates(from: binge)
     #expect(candidates.first { $0.name == "binge" }?.score == 5)
+  }
+
+  @Test func relevanceThresholdIsHomesMedian() {
+    #expect(ForYouRanking.relevanceThreshold(homeScores: []) == nil)
+    #expect(ForYouRanking.relevanceThreshold(homeScores: [0.9, 0.1, 0.5]) == 0.5)
+    #expect(ForYouRanking.relevanceThreshold(homeScores: [0.2, 0.4, 0.6, 0.8]) == 0.5)
   }
 
   @Test func seedsAreFollowedSubsUpvotedMostThenHomes() {
@@ -111,6 +137,7 @@ struct ForYouEngineTests {
     let home = Mutex<[String?]>([])
     let suggestions = Mutex<[([String], String?)]>([])
     let upvoted = Mutex(0)
+    let followed = Mutex<[String]>(["homelab"])
   }
 
   private func engine(
@@ -118,13 +145,15 @@ struct ForYouEngineTests {
     homeFails: Bool = false,
     suggestionsFail: Bool = false,
     homeAfter: String? = "t3_h8",
+    homeCount: Int = 8,
     suggestionPage: (@Sendable (_ after: String?) -> ([PostData], String?)?)? = nil,
+    scorer: (@Sendable (_ title: String) -> Double?)? = nil,
   ) -> ForYouEngine {
     let sources = ForYouSources(
       home: { _, after, _, _ in
         calls.home.withLock { $0.append(after) }
         guard !homeFails else { return nil }
-        let posts = (1 ... 8).map { Self.post("h\($0)\(after ?? "")", sub: "homelab") }
+        let posts = (0 ..< homeCount).map { Self.post("h\($0)\(after ?? "")", sub: "homelab") }
         return (posts, after == nil ? homeAfter : nil)
       },
       suggestions: { subs, after, _, _ in
@@ -142,14 +171,47 @@ struct ForYouEngineTests {
       },
       upvoted: { _, _ in
         calls.upvoted.withLock { $0 += 1 }
-        return [Self.post("u1", sub: "selfhosted", title: "Proxmox cluster tips"), Self.post("u2", sub: "espresso", title: "Espresso puck prep")]
+        return [
+          Self.post("u1", sub: "selfhosted", title: "Proxmox cluster tips"), Self.post("u2", sub: "espresso", title: "Espresso puck prep"),
+          Self.post("u3", sub: "selfhosted", title: "Backups for a home lab"), Self.post("u4", sub: "espresso", title: "Light roast tips"),
+          Self.post("u5", sub: "canada", title: "A one-off upvote"),
+        ]
       },
       saved: { _, _ in [] },
       related: { _, _ in [] },
-      subscribed: { _ in ["homelab"] },
+      subscribed: { _ in calls.followed.withLock { $0 } },
       excluded: { [] },
     )
-    return ForYouEngine(sources: sources)
+    return ForYouEngine(sources: sources, makeScorer: { _ in scorer.map(StubScorer.init) })
+  }
+
+  private final class StubScorer: TitleScoring {
+    let scoring: @Sendable (String) -> Double?
+    init(_ scoring: @escaping @Sendable (String) -> Double?) {
+      self.scoring = scoring
+    }
+
+    func score(_ title: String) -> Double? {
+      scoring(title)
+    }
+
+    var likedCount: Int {
+      1
+    }
+  }
+
+  @Test func suggestionsLessRelevantThanATypicalHomePostAreLeftOut() async throws {
+    let calls = Calls()
+    let engine = engine(calls: calls, scorer: { $0.contains("server") ? 0.9 : $0 == "A post" ? 0.5 : 0.1 })
+    let page = try #require(await engine.page(after: nil, sort: .best, limit: 8, credential: Self.credential))
+    #expect(Set(page.reasons.keys) == ["t3_s1"])
+
+    let diagnostics = try #require(await engine.diagnostics(account: ForYouEngine.Account(Self.credential)))
+    #expect(diagnostics.lastPage?.threshold == 0.5)
+    #expect(diagnostics.lastPage?.eligible == 2)
+    #expect(diagnostics.lastPage?.relevant == 1)
+    #expect(diagnostics.lastPage?.shown == 1)
+    #expect(diagnostics.unqualified.map(\.name) == ["canada"])
   }
 
   @Test func mixesOneSuggestionAfterEveryFourHomePosts() async throws {
@@ -226,6 +288,34 @@ struct ForYouEngineTests {
     let first = try #require(await engine.page(after: nil, sort: .best, limit: 8, credential: Self.credential))
     let next = await engine.page(after: first.after, sort: .best, limit: 8, credential: Self.credential)
     #expect(next == nil)
+  }
+
+  @Test func anEmptyHomeWithFailedSuggestionsFailsThePage() async {
+    let calls = Calls()
+    let page = await engine(calls: calls, suggestionsFail: true, homeAfter: nil, homeCount: 0)
+      .page(after: nil, sort: .best, limit: 8, credential: Self.credential)
+    #expect(page == nil)
+  }
+
+  @Test func followingASuggestedSubredditStopsItsSuggestions() async throws {
+    let calls = Calls()
+    let engine = engine(calls: calls)
+    let first = try #require(await engine.page(after: nil, sort: .best, limit: 8, credential: Self.credential))
+    #expect(first.posts.contains { $0.subreddit == "espresso" })
+    calls.followed.withLock { $0.append("espresso") }
+    let again = try #require(await engine.page(after: nil, sort: .best, limit: 8, credential: Self.credential))
+    #expect(!again.posts.contains { $0.subreddit == "espresso" })
+  }
+
+  @Test func signingInAgainOnACredentialStartsOver() async {
+    let calls = Calls()
+    let engine = engine(calls: calls)
+    _ = await engine.page(after: nil, sort: .best, limit: 8, credential: Self.credential)
+    var reauthorized = Self.credential
+    reauthorized.refreshToken = "placeholder-other-grant"
+    _ = await engine.page(after: nil, sort: .best, limit: 8, credential: reauthorized)
+    #expect(calls.upvoted.withLock { $0 } == 2)
+    #expect(await engine.diagnostics(account: ForYouEngine.Account(Self.credential)) != nil)
   }
 
   @Test func homeFailingFailsThePage() async {

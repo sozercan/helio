@@ -61,6 +61,7 @@ struct BehaviorPanel: View {
           .pickerStyle(DefaultPickerStyle())
 
           WSNavigationLink(.setting(.filteredSubreddits), "Filtered Subreddits")
+          WSNavigationLink(.setting(.forYou), "For You Suggestions")
         }
 
         Section {
