@@ -27,7 +27,7 @@ struct WebPageScreen: View {
 
   init(url: URL) {
     self.url = url
-    _lease = State(initialValue: ScreenStates.shared.lease("web:\(url.absoluteString)") { WebPageSlot() })
+    _lease = State(initialValue: ScreenStates.shared.lease("web:\(url.absoluteString)", owner: nil) { WebPageSlot() })
   }
 
   var body: some View {

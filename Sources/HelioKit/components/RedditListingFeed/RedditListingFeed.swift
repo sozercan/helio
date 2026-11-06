@@ -18,6 +18,9 @@ struct RedditListingFeed<Header: View, Footer: View, S: Sorting>: View {
   private var footer: () -> Footer
   private var subreddit: Subreddit?
   private var disableSearch: Bool
+  /// Kept to hand to a manager taken over from the screen this one replaced, whose own fetches
+  /// read that screen's state.
+  private let fetch: FeedItemsManager<S>.ItemsFetchFn
   var forceRefresh: Binding<Bool>?
   @Default(.SubredditFeedDefSettings) private var subredditFeedDefSettings
   @Default(.GeneralDefSettings) private var generalDefSettings
@@ -26,7 +29,7 @@ struct RedditListingFeed<Header: View, Footer: View, S: Sorting>: View {
     RedditCredentialsManager.shared.selectedCredential(id: generalDefSettings.redditCredentialSelectedID)?.authorizationID
   }
 
-  init(feedId: String, showSubInPosts: Bool = false, title: String, theme: ThemeBG, fetch: @escaping FeedItemsManager<S>.ItemsFetchFn, @ViewBuilder header: @escaping () -> Header = { EmptyView() }, @ViewBuilder footer: @escaping () -> Footer = { EmptyView() }, initialSorting: S? = nil, disableSearch: Bool = true, subreddit: Subreddit? = nil, forceRefresh: Binding<Bool>? = nil, hideReadPosts: Bool = false) where S == SubListingSortOption {
+  init(feedId: String, showSubInPosts: Bool = false, title: String, theme: ThemeBG, fetch: @escaping FeedItemsManager<S>.ItemsFetchFn, @ViewBuilder header: @escaping () -> Header = { EmptyView() }, @ViewBuilder footer: @escaping () -> Footer = { EmptyView() }, initialSorting: S? = nil, disableSearch: Bool = true, subreddit: Subreddit? = nil, forceRefresh: Binding<Bool>? = nil, hideReadPosts: Bool = false, stateOwner: AnyObject? = nil) where S == SubListingSortOption {
     self.showSubInPosts = showSubInPosts
     self.title = title
     self.theme = theme
@@ -35,8 +38,11 @@ struct RedditListingFeed<Header: View, Footer: View, S: Sorting>: View {
     self.subreddit = subreddit
     self.disableSearch = disableSearch
     self.forceRefresh = forceRefresh // Assign the optional forceRefresh Binding
-    // Taken over from the screen this one replaces when the layout changes (`ScreenStates`).
-    self._lease = .init(initialValue: ScreenStates.shared.lease("feed:\(feedId)") { FeedItemsManager(sorting: initialSorting, hideReadPosts: hideReadPosts, fetchFn: fetch) })
+    self.fetch = fetch
+    let make = { FeedItemsManager(sorting: initialSorting, hideReadPosts: hideReadPosts, fetchFn: fetch) }
+    // With an owner, taken over from the screen this one replaces when the layout changes
+    // (`ScreenStates`).
+    self._lease = .init(initialValue: stateOwner.map { ScreenStates.shared.lease("feed", owner: $0, make: make) } ?? ScreenStateLease(unshared: make()))
     self._filters = FetchRequest<CachedFilter>(sortDescriptors: [NSSortDescriptor(key: "text", ascending: true)], predicate: NSPredicate(format: "subID == %@", (subreddit?.data?.display_name ?? feedId) as CVarArg), animation: .default)
   }
 
@@ -344,9 +350,21 @@ struct RedditListingFeed<Header: View, Footer: View, S: Sorting>: View {
         }
         .onAppear {
           lease.adopt()
-          // Taken over from the screen this one replaced: back to where that one was.
-          if lease.takeHandedOver(), let anchor = itemsManager.scrollAnchorID {
-            doThisAfter(0.1) { proxy.scrollTo(anchor, anchor: .top) }
+          // Taken over from the screen this one replaced: fetches through this one, and back to
+          // where that one was.
+          if lease.takeHandedOver() {
+            itemsManager.replaceFetch(fetch)
+            if let anchor = itemsManager.scrollAnchorID {
+              if canvas {
+                // The row of tiles holding that post, by the row's id, as the grid is laid out again.
+                let rowID: String?? = canvasGrid(geo).rows(canvasPosts).first { $0.contains { $0.id == anchor } }.map(\.first?.id)
+                if let rowID {
+                  doThisAfter(0.1) { proxy.scrollTo(rowID, anchor: .top) }
+                }
+              } else {
+                doThisAfter(0.1) { proxy.scrollTo(anchor, anchor: .top) }
+              }
+            }
           }
           // The manager owns the initial request, independent of navigation task cancellation.
           Task {
@@ -374,23 +392,29 @@ extension RedditListingFeed {
     return CanvasGrid(width: contentWidth, division: division)
   }
 
-  /// The feed's posts as rows of canvas tiles. Tiles load their thumbnails as they show, without
-  /// prefetching the media of the posts around them.
-  @ViewBuilder
-  private func canvasRows(grid: CanvasGrid, settings: PostLinkDefSettings) -> some View {
-    let posts = itemsManager.entities.compactMap { entity -> Post? in
+  private var canvasPosts: [Post] {
+    itemsManager.entities.compactMap { entity -> Post? in
       if case let .post(post) = entity {
         post
       } else {
         nil
       }
     }
-    ForEach(grid.rows(posts), id: \.first?.id) { row in
+  }
+
+  /// The feed's posts as rows of canvas tiles. Tiles load their thumbnails as they show, without
+  /// prefetching the media of the posts around them.
+  private func canvasRows(grid: CanvasGrid, settings: PostLinkDefSettings) -> some View {
+    ForEach(grid.rows(canvasPosts), id: \.first?.id) { row in
       CanvasRow(posts: row, grid: grid) { post in
         if let sub = post.helioData?.subreddit ?? subreddit {
           CanvasTile(post: post, sub: sub, size: grid.tileSize, theme: selectedTheme.postLinks.theme, showSub: showSubInPosts, blurNSFW: settings.blurNSFW, readOnScroll: settings.readOnScroll)
             .equatable()
-            .onAppear { itemsManager.elementAppeared(entity: .post(post), prefetchMedia: false) }
+            .onAppear {
+              itemsManager.elementAppeared(entity: .post(post), prefetchMedia: false)
+              itemsManager.rowShown(post.id)
+            }
+            .onDisappear { itemsManager.rowHidden(post.id) }
         }
       }
       .listRowInsets(EdgeInsets(top: 0, leading: 0, bottom: CanvasGrid.spacing, trailing: 0))

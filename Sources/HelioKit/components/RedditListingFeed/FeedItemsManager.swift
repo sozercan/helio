@@ -59,7 +59,7 @@ class FeedItemsManager<S> {
   var selectedFilter: ShallowCachedFilter?
 
   var chunkSize: Int
-  private let fetchFn: ItemsFetchFn
+  @ObservationIgnored private var fetchFn: ItemsFetchFn
   private let currentCredential: @MainActor () -> RedditCredential?
   @ObservationIgnored private var authorization: RedditCredential.AuthorizationID?
   private let prefetchRange = 2
@@ -272,6 +272,12 @@ class FeedItemsManager<S> {
   @ObservationIgnored private var shownRowIDs: Set<String> = []
   /// The row at the top of the list when it last stopped scrolling; nil at the top of the feed.
   @ObservationIgnored private(set) var scrollAnchorID: String?
+
+  /// Fetches through `fetchFn` from now on: the screen that took this feed over when the layout
+  /// changed, as the one that made it is gone (`ScreenStates`).
+  func replaceFetch(_ fetchFn: @escaping ItemsFetchFn) {
+    self.fetchFn = fetchFn
+  }
 
   func rowShown(_ id: String) {
     shownRowIDs.insert(id)

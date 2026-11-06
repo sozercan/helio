@@ -87,7 +87,7 @@ struct PostView: View, Equatable {
     let commentsDefSettings = CachedDefaults[.CommentsSectionDefSettings]
 
     let sort = defSettings.perPostSort ? (defSettings.postSorts[post.id] ?? commentsDefSettings.preferredSort) : commentsDefSettings.preferredSort
-    _lease = State(initialValue: isPreview ? ScreenStateLease(unshared: PostSession(sort: sort)) : ScreenStates.shared.lease("post:\(post.id)|\(highlightID ?? "")") { PostSession(sort: sort) })
+    _lease = State(initialValue: isPreview ? ScreenStateLease(unshared: PostSession(sort: sort)) : ScreenStates.shared.lease("post|\(highlightID ?? "")", owner: post) { PostSession(sort: sort) })
   }
 
   /// Loads the comments, and with `full` the post's details. Every load (the first one, pull to
