@@ -11,13 +11,15 @@ import SwiftUI
 /// down. All of it was worked out on the device.
 struct ForYouSettings: View {
   @Default(.forYouDismissedSubs) private var dismissed
+  /// Observed for the selected account's id: switching accounts changes only that.
+  @Default(.GeneralDefSettings) private var generalDefSettings
   @Environment(\.useTheme) private var theme
   @State private var diagnostics: ForYouDiagnostics?
   @State private var loaded = false
 
   /// The signed-in account, whose diagnostics show: another account's never do.
   private var account: ForYouEngine.Account? {
-    RedditCredentialsManager.shared.selectedCredential.map(ForYouEngine.Account.init)
+    RedditCredentialsManager.shared.selectedCredential(id: generalDefSettings.redditCredentialSelectedID).map(ForYouEngine.Account.init)
   }
 
   private func load() async {
