@@ -179,20 +179,26 @@ struct ScreenStatesTests {
     #expect(new.model !== goneModel)
   }
 
-  @Test func aScreenBuiltBeforeAnotherLayoutChangeDoesNotGetWhatThatOneDropped() async {
+  @Test func aCoveredScreenKeepsItsStateAcrossAnotherLayoutChange() async {
     let states = ScreenStates()
-    var old: ScreenStateLease<Model>? = states.lease("feed", owner: home, now: start) { Model() }
+    var old: ScreenStateLease<Model>? = states.lease("post|", owner: home, now: start) { Model() }
     old?.adopt(in: posts)
     let oldModel = old?.model
     states.beginHandoff(in: posts, now: start, endsItself: false)
-    let new = states.lease("feed", owner: home, now: start) { Model() }
+    // Built under a web page, and not shown before the layout changes again.
+    var covered: ScreenStateLease<Model>? = states.lease("post|", owner: home, now: start) { Model() }
     old = nil
     await letLeasesGo()
-    // The layout changes again before the new screen shows.
+    states.endHandoff()
     states.beginHandoff(in: posts, now: start, endsItself: false)
-    new.adopt(in: posts)
-    #expect(new.model !== oldModel)
-    #expect(!new.takeHandedOver())
+    let next = states.lease("post|", owner: home, now: start) { Model() }
+    covered = nil
+    await letLeasesGo()
+    states.endHandoff()
+    next.adopt(in: posts)
+    #expect(covered == nil)
+    #expect(next.model === oldModel)
+    #expect(next.takeHandedOver())
   }
 
   @Test func aCoveredScreenTakesItsStateOverWhenItShowsAfterTheHandoff() async {

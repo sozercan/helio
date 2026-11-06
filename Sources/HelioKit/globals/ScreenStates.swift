@@ -94,6 +94,9 @@ final class ScreenStates {
   /// some views it initializes.
   func lease<Model: AnyObject>(_ name: String, owner: AnyObject?, now: Date = .now, make: @escaping () -> Model) -> ScreenStateLease<Model> {
     if now < handoffEnds, let entry = unclaimed(name: name, owner: owner, as: Model.self), let model = entry.model as? Model {
+      // Held from now, so it outlives the handoff and the next one for a screen built covered by
+      // another, such as a post under a web page, which shows only once it's uncovered.
+      entry.holders += 1
       return ScreenStateLease(model: model, make: make, name: name, owner: owner, store: self, entry: entry, handoff: handoff)
     }
     return ScreenStateLease(model: make(), make: make, name: name, owner: owner, store: self, entry: nil, handoff: nil)
@@ -109,16 +112,18 @@ final class ScreenStates {
     return entry
   }
 
-  /// Takes `entry`, handed over in `from`, over for a screen that shows, or, if another screen of
-  /// the new layout took it first (both were initialized before either showed), another old
-  /// screen's of the same name and owner. Nil when none is left: the screen gets a model of its own.
+  /// Claims `entry`, handed over in `from` and held by the lease, for a screen that shows, or, if
+  /// another screen of the new layout claimed it first (both were initialized before either
+  /// showed), another old screen's of the same name and owner, which it then holds too. Nil when
+  /// none is left: the screen gets a model of its own.
   fileprivate func takeOver<Model: AnyObject>(_ entry: Entry, from: Int, name: String, owner: AnyObject?, as _: Model.Type) -> Entry? {
-    // Also once that handoff has ended: a screen covered by another (a post under a web page)
-    // shows only when it's uncovered. Not after another layout change, which may have dropped it.
+    // Also once that handoff has ended, for a screen that showed only when uncovered.
     let current = from == handoff && entry.claimedIn != handoff
     guard let chosen = current ? entry : unclaimed(name: name, owner: owner, as: Model.self) else { return nil }
     chosen.claimedIn = handoff
-    chosen.holders += 1
+    if chosen !== entry {
+      chosen.holders += 1
+    }
     if !entries.contains(where: { $0 === chosen }) {
       entries.append(chosen)
     }
@@ -141,7 +146,8 @@ final class ScreenStates {
 
 /// A screen's hold on its model. The screen keeps it in a `@State`, which keeps only the lease
 /// made by its first initialization; those its later initializations make are dropped unused,
-/// which is why a lease only counts once adopted.
+/// which is why a lease claims a handed-over model, or offers its own to the next layout, only
+/// once adopted. It holds a handed-over model from the start, for as long as it lives.
 @MainActor
 @Observable
 final class ScreenStateLease<Model: AnyObject> {
@@ -151,7 +157,7 @@ final class ScreenStateLease<Model: AnyObject> {
   @ObservationIgnored private let name: String
   @ObservationIgnored private weak var owner: AnyObject?
   @ObservationIgnored private let store: ScreenStates?
-  /// The model's entry: the old screen's until adopted, if handed over.
+  /// The model's entry, which the lease holds: the old screen's until adopted, if handed over.
   @ObservationIgnored private var entry: ScreenStates.Entry?
   @ObservationIgnored private var adopted = false
   /// Taken over from a screen of the layout before; read once with `takeHandedOver()`.
@@ -188,22 +194,25 @@ final class ScreenStateLease<Model: AnyObject> {
       }
     }
     guard !adopted, let store else { return }
-    if let candidate = entry {
-      entry = nil
-      if let handoff, let taken = store.takeOver(candidate, from: handoff, name: name, owner: owner, as: Model.self), let takenModel = taken.model as? Model {
-        adopted = true
-        entry = taken
+    adopted = true
+    if let candidate = entry, let handoff {
+      if let taken = store.takeOver(candidate, from: handoff, name: name, owner: owner, as: Model.self), let takenModel = taken.model as? Model {
+        if taken !== candidate {
+          store.release(candidate)
+          entry = taken
+        }
         if takenModel !== model {
           model = takenModel
         }
         return
       }
       // Another screen of the new layout took it first: this one starts afresh.
+      store.release(candidate)
+      entry = nil
       handedOver = false
       model = make()
     }
     if let scope {
-      adopted = true
       entry = store.register(name: name, scope: scope, owner: owner, model: model)
     }
   }
@@ -216,7 +225,7 @@ final class ScreenStateLease<Model: AnyObject> {
   }
 
   deinit {
-    guard adopted, let entry, let store else { return }
+    guard let entry, let store else { return }
     Task { @MainActor in store.release(entry) }
   }
 }
