@@ -6,7 +6,7 @@
 import Foundation
 
 /// Why For You suggests a subreddit, shown in a suggested post's menu.
-enum ForYouReason: Hashable, Sendable {
+enum ForYouReason: Codable, Hashable, Sendable {
   /// A subreddit you follow lists it as a related community.
   case related(to: String)
   case upvoted
@@ -248,13 +248,16 @@ enum ForYouRanking {
 
 /// Where a For You page chain is in each of its two listings: Home and the suggested
 /// subreddits, whose multireddit it keeps, as Reddit's cursor only holds for the same listing.
-/// Carried through the feed as its opaque `after`.
+/// It keeps why each was suggested too, so the chain stays the same when the suggestions are
+/// worked out again elsewhere. Carried through the feed as its opaque `after`.
 struct ForYouCursor: Codable, Equatable {
   /// nil once Home ran out.
   var home: String?
   /// nil once the suggestions ran out, or when there were none.
   var suggested: String?
   var subs: [String]
+  /// By lowercased subreddit name.
+  var reasons: [String: ForYouReason]
 
   private static let prefix = "foryou:"
 
@@ -264,10 +267,11 @@ struct ForYouCursor: Codable, Equatable {
     return Self.prefix + json.base64EncodedString()
   }
 
-  init(home: String?, suggested: String?, subs: [String]) {
+  init(home: String?, suggested: String?, subs: [String], reasons: [String: ForYouReason] = [:]) {
     self.home = home
     self.suggested = suggested
     self.subs = subs
+    self.reasons = reasons
   }
 
   init?(encoded: String) {

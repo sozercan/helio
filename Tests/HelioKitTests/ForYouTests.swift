@@ -141,6 +141,9 @@ struct ForYouEngineTests {
     let suggestions = Mutex<[([String], String?)]>([])
     let upvoted = Mutex(0)
     let followed = Mutex<[String]>(["homelab"])
+    let excluded = Mutex<Set<String>>([])
+    /// Replaces the upvoted posts when set.
+    let upvotedPosts = Mutex<[PostData]?>(nil)
   }
 
   private func engine(
@@ -178,6 +181,9 @@ struct ForYouEngineTests {
       },
       upvoted: { _, _ in
         calls.upvoted.withLock { $0 += 1 }
+        if let posts = calls.upvotedPosts.withLock({ $0 }) {
+          return posts
+        }
         return [
           Self.post("u1", sub: "selfhosted", title: "Proxmox cluster tips"), Self.post("u2", sub: "espresso", title: "Espresso puck prep"),
           Self.post("u3", sub: "selfhosted", title: "Backups for a home lab"), Self.post("u4", sub: "espresso", title: "Light roast tips"),
@@ -187,7 +193,7 @@ struct ForYouEngineTests {
       saved: { _, _ in [] },
       related: { _, _ in [] },
       subscribed: { _ in calls.followed.withLock { $0 } },
-      excluded: { [] },
+      excluded: { calls.excluded.withLock { $0 } },
     )
     return ForYouEngine(sources: sources, makeScorer: { _ in scorer.map(StubScorer.init) })
   }
@@ -359,6 +365,33 @@ struct ForYouEngineTests {
     let diagnostics = try #require(await engine.diagnostics(account: ForYouEngine.Account(Self.credential)))
     #expect(diagnostics.unqualified.first { $0.name == "DataHoarder" }?.breakdown.crossposted.count == 1)
     #expect(!diagnostics.candidates.contains { $0.name == "DataHoarder" })
+  }
+
+  @Test func crosspostsFromExcludedSubredditsAreNotSuggested() async throws {
+    let calls = Calls()
+    calls.excluded.withLock { $0 = ["blocked"] }
+    let engine = engine(calls: calls, homeAfter: nil) { _ in
+      ([Self.post("xblocked", sub: "selfhosted", crosspostOf: Self.post("orig", sub: "Blocked")), Self.post("ok", sub: "espresso")], nil)
+    }
+    let page = try #require(await engine.page(after: nil, sort: .best, limit: 8, credential: Self.credential))
+    #expect(Set(page.reasons.keys) == ["t3_ok"])
+  }
+
+  @Test func aChainKeepsItsSuggestionsWhenTheyAreWorkedOutAgainElsewhere() async throws {
+    let calls = Calls()
+    let engine = engine(calls: calls, homeAfter: nil)
+    let first = try #require(await engine.page(after: nil, sort: .best, limit: 8, credential: Self.credential))
+
+    // Another window works the suggestions out again, and they no longer include these.
+    calls.upvotedPosts.withLock { $0 = [Self.post("a1", sub: "astronomy"), Self.post("a2", sub: "astronomy")] }
+    await engine.invalidate()
+    _ = await engine.page(after: nil, sort: .best, limit: 8, credential: Self.credential)
+    let rebuilt = try #require(await engine.diagnostics(account: ForYouEngine.Account(Self.credential)))
+    #expect(rebuilt.candidates.map(\.name) == ["astronomy"])
+
+    let next = try #require(await engine.page(after: first.after, sort: .best, limit: 8, credential: Self.credential))
+    #expect(Set(next.reasons.values) == [.upvoted])
+    #expect(next.reasons.count == 2)
   }
 
   @Test func homeFailingFailsThePage() async {
