@@ -277,7 +277,7 @@ final class CommandTargets {
   /// itself, not from a profile or another post opened over it.
   static func feedPostID(in router: Router) -> String? {
     // Only from a feed, the top screen of the feed column (a profile opened over a standalone
-    // post registers its posts too): a post opened from elsewhere (the Posts Box, the subs list)
+    // post registers its posts too): a post opened from elsewhere (the subs list, a link)
     // isn't in the feed kept from before.
     guard let feedTop = router.feedPath.last ?? router.fullPath.first, listsPosts(feedTop), let post = router.postColumn.first,
           router.showsPostBesideFeed || router.postPath.isEmpty else { return nil }

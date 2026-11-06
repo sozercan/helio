@@ -106,7 +106,6 @@ struct Tabber: View {
       checkForOnboardingStatus()
       if RedditCredentialsManager.shared.selectedCredential != nil {
         RedditCredentialsManager.shared.updateMe()
-        Task(priority: .utility) { await updatePostsInBox() }
       }
     }
     .task(priority: .utility) {
