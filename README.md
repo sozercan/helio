@@ -8,6 +8,20 @@
 
 Helio is a privacy-focused, open-source Reddit client for iOS and Mac. No analytics, no tracking, no ads, no third-party data collection — your data stays on your device and your account talks only to Reddit. It builds on the [Winston](https://github.com/lo-cafe/winston) app and its community.
 
+## Screenshots
+
+<p align="center">
+  <img src="docs/screenshots/mac.png" alt="Helio on Mac: subreddits sidebar, Home feed and an open post with comments" width="100%">
+</p>
+
+<p align="center">
+  <img src="docs/screenshots/ipad.png" alt="Helio on iPad: subreddits sidebar, Home feed and an open post with comments" width="68%">
+  &nbsp;
+  <img src="docs/screenshots/iphone.png" alt="Helio on iPhone: Home feed" width="23%">
+</p>
+
+<sub>Screenshots use sample posts and a placeholder account.</sub>
+
 ## Privacy
 
 - **No analytics or tracking** — zero telemetry, no usage data collected
