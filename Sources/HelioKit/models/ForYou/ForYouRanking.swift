@@ -118,9 +118,11 @@ enum ForYouRanking {
       var breakdown = ForYouCandidate.Breakdown()
     }
     var tallies: [String: Tally] = [:]
+    // A subreddit a sidebar marks NSFW isn't suggested, whatever else points at it.
+    let over18 = Set(signals.related.filter(\.sub.over18).map { $0.sub.name.lowercased() })
     func record(_ name: String, _ update: (inout Tally) -> Void) {
       let key = name.lowercased()
-      guard !key.isEmpty, !key.hasPrefix("u_"), !builtInFeedIDs.contains(key),
+      guard !key.isEmpty, !key.hasPrefix("u_"), !builtInFeedIDs.contains(key), !over18.contains(key),
             !signals.subscribed.contains(key), !signals.excluded.contains(key) else { return }
       update(&tallies[key, default: Tally(name: name)])
     }
@@ -258,6 +260,10 @@ struct ForYouCursor: Codable, Equatable {
   var subs: [String]
   /// By lowercased subreddit name.
   var reasons: [String: ForYouReason]
+  /// The relevance threshold of the chain's last page, for pages after Home ran out.
+  var threshold: Double?
+  /// The profile that threshold was scored with.
+  var generation: Int?
 
   private static let prefix = "foryou:"
 
@@ -267,11 +273,13 @@ struct ForYouCursor: Codable, Equatable {
     return Self.prefix + json.base64EncodedString()
   }
 
-  init(home: String?, suggested: String?, subs: [String], reasons: [String: ForYouReason] = [:]) {
+  init(home: String?, suggested: String?, subs: [String], reasons: [String: ForYouReason] = [:], threshold: Double? = nil, generation: Int? = nil) {
     self.home = home
     self.suggested = suggested
     self.subs = subs
     self.reasons = reasons
+    self.threshold = threshold
+    self.generation = generation
   }
 
   init?(encoded: String) {

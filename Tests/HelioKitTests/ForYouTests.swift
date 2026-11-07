@@ -40,6 +40,16 @@ struct ForYouRankingTests {
     #expect(Set(ForYouRanking.candidates(from: signals).map(\.name)) == ["selfhosted", "espresso"])
   }
 
+  @Test func aSubredditASidebarMarksNSFWIsNeverACandidate() {
+    let signals = ForYouSignals(
+      upvoted: ["AdultSub", "adultsub"],
+      related: [.init(seed: "homelab", sub: ForYouRelatedSub(name: "AdultSub", subscribers: 90000, over18: true))],
+    )
+    let ranked = ForYouRanking.ranked(from: signals)
+    #expect(ranked.qualified.isEmpty)
+    #expect(ranked.unqualified.isEmpty)
+  }
+
   @Test func olderUpvotesCountLessAndTheOldestNotAtAll() {
     let filler = (0 ..< 30).map { "filler\($0)" }
     let older = filler + ["older", "older"] + (0 ..< 20).map { "more\($0)" } + ["oldest", "oldest"]
@@ -144,6 +154,9 @@ struct ForYouEngineTests {
     let excluded = Mutex<Set<String>>([])
     /// Replaces the upvoted posts when set.
     let upvotedPosts = Mutex<[PostData]?>(nil)
+    /// Runs while a profile builds, after its upvotes are asked for.
+    let duringBuild = Mutex<(@Sendable () async -> Void)?>(nil)
+    let scorersMade = Mutex(0)
   }
 
   private func engine(
@@ -155,6 +168,7 @@ struct ForYouEngineTests {
     homeCrosspostFrom: String? = nil,
     suggestionPage: (@Sendable (_ after: String?) -> ([PostData], String?)?)? = nil,
     scorer: (@Sendable (_ title: String) -> Double?)? = nil,
+    scorerForBuild: (@Sendable (_ build: Int, _ title: String) -> Double?)? = nil,
   ) -> ForYouEngine {
     let sources = ForYouSources(
       home: { _, after, _, _ in
@@ -181,6 +195,9 @@ struct ForYouEngineTests {
       },
       upvoted: { _, _ in
         calls.upvoted.withLock { $0 += 1 }
+        if let duringBuild = calls.duringBuild.withLock({ $0 }) {
+          await duringBuild()
+        }
         if let posts = calls.upvotedPosts.withLock({ $0 }) {
           return posts
         }
@@ -195,7 +212,16 @@ struct ForYouEngineTests {
       subscribed: { _ in calls.followed.withLock { $0 } },
       excluded: { calls.excluded.withLock { $0 } },
     )
-    return ForYouEngine(sources: sources, makeScorer: { _ in scorer.map(StubScorer.init) })
+    return ForYouEngine(sources: sources, makeScorer: { _ in
+      let build = calls.scorersMade.withLock { count in
+        count += 1
+        return count
+      }
+      if let scorerForBuild {
+        return StubScorer { scorerForBuild(build, $0) }
+      }
+      return scorer.map(StubScorer.init)
+    })
   }
 
   private final class StubScorer: TitleScoring {
@@ -392,6 +418,33 @@ struct ForYouEngineTests {
     let next = try #require(await engine.page(after: first.after, sort: .best, limit: 8, credential: Self.credential))
     #expect(Set(next.reasons.values) == [.upvoted])
     #expect(next.reasons.count == 2)
+  }
+
+  @Test func workingSuggestionsOutAgainDuringABuildIsNotUndone() async {
+    let calls = Calls()
+    let engine = engine(calls: calls)
+    calls.duringBuild.withLock { $0 = { await engine.invalidate() } }
+    _ = await engine.page(after: nil, sort: .best, limit: 8, credential: Self.credential)
+    calls.duringBuild.withLock { $0 = nil }
+    #expect(await engine.diagnostics(account: ForYouEngine.Account(Self.credential)) == nil)
+    _ = await engine.page(after: nil, sort: .best, limit: 8, credential: Self.credential)
+    #expect(calls.upvoted.withLock { $0 } == 2)
+  }
+
+  @Test func aChainDoesNotJudgeItsSuggestionsByAnotherWindowsThreshold() async throws {
+    let calls = Calls()
+    // The second build scores Home's titles much higher, so its threshold would cut everything.
+    let engine = engine(calls: calls, homeAfter: nil, scorerForBuild: { build, title in
+      title == "A post" ? (build == 1 ? 0.5 : 0.95) : title.contains("server") ? 0.9 : 0.1
+    })
+    let first = try #require(await engine.page(after: nil, sort: .best, limit: 8, credential: Self.credential))
+    #expect(Set(first.reasons.keys) == ["t3_s1"])
+
+    await engine.invalidate()
+    _ = await engine.page(after: nil, sort: .best, limit: 8, credential: Self.credential)
+
+    let next = try #require(await engine.page(after: first.after, sort: .best, limit: 8, credential: Self.credential))
+    #expect(!next.reasons.isEmpty)
   }
 
   @Test func homeFailingFailsThePage() async {
