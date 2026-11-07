@@ -121,6 +121,8 @@ actor ForYouEngine {
 
   struct Profile {
     let builtAt: Date
+    /// Which build this is: page chains compare it to know whether a threshold still applies.
+    let generation: Int
     var candidates: [ForYouCandidate]
     /// Subreddits the signals point at too weakly to suggest, for the settings' explanation.
     let unqualified: [ForYouCandidate]
@@ -162,9 +164,13 @@ actor ForYouEngine {
   }
 
   private var crossposts: [Account: [NotedCrosspost]] = [:]
-  /// The relevance a suggestion has to reach, from the last page with Home posts to judge by.
-  private var thresholds: [Account: Double] = [:]
   private var lastPageStats: [Account: ForYouPageStats] = [:]
+  /// Numbers each built profile, so a page chain knows whether its relevance threshold came from
+  /// the scorer it's using now.
+  private var builtProfiles = 0
+  /// Counts requests to work the suggestions out again, so a build started before one doesn't
+  /// pass for fresh.
+  private var invalidations = 0
   /// Lowercased names dismissed since launch, left out even by chains that started before.
   private var dismissed: Set<String> = []
 
@@ -192,9 +198,15 @@ actor ForYouEngine {
     // Whether this page asked for suggestions, as opposed to having none left to ask for.
     let wantsSuggestions: Bool
     let account = Account(credential)
-
+    let cursor: ForYouCursor?
     if let after {
-      guard let cursor = ForYouCursor(encoded: after) else { return nil }
+      guard let decoded = ForYouCursor(encoded: after) else { return nil }
+      cursor = decoded
+    } else {
+      cursor = nil
+    }
+
+    if let cursor {
       subs = cursor.subs
       reasonBySub = cursor.reasons
       wantsSuggestions = cursor.suggested != nil && !subs.isEmpty
@@ -236,7 +248,7 @@ actor ForYouEngine {
     }
     // Read for each page, so a suggested subreddit stops being suggested once it's followed.
     let followed = await followedSubreddits(credential: credential, profile: profile)
-    let threshold = relevanceThreshold(home: homePosts, profile: profile, account: account)
+    let threshold = relevanceThreshold(home: homePosts, profile: profile, cursor: cursor)
     let filter = SuggestionFilter(reasons: reasonBySub, followed: followed, excluded: sources.excluded().union(dismissed),
                                   scorer: profile?.scorer, threshold: threshold)
     var suggestedAfter = suggested?.1
@@ -258,8 +270,9 @@ actor ForYouEngine {
     for post in picked {
       reasons[post.name] = reasonBySub[post.subreddit.lowercased()]
     }
-    let cursor = ForYouCursor(home: home?.1, suggested: suggestedAfter, subs: subs, reasons: reasonBySub)
-    return ForYouPage(posts: ForYouRanking.interleave(homePosts, picked, every: Self.suggestEvery), reasons: reasons, after: cursor.encoded)
+    let next = ForYouCursor(home: home?.1, suggested: suggestedAfter, subs: subs, reasons: reasonBySub,
+                            threshold: threshold, generation: profile?.generation)
+    return ForYouPage(posts: ForYouRanking.interleave(homePosts, picked, every: Self.suggestEvery), reasons: reasons, after: next.encoded)
   }
 
   /// The subreddits the account follows now, by lowercased name; the ones it followed when the
@@ -274,13 +287,16 @@ actor ForYouEngine {
   }
 
   /// How close to the account's interests a suggestion has to be: as close as a typical post of
-  /// this page's Home, or of the last page that had Home posts. nil without the embedding.
-  private func relevanceThreshold(home: [PostData], profile: Profile?, account: Account) -> Double? {
-    guard let scorer = profile?.scorer else { return nil }
+  /// this page's Home, or, once Home ran out, of the last Home page in this chain. That one
+  /// holds only while the chain scores with the same profile; after the suggestions were worked
+  /// out again, its scale may not match, so suggestions go unchecked rather than wrongly cut.
+  /// nil without the embedding.
+  private func relevanceThreshold(home: [PostData], profile: Profile?, cursor: ForYouCursor?) -> Double? {
+    guard let profile, let scorer = profile.scorer else { return nil }
     if let threshold = ForYouRanking.relevanceThreshold(homeScores: home.compactMap { scorer.score($0.title) }) {
-      thresholds[account] = threshold
+      return threshold
     }
-    return thresholds[account]
+    return cursor?.generation == profile.generation ? cursor?.threshold : nil
   }
 
   /// What a page's suggestions are checked against.
@@ -342,6 +358,7 @@ actor ForYouEngine {
   /// Works the suggestions out again the next time For You loads from the top. A feed already
   /// showing keeps paging with the suggestions it started with.
   func invalidate() {
+    invalidations += 1
     for account in profiles.keys {
       profiles[account]?.stale = true
     }
@@ -400,10 +417,14 @@ actor ForYouEngine {
     if let task = building[Account(credential)] {
       return await task.value
     }
+    let invalidationsBefore = invalidations
     let task = Task { await self.buildProfile(credential: credential, home: home) }
     building[Account(credential)] = task
-    let profile = await task.value
+    var profile = await task.value
     building[Account(credential)] = nil
+    // Asked to be worked out again while this built from older signals: this page uses it, and
+    // the next first page builds another.
+    profile.stale = invalidations != invalidationsBefore
     profiles[Account(credential)] = profile
     return profile
   }
@@ -457,7 +478,8 @@ actor ForYouEngine {
     let candidates = Array(ranked.qualified.prefix(Self.maxCandidates))
     let relatedFailures = lookups.count { $0 == nil }
     forYouLogger.info("Built For You from \(seeds.count) seeds (\(relatedFailures) related lookups failed): \(candidates.count) subreddits to suggest")
-    return Profile(builtAt: now(), candidates: candidates, unqualified: Array(ranked.unqualified.prefix(20)), subscribed: subscribed,
+    builtProfiles += 1
+    return Profile(builtAt: now(), generation: builtProfiles, candidates: candidates, unqualified: Array(ranked.unqualified.prefix(20)), subscribed: subscribed,
                    scorer: makeScorer(Array(likedTitles.prefix(200))), seeds: seeds, relatedFailures: relatedFailures,
                    upvotedCount: upvoted?.count, savedCount: saved?.count)
   }
