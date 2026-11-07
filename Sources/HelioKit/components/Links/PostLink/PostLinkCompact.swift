@@ -119,14 +119,21 @@ struct PostLinkCompact: View, Equatable, Identifiable {
             }
 
             let newCommentsCount = helioData.seenCommentsCount == nil ? nil : data.num_comments - helioData.seenCommentsCount!
-            BadgeView(avatarRequest: helioData.avatarImageRequest, showAuthorOnPostLinks: defSettings.showAuthor, saved: data.badgeKit.saved, usernameColor: nil, author: data.badgeKit.author, userFlair: data.badgeKit.userFlair, created: data.badgeKit.created, avatarURL: nil, theme: theme.theme.badge, commentsCount: formatBigNumber(data.badgeKit.numComments), newCommentsCount: newCommentsCount, votesCount: formatBigNumber(data.badgeKit.ups), likes: data.likes, openSub: !theme.theme.badge.avatar.visible && showSub ? openSubreddit : nil, subName: data.subreddit, onTapStats: openPost)
+            BadgeView(avatarRequest: helioData.avatarImageRequest, showAuthorOnPostLinks: defSettings.showAuthor, saved: data.badgeKit.saved, usernameColor: nil, author: data.badgeKit.author, userFlair: data.badgeKit.userFlair, created: data.badgeKit.created, avatarURL: nil, theme: theme.theme.badge, commentsCount: formatBigNumber(data.badgeKit.numComments), newCommentsCount: newCommentsCount, votesCount: formatBigNumber(data.badgeKit.ups), likes: data.likes, openSub: !theme.theme.badge.avatar.visible && showSub ? openSubreddit : nil, subName: data.subreddit, suggested: helioData.forYouReason != nil, onTapStats: openPost)
 
             if showSub, theme.theme.badge.avatar.visible {
               let subName = data.subreddit
-              Button(action: openSubreddit) {
-                Tag(subredditIconKit: nil, text: "r/\(subName)")
+              HStack(spacing: 4) {
+                Button(action: openSubreddit) {
+                  Tag(subredditIconKit: nil, text: "r/\(subName)")
+                }
+                .buttonStyle(.plain)
+
+                if helioData.forYouReason != nil {
+                  SuggestedMarker(color: theme.theme.badge.subColor())
+                    .font(.caption)
+                }
               }
-              .buttonStyle(.plain)
             }
           }
           .frame(maxWidth: .infinity, alignment: .topLeading)

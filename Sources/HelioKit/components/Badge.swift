@@ -73,6 +73,8 @@ struct BadgeView: View, Equatable {
   var likes: Bool?
   var openSub: (() -> Void)?
   var subName: String?
+  /// A For You suggestion, from a subreddit the account doesn't follow: marked by its name.
+  var suggested = false
   /// Makes the numbers line its own tap target. Without one, a tap on it goes to the nearest
   /// tappable view, the author's name, instead of the row.
   var onTapStats: (() -> Void)?
@@ -109,6 +111,10 @@ struct BadgeView: View, Equatable {
               }
               .buttonStyle(.plain)
               .accessibilityLabel("r/\(subName)")
+
+              if suggested {
+                SuggestedMarker(color: theme.subColor())
+              }
             }
 
             if showAuthorOnPostLinks {
@@ -153,6 +159,10 @@ struct BadgeView: View, Equatable {
               Tag(subredditIconKit: nil, text: "r/\(subName)", fontSize: theme.statsText.size, backgroundColor: theme.subColor())
             }
             .buttonStyle(.plain)
+
+            if suggested {
+              SuggestedMarker(color: theme.subColor())
+            }
           }
 
           // The numbers read as one element, "4.8K points, 1.3K comments, 2 hours ago".
@@ -246,5 +256,16 @@ struct BadgeOpt: View, Equatable {
 
   var body: some View {
     BadgeView(avatarRequest: avatarRequest, saved: badgeKit.saved, usernameColor: usernameColor, author: badgeKit.author, userFlair: badgeKit.userFlair, created: badgeKit.created, avatarURL: avatarURL, theme: theme, commentsCount: formatBigNumber(badgeKit.numComments), votesCount: !showVotes ? nil : formatBigNumber(badgeKit.ups), openSub: openSub, subName: subName)
+  }
+}
+
+/// Marks a For You suggestion, by its subreddit's name or tag.
+struct SuggestedMarker: View {
+  var color: Color
+
+  var body: some View {
+    Image(systemName: "sparkles")
+      .foregroundStyle(color)
+      .accessibilityLabel("Suggested")
   }
 }

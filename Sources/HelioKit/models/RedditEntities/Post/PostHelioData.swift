@@ -15,6 +15,8 @@ class PostHelioData: Hashable {
   }
 
   var permaURL: URL?
+  /// Why For You suggested this post, from a subreddit the account doesn't follow.
+  var forYouReason: ForYouReason?
   var extractedMedia: MediaExtractedType?
   var extractedMediaForcedNormal: MediaExtractedType?
   var _strongSubreddit: Subreddit?
