@@ -8,7 +8,7 @@ on:
   workflow_dispatch:
     inputs:
       version:
-        description: Version to stamp on the dry-run build, like 1.7.0
+        description: Version to stamp on the dry-run build, like 0.2.0
         required: true
 
 concurrency:
@@ -46,7 +46,7 @@ jobs:
         run: |
           version="${INPUT_VERSION:-${GITHUB_REF_NAME#v}}"
           if ! [[ "$version" =~ ^[0-9]+\.[0-9]+(\.[0-9]+)?$ ]]; then
-            echo "::error::'$version' isn't a version like 1.7.0 (tags look like v1.7.0)"
+            echo "::error::'$version' isn't a version like 0.2.0 (tags look like v0.2.0)"
             exit 1
           fi
           echo "VERSION=$version" >> "$GITHUB_ENV"
