@@ -58,7 +58,7 @@ Helio runs on iOS 26, iPadOS 26 and macOS 26 or later. Sign in with your Reddit 
 Each [release](https://github.com/sozercan/helio/releases) has an unsigned `.ipa` and a Mac `.zip`.
 
 - **iPhone and iPad:** add the source `https://sozercan.github.io/helio/source.json` in [SideStore](https://sidestore.io) or [AltStore](https://altstore.io) to install and get updates, or sideload the `.ipa` with [Sideloadly](https://sideloadly.io). These tools re-sign the app with your Apple ID. With a free account the app has to be refreshed every 7 days, and the Safari extension uses a second app ID. iCloud isn't available to sideloaded apps, so data stays on the device.
-- **Mac:** unzip, move Helio to Applications, then allow it under System Settings › Privacy & Security on first launch. The build isn't notarized and has no keychain access, so it asks you to sign in to Reddit again on each launch. Build it yourself to keep the login.
+- **Mac:** unzip, move Helio to Applications, then allow it under System Settings › Privacy & Security on first launch. The build isn't notarized and has no keychain access, so it asks you to sign in to Reddit again on each launch. Build it yourself to keep the login. After the first install, Helio › Check for Updates… installs new versions.
 
 ### Build it yourself
 

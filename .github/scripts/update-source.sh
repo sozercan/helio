@@ -12,7 +12,7 @@ set -euo pipefail
 repo="https://github.com/sozercan/helio"
 icon="https://raw.githubusercontent.com/sozercan/helio/main/App/Helio/Assets.xcassets/appIcons/iconStandard.appiconset/iconStandard.png"
 tint="F5A623"
-description="Helio is a privacy-focused, open-source Reddit client for iOS and Mac. No analytics, no tracking, no ads. It needs your own Reddit API client ID; see the README for setup. Sideloaded builds can't use iCloud, so data stays on the device."
+description="Helio is a privacy-focused, open-source Reddit client for iOS and Mac. No analytics, no tracking, no ads. Sign in with your Reddit account; no API key is needed. Sideloaded builds can't use iCloud, so data stays on the device."
 
 while [ $# -gt 0 ]; do
   case "$1" in
