@@ -27,18 +27,15 @@ struct GeneralPanel: View {
   enum ImportKind { case settings, apolloReadHistory }
   @State private var showClearReadHistoryAlert = false
   #if targetEnvironment(macCatalyst)
-    /// Sparkle's setting, which its own prompt also changes; read again on each appearance.
-    @State private var automaticallyChecksForUpdates = MacUpdater.shared.automaticallyChecks
+    @Bindable private var macUpdater = MacUpdater.shared
   #endif
   var body: some View {
     List {
       Group {
         #if targetEnvironment(macCatalyst)
-          if MacUpdater.shared.isAvailable {
+          if macUpdater.isAvailable {
             Section {
-              Toggle("Check for updates automatically", systemImage: "arrow.down.circle", isOn: $automaticallyChecksForUpdates)
-                .onChange(of: automaticallyChecksForUpdates) { _, new in MacUpdater.shared.automaticallyChecks = new }
-                .onAppear { automaticallyChecksForUpdates = MacUpdater.shared.automaticallyChecks }
+              Toggle("Check for updates automatically", systemImage: "arrow.down.circle", isOn: $macUpdater.automaticallyChecks)
             } header: {
               Text("Updates")
             } footer: {

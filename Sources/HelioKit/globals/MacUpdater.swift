@@ -5,6 +5,7 @@
 
 #if targetEnvironment(macCatalyst)
   import Foundation
+  import Observation
   import os
 
   /// Sparkle updates for the Mac app, through the macOS plugin `HelioMacUpdater.bundle`
@@ -16,27 +17,48 @@
   /// only once the user allows them: Sparkle asks on the second launch, and Settings can turn
   /// them off.
   @MainActor
+  @Observable
   final class MacUpdater {
     static let shared = MacUpdater()
 
     private static let logger = Logger(subsystem: "com.sertacozercan.helio", category: "Updater")
+    private static let automaticallyChecksKey = "automaticallyChecksForUpdates"
     /// The plugin's updater, not started until `start()`. Nil when the bundle is missing or the
     /// app has no update key, which Sparkle needs to trust an ad-hoc signed update; then
     /// there's no menu item or setting.
-    private let updater: NSObject?
-    private var started = false
+    @ObservationIgnored private let updater: NSObject?
+    @ObservationIgnored private var started = false
+    /// Sparkle's setting as last read. Sparkle's own prompt changes it too, so it's read again
+    /// whenever the app's user defaults change, where Sparkle keeps it.
+    private var checksAutomatically = false
 
     var isAvailable: Bool {
       updater != nil
     }
 
     var automaticallyChecks: Bool {
-      get { (updater?.value(forKey: "automaticallyChecksForUpdates") as? Bool) ?? false }
-      set { updater?.setValue(newValue, forKey: "automaticallyChecksForUpdates") }
+      get { checksAutomatically }
+      set {
+        updater?.setValue(newValue, forKey: Self.automaticallyChecksKey)
+        refresh()
+      }
     }
 
     private init() {
       updater = Self.loadUpdater()
+      guard updater != nil else { return }
+      refresh()
+      // The singleton lives as long as the app, so the observer is never removed.
+      NotificationCenter.default.addObserver(forName: UserDefaults.didChangeNotification, object: nil, queue: .main) { [weak self] _ in
+        MainActor.assumeIsolated { self?.refresh() }
+      }
+    }
+
+    private func refresh() {
+      let value = (updater?.value(forKey: Self.automaticallyChecksKey) as? Bool) ?? false
+      if value != checksAutomatically {
+        checksAutomatically = value
+      }
     }
 
     /// Starts Sparkle's schedule, once. Call it after the first window shows: Sparkle's prompt
