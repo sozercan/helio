@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="utf-8"?>
+<rss version="2.0" xmlns:sparkle="http://www.andymatuschak.org/xml-namespaces/sparkle">
+  <channel>
+    <title>Helio</title>
+    <link>https://github.com/sozercan/helio/releases</link>
+    <description>Updates to Helio for Mac.</description>
+    <language>en</language>
+    <item>
+      <title>Helio 0.1.0</title>
+      <pubDate>Sat, 07 Nov 2026 22:26:00 +0000</pubDate>
+      <sparkle:version>1373</sparkle:version>
+      <sparkle:shortVersionString>0.1.0</sparkle:shortVersionString>
+      <sparkle:minimumSystemVersion>26.0</sparkle:minimumSystemVersion>
+      <sparkle:fullReleaseNotesLink>https://github.com/sozercan/helio/releases/tag/v0.1.0</sparkle:fullReleaseNotesLink>
+      <description sparkle:format="markdown"><![CDATA[## What's Changed
+* feat: Apollo-style foundation on iOS 26 by @sozercan in https://github.com/sozercan/helio/pull/1
+* build: move the app's code into a Swift package by @sozercan in https://github.com/sozercan/helio/pull/2
+* feat: adapt layout to the window for iPhone Duo and Mac by @sozercan in https://github.com/sozercan/helio/pull/3
+* feat: polish the Mac app and rename it to Helio by @sozercan in https://github.com/sozercan/helio/pull/5
+* refactor: rename Winston to Helio by @sozercan in https://github.com/sozercan/helio/pull/6
+* fix: make the feed's floating button tappable and optional by @sozercan in https://github.com/sozercan/helio/pull/7
+* ci: add lint, build/test on PRs, and IPA/Mac releases with a sideload feed by @sozercan in https://github.com/sozercan/helio/pull/8
+* feat: Apollo-style look with Liquid Glass chrome by @sozercan in https://github.com/sozercan/helio/pull/9
+* perf: cut Reddit API calls and main-thread work by @sozercan in https://github.com/sozercan/helio/pull/11
+* docs: add AGENTS.md and CONTRIBUTING.md, vendor autoreview, and tidy credits by @sozercan in https://github.com/sozercan/helio/pull/10
+* fix: stop feeds from hanging on the spinner or showing stale pages by @sozercan in https://github.com/sozercan/helio/pull/12
+* feat: sign in with a Reddit account by default, no API key needed by @sozercan in https://github.com/sozercan/helio/pull/14
+* refactor: centralize feed and request ownership by @sozercan in https://github.com/sozercan/helio/pull/13
+* refactor(auth): serialize credential-store changes by @sozercan in https://github.com/sozercan/helio/pull/15
+* refactor: persist account lists under captured authorization by @sozercan in https://github.com/sozercan/helio/pull/16
+* refactor: remove dead code and fix multireddit sorting by @sozercan in https://github.com/sozercan/helio/pull/18
+* ci: build and release with Xcode 27.2 for iPhone Duo by @sozercan in https://github.com/sozercan/helio/pull/19
+* fix: navigation, inbox, quick actions and search fixes by @sozercan in https://github.com/sozercan/helio/pull/20
+* feat: VoiceOver, Dynamic Type and contrast across feeds and posts by @sozercan in https://github.com/sozercan/helio/pull/21
+* feat: move floating controls into system bars and menus by @sozercan in https://github.com/sozercan/helio/pull/22
+* feat: show the feed and open post side by side on wide layouts by @sozercan in https://github.com/sozercan/helio/pull/23
+* feat: system sidebar selection, keyboard commands and Home on launch by @sozercan in https://github.com/sozercan/helio/pull/24
+* feat: put each screen's actions in the Mac window toolbar by @sozercan in https://github.com/sozercan/helio/pull/25
+* feat: theme gallery, text size and Canvas layout by @sozercan in https://github.com/sozercan/helio/pull/26
+* fix(mac): finish web sign-in, theme the sidebar and open links in the app by @sozercan in https://github.com/sozercan/helio/pull/28
+* feat(mac): run your own web extensions in pages opened from links by @sozercan in https://github.com/sozercan/helio/pull/29
+* perf: benchmark the Mac app, decode feed images at their shown width, and reuse Mac toolbar items by @sozercan in https://github.com/sozercan/helio/pull/31
+* docs: restyle the README with labeled screenshots for each platform by @sozercan in https://github.com/sozercan/helio/pull/32
+* feat: show the feed and the open post side by side on the open iPhone Duo by @sozercan in https://github.com/sozercan/helio/pull/33
+* fix: title the subreddit list "Subreddits" instead of "Subs" by @sozercan in https://github.com/sozercan/helio/pull/35
+* feat: remove the Posts Box and put Reddit Save in its place by @sozercan in https://github.com/sozercan/helio/pull/36
+* feat: log out of an account from the account switcher by @sozercan in https://github.com/sozercan/helio/pull/37
+* feat: run your web extensions on iPhone and iPad too by @sozercan in https://github.com/sozercan/helio/pull/38
+* fix: stop Debug builds crashing when the screen rotates by @sozercan in https://github.com/sozercan/helio/pull/40
+* feat: scrub videos and GIFs by swiping sideways in fullscreen by @sozercan in https://github.com/sozercan/helio/pull/34
+* fix: keep comment and feed rows small enough to survive rotation in Debug builds by @sozercan in https://github.com/sozercan/helio/pull/41
+* feat: update the Mac app in place with Sparkle by @sozercan in https://github.com/sozercan/helio/pull/42
+* chore: prepare the first release, 0.1.0 by @sozercan in https://github.com/sozercan/helio/pull/43
+
+## New Contributors
+* @sozercan made their first contribution in https://github.com/sozercan/helio/pull/1
+
+**Full Changelog**: https://github.com/sozercan/helio/commits/v0.1.0]]></description>
+      <enclosure url="https://github.com/sozercan/helio/releases/download/v0.1.0/Helio-0.1.0-mac.zip" length="30782273" type="application/octet-stream" sparkle:edSignature="Dyorhm797PqqAX+64LB6WiLj+khl6SjdtlXJjv1+gHIHCRWPk9xDviSd7AoG9RTNPsia+8Ypgh1FAF0ZQw+mDw=="/>
+    </item>
+  </channel>
+</rss>
