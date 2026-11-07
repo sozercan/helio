@@ -20,6 +20,7 @@
   @objc(HelioMacUpdater)
   public final class HelioMacUpdater: NSObject {
     private let controller = SPUStandardUpdaterController(startingUpdater: false, updaterDelegate: nil, userDriverDelegate: nil)
+    private var canCheckObservation: NSKeyValueObservation?
 
     /// Starts the updater, which checks on its own schedule once the user allows it: Sparkle
     /// asks on the second launch.
@@ -36,6 +37,15 @@
     /// Checks now, showing Sparkle's progress, update and up-to-date windows.
     @objc public func checkForUpdates() {
       controller.checkForUpdates(nil)
+    }
+
+    /// Calls `handler` with whether a check can start now, and again each time that changes. It
+    /// can't while Sparkle downloads the feed or an update in the background, and then
+    /// `checkForUpdates()` does nothing.
+    @objc public func observeCanCheckForUpdates(_ handler: @escaping (Bool) -> Void) {
+      canCheckObservation = controller.updater.observe(\.canCheckForUpdates, options: [.initial, .new]) { updater, _ in
+        handler(updater.canCheckForUpdates)
+      }
     }
 
     /// Whether Sparkle checks on its own, once a day by default.

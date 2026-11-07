@@ -31,6 +31,9 @@
     /// Sparkle's setting as last read. Sparkle's own prompt changes it too, so it's read again
     /// whenever the app's user defaults change, where Sparkle keeps it.
     private var checksAutomatically = false
+    /// False while Sparkle downloads the feed or an update in the background, when a check
+    /// does nothing.
+    private(set) var canCheckForUpdates = false
 
     var isAvailable: Bool {
       updater != nil
@@ -48,10 +51,21 @@
       updater = Self.loadUpdater()
       guard updater != nil else { return }
       refresh()
+      observeCanCheckForUpdates()
       // The singleton lives as long as the app, so the observer is never removed.
       NotificationCenter.default.addObserver(forName: UserDefaults.didChangeNotification, object: nil, queue: .main) { [weak self] _ in
         MainActor.assumeIsolated { self?.refresh() }
       }
+    }
+
+    private func observeCanCheckForUpdates() {
+      guard let updater else { return }
+      let observe = NSSelectorFromString("observeCanCheckForUpdates:")
+      let handler: @convention(block) (Bool) -> Void = { [weak self] canCheck in
+        Task { @MainActor in self?.canCheckForUpdates = canCheck }
+      }
+      typealias Observe = @convention(c) (AnyObject, Selector, @convention(block) (Bool) -> Void) -> Void
+      unsafeBitCast(updater.method(for: observe), to: Observe.self)(updater, observe, handler)
     }
 
     private func refresh() {
@@ -101,7 +115,7 @@
         return nil
       }
       let updater = updaterClass.init()
-      for name in ["start", "checkForUpdates", "automaticallyChecksForUpdates"] where !updater.responds(to: NSSelectorFromString(name)) {
+      for name in ["start", "checkForUpdates", "observeCanCheckForUpdates:", "automaticallyChecksForUpdates"] where !updater.responds(to: NSSelectorFromString(name)) {
         logger.error("The updater plugin has no \(name, privacy: .public)")
         return nil
       }

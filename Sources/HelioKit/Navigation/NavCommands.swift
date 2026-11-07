@@ -42,6 +42,7 @@ struct NavCommands: Commands {
       CommandGroup(after: .appInfo) {
         if MacUpdater.shared.isAvailable {
           Button("Check for Updates…") { MacUpdater.shared.checkForUpdates() }
+            .disabled(!MacUpdater.shared.canCheckForUpdates)
         }
       }
     #endif
