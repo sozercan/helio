@@ -26,9 +26,24 @@ struct GeneralPanel: View {
 
   enum ImportKind { case settings, apolloReadHistory }
   @State private var showClearReadHistoryAlert = false
+  #if targetEnvironment(macCatalyst)
+    @Bindable private var macUpdater = MacUpdater.shared
+  #endif
   var body: some View {
     List {
       Group {
+        #if targetEnvironment(macCatalyst)
+          if macUpdater.isAvailable {
+            Section {
+              Toggle("Check for updates automatically", systemImage: "arrow.down.circle", isOn: $macUpdater.automaticallyChecks)
+            } header: {
+              Text("Updates")
+            } footer: {
+              Text("Once a day, Helio asks GitHub whether a newer version is out. Helio > Check for Updates… checks now.")
+            }
+          }
+        #endif
+
         Section {
           Toggle("Sync credentials", systemImage: "person.2.badge.key.fill", isOn: $behaviorDefSettings.iCloudSyncCredentials)
           //          Toggle("Sync preferences", systemImage: "slider.horizontal.3", isOn: $generalDefSettings.iCloudSyncUserDefaults)
