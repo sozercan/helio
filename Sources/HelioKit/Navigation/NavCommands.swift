@@ -38,6 +38,14 @@ struct NavCommands: Commands {
   }
 
   var body: some Commands {
+    #if targetEnvironment(macCatalyst)
+      CommandGroup(after: .appInfo) {
+        if MacUpdater.shared.isAvailable {
+          Button("Check for Updates…") { MacUpdater.shared.checkForUpdates() }
+        }
+      }
+    #endif
+
     CommandGroup(replacing: .appSettings) {
       Button("Settings…", systemImage: "gearshape") { Nav.shared.activeTab = .settings }
         .keyboardShortcut(",")

@@ -26,9 +26,27 @@ struct GeneralPanel: View {
 
   enum ImportKind { case settings, apolloReadHistory }
   @State private var showClearReadHistoryAlert = false
+  #if targetEnvironment(macCatalyst)
+    /// Sparkle's setting, which its own prompt also changes; read again on each appearance.
+    @State private var automaticallyChecksForUpdates = MacUpdater.shared.automaticallyChecks
+  #endif
   var body: some View {
     List {
       Group {
+        #if targetEnvironment(macCatalyst)
+          if MacUpdater.shared.isAvailable {
+            Section {
+              Toggle("Check for updates automatically", systemImage: "arrow.down.circle", isOn: $automaticallyChecksForUpdates)
+                .onChange(of: automaticallyChecksForUpdates) { _, new in MacUpdater.shared.automaticallyChecks = new }
+                .onAppear { automaticallyChecksForUpdates = MacUpdater.shared.automaticallyChecks }
+            } header: {
+              Text("Updates")
+            } footer: {
+              Text("Once a day, Helio asks GitHub whether a newer version is out. Helio > Check for Updates… checks now.")
+            }
+          }
+        #endif
+
         Section {
           Toggle("Sync credentials", systemImage: "person.2.badge.key.fill", isOn: $behaviorDefSettings.iCloudSyncCredentials)
           //          Toggle("Sync preferences", systemImage: "slider.horizontal.3", isOn: $generalDefSettings.iCloudSyncUserDefaults)
