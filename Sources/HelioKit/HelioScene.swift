@@ -33,6 +33,11 @@ public struct HelioScene: Scene {
         .task {
           ImagePipeline.shared = ImagePipeline(configuration: .withDataCache(name: imageDataCacheName, sizeLimit: 1024 * 1024 * 300))
         }
+      #if targetEnvironment(macCatalyst)
+        // Not at launch: Sparkle's prompt on the second launch opens as soon as it starts, and one
+        // opened before the window ends up behind it.
+        .task { MacUpdater.shared.start() }
+      #endif
     }
     .commands { NavCommands() }
   }

@@ -1,7 +1,8 @@
 // swift-tools-version: 6.2
 // The app's code, dependencies and unit tests. Helio.xcodeproj is a thin shell that builds
 // the iOS app bundle (entry point, Info.plist, entitlements, resources) and the Safari
-// extension on top of the HelioKit library.
+// extension on top of the HelioKit library, plus the Mac app's updater plugin on top of
+// HelioMacUpdater.
 
 import PackageDescription
 
@@ -11,9 +12,12 @@ let package = Package(
   platforms: [
     .iOS("26.0"),
     .macCatalyst("26.0"),
+    // HelioMacUpdater only: Sparkle is AppKit, so it builds for macOS, not Mac Catalyst.
+    .macOS("26.0"),
   ],
   products: [
     .library(name: "HelioKit", targets: ["HelioKit"]),
+    .library(name: "HelioMacUpdater", targets: ["HelioMacUpdater"]),
   ],
   dependencies: [
     .package(url: "https://github.com/Alamofire/Alamofire.git", from: "5.0.0"),
@@ -28,6 +32,7 @@ let package = Package(
     .package(url: "https://github.com/satoshi-takano/OpenGraph.git", from: "1.0.0"),
     .package(url: "https://github.com/EmergeTools/Pow", from: "1.0.3"),
     .package(url: "https://github.com/raymondjavaxx/SmoothGradient.git", from: "1.0.0"),
+    .package(url: "https://github.com/sparkle-project/Sparkle", from: "2.10.1"),
     .package(url: "https://github.com/gonzalezreal/swift-markdown-ui", from: "2.3.0"),
     .package(url: "https://github.com/malcommac/SwiftDate.git", from: "7.0.0"),
     .package(url: "https://github.com/haoking/SwiftyUI.git", from: "1.8.0"),
@@ -69,6 +74,14 @@ let package = Package(
       ],
       swiftSettings: [
         .enableUpcomingFeature("BareSlashRegexLiterals"),
+      ],
+    ),
+    // Sparkle for the Mac app, which is Mac Catalyst and so can't link it: App/HelioMacUpdater
+    // builds this into a macOS plugin bundle that the app loads at runtime (MacUpdater).
+    .target(
+      name: "HelioMacUpdater",
+      dependencies: [
+        .product(name: "Sparkle", package: "Sparkle", condition: .when(platforms: [.macOS])),
       ],
     ),
     .testTarget(

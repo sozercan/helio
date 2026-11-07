@@ -81,6 +81,8 @@
 		ECE5AE152B11FD0A00DA2020 /* Dust.sks in Resources */ = {isa = PBXBuildFile; fileRef = ECE5AE132B11FD0A00DA2020 /* Dust.sks */; };
 		ECED2EB72B282AAF00F4D25F /* particle.mov in Resources */ = {isa = PBXBuildFile; fileRef = ECED2EB62B282AAF00F4D25F /* particle.mov */; };
 		ECF72AE72B267CE20078AD0B /* _locales in Resources */ = {isa = PBXBuildFile; fileRef = ECF72AE62B267CE20078AD0B /* _locales */; };
+		617000D6948C897F40573FCA /* HelioMacUpdater in Frameworks */ = {isa = PBXBuildFile; productRef = F1200317C05303A733D436F9 /* HelioMacUpdater */; };
+		748283D8B3F61420CED239C0 /* HelioMacUpdater.bundle in Embed Mac Updater */ = {isa = PBXBuildFile; fileRef = 63E8CC0E585F300258C6C1B9 /* HelioMacUpdater.bundle */; platformFilter = maccatalyst; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -98,6 +100,13 @@
 			remoteGlobalIDString = ECAA8B642A75261000D9D636;
 			remoteInfo = "helio-everywhere";
 		};
+		EAAF822D95A018EEAFB6396E /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = EC593ACC2A4673B2002D6454 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 8289CB7991214F9753DE5F69;
+			remoteInfo = HelioMacUpdater;
+		};
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXCopyFilesBuildPhase section */
@@ -110,6 +119,17 @@
 				ECAA8B7D2A75261000D9D636 /* helio-everywhere.appex in Embed Foundation Extensions */,
 			);
 			name = "Embed Foundation Extensions";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		6CDA538AEC2162973F2E68E6 /* Embed Mac Updater */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 13;
+			files = (
+				748283D8B3F61420CED239C0 /* HelioMacUpdater.bundle in Embed Mac Updater */,
+			);
+			name = "Embed Mac Updater";
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXCopyFilesBuildPhase section */
@@ -204,6 +224,7 @@
 		ECED2EB62B282AAF00F4D25F /* particle.mov */ = {isa = PBXFileReference; lastKnownFileType = video.quicktime; path = particle.mov; sourceTree = "<group>"; };
 		ECEFC26C2A5E0E440003C6C4 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		ECF72AE62B267CE20078AD0B /* _locales */ = {isa = PBXFileReference; lastKnownFileType = folder; path = _locales; sourceTree = "<group>"; };
+		63E8CC0E585F300258C6C1B9 /* HelioMacUpdater.bundle */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = HelioMacUpdater.bundle; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -226,6 +247,14 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		6CC36F76AAF58FF2A311F953 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				617000D6948C897F40573FCA /* HelioMacUpdater in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -324,6 +353,7 @@
 				EC593AD42A4673B2002D6454 /* Helio.app */,
 				ECAA8B652A75261000D9D636 /* helio-everywhere.appex */,
 				5A22E1780AA90B99053F6B14 /* HelioUITests.xctest */,
+				63E8CC0E585F300258C6C1B9 /* HelioMacUpdater.bundle */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -468,12 +498,14 @@
 				EC593AD12A4673B2002D6454 /* Frameworks */,
 				EC593AD22A4673B2002D6454 /* Resources */,
 				ECAA8B812A75261000D9D636 /* Embed Foundation Extensions */,
+				6CDA538AEC2162973F2E68E6 /* Embed Mac Updater */,
 				EC2CD98D2B1B447A0040EF86 /* ShellScript */,
 			);
 			buildRules = (
 			);
 			dependencies = (
 				ECAA8B7C2A75261000D9D636 /* PBXTargetDependency */,
+				3978E8FEC7617A0EA73C88A0 /* PBXTargetDependency */,
 			);
 			name = Helio;
 			packageProductDependencies = (
@@ -500,6 +532,25 @@
 			productName = "helio-everywhere";
 			productReference = ECAA8B652A75261000D9D636 /* helio-everywhere.appex */;
 			productType = "com.apple.product-type.app-extension";
+		};
+		8289CB7991214F9753DE5F69 /* HelioMacUpdater */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = A91952A7E3C936C7F13480E6 /* Build configuration list for PBXNativeTarget "HelioMacUpdater" */;
+			buildPhases = (
+				CA9A24D1C5C4F6E2E02DB03B /* Sources */,
+				6CC36F76AAF58FF2A311F953 /* Frameworks */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = HelioMacUpdater;
+			packageProductDependencies = (
+				F1200317C05303A733D436F9 /* HelioMacUpdater */,
+			);
+			productName = HelioMacUpdater;
+			productReference = 63E8CC0E585F300258C6C1B9 /* HelioMacUpdater.bundle */;
+			productType = "com.apple.product-type.bundle";
 		};
 /* End PBXNativeTarget section */
 
@@ -541,6 +592,7 @@
 				EC593AD32A4673B2002D6454 /* Helio */,
 				ECAA8B642A75261000D9D636 /* helio-everywhere */,
 				860E1FE71C154E5A2D63D8A4 /* HelioUITests */,
+				8289CB7991214F9753DE5F69 /* HelioMacUpdater */,
 			);
 		};
 /* End PBXProject section */
@@ -700,6 +752,13 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		CA9A24D1C5C4F6E2E02DB03B /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXTargetDependency section */
@@ -714,6 +773,12 @@
 			platformFilter = ios;
 			target = ECAA8B642A75261000D9D636 /* helio-everywhere */;
 			targetProxy = ECAA8B7B2A75261000D9D636 /* PBXContainerItemProxy */;
+		};
+		3978E8FEC7617A0EA73C88A0 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			platformFilter = maccatalyst;
+			target = 8289CB7991214F9753DE5F69 /* HelioMacUpdater */;
+			targetProxy = EAAF822D95A018EEAFB6396E /* PBXContainerItemProxy */;
 		};
 /* End PBXTargetDependency section */
 
@@ -1062,6 +1127,58 @@
 			};
 			name = Release;
 		};
+		8D910CF48477ECFA5484ECC5 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				COMBINE_HIDPI_IMAGES = YES;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = NSR65JVW9F;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_NSPrincipalClass = HelioMacUpdater;
+				INSTALL_PATH = "$(LOCAL_LIBRARY_DIR)/Bundles";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@loader_path/../Frameworks",
+				);
+				MACOSX_DEPLOYMENT_TARGET = 26.0;
+				MARKETING_VERSION = 1.6.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.sertacozercan.helio.updater;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = macosx;
+				SKIP_INSTALL = YES;
+				SUPPORTED_PLATFORMS = macosx;
+				SWIFT_VERSION = 5.0;
+				WRAPPER_EXTENSION = bundle;
+			};
+			name = Debug;
+		};
+		230D714A121071861BE099EA /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				COMBINE_HIDPI_IMAGES = YES;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = NSR65JVW9F;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_NSPrincipalClass = HelioMacUpdater;
+				INSTALL_PATH = "$(LOCAL_LIBRARY_DIR)/Bundles";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@loader_path/../Frameworks",
+				);
+				MACOSX_DEPLOYMENT_TARGET = 26.0;
+				MARKETING_VERSION = 1.6.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.sertacozercan.helio.updater;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = macosx;
+				SKIP_INSTALL = YES;
+				SUPPORTED_PLATFORMS = macosx;
+				SWIFT_VERSION = 5.0;
+				WRAPPER_EXTENSION = bundle;
+			};
+			name = Release;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -1101,6 +1218,15 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
+		A91952A7E3C936C7F13480E6 /* Build configuration list for PBXNativeTarget "HelioMacUpdater" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				8D910CF48477ECFA5484ECC5 /* Debug */,
+				230D714A121071861BE099EA /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
 /* End XCConfigurationList section */
 
 /* Begin XCLocalSwiftPackageReference section */
@@ -1115,6 +1241,11 @@
 			isa = XCSwiftPackageProductDependency;
 			package = E954E55F03BEEFEAABC9AA73 /* XCLocalSwiftPackageReference ".." */;
 			productName = HelioKit;
+		};
+		F1200317C05303A733D436F9 /* HelioMacUpdater */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = E954E55F03BEEFEAABC9AA73 /* XCLocalSwiftPackageReference ".." */;
+			productName = HelioMacUpdater;
 		};
 /* End XCSwiftPackageProductDependency section */
 

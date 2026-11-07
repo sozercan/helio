@@ -11,6 +11,7 @@ Helio is a privacy-focused Reddit client for iPhone, iPad and Mac (Mac Catalyst)
 - Because resources live in the app bundle, `HelioKit` code looks them up in `Bundle.main`. Asset catalog symbols used from `HelioKit` (such as `Image(.loader)`) are declared by hand in `Sources/HelioKit/globals/AppAssets.swift`; add new ones there.
 - Add dependencies in `Package.swift`, never in the Xcode project.
 - `App/helio-everywhere` is the Safari extension. Its built bundle in `dist/` is committed and is what the app embeds, so after changing `src/`, run `npm run build` in that directory and commit `dist/` with the change. The extension target's Resources phase lists each `dist/` file by its hashed name, so if the build adds, removes or renames files, update the file references and Resources phase in `App/Helio.xcodeproj` to match and delete the stale files.
+- The Mac app updates itself with Sparkle. Sparkle is AppKit, which a Mac Catalyst app can't link, so the `HelioMacUpdater` package target (macOS only) wraps it, the `HelioMacUpdater` bundle target in `App/Helio.xcodeproj` builds that into a plugin embedded only in the Mac app, and `MacUpdater` in `HelioKit` loads the plugin at launch and calls it through the Objective-C runtime. Keep the plugin's `@objc` names and `MacUpdater` in sync.
 - `App/HelioUITests` is not a synced folder: a new test file must also be added to the target in the project file.
 
 ## Build, test, lint
@@ -42,6 +43,7 @@ Privacy is the app's main promise, so these hold unless the human explicitly cha
 
 - The app's own services are Reddit's OAuth and API endpoints and nothing else. Don't add analytics, crash reporting, ad SDKs, or any app-level backend.
 - Loading the content a post points to is expected: images and video from their hosts, link-preview metadata from the linked page (`PreviewModel`), and hosts such as Streamable or YouTube to resolve and play embeds. Keep those requests limited to content the user is viewing, and don't send them account data or identifiers.
+- The one exception is the Mac app's Sparkle updater: it fetches `appcast.xml` from GitHub Pages and the update from GitHub Releases. It checks on its own only once the user allows it (Sparkle asks on the second launch; Settings > General turns it off), and system profiling stays off. Don't add other update checks or send anything with them.
 - On Mac, links open in the app (`WebPageScreen`) with their own website data store, cleared at each launch and never shared with the Reddit sign-in. Web extensions there are only ones the user adds (`WebExtensionStore`); don't bundle or preinstall any.
 - Use Reddit's OAuth REST API (`oauth.reddit.com`). Don't use Reddit's private GraphQL API.
 - The default sign-in needs no API key (`RedditWebSession`, `RedditWebLoginView`): the user signs in on reddit.com in an in-app browser with its own empty cookie store, Helio keeps that session's reddit.com cookies in the keychain, and it trades them for bearer tokens at `accounts.reddit.com/api/access_token` with the public client id of Reddit's mobile site. That id is the only real Reddit client id allowed in code. Session cookies go only to reddit.com, never into the shared cookie store or logs. This is outside Reddit's published API terms, so a user's own API key stays available as the opt-in alternative.
@@ -85,4 +87,5 @@ python3 "$AUTOREVIEW" --mode branch --base <PR base ref> --max-priority P1   # c
 
 - The repository is `sozercan/helio`, a standalone repo with no upstream. Open PRs against its `main`.
 - Commits use Conventional Commits with a sign-off (`git commit -s`). Subjects describe the user-visible behavior in plain words, such as `fix: show tall images whole instead of cropping them`; the body explains why.
-- Pushing a `v*` tag runs `release.yml`, which publishes the unsigned IPA and Mac zip and updates the sideload feed on `gh-pages`. Don't tag a release unless asked.
+- Pushing a `v*` tag runs `release.yml`, which publishes the unsigned IPA and Mac zip and updates the sideload feed and the Sparkle appcast on `gh-pages`. Don't tag a release unless asked.
+- The Mac zip is ad-hoc signed, so Sparkle trusts an update only by its EdDSA signature: the `SPARKLE_PRIVATE_KEY` secret signs it, and `SUPublicEDKey` in `App/Helio/Info.plist` is its public half. Without the key in Info.plist, the Mac app has no updater; without the secret, a release doesn't reach the appcast. Never change or drop the key pair: builds already installed only trust updates signed with the key they shipped with.
