@@ -42,13 +42,19 @@ struct ImageMediaPost: View, Equatable {
   /// images of the posts around it. Nil on a post's page.
   var feedPost: PostHelioData?
   @Environment(\.feedPostsSource) private var feed
+  @Environment(\.lightBoxPresenter) private var presenter
+  /// The lightbox, when there's no window's to open it in.
   @State private var lightbox: LightBoxTimeline?
 
   /// Opens the lightbox on image `index`.
   private func open(_ index: Int) {
     let own = LightBoxPost(key: "opened", title: postTitle, badgeKit: badgeKit, avatarImageRequest: avatarImageRequest, markAsSeen: markAsSeen).pages(images)
     let timeline = LightBoxTimeline.around(feedPost, in: feed, own: own, start: index)
-    withAnimation(spring) { lightbox = timeline }
+    if let presenter {
+      presenter.timeline = timeline
+    } else {
+      withAnimation(spring) { lightbox = timeline }
+    }
   }
 
   var body: some View {

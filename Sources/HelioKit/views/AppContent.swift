@@ -32,6 +32,8 @@ struct AppContent: View {
   var body: some View {
     GlobalDestinationsProvider {
       Tabber(theme: InMemoryTheme.shared.currentTheme)
+        // Inside the sheets' presenter: a sheet's views open their own lightbox.
+        .lightBoxPresenting()
     }
     .whatsNewSheet()
     .logOutConfirmation()

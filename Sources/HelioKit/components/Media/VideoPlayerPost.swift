@@ -137,8 +137,16 @@ struct VideoPlayerPost: View, Equatable {
   var feedPost: PostHelioData?
   /// The native fullscreen of the player shown with a `controller`.
   @State private var fullscreen = false
+  /// The lightbox, when there's no window's to open it in.
   @State private var lightbox: LightBoxTimeline?
   @Environment(\.feedPostsSource) private var feed
+  @Environment(\.lightBoxPresenter) private var presenter
+
+  /// The lightbox shows this video, playing it in this row's player.
+  private var inLightbox: Bool {
+    lightbox != nil || presenter?.isShowing(holder) == true
+  }
+
   @Default(.VideoDefSettings) private var videoDefSettings
   @Environment(\.scenePhase) private var scenePhase
   @State private var observerBag = VideoObserverBag()
@@ -158,13 +166,18 @@ struct VideoPlayerPost: View, Equatable {
 
   /// Open in the lightbox, or the native fullscreen of the player shown with a `controller`.
   private var isFullscreen: Bool {
-    fullscreen || lightbox != nil
+    fullscreen || inLightbox
   }
 
   /// Opens the lightbox on the video, playing on from where its preview is.
   private func open(_ sharedVideo: SharedVideo) {
     let own = lightboxPost.pages([.video(sharedVideo, holder: holder)])
-    lightbox = LightBoxTimeline.around(feedPost, in: feed, own: own, start: 0)
+    let timeline = LightBoxTimeline.around(feedPost, in: feed, own: own, start: 0)
+    if let presenter {
+      presenter.timeline = timeline
+    } else {
+      lightbox = timeline
+    }
   }
 
   init(controller: UIViewController?, cachedVideo: SharedVideo?, markAsSeen: (() async -> Void)?, compact: Bool = false, contentWidth: CGFloat, url: URL, maxMediaHeightScreenPercentage: CGFloat, cornerRadius: CGFloat = 12, lightboxPost: LightBoxPost? = nil, feedPost: PostHelioData? = nil) {
@@ -214,7 +227,7 @@ struct VideoPlayerPost: View, Equatable {
             // Only attach a player layer (= a decode pipeline) when this cell is actually
             // on-screen and not in fullscreen. Off-screen cells render Color.clear, which
             // tears the layer down via InlinePlayerLayer.dismantleUIView and frees the pipeline.
-            if isVisible, lightbox == nil {
+            if isVisible, !inLightbox {
               InlinePlayerLayer(player: player)
             } else {
               Color.clear
@@ -284,8 +297,8 @@ struct VideoPlayerPost: View, Equatable {
         }
         // The lightbox plays the video while it shows it (`LightBoxVideo`). Back from it, the
         // preview goes on muted, or stops at its start without autoplay.
-        .onChange(of: lightbox == nil) { _, closed in
-          guard closed, !PictureInPicture.shared.isPlaying(player) else { return }
+        .onChange(of: inLightbox) { _, open in
+          guard !open, !PictureInPicture.shared.isPlaying(player) else { return }
           player.volume = 0
           if autoPlayVideos, isVisible {
             player.play()
@@ -310,7 +323,7 @@ struct VideoPlayerPost: View, Equatable {
       systemAutoplay = systemEnabled
     }
     // The lightbox plays its videos itself, this one included.
-    guard isVisible, lightbox == nil, !PictureInPicture.shared.isPlaying(player) else { return }
+    guard isVisible, !inLightbox, !PictureInPicture.shared.isPlaying(player) else { return }
     if videoDefSettings.autoPlay, systemEnabled {
       // A setting change doesn't restart a fullscreen video the user paused.
       if !isFullscreen || resumesFullscreen {

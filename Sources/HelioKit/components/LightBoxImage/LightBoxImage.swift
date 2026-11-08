@@ -231,7 +231,9 @@ struct LightBoxImage: View {
             drag = .zero
             xPos += val.translation.width - (dragOffset?.width ?? 0)
             dragOffset = nil
-            let newActiveIndex = min(pages.count - 1, max(0, activeIndex + (predictedEnd < -(.screenW / 2) ? 1 : predictedEnd > .screenW / 2 ? -1 : 0)))
+            // Half a phone's width: half an iPad's or a Mac window's took a long drag.
+            let threshold = min(CGFloat.screenW / 2, 200)
+            let newActiveIndex = min(pages.count - 1, max(0, activeIndex + (predictedEnd < -threshold ? 1 : predictedEnd > threshold ? -1 : 0)))
             let finalXPos = -(CGFloat(newActiveIndex) * (.screenW + SPACING))
             let distance = abs(finalXPos - xPos)
             activeIndex = newActiveIndex

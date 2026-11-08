@@ -3,6 +3,7 @@
 //  Helio
 //
 
+import Defaults
 import NukeUI
 import SwiftUI
 
@@ -126,4 +127,46 @@ extension FeedItemsManager: FeedPostsSource {
 extension EnvironmentValues {
   /// The feed a post row is in, set by the feed on its rows.
   @Entry var feedPostsSource: (any FeedPostsSource)?
+}
+
+/// Shows a window's lightbox from above its tabs, so it stays open when the row that opened it is
+/// built again: rotating or resizing lays the feed out anew.
+@MainActor @Observable
+final class LightBoxPresenter {
+  var timeline: LightBoxTimeline?
+
+  /// Whether the lightbox shows this player's video.
+  func isShowing(_ holder: VideoPlayerHolder) -> Bool {
+    timeline?.pages.contains {
+      if case let .video(_, borrowed) = $0.media {
+        borrowed === holder
+      } else {
+        false
+      }
+    } ?? false
+  }
+}
+
+extension EnvironmentValues {
+  /// The window's lightbox. Nil inside a sheet, which the window can't cover from its tabs.
+  @Entry var lightBoxPresenter: LightBoxPresenter?
+}
+
+private struct LightBoxPresenting: ViewModifier {
+  @State private var presenter = LightBoxPresenter()
+
+  func body(content: Content) -> some View {
+    content
+      .environment(\.lightBoxPresenter, presenter)
+      .fullScreenCover(item: $presenter.timeline) { timeline in
+        LightBoxImage(pages: timeline.pages, i: timeline.start, doLiveText: Defaults[.BehaviorDefSettings].doLiveText)
+      }
+  }
+}
+
+extension View {
+  /// Gives the views inside a lightbox to open media in.
+  func lightBoxPresenting() -> some View {
+    modifier(LightBoxPresenting())
+  }
 }
