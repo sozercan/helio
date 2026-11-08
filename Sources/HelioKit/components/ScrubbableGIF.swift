@@ -176,7 +176,7 @@ private func decodeFrame(_ source: CGImageSource, _ index: Int) async -> CGImage
 /// Connects the lightbox's swipe and progress bar to the GIF it shows. The view registers itself
 /// when it's made. Only the progress bar reads `position`, so playback doesn't redraw the lightbox.
 @MainActor @Observable
-final class GIFScrubber {
+final class GIFScrubber: MediaScrubbable {
   @ObservationIgnored fileprivate weak var view: ScrubbableGIFView? {
     didSet {
       guard view !== oldValue else { return }

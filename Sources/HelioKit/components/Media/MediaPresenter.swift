@@ -73,7 +73,7 @@ struct MediaPresenter: View, Equatable {
       }
     case let .video(sharedVideo):
       if !showURLInstead {
-        VideoPlayerPost(controller: controller, cachedVideo: sharedVideo, markAsSeen: markAsSeen, compact: compact, contentWidth: contentWidth, url: sharedVideo.url, maxMediaHeightScreenPercentage: maxMediaHeightScreenPercentage, cornerRadius: cornerRadius)
+        VideoPlayerPost(controller: controller, cachedVideo: sharedVideo, markAsSeen: markAsSeen, compact: compact, contentWidth: contentWidth, url: sharedVideo.url, maxMediaHeightScreenPercentage: maxMediaHeightScreenPercentage, cornerRadius: cornerRadius, lightboxPost: LightBoxPost(key: "opened", title: postTitle, badgeKit: badgeKit, avatarImageRequest: avatarImageRequest, markAsSeen: markAsSeen), feedPost: fullPage ? nil : helioData)
           .nsfw(over18 && blurPostLinkNSFW, smallIcon: compact, size: mediaSize)
       }
     case .streamable:

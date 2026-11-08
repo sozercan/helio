@@ -124,8 +124,15 @@ struct VideoPlayerPost: View, Equatable {
   var size: CGSize
   var maxMediaHeightScreenPercentage: CGFloat
   var cornerRadius: CGFloat = 12
-  @State private var firstFullscreen = false
+  /// The post, as the lightbox shows it over the video.
+  var lightboxPost: LightBoxPost
+  /// The post's data, by which the lightbox finds it among the feed's posts, to go on to the
+  /// media of the posts around it. Nil on a post's page.
+  var feedPost: PostHelioData?
+  /// The native fullscreen of the player shown with a `controller`.
   @State private var fullscreen = false
+  @State private var lightbox: LightBoxTimeline?
+  @Environment(\.feedPostsSource) private var feed
   @Default(.VideoDefSettings) private var videoDefSettings
   @Environment(\.scenePhase) private var scenePhase
   @State private var observerBag = VideoObserverBag()
@@ -143,15 +150,18 @@ struct VideoPlayerPost: View, Equatable {
     videoDefSettings.loop
   }
 
-  private var muteVideos: Bool {
-    videoDefSettings.mute
+  /// Open in the lightbox, or the native fullscreen of the player shown with a `controller`.
+  private var isFullscreen: Bool {
+    fullscreen || lightbox != nil
   }
 
-  private var pauseBackgroundAudioOnFullscreen: Bool {
-    videoDefSettings.pauseBGAudioOnFullscreen
+  /// Opens the lightbox on the video, playing on from where its preview is.
+  private func open(_ sharedVideo: SharedVideo) {
+    let own = lightboxPost.pages([.video(sharedVideo, holder: holder)])
+    lightbox = LightBoxTimeline.around(feedPost, in: feed, own: own, start: 0)
   }
 
-  init(controller: UIViewController?, cachedVideo: SharedVideo?, markAsSeen: (() async -> Void)?, compact: Bool = false, contentWidth: CGFloat, url: URL, maxMediaHeightScreenPercentage: CGFloat, cornerRadius: CGFloat = 12) {
+  init(controller: UIViewController?, cachedVideo: SharedVideo?, markAsSeen: (() async -> Void)?, compact: Bool = false, contentWidth: CGFloat, url: URL, maxMediaHeightScreenPercentage: CGFloat, cornerRadius: CGFloat = 12, lightboxPost: LightBoxPost? = nil, feedPost: PostHelioData? = nil) {
     self.controller = controller
     self.sharedVideo = cachedVideo
     self.markAsSeen = markAsSeen
@@ -161,6 +171,8 @@ struct VideoPlayerPost: View, Equatable {
     self.size = cachedVideo?.size ?? .zero
     self.maxMediaHeightScreenPercentage = maxMediaHeightScreenPercentage
     self.cornerRadius = cornerRadius
+    self.lightboxPost = lightboxPost ?? LightBoxPost(key: "opened", markAsSeen: markAsSeen)
+    self.feedPost = feedPost
     _holder = StateObject(wrappedValue: VideoPlayerHolder(url: cachedVideo != nil ? url : nil))
   }
 
@@ -196,7 +208,7 @@ struct VideoPlayerPost: View, Equatable {
             // Only attach a player layer (= a decode pipeline) when this cell is actually
             // on-screen and not in fullscreen. Off-screen cells render Color.clear, which
             // tears the layer down via InlinePlayerLayer.dismantleUIView and frees the pipeline.
-            if isVisible, !fullscreen {
+            if isVisible, lightbox == nil {
               InlinePlayerLayer(player: player)
             } else {
               Color.clear
@@ -216,27 +228,13 @@ struct VideoPlayerPost: View, Equatable {
           .mask(RR(cornerRadius, Color.black))
           .allowsHitTesting(false)
           .contentShape(Rectangle())
-          .highPriorityGesture(TapGesture().onEnded { _ in
-            if markAsSeen != nil {
-              Task(priority: .background) { await markAsSeen?() }
-            }
-            withAnimation {
-              fullscreen = true
-            }
-          })
+          .highPriorityGesture(TapGesture().onEnded { _ in open(sharedVideo) })
           .allowsHitTesting(false)
           .mask(RR(cornerRadius, Color.black))
           .overlay(
             Color.clear
               .contentShape(Rectangle())
-              .onTapGesture {
-                if markAsSeen != nil {
-                  Task(priority: .background) { await markAsSeen?() }
-                }
-                withAnimation {
-                  fullscreen = true
-                }
-              },
+              .onTapGesture { open(sharedVideo) },
           )
 
           Image(systemName: "play.fill").foregroundColor(.white.opacity(0.75)).fontSize(32).shadow(color: .black.opacity(0.45), radius: 12, y: 8).opacity(autoPlayVideos ? 0 : 1).allowsHitTesting(false)
@@ -278,32 +276,20 @@ struct VideoPlayerPost: View, Equatable {
           player.pause()
           player.seek(to: .zero)
         }
-        .onChange(of: fullscreen) { _, val in
-          let inPictureInPicture = PictureInPicture.shared.isPlaying(player)
-          if !firstFullscreen {
-            firstFullscreen = true
-            player.isMuted = muteVideos
+        // The lightbox plays the video while it shows it (`LightBoxVideo`). Back from it, the
+        // preview goes on muted, or stops at its start without autoplay.
+        .onChange(of: lightbox == nil) { _, closed in
+          guard closed, !PictureInPicture.shared.isPlaying(player) else { return }
+          player.volume = 0
+          if autoPlayVideos, isVisible {
             player.play()
-          }
-          if !val, !autoPlayVideos {
-            // Opening fullscreen again plays it, even after leaving it for PiP.
-            firstFullscreen = false
-            if !inPictureInPicture {
-              player.seek(to: .zero)
-              player.pause()
-            }
-          }
-
-          if pauseBackgroundAudioOnFullscreen, !inPictureInPicture {
-            scheduleAudioMixing(!val)
-          }
-
-          if !inPictureInPicture {
-            player.volume = val ? 1.0 : 0.0
+          } else {
+            player.pause()
+            player.seek(to: .zero)
           }
         }
-        .fullScreenCover(isPresented: $fullscreen) {
-          FullScreenVP(player: player, size: sharedVideo.size, holder: holder)
+        .fullScreenCover(item: $lightbox) { lightbox in
+          LightBoxImage(pages: lightbox.pages, i: lightbox.start, doLiveText: Defaults[.BehaviorDefSettings].doLiveText)
         }
       }
     }
@@ -317,13 +303,14 @@ struct VideoPlayerPost: View, Equatable {
     if systemAutoplay != systemEnabled {
       systemAutoplay = systemEnabled
     }
-    guard isVisible, !PictureInPicture.shared.isPlaying(player) else { return }
+    // The lightbox plays its videos itself, this one included.
+    guard isVisible, lightbox == nil, !PictureInPicture.shared.isPlaying(player) else { return }
     if videoDefSettings.autoPlay, systemEnabled {
       // A setting change doesn't restart a fullscreen video the user paused.
-      if !fullscreen || resumesFullscreen {
+      if !isFullscreen || resumesFullscreen {
         player.play()
       }
-    } else if !fullscreen {
+    } else if !isFullscreen {
       player.pause()
     }
   }
@@ -408,216 +395,33 @@ struct InlinePlayerLayer: UIViewRepresentable {
   }
 }
 
-struct FullScreenVP: View {
-  var player: AVPlayer
-  var size: CGSize
-  var holder: VideoPlayerHolder
-  @Environment(\.dismiss) private var dismiss
-  @State private var cancelDrag: Bool?
-  @State private var isPinching: Bool = false
-  @State private var drag: CGSize = .zero
-  @State private var scale: CGFloat = 1.0
-  @State private var anchor: UnitPoint = .zero
-  @State private var offset: CGSize = .zero
-  @State private var altSize: CGSize = .zero
-  var body: some View {
-    let interpolate = interpolatorBuilder([0, 100], value: abs(drag.height))
-    FullScreenPlayerView(player: player, holder: holder, onPictureInPictureStart: { dismiss() })
-      // The whole screen, as the player keeps its own controls inside the safe area. Inset, the
-      // video stopped short of the Duo's tab bar and bars and left a band under the status bar.
-      .ignoresSafeArea()
-      .accessibilityIgnoresInvertColors()
-      .background(
-        size != .zero
-          ? nil
-          : GeometryReader { geo in
-            Color.clear
-              .onAppear { altSize = geo.size }
-              .onChange(of: geo.size) { _, newValue in altSize = newValue }
-          },
-      )
-      //      .pinchToZoom(size: sharedVideo.size == .zero ? altSize : sharedVideo.size, isPinching: $isPinching, scale: $scale, anchor: $anchor, offset: $offset)
-      .scaleEffect(interpolate([1, 0.9], true))
-      .offset(cancelDrag ?? false ? .zero : drag)
-      .gesture(
-        scale != 1.0
-          ? nil
-          : DragGesture(minimumDistance: 10)
-          .onChanged { val in
-            // Sideways drags are the player view's to scrub with (`FullScreenPlayerView`).
-            if cancelDrag == nil {
-              cancelDrag = abs(val.translation.width) > abs(val.translation.height)
-            }
-            if cancelDrag == nil || cancelDrag! {
-              return
-            }
-            var transaction = Transaction()
-            transaction.isContinuous = true
-            transaction.animation = .interpolatingSpring(stiffness: 1000, damping: 100, initialVelocity: 0)
-
-            let endPos = val.translation
-            withTransaction(transaction) {
-              drag = endPos
-            }
-          }
-          .onEnded { val in
-            let prevCancelDrag = cancelDrag
-            cancelDrag = nil
-            if prevCancelDrag == nil || prevCancelDrag! {
-              return
-            }
-            let shouldClose = abs(val.translation.width) > 100 || abs(val.translation.height) > 100
-            withAnimation(.interpolatingSpring(stiffness: 200, damping: 20, initialVelocity: 0)) {
-              drag = .zero
-              if shouldClose {
-                dismiss()
-              }
-            }
-          },
-      )
-      // It covers the post: the menu bar's Post commands mustn't move off it underneath.
-      .commandTarget(CommandTargets.Target(kind: .modal))
-  }
-}
-
-/// Keeps a video's player (and its controller) alive while it plays in Picture in Picture,
-/// since the feed cell that owns it can scroll away or be destroyed in the meantime.
+/// Keeps a video's player, and what plays it in Picture in Picture, alive while it floats, since
+/// the lightbox that started it has closed and the feed row it came from can go too.
 final class PictureInPicture {
   static let shared = PictureInPicture()
   private var holder: VideoPlayerHolder?
-  private var controller: AVPlayerViewController?
-  /// The controller holds its delegate weakly, and the fullscreen view that owned it is gone.
-  private var delegate: AVPlayerViewControllerDelegate?
-  /// Fullscreen players on screen, which own the audio session while they're up.
+  private var owner: AnyObject?
+  /// Lightbox videos playing, which own the audio session while they're up.
   var fullscreenPlayers = 0
 
-  func isPlaying(_ player: AVPlayer) -> Bool {
-    holder?.player === player
+  func isPlaying(_ player: AVPlayer?) -> Bool {
+    player != nil && holder?.player === player
   }
 
-  func begin(_ holder: VideoPlayerHolder, controller: AVPlayerViewController, delegate: AVPlayerViewControllerDelegate) {
+  func begin(_ holder: VideoPlayerHolder, owner: AnyObject) {
     self.holder = holder
-    self.controller = controller
-    self.delegate = delegate
+    self.owner = owner
   }
 
-  func end(_ controller: AVPlayerViewController) {
-    guard self.controller === controller else { return }
+  func end(_ owner: AnyObject) {
+    guard self.owner === owner else { return }
     // Back to the feed's muted inline playback.
     holder?.player?.volume = 0
     holder = nil
-    self.controller = nil
-    delegate = nil
+    self.owner = nil
     // Fullscreen paused other apps' audio, and leaving it for PiP skipped resuming it.
     if Defaults[.VideoDefSettings].pauseBGAudioOnFullscreen, fullscreenPlayers == 0 {
       scheduleAudioMixing(true)
-    }
-  }
-}
-
-/// The fullscreen player, with a Picture in Picture button. PiP only starts from that button,
-/// not automatically when the app goes to the background. A sideways swipe across it scrubs.
-struct FullScreenPlayerView: UIViewControllerRepresentable {
-  let player: AVPlayer
-  let holder: VideoPlayerHolder
-  var onPictureInPictureStart: () -> Void
-
-  func makeUIViewController(context: Context) -> AVPlayerViewController {
-    let controller = AVPlayerViewController()
-    controller.player = player
-    controller.allowsPictureInPicturePlayback = true
-    controller.canStartPictureInPictureAutomaticallyFromInline = false
-    controller.delegate = context.coordinator
-    // A UIKit recognizer, not a SwiftUI drag: AVKit's own recognizers hold back a SwiftUI
-    // gesture over the player until the finger lifts, so the video only jumped at the end.
-    let pan = UIPanGestureRecognizer(target: context.coordinator, action: #selector(Coordinator.scrub(_:)))
-    pan.delegate = context.coordinator
-    controller.view.addGestureRecognizer(pan)
-    PictureInPicture.shared.fullscreenPlayers += 1
-    return controller
-  }
-
-  func updateUIViewController(_ controller: AVPlayerViewController, context: Context) {
-    context.coordinator.parent = self
-  }
-
-  static func dismantleUIViewController(_ controller: AVPlayerViewController, coordinator: Coordinator) {
-    PictureInPicture.shared.fullscreenPlayers -= 1
-  }
-
-  func makeCoordinator() -> Coordinator {
-    Coordinator(parent: self)
-  }
-
-  final class Coordinator: NSObject, AVPlayerViewControllerDelegate, UIGestureRecognizerDelegate {
-    var parent: FullScreenPlayerView
-    private let scrubber = VideoScrubber()
-    /// The swipe's translation when it began scrubbing, or nil while it isn't.
-    private var scrubOrigin: CGFloat?
-
-    init(parent: FullScreenPlayerView) {
-      self.parent = parent
-    }
-
-    @objc func scrub(_ pan: UIPanGestureRecognizer) {
-      guard let view = pan.view else { return }
-      let translation = pan.translation(in: view).x
-      switch pan.state {
-      case .began:
-        scrubOrigin = scrubber.begin(parent.player) ? translation : nil
-      case .changed:
-        if let scrubOrigin {
-          scrubber.update(translation: translation - scrubOrigin, width: view.bounds.width)
-        }
-      default:
-        if scrubOrigin != nil {
-          scrubOrigin = nil
-          scrubber.end()
-        }
-      }
-    }
-
-    /// Only a mostly sideways swipe scrubs; a vertical one closes the player.
-    func gestureRecognizerShouldBegin(_ gestureRecognizer: UIGestureRecognizer) -> Bool {
-      guard let pan = gestureRecognizer as? UIPanGestureRecognizer else { return true }
-      let velocity = pan.velocity(in: pan.view)
-      return abs(velocity.x) > abs(velocity.y)
-    }
-
-    /// The player's own buttons and timeline keep their touches.
-    func gestureRecognizer(_ gestureRecognizer: UIGestureRecognizer, shouldReceive touch: UITouch) -> Bool {
-      var view = touch.view
-      while let current = view, current !== gestureRecognizer.view {
-        if current is UIControl {
-          return false
-        }
-        view = current.superview
-      }
-      return true
-    }
-
-    func gestureRecognizer(_ gestureRecognizer: UIGestureRecognizer, shouldRecognizeSimultaneouslyWith otherGestureRecognizer: UIGestureRecognizer) -> Bool {
-      true
-    }
-
-    func playerViewControllerDidStartPictureInPicture(_ controller: AVPlayerViewController) {
-      PictureInPicture.shared.begin(parent.holder, controller: controller, delegate: self)
-      // Leave fullscreen so the feed is usable while the video floats.
-      parent.onPictureInPictureStart()
-    }
-
-    func playerViewControllerDidStopPictureInPicture(_ controller: AVPlayerViewController) {
-      PictureInPicture.shared.end(controller)
-    }
-
-    func playerViewControllerShouldAutomaticallyDismissAtPictureInPictureStart(_ controller: AVPlayerViewController) -> Bool {
-      false
-    }
-
-    /// Starting PiP dismissed the fullscreen player, and its feed row may be gone too, so
-    /// there's no player to return to.
-    func playerViewController(_ controller: AVPlayerViewController, restoreUserInterfaceForPictureInPictureStopWithCompletionHandler completionHandler: @escaping (Bool) -> Void) {
-      completionHandler(false)
     }
   }
 }

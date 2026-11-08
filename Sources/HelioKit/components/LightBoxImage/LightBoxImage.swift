@@ -29,7 +29,10 @@ struct LightBoxImage: View {
   @State private var isPinching: Bool = false
   @State private var isZoomed: Bool = false
   @State private var scale: CGFloat = 1.0
-  @State private var gifScrubber = GIFScrubber()
+  /// The pages' GIF scrubbers and video players.
+  @State private var media: LightBoxMediaStore
+  /// The page a held drag is scrubbing.
+  @State private var scrubIndex: Int?
   /// The posts already marked read since it opened.
   @State private var seenPosts: Set<String> = []
   /// Resets when the drag ends or is cancelled; a cancelled drag skips `onEnded`.
@@ -39,6 +42,8 @@ struct LightBoxImage: View {
     self.pages = pages
     self.i = i
     self.doLiveText = doLiveText
+    _media = State(initialValue: LightBoxMediaStore(pages: pages))
+    _activeIndex = State(initialValue: i)
   }
 
   /// One post's images.
@@ -50,13 +55,26 @@ struct LightBoxImage: View {
   private enum Axis {
     case horizontal
     case vertical
-    /// Sideways across a lone GIF, which has no other page to go to.
+    /// A held drag on a GIF or video, which the hold scrubs: the drag stands aside.
     case scrub
   }
 
-  /// A single GIF scrubs when swiped sideways. With other images, the swipe still changes pages.
-  private var scrubsGIF: Bool {
-    pages.count == 1 && pages[0].img.url.isGIF
+  /// A finger held on a GIF or video scrubs it as it moves, with the progress bar showing.
+  private func hold(_ event: LightBoxScrub) {
+    switch event {
+    case .began:
+      guard !isZoomed, let scrubber = media.scrubber(at: activeIndex), scrubber.begin() else { return }
+      scrubIndex = activeIndex
+      if !showOverlay {
+        toggleOverlay()
+      }
+    case let .moved(translation):
+      if let scrubIndex {
+        media.scrubber(at: scrubIndex)?.update(translation: translation, width: .screenW)
+      }
+    case .ended:
+      endScrub()
+    }
   }
 
   /// Marks the post of the page showing read, once.
@@ -68,9 +86,14 @@ struct LightBoxImage: View {
   }
 
   private func endScrub() {
-    gifScrubber.end()
-    dragOffset = nil
-    dragAxis = nil
+    if let scrubIndex {
+      media.scrubber(at: scrubIndex)?.end()
+    }
+    scrubIndex = nil
+    if dragAxis == .scrub {
+      dragOffset = nil
+      dragAxis = nil
+    }
   }
 
   func toggleOverlay() {
@@ -96,17 +119,31 @@ struct LightBoxImage: View {
     }
   }
 
-  /// Page `index`. Only the pages beside the one showing load their image: a feed's can be hundreds.
+  /// The image or video of page `index`.
+  @ViewBuilder
+  private func pageContent(_ index: Int, _ page: LightBoxPage) -> some View {
+    let onSwipe: ((Int) -> Void)? = pages.count > 1 ? { self.page(to: index + $0) } : nil
+    switch page.media {
+    case let .image(img):
+      LightBoxElementView(el: img, label: page.post.title, onTap: toggleOverlay, onSwipe: onSwipe, onHold: img.url.isGIF ? hold : nil, doLiveText: doLiveText, showOverlay: showOverlay, gifScrubber: img.url.isGIF ? media.gif(index) : nil, isPinching: $isPinching, isZoomed: $isZoomed)
+    case let .video(video, _):
+      if let player = media.video(index, onPictureInPictureStart: close) {
+        LightBoxVideoPage(video: player, holder: player.holder, posterURL: video.posterURL, label: page.post.title, onTap: toggleOverlay, onSwipe: onSwipe, onHold: hold)
+      }
+    }
+  }
+
+  /// Page `index`. Only the pages beside the one showing load their media: a feed's can be hundreds.
   @ViewBuilder
   private func pageView(_ index: Int, selectedScale: CGFloat) -> some View {
     let selected = index == activeIndex
     let page = pages[index]
     if abs(index - activeIndex) <= 1 {
-      LightBoxElementView(el: page.img, label: page.post.title, onTap: toggleOverlay, onSwipe: pages.count > 1 ? { self.page(to: index + $0) } : nil, doLiveText: doLiveText, showOverlay: showOverlay, gifScrubber: scrubsGIF ? gifScrubber : nil, isPinching: $isPinching, isZoomed: $isZoomed)
+      pageContent(index, page)
         .allowsHitTesting(selected)
         .accessibilityHidden(!selected)
         // The page, which changes as VoiceOver users swipe through the gallery.
-        .accessibilityValue(page.count > 1 ? "Image \(page.index + 1) of \(page.count)" : "")
+        .accessibilityValue(page.count > 1 ? "\(page.index + 1) of \(page.count)" : "")
         .modifier(LightBoxPaging(pages: pages.count, page: { self.page(to: activeIndex + $0) }))
         .scaleEffect(!selected ? 1 : selectedScale)
         .blur(radius: selected && loading ? 24 : 0)
@@ -123,13 +160,18 @@ struct LightBoxImage: View {
   private func infoOverlay(opacity: CGFloat) -> some View {
     if pages.indices.contains(activeIndex), let postTitle = pages[activeIndex].post.title, let badgeKit = pages[activeIndex].post.badgeKit {
       let page = pages[activeIndex]
-      LightBoxOverlay(postTitle: postTitle, badgeKit: badgeKit, avatarImageRequest: page.post.avatarImageRequest, opacity: opacity, img: page.img, index: page.index, count: page.count, gifScrubber: scrubsGIF ? gifScrubber : nil, loading: $loading, done: $done)
+      LightBoxOverlay(postTitle: postTitle, badgeKit: badgeKit, avatarImageRequest: page.post.avatarImageRequest, opacity: opacity, img: page.media.image, video: media.video(activeIndex, onPictureInPictureStart: close), index: page.index, count: page.count, scrubber: media.scrubber(at: activeIndex), loading: $loading, done: $done)
     }
   }
 
   var body: some View {
     lightbox
-      .onChange(of: activeIndex) { _, index in markSeen(index) }
+      .onChange(of: activeIndex) { _, index in
+        markSeen(index)
+        media.show(index)
+      }
+      .onAppear { media.show(activeIndex) }
+      .onDisappear { media.releaseAll() }
   }
 
   @ViewBuilder
@@ -153,15 +195,17 @@ struct LightBoxImage: View {
         .onChanged { val in
           if dragAxis == nil || dragOffset == nil {
             dragOffset = val.translation
-            if abs(val.predictedEndTranslation.width) > abs(val.predictedEndTranslation.height) {
-              dragAxis = scrubsGIF && !isZoomed && gifScrubber.begin() ? .scrub : .horizontal
+            if scrubIndex != nil {
+              dragAxis = .scrub
+            } else if abs(val.predictedEndTranslation.width) > abs(val.predictedEndTranslation.height) {
+              dragAxis = .horizontal
             } else if abs(val.predictedEndTranslation.width) < abs(val.predictedEndTranslation.height) {
               dragAxis = .vertical
             }
           }
 
-          if dragAxis == .scrub, let dragOffset {
-            gifScrubber.update(translation: val.translation.width - dragOffset.width, width: .screenW)
+          if dragAxis == .scrub {
+            return
           } else if let dragAxis, let dragOffset {
             var transaction = Transaction()
             transaction.isContinuous = true
@@ -178,7 +222,8 @@ struct LightBoxImage: View {
         }
         .onEnded { val in
           if dragAxis == .scrub {
-            endScrub()
+            dragOffset = nil
+            dragAxis = nil
           } else if dragAxis == .horizontal {
             let predictedEnd = val.predictedEndTranslation.width - (dragOffset?.width ?? 0)
             drag = .zero
@@ -212,15 +257,11 @@ struct LightBoxImage: View {
           }
         },
     )
-    // Ends a scrub whose drag ended without `onEnded`, whatever the axis now says: a resize
-    // can clear the axis mid-scrub.
+    // Stands the drag down when it ended without `onEnded`, a held drag having taken over.
     .onChange(of: dragging) { _, dragging in
-      guard !dragging else { return }
-      gifScrubber.end()
-      if dragAxis == .scrub {
-        dragOffset = nil
-        dragAxis = nil
-      }
+      guard !dragging, dragAxis == .scrub else { return }
+      dragOffset = nil
+      dragAxis = nil
     }
     .overlay { infoOverlay(opacity: !showOverlay || isPinching ? 0 : interpolate([1, 0], false)) }
     // Taps on the image show or hide the controls; Close, Escape or a swipe closes it.
@@ -285,9 +326,7 @@ struct LightBoxImage: View {
     }
     // Pages are a window wide, so a resize moves them: keep the current one in view.
     .onChange(of: CGFloat.screenW) {
-      if dragAxis == .scrub {
-        gifScrubber.end()
-      }
+      endScrub()
       drag = .zero
       dragOffset = nil
       dragAxis = nil
@@ -295,7 +334,6 @@ struct LightBoxImage: View {
     }
     .onAppear {
       xPos = -CGFloat(i) * (.screenW + SPACING)
-      activeIndex = i
       markSeen(i)
       doThisAfter(0.0) {
         withAnimation(.easeOut) {
@@ -307,6 +345,76 @@ struct LightBoxImage: View {
     // It covers the post: the menu bar's Post commands mustn't move off it underneath.
     .commandTarget(CommandTargets.Target(kind: .modal))
     .transition(.opacity)
+  }
+}
+
+/// The pages' GIF scrubbers and video players, made as their pages come near and dropped as they
+/// go, so a lightbox paging through a feed holds a few at most.
+@MainActor
+final class LightBoxMediaStore {
+  private let pages: [LightBoxPage]
+  private var gifs: [Int: GIFScrubber] = [:]
+  private var videos: [Int: LightBoxVideo] = [:]
+  /// The page showing, whose video plays.
+  private var shown: Int?
+
+  init(pages: [LightBoxPage]) {
+    self.pages = pages
+  }
+
+  func gif(_ index: Int) -> GIFScrubber {
+    if let gif = gifs[index] {
+      return gif
+    }
+    let gif = GIFScrubber()
+    gifs[index] = gif
+    return gif
+  }
+
+  /// The player of page `index`, when it's a video.
+  func video(_ index: Int, onPictureInPictureStart: (() -> Void)? = nil) -> LightBoxVideo? {
+    guard pages.indices.contains(index), case let .video(video, holder) = pages[index].media else { return nil }
+    let player = videos[index] ?? LightBoxVideo(video: video, holder: holder)
+    videos[index] = player
+    if let onPictureInPictureStart {
+      player.onPictureInPictureStart = onPictureInPictureStart
+    }
+    return player
+  }
+
+  /// What a held drag on page `index` scrubs: its GIF or video.
+  func scrubber(at index: Int) -> (any MediaScrubbable)? {
+    guard pages.indices.contains(index) else { return nil }
+    switch pages[index].media {
+    case let .image(img): return img.url.isGIF ? gif(index) : nil
+    case .video: return video(index)
+    }
+  }
+
+  /// Page `index` shows: plays its video, stops the one before, and drops the far ones.
+  func show(_ index: Int) {
+    if shown != index {
+      // The new one first, so the audio session isn't let go of between two videos.
+      video(index)?.activate()
+      if let shown {
+        videos[shown]?.deactivate()
+      }
+      shown = index
+    }
+    for (other, player) in videos where abs(other - index) > 1 {
+      player.release()
+      videos[other] = nil
+    }
+    for other in gifs.keys where abs(other - index) > 1 {
+      gifs[other] = nil
+    }
+  }
+
+  /// The lightbox closed.
+  func releaseAll() {
+    videos.values.forEach { $0.release() }
+    videos = [:]
+    shown = nil
   }
 }
 

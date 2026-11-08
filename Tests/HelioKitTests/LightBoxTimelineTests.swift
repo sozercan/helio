@@ -11,7 +11,7 @@ struct LightBoxTimelineTests {
     }
   }
 
-  private func post(_ id: String, image: Bool = true, over18: Bool = false) throws -> Post {
+  private func post(_ id: String, image: Bool = true, video: Bool = false, over18: Bool = false) throws -> Post {
     var json = try #require(try JSONSerialization.jsonObject(with: JSONEncoder().encode(postSampleData)) as? [String: Any])
     json["id"] = id
     json["name"] = "t3_\(id)"
@@ -20,6 +20,11 @@ struct LightBoxTimelineTests {
     json["url"] = image ? "https://i.redd.it/\(id).jpg" : "https://example.com/\(id)"
     json["domain"] = image ? "i.redd.it" : "example.com"
     json["preview"] = image ? ["images": [["source": ["url": "https://preview.redd.it/\(id).jpg", "width": 800, "height": 600]]]] : NSNull()
+    if video {
+      json["url"] = "https://v.redd.it/\(id)"
+      json["domain"] = "v.redd.it"
+      json["preview"] = ["reddit_video_preview": ["hls_url": "https://v.redd.it/\(id)/HLSPlaylist.m3u8", "width": 640, "height": 360]]
+    }
     let data = try JSONDecoder().decode(PostData.self, from: JSONSerialization.data(withJSONObject: json))
     return Post(data: data, contentWidth: 400, theme: defaultTheme, fetchAvatar: false, fetchLinkMetadata: false)
   }
@@ -46,6 +51,22 @@ struct LightBoxTimelineTests {
     #expect(titles == (blurred ? ["Post a", "Post d"] : ["Post a", "Post c", "Post d"]))
     #expect(timeline.pages[timeline.start].post.title == "Post d")
     #expect(timeline.pages[timeline.start].post.key == "opened")
+  }
+
+  @Test func goesOnToTheFeedsVideosToo() throws {
+    let image = try post("a")
+    let video = try post("v", image: false, video: true)
+    let timeline = try LightBoxTimeline.around(image.helioData, in: Feed([image, video]), own: own(image), start: 0)
+    #expect(timeline.pages.map(\.post.title) == ["Post a", "Post v"])
+    guard case let .video(shared, holder) = timeline.pages[1].media else {
+      Issue.record("expected a video page")
+      return
+    }
+    #expect(shared.url.absoluteString == "https://v.redd.it/v/HLSPlaylist.m3u8")
+    // Another post's video gets a player of its own in the lightbox.
+    #expect(holder == nil)
+    #expect(timeline.pages[1].media.isScrubbable)
+    #expect(!timeline.pages[0].media.isScrubbable)
   }
 
   @Test func showsOnlyItsOwnImagesOutsideTheFeed() throws {

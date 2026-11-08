@@ -14,13 +14,15 @@ struct ZoomableScrollView<Content: View>: UIViewRepresentable {
   private var content: Content
   private var onTap: (() -> Void)?
   private var onSwipe: ((Int) -> Void)?
+  private var onHold: ((LightBoxScrub) -> Void)?
   @Binding var isZoomed: Bool // Add the binding parameter
 
-  init(onTap: (() -> Void)? = nil, onSwipe: ((Int) -> Void)? = nil, isZoomed: Binding<Bool>, @ViewBuilder content: () -> Content) {
+  init(onTap: (() -> Void)? = nil, onSwipe: ((Int) -> Void)? = nil, onHold: ((LightBoxScrub) -> Void)? = nil, isZoomed: Binding<Bool>, @ViewBuilder content: () -> Content) {
     self.content = content()
     // set up helper class
     self.onTap = onTap
     self.onSwipe = onSwipe
+    self.onHold = onHold
     self._isZoomed = isZoomed // Initialize the binding
   }
 
@@ -52,13 +54,15 @@ struct ZoomableScrollView<Content: View>: UIViewRepresentable {
     tapGesture.require(toFail: doubleTapGesture)
     scrollView.addGestureRecognizer(tapGesture)
 
-    // A two-finger swipe on a trackpad (Mac, or an iPad's), which the drag that pages by touch
-    // never sees. Scroll events only: touches still go to that drag.
-    let swipeGesture = UIPanGestureRecognizer(target: context.coordinator, action: #selector(Coordinator.handleTrackpadSwipe(_:)))
-    swipeGesture.allowedScrollTypesMask = .continuous
-    swipeGesture.allowedTouchTypes = []
-    swipeGesture.delegate = context.coordinator
-    scrollView.addGestureRecognizer(swipeGesture)
+    let gestures = context.coordinator.gestures
+    gestures.onSwipe = onSwipe
+    gestures.onHold = onHold
+    gestures.isZoomed = { [weak scrollView] in (scrollView?.zoomScale ?? 1) > (scrollView?.minimumZoomScale ?? 1) }
+    gestures.install(on: scrollView)
+    // A finger resting to scrub isn't a tap that shows or hides the controls.
+    if let hold = gestures.hold {
+      tapGesture.require(toFail: hold)
+    }
 
     return scrollView
   }
@@ -66,7 +70,8 @@ struct ZoomableScrollView<Content: View>: UIViewRepresentable {
   func updateUIView(_ uiView: UIScrollView, context: Context) {
     // update the hosting controller's SwiftUI content
     context.coordinator.hostingController.rootView = self.content
-    context.coordinator.onSwipe = onSwipe
+    context.coordinator.gestures.onSwipe = onSwipe
+    context.coordinator.gestures.onHold = onHold
     assert(context.coordinator.hostingController.view.superview == uiView)
 
     // While not zoomed, keep contentSize matching the view, so the next pinch scales
@@ -84,10 +89,10 @@ struct ZoomableScrollView<Content: View>: UIViewRepresentable {
 
   // MARK: - Coordinator
 
-  class Coordinator: NSObject, UIScrollViewDelegate, UIGestureRecognizerDelegate {
+  class Coordinator: NSObject, UIScrollViewDelegate {
     var hostingController: UIHostingController<Content>
     var onTap: (() -> Void)?
-    var onSwipe: ((Int) -> Void)?
+    let gestures = LightBoxGestures()
     @Binding var isZoomed: Bool // Use the binding here
 
     init(hostingController: UIHostingController<Content>, onTap: (() -> Void)? = nil, isZoomed: Binding<Bool>) {
@@ -106,20 +111,6 @@ struct ZoomableScrollView<Content: View>: UIViewRepresentable {
 
     @objc func handleTap(_ gestureRecognizer: UITapGestureRecognizer) {
       onTap?()
-    }
-
-    /// Pages once the fingers lift from a mostly sideways swipe; a zoomed image pans instead.
-    @objc func handleTrackpadSwipe(_ gestureRecognizer: UIPanGestureRecognizer) {
-      guard gestureRecognizer.state == .ended, let onSwipe, !isZoomed else { return }
-      let translation = gestureRecognizer.translation(in: gestureRecognizer.view)
-      let velocity = gestureRecognizer.velocity(in: gestureRecognizer.view)
-      guard abs(translation.x) > abs(translation.y), abs(translation.x) > 60 || abs(velocity.x) > 400 else { return }
-      // Fingers moving left bring in the next image, as a touch swipe does.
-      onSwipe(translation.x < 0 ? 1 : -1)
-    }
-
-    func gestureRecognizer(_ gestureRecognizer: UIGestureRecognizer, shouldRecognizeSimultaneouslyWith otherGestureRecognizer: UIGestureRecognizer) -> Bool {
-      true
     }
 
     @objc func handleDoubleTap(_ gestureRecognizer: UITapGestureRecognizer) {
