@@ -23,6 +23,9 @@ struct ForYouSources: Sendable {
   var opened: @Sendable (_ credential: RedditCredential) -> [ForYouOpenedPost] = { _ in [] }
   /// The posts the account already saw in For You or opened, by fullname: For You leaves them out.
   var seen: @Sendable (_ credential: RedditCredential) async -> Set<String> = { _ in [] }
+  /// Which of these post ids (without their kind) were read in Helio (`SeenPost`): For You leaves
+  /// them out too, so the feed doesn't hide them again on its own.
+  var read: @Sendable (_ ids: [String]) async -> Set<String> = { _ in [] }
   var related: @Sendable (_ subreddit: String, _ credential: RedditCredential) async -> [ForYouRelatedSub]?
   /// The names of the subreddits the account follows, as last synced.
   var subscribed: @Sendable (_ credential: RedditCredential) async -> [String]
@@ -50,6 +53,15 @@ struct ForYouSources: Sendable {
     },
     seen: { credential in
       await MainActor.run { ForYouHistory.seen(ForYouHistory.Owner(credential)) }
+    },
+    read: { ids in
+      guard !ids.isEmpty else { return [] }
+      let context = PersistenceController.shared.container.newBackgroundContext()
+      return await context.perform {
+        let request = NSFetchRequest<SeenPost>(entityName: "SeenPost")
+        request.predicate = NSPredicate(format: "postID IN %@", ids)
+        return Set(((try? context.fetch(request)) ?? []).compactMap(\.postID))
+      }
     },
     related: { subreddit, credential in
       await RedditAPI.shared.fetchRelatedSubs(subreddit, altCredential: credential)
@@ -281,7 +293,7 @@ actor ForYouEngine {
                                   seen: seen, scorer: profile?.scorer, threshold: threshold)
     var suggestedAfter = suggested?.1
     var stats = ForYouPageStats(threshold: threshold)
-    var picked = pickSuggestions(from: suggested?.0 ?? [], home: homePosts, filter: filter, stats: &stats)
+    var picked = await pickSuggestions(from: unread(suggested?.0 ?? []), home: homePosts, filter: filter, stats: &stats)
     // With Home run out, the suggestions are the feed, and a page whose suggestions were all
     // filtered out would read as its end: look further, as the feed does past read posts. The
     // search is bounded: after this many pages with nothing relevant, the feed ends.
@@ -289,7 +301,7 @@ actor ForYouEngine {
     while homePosts.isEmpty, picked.isEmpty, let after = suggestedAfter, emptyPages < Self.maxEmptySuggestionPages {
       guard let next = await fetchSuggestions(subs: subs, after: after, credential: credential) else { return nil }
       suggestedAfter = next.1
-      picked = pickSuggestions(from: next.0, home: [], filter: filter, stats: &stats)
+      picked = await pickSuggestions(from: unread(next.0), home: [], filter: filter, stats: &stats)
       emptyPages += 1
     }
     lastPageStats[account] = stats
@@ -345,6 +357,13 @@ actor ForYouEngine {
   /// The suggestions to show beside `home`: one per few Home posts, or all of them once Home
   /// ran out. Leaves out followed, excluded, NSFW and pinned posts, and, with the embedding,
   /// posts less relevant than the threshold.
+  /// `posts` without the ones read in Helio. For You filters read posts itself rather than
+  /// leaving it to the feed, so one bound covers all the pages it skips.
+  private func unread(_ posts: [PostData]) async -> [PostData] {
+    let read = await sources.read(posts.map(\.id))
+    return read.isEmpty ? posts : posts.filter { !read.contains($0.id) }
+  }
+
   private func pickSuggestions(from posts: [PostData], home: [PostData], filter: SuggestionFilter, stats: inout ForYouPageStats) -> [PostData] {
     let homeIDs = Set(home.map(\.name))
     let eligible = posts.filter { post in
@@ -427,7 +446,7 @@ actor ForYouEngine {
     while true {
       guard let page = await sources.home(sort, after, limit, credential) else { return nil }
       noteCrossposts(in: page.0, account: Account(credential))
-      let unseen = page.0.filter { !seen.contains($0.name) }
+      let unseen = await unread(page.0.filter { !seen.contains($0.name) })
       if !unseen.isEmpty || page.1 == nil {
         return (unseen, page.1)
       }

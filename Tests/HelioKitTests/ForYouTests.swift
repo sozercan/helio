@@ -175,6 +175,8 @@ struct ForYouEngineTests {
     let participation = Mutex<[RedditAPI.ActivityItem]?>([])
     let opened = Mutex<[ForYouOpenedPost]>([])
     let seen = Mutex<Set<String>>([])
+    /// Post ids, without their kind, read in Helio.
+    let read = Mutex<Set<String>>([])
   }
 
   private func engine(
@@ -229,6 +231,7 @@ struct ForYouEngineTests {
       participation: { _, _ in calls.participation.withLock { $0 } },
       opened: { _ in calls.opened.withLock { $0 } },
       seen: { _ in calls.seen.withLock { $0 } },
+      read: { ids in calls.read.withLock { $0 }.intersection(ids) },
       related: { _, _ in [] },
       subscribed: { _ in calls.followed.withLock { $0 } },
       excluded: { calls.excluded.withLock { $0 } },
@@ -497,6 +500,15 @@ struct ForYouEngineTests {
     // Home's first page was all seen, so its next one shows instead of nothing.
     #expect(calls.home.withLock { $0 } == [nil, "t3_h8"])
     #expect(page.posts.filter { $0.subreddit == "homelab" }.map(\.name).allSatisfy { $0.hasSuffix("t3_h8") })
+    #expect(Set(page.reasons.keys) == ["t3_s2"])
+  }
+
+  @Test func postsReadInHelioAreLeftOutLikeSeenOnes() async throws {
+    let calls = Calls()
+    calls.read.withLock { $0 = Set((0 ..< 8).map { "h\($0)" } + ["s1"]) }
+    let page = try #require(await engine(calls: calls).page(after: nil, sort: .best, limit: 8, credential: Self.credential))
+    #expect(calls.home.withLock { $0 } == [nil, "t3_h8"])
+    #expect(!page.posts.contains { $0.name == "t3_h0" })
     #expect(Set(page.reasons.keys) == ["t3_s2"])
   }
 
