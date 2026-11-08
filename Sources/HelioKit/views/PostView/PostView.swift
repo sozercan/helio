@@ -76,6 +76,8 @@ struct PostView: View, Equatable {
 
   /// The reply sheet opened by the menu bar's Reply; the post's bar has its own.
   @State private var showReplyModal = false
+  /// This page's stay, timed for For You's reading history (`ForYouHistory`).
+  @State private var forYouVisit: UUID?
   /// Scrolls to the comment a link opened once the comments come: taken over from a screen that
   /// was loading them.
   @State private var awaitsHighlight = false
@@ -246,8 +248,8 @@ struct PostView: View, Equatable {
           }
         }
         .onAppear {
-          if !isPreview {
-            ForYouHistory.began(post)
+          if !isPreview, forYouVisit == nil {
+            forYouVisit = ForYouHistory.began(post)
           }
           lease.adopt(in: screenStateScope)
           // Taken over from the screen this one replaced: back to where the reader left that one,
@@ -295,8 +297,9 @@ struct PostView: View, Equatable {
           }
         }
         .onDisappear {
-          if !isPreview {
-            ForYouHistory.ended(post)
+          if let forYouVisit {
+            ForYouHistory.ended(forYouVisit, post: post)
+            self.forYouVisit = nil
           }
         }
         // A context-menu preview isn't a screen the menu bar's commands act on.

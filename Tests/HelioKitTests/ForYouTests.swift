@@ -1,3 +1,4 @@
+import Defaults
 import Foundation
 import Synchronization
 import Testing
@@ -528,52 +529,91 @@ struct ForYouHistoryTests {
     ForYouOpenedPost(id: id, subreddit: subreddit, title: "Post \(id)", lastOpened: date, seconds: seconds)
   }
 
-  @Test func keepsPostsReadLongEnoughNewestFirstAndAddsUpVisits() {
-    let account = UUID()
-    defer { ForYouHistory.forget(account: account) }
-    let start = Date(timeIntervalSince1970: 1_000_000)
-    ForYouHistory.record(visit("t3_a", "astronomy", seconds: 6, at: start), account: account)
-    ForYouHistory.record(visit("t3_b", "pics", seconds: 3, at: start.addingTimeInterval(10)), account: account)
-    ForYouHistory.record(visit("t3_a", "astronomy", seconds: 6, at: start.addingTimeInterval(20)), account: account)
+  private func owner(_ credentialID: UUID = UUID(), _ account: String = "placeholder") -> ForYouHistory.Owner {
+    ForYouHistory.Owner(credentialID: credentialID, account: account)
+  }
 
-    let read = ForYouHistory.read(account: account)
+  private let start = Date(timeIntervalSince1970: 1_000_000)
+
+  @Test func keepsPostsReadLongEnoughNewestFirstAndAddsUpVisits() {
+    let owner = owner()
+    defer { ForYouHistory.forget(credentialID: owner.credentialID) }
+    ForYouHistory.record(visit("t3_a", "astronomy", seconds: 6, at: start), owner: owner)
+    ForYouHistory.record(visit("t3_b", "pics", seconds: 3, at: start.addingTimeInterval(10)), owner: owner)
+    ForYouHistory.record(visit("t3_a", "astronomy", seconds: 6, at: start.addingTimeInterval(20)), owner: owner)
+
+    let read = ForYouHistory.read(owner)
     #expect(read.map(\.id) == ["t3_a"])
     #expect(read.first?.seconds == 12)
-    #expect(ForYouHistory.read(account: UUID()).isEmpty)
+    #expect(ForYouHistory.read(self.owner()).isEmpty)
 
-    ForYouHistory.forget(account: account)
-    #expect(ForYouHistory.read(account: account).isEmpty)
+    ForYouHistory.forget(credentialID: owner.credentialID)
+    #expect(ForYouHistory.read(owner).isEmpty)
+  }
+
+  @Test func anotherAccountSignedInOnTheSameCredentialHasItsOwnHistory() {
+    let credentialID = UUID()
+    defer { ForYouHistory.forget(credentialID: credentialID) }
+    let first = owner(credentialID, "first")
+    let second = owner(credentialID, "second")
+    ForYouHistory.record(visit("t3_a", "astronomy", seconds: 30, at: start), owner: first)
+    #expect(ForYouHistory.read(second).isEmpty)
+    // As early builds kept it.
+    Defaults[.forYouOpenedPosts][credentialID.uuidString] = [visit("t3_old", "pics", seconds: 30, at: start)]
+    ForYouHistory.forget(credentialID: credentialID)
+    #expect(ForYouHistory.read(first).isEmpty)
+    #expect(Defaults[.forYouOpenedPosts][credentialID.uuidString] == nil)
+  }
+
+  @Test func theSamePostOpenTwiceIsTimedOnceForEach() {
+    let owner = owner()
+    defer { ForYouHistory.forget(credentialID: owner.credentialID) }
+    let first = ForYouHistory.began("t3_a", owner: owner, at: start)
+    let second = ForYouHistory.began("t3_a", owner: owner, at: start.addingTimeInterval(5))
+    ForYouHistory.ended(second, subreddit: "astronomy", title: "Saturn", at: start.addingTimeInterval(15))
+    ForYouHistory.ended(first, subreddit: "astronomy", title: "Saturn", at: start.addingTimeInterval(20))
+    #expect(ForYouHistory.read(owner).first?.seconds == 30)
+  }
+
+  @Test func aPostOpenedFromALinkIsTimedByItsFullnameAndDroppedWithoutDetails() {
+    let owner = owner()
+    defer { ForYouHistory.forget(credentialID: owner.credentialID) }
+    let linked = Post(id: "linked1", subID: "astronomy")
+    let token = ForYouHistory.began(linked.fullname, owner: owner, at: start)
+    // Closed before the details loaded: nothing to record, and nothing left open.
+    ForYouHistory.ended(token, post: linked)
+    #expect(ForYouHistory.read(owner).isEmpty)
+    #expect(linked.fullname == "t3_linked1")
   }
 
   @Test func aVisitOpenWhenHistoryIsErasedIsNotWrittenBack() {
-    let account = UUID()
-    let other = UUID()
+    let erased = owner()
+    let kept = owner()
     defer {
-      ForYouHistory.forget(account: account)
-      ForYouHistory.forget(account: other)
+      ForYouHistory.forget(credentialID: erased.credentialID)
+      ForYouHistory.forget(credentialID: kept.credentialID)
     }
-    let start = Date(timeIntervalSince1970: 1_000_000)
-    ForYouHistory.began("t3_a", account: account, at: start)
-    ForYouHistory.began("t3_b", account: other, at: start)
-    ForYouHistory.forget(account: account)
-    ForYouHistory.ended("t3_a", subreddit: "astronomy", title: "Saturn", at: start.addingTimeInterval(60))
-    ForYouHistory.ended("t3_b", subreddit: "pics", title: "Kept", at: start.addingTimeInterval(60))
-    #expect(ForYouHistory.read(account: account).isEmpty)
-    #expect(ForYouHistory.read(account: other).map(\.id) == ["t3_b"])
+    let erasedVisit = ForYouHistory.began("t3_a", owner: erased, at: start)
+    let keptVisit = ForYouHistory.began("t3_b", owner: kept, at: start)
+    ForYouHistory.forget(credentialID: erased.credentialID)
+    ForYouHistory.ended(erasedVisit, subreddit: "astronomy", title: "Saturn", at: start.addingTimeInterval(60))
+    ForYouHistory.ended(keptVisit, subreddit: "pics", title: "Kept", at: start.addingTimeInterval(60))
+    #expect(ForYouHistory.read(erased).isEmpty)
+    #expect(ForYouHistory.read(kept).map(\.id) == ["t3_b"])
 
-    ForYouHistory.began("t3_c", account: other, at: start)
+    let cleared = ForYouHistory.began("t3_c", owner: kept, at: start)
     ForYouHistory.clear()
-    ForYouHistory.ended("t3_c", subreddit: "pics", title: "Gone", at: start.addingTimeInterval(60))
-    #expect(ForYouHistory.read(account: other).isEmpty)
+    ForYouHistory.ended(cleared, subreddit: "pics", title: "Gone", at: start.addingTimeInterval(60))
+    #expect(ForYouHistory.read(kept).isEmpty)
   }
 
   @Test func keepsOnlyTheLatestPosts() {
-    let account = UUID()
-    defer { ForYouHistory.forget(account: account) }
+    let owner = owner()
+    defer { ForYouHistory.forget(credentialID: owner.credentialID) }
     for index in 0 ..< ForYouHistory.limit + 5 {
-      ForYouHistory.record(visit("t3_\(index)", "sub", seconds: 30, at: Date()), account: account)
+      ForYouHistory.record(visit("t3_\(index)", "sub", seconds: 30, at: Date()), owner: owner)
     }
-    let read = ForYouHistory.read(account: account)
+    let read = ForYouHistory.read(owner)
     #expect(read.count == ForYouHistory.limit)
     #expect(read.first?.id == "t3_\(ForYouHistory.limit + 4)")
   }

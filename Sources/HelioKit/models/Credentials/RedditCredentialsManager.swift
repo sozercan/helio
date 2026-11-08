@@ -276,7 +276,7 @@ final class RedditCredentialsManager {
     withAnimation {
       publishCredentials(credentials.filter { $0.id != cred.id })
     }
-    ForYouHistory.forget(account: cred.id)
+    ForYouHistory.forget(credentialID: cred.id)
     // Deleting the selected account selects the one `selectedCredential` falls back to.
     if !selectionIsSaved, let fallback = credentials.first {
       Defaults[.GeneralDefSettings].redditCredentialSelectedID = fallback.id

@@ -44,7 +44,7 @@ struct ForYouSources: Sendable {
       await RedditAPI.shared.fetchParticipation(userName, altCredential: credential)
     },
     opened: { credential in
-      ForYouHistory.read(account: credential.id)
+      ForYouHistory.read(ForYouHistory.Owner(credential))
     },
     related: { subreddit, credential in
       await RedditAPI.shared.fetchRelatedSubs(subreddit, altCredential: credential)
