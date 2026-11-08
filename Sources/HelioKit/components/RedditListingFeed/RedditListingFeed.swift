@@ -344,8 +344,10 @@ struct RedditListingFeed<Header: View, Footer: View, S: Sorting>: View {
           }
         }
         // Where it's back to after the layout changes: the row at the top when it stopped scrolling.
-        .onScrollPhaseChange { _, phase in
-          if phase == .idle {
+        // Not as a list first shows, idle at its top: the list built for the new layout would
+        // replace the place it was handed over before scrolling back to it.
+        .onScrollPhaseChange { oldPhase, phase in
+          if phase == .idle, oldPhase != .idle {
             itemsManager.saveScrollAnchor()
           }
         }
