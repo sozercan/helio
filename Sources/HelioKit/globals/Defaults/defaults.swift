@@ -43,6 +43,10 @@ extension Defaults.Keys {
   static let likedButNotSubbed = Key<[Subreddit]>("likedButNotSubbed", default: [])
   /// Subreddits For You no longer suggests ("Not interested").
   static let forYouDismissedSubs = Key<[String]>("forYouDismissedSubs", default: [])
+  /// Set once For You loads, from when the posts opened are kept for it (`ForYouHistory`).
+  static let forYouUsed = Key<Bool>("forYouUsed", default: false)
+  /// The posts each account opened, by credential id, newest first (`ForYouHistory`).
+  static let forYouOpenedPosts = Key<[String: [ForYouOpenedPost]]>("forYouOpenedPosts", default: [:])
   /* </Heavy Defaults are kept separated, these should be in CoreData or something> */
 
   /// Steps content text is moved from the system text size (Settings > Appearance > Text Size).

@@ -16,7 +16,11 @@ struct ForYouSources: Sendable {
   /// A page of the multireddit of `subs`, by hot.
   var suggestions: @Sendable (_ subs: [String], _ after: String?, _ limit: Int, _ credential: RedditCredential) async -> ([PostData], String?)?
   var upvoted: @Sendable (_ userName: String, _ credential: RedditCredential) async -> [PostData]?
-  var saved: @Sendable (_ userName: String, _ credential: RedditCredential) async -> [RedditAPI.SavedItem]?
+  var saved: @Sendable (_ userName: String, _ credential: RedditCredential) async -> [RedditAPI.ActivityItem]?
+  /// The account's comments and posts.
+  var participation: @Sendable (_ userName: String, _ credential: RedditCredential) async -> [RedditAPI.ActivityItem]? = { _, _ in [] }
+  /// The posts read on this device, newest first (`ForYouHistory`).
+  var opened: @Sendable (_ credential: RedditCredential) -> [ForYouOpenedPost] = { _ in [] }
   var related: @Sendable (_ subreddit: String, _ credential: RedditCredential) async -> [ForYouRelatedSub]?
   /// The names of the subreddits the account follows, as last synced.
   var subscribed: @Sendable (_ credential: RedditCredential) async -> [String]
@@ -35,6 +39,12 @@ struct ForYouSources: Sendable {
     },
     saved: { userName, credential in
       await RedditAPI.shared.fetchSavedItems(userName, altCredential: credential)
+    },
+    participation: { userName, credential in
+      await RedditAPI.shared.fetchParticipation(userName, altCredential: credential)
+    },
+    opened: { credential in
+      ForYouHistory.read(account: credential.id)
     },
     related: { subreddit, credential in
       await RedditAPI.shared.fetchRelatedSubs(subreddit, altCredential: credential)
@@ -84,9 +94,12 @@ struct ForYouDiagnostics: Sendable {
   /// nil when they failed to load.
   let upvotedCount: Int?
   let savedCount: Int?
+  let participatedCount: Int?
+  /// Posts read for a while on this device.
+  let openedCount: Int
   /// nil without the embedding.
   let likedTitles: Int?
-  let candidates: [ForYouCandidate]
+  var candidates: [ForYouCandidate]
   let unqualified: [ForYouCandidate]
   let lastPage: ForYouPageStats?
 }
@@ -133,13 +146,15 @@ actor ForYouEngine {
     /// nil when they failed to load.
     let upvotedCount: Int?
     let savedCount: Int?
+    let participatedCount: Int?
+    let openedCount: Int
     /// Asked to be worked out again: the next first page rebuilds it, while a feed already
     /// paging keeps using it.
     var stale = false
 
     /// Whether the account's upvotes or saves loaded; without them it's rebuilt sooner.
     var complete: Bool {
-      upvotedCount != nil || savedCount != nil
+      upvotedCount != nil || savedCount != nil || participatedCount != nil
     }
   }
 
@@ -348,6 +363,8 @@ actor ForYouEngine {
       relatedFailures: profile.relatedFailures,
       upvotedCount: profile.upvotedCount,
       savedCount: profile.savedCount,
+      participatedCount: profile.participatedCount,
+      openedCount: profile.openedCount,
       likedTitles: profile.scorer?.likedCount,
       candidates: profile.candidates,
       unqualified: profile.unqualified,
@@ -437,8 +454,13 @@ actor ForYouEngine {
     } else {
       nil
     }
-    async let savedFetch: [RedditAPI.SavedItem]? = if let userName {
+    async let savedFetch: [RedditAPI.ActivityItem]? = if let userName {
       await sources.saved(userName, credential)
+    } else {
+      nil
+    }
+    async let participationFetch: [RedditAPI.ActivityItem]? = if let userName {
+      await sources.participation(userName, credential)
     } else {
       nil
     }
@@ -447,10 +469,14 @@ actor ForYouEngine {
     if subscribed.isEmpty {
       subscribed = Set(home.map { $0.subreddit.lowercased() })
     }
+    let opened = sources.opened(credential)
     let upvoted = await upvotedFetch
     let saved = await savedFetch
+    let participated = await participationFetch
 
-    let seeds = ForYouRanking.seeds(upvoted: upvoted?.map(\.subreddit) ?? [], home: home.map(\.subreddit), subscribed: subscribed)
+    // The followed subreddits the account is most active in, by what it does there.
+    let engagement = (upvoted?.map(\.subreddit) ?? []) + (participated?.map(\.subreddit) ?? []) + opened.map(\.subreddit)
+    let seeds = ForYouRanking.seeds(upvoted: engagement, home: home.map(\.subreddit), subscribed: subscribed)
     let lookups = await withTaskGroup(of: (Int, [ForYouSignals.Related]?).self) { group in
       for (index, seed) in seeds.enumerated() {
         group.addTask {
@@ -470,18 +496,22 @@ actor ForYouEngine {
       excluded: sources.excluded(),
       upvoted: upvoted?.map(\.subreddit) ?? [],
       saved: saved?.map(\.subreddit) ?? [],
+      participated: participated?.map(\.subreddit) ?? [],
+      opened: opened.map(\.subreddit),
       related: related,
       crossposts: crossposts[Account(credential)]?.map(\.crosspost) ?? [],
     )
-    let likedTitles = (upvoted?.map(\.title) ?? []) + (saved?.compactMap(\.title) ?? [])
+    // The latest of each kind, so no one kind crowds out the others.
+    let likedTitles = Array((upvoted?.map(\.title) ?? []).prefix(75)) + Array((saved?.compactMap(\.title) ?? []).prefix(50))
+      + Array((participated?.compactMap(\.title) ?? []).prefix(50)) + Array(opened.map(\.title).prefix(75))
     let ranked = ForYouRanking.ranked(from: signals)
     let candidates = Array(ranked.qualified.prefix(Self.maxCandidates))
     let relatedFailures = lookups.count { $0 == nil }
     forYouLogger.info("Built For You from \(seeds.count) seeds (\(relatedFailures) related lookups failed): \(candidates.count) subreddits to suggest")
     builtProfiles += 1
     return Profile(builtAt: now(), generation: builtProfiles, candidates: candidates, unqualified: Array(ranked.unqualified.prefix(20)), subscribed: subscribed,
-                   scorer: makeScorer(Array(likedTitles.prefix(200))), seeds: seeds, relatedFailures: relatedFailures,
-                   upvotedCount: upvoted?.count, savedCount: saved?.count)
+                   scorer: makeScorer(likedTitles), seeds: seeds, relatedFailures: relatedFailures,
+                   upvotedCount: upvoted?.count, savedCount: saved?.count, participatedCount: participated?.count, openedCount: opened.count)
   }
 }
 
@@ -489,6 +519,10 @@ enum ForYouFeed {
   static let id = "foryou"
 
   static func fetchPosts(_ feed: Subreddit, sort: SubListingSortOption, after: String?, contentWidth: CGFloat, context: FeedItemsManager<SubListingSortOption>.FetchContext) async -> ([RedditEntityType]?, String?)? {
+    // From now on, the posts opened are kept for For You (`ForYouHistory`).
+    if !Defaults[.forYouUsed] {
+      Defaults[.forYouUsed] = true
+    }
     guard let page = await ForYouEngine.shared.page(after: after, sort: sort, limit: context.limit, credential: context.credential) else { return nil }
     let posts = Post.initMultiple(datas: page.posts, sub: feed, contentWidth: contentWidth)
     for post in posts {

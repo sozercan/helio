@@ -58,6 +58,20 @@ struct ForYouRankingTests {
     #expect(!(ranked.qualified + ranked.unqualified).contains { $0.name == "oldest" })
   }
 
+  @Test func commentsPostsAndReadsAreSignalsTooButOneIsNotEnough() {
+    let signals = ForYouSignals(
+      participated: ["swiftui", "swiftui", "oneoff"],
+      opened: ["astronomy", "astronomy", "glanced"],
+    )
+    let ranked = ForYouRanking.ranked(from: signals)
+    #expect(ranked.qualified.map(\.name) == ["swiftui", "astronomy"])
+    #expect(ranked.qualified.first?.reason == .participated)
+    #expect(ranked.qualified.first?.score == 3)
+    #expect(ranked.qualified.last?.reason == .opened)
+    #expect(ranked.qualified.last?.breakdown.opened == 2)
+    #expect(Set(ranked.unqualified.map(\.name)) == ["oneoff", "glanced"])
+  }
+
   @Test func capsEachKindOfSignal() {
     let binge = ForYouSignals(upvoted: Array(repeating: "binge", count: 40), saved: ["a", "a", "b", "b"])
     let candidates = ForYouRanking.candidates(from: binge)
@@ -157,6 +171,8 @@ struct ForYouEngineTests {
     /// Runs while a profile builds, after its upvotes are asked for.
     let duringBuild = Mutex<(@Sendable () async -> Void)?>(nil)
     let scorersMade = Mutex(0)
+    let participation = Mutex<[RedditAPI.ActivityItem]?>([])
+    let opened = Mutex<[ForYouOpenedPost]>([])
   }
 
   private func engine(
@@ -208,6 +224,8 @@ struct ForYouEngineTests {
         ]
       },
       saved: { _, _ in [] },
+      participation: { _, _ in calls.participation.withLock { $0 } },
+      opened: { _ in calls.opened.withLock { $0 } },
       related: { _, _ in [] },
       subscribed: { _ in calls.followed.withLock { $0 } },
       excluded: { calls.excluded.withLock { $0 } },
@@ -447,6 +465,27 @@ struct ForYouEngineTests {
     #expect(!next.reasons.isEmpty)
   }
 
+  @Test func readPostsAndCommentsSuggestTheirSubreddits() async throws {
+    let calls = Calls()
+    calls.upvotedPosts.withLock { $0 = [] }
+    calls.participation.withLock {
+      $0 = [RedditAPI.ActivityItem(subreddit: "SwiftUI", title: "Navigation question"), RedditAPI.ActivityItem(subreddit: "SwiftUI", title: nil)]
+    }
+    calls.opened.withLock {
+      $0 = [
+        ForYouOpenedPost(id: "t3_o1", subreddit: "astronomy", title: "Saturn tonight", lastOpened: Date(), seconds: 40),
+        ForYouOpenedPost(id: "t3_o2", subreddit: "astronomy", title: "Comet photo", lastOpened: Date(), seconds: 25),
+      ]
+    }
+    let engine = engine(calls: calls)
+    _ = await engine.page(after: nil, sort: .best, limit: 8, credential: Self.credential)
+    let diagnostics = try #require(await engine.diagnostics(account: ForYouEngine.Account(Self.credential)))
+    #expect(Set(diagnostics.candidates.map(\.name)) == ["SwiftUI", "astronomy"])
+    #expect(diagnostics.candidates.first { $0.name == "astronomy" }?.reason == .opened)
+    #expect(diagnostics.participatedCount == 2)
+    #expect(diagnostics.openedCount == 2)
+  }
+
   @Test func homeFailingFailsThePage() async {
     let calls = Calls()
     let page = await engine(calls: calls, homeFails: true).page(after: nil, sort: .best, limit: 8, credential: Self.credential)
@@ -479,5 +518,63 @@ struct InterestScorerTests {
     let near = try #require(scorer.score("Upgraded my home server with more storage"))
     let far = try #require(scorer.score("The election results are in"))
     #expect(near > far)
+  }
+}
+
+@MainActor
+@Suite(.serialized)
+struct ForYouHistoryTests {
+  private func visit(_ id: String, _ subreddit: String, seconds: Double, at date: Date) -> ForYouOpenedPost {
+    ForYouOpenedPost(id: id, subreddit: subreddit, title: "Post \(id)", lastOpened: date, seconds: seconds)
+  }
+
+  @Test func keepsPostsReadLongEnoughNewestFirstAndAddsUpVisits() {
+    let account = UUID()
+    defer { ForYouHistory.forget(account: account) }
+    let start = Date(timeIntervalSince1970: 1_000_000)
+    ForYouHistory.record(visit("t3_a", "astronomy", seconds: 6, at: start), account: account)
+    ForYouHistory.record(visit("t3_b", "pics", seconds: 3, at: start.addingTimeInterval(10)), account: account)
+    ForYouHistory.record(visit("t3_a", "astronomy", seconds: 6, at: start.addingTimeInterval(20)), account: account)
+
+    let read = ForYouHistory.read(account: account)
+    #expect(read.map(\.id) == ["t3_a"])
+    #expect(read.first?.seconds == 12)
+    #expect(ForYouHistory.read(account: UUID()).isEmpty)
+
+    ForYouHistory.forget(account: account)
+    #expect(ForYouHistory.read(account: account).isEmpty)
+  }
+
+  @Test func aVisitOpenWhenHistoryIsErasedIsNotWrittenBack() {
+    let account = UUID()
+    let other = UUID()
+    defer {
+      ForYouHistory.forget(account: account)
+      ForYouHistory.forget(account: other)
+    }
+    let start = Date(timeIntervalSince1970: 1_000_000)
+    ForYouHistory.began("t3_a", account: account, at: start)
+    ForYouHistory.began("t3_b", account: other, at: start)
+    ForYouHistory.forget(account: account)
+    ForYouHistory.ended("t3_a", subreddit: "astronomy", title: "Saturn", at: start.addingTimeInterval(60))
+    ForYouHistory.ended("t3_b", subreddit: "pics", title: "Kept", at: start.addingTimeInterval(60))
+    #expect(ForYouHistory.read(account: account).isEmpty)
+    #expect(ForYouHistory.read(account: other).map(\.id) == ["t3_b"])
+
+    ForYouHistory.began("t3_c", account: other, at: start)
+    ForYouHistory.clear()
+    ForYouHistory.ended("t3_c", subreddit: "pics", title: "Gone", at: start.addingTimeInterval(60))
+    #expect(ForYouHistory.read(account: other).isEmpty)
+  }
+
+  @Test func keepsOnlyTheLatestPosts() {
+    let account = UUID()
+    defer { ForYouHistory.forget(account: account) }
+    for index in 0 ..< ForYouHistory.limit + 5 {
+      ForYouHistory.record(visit("t3_\(index)", "sub", seconds: 30, at: Date()), account: account)
+    }
+    let read = ForYouHistory.read(account: account)
+    #expect(read.count == ForYouHistory.limit)
+    #expect(read.first?.id == "t3_\(ForYouHistory.limit + 4)")
   }
 }

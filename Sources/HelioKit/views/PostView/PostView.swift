@@ -246,6 +246,9 @@ struct PostView: View, Equatable {
           }
         }
         .onAppear {
+          if !isPreview {
+            ForYouHistory.began(post)
+          }
           lease.adopt(in: screenStateScope)
           // Taken over from the screen this one replaced: back to where the reader left that one,
           // a comment row or the post's top, rather than to the comment a link opened.
@@ -289,6 +292,11 @@ struct PostView: View, Equatable {
 
           Task(priority: .utility) {
             await subreddit.loadIfNeeded()
+          }
+        }
+        .onDisappear {
+          if !isPreview {
+            ForYouHistory.ended(post)
           }
         }
         // A context-menu preview isn't a screen the menu bar's commands act on.

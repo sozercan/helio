@@ -82,8 +82,15 @@ struct ForYouSettings: View {
             diagnostics = nil
           }
         }
+        Button("Clear Reading History", role: .destructive) {
+          ForYouHistory.clear()
+          Task {
+            await ForYouEngine.shared.invalidate()
+            diagnostics = nil
+          }
+        }
       } footer: {
-        Text("Suggestions are worked out again the next time For You loads, and every few hours.")
+        Text("Suggestions are worked out again the next time For You loads, and every few hours. Since you first opened For You, Helio keeps the posts you read, on this device only, for every account.")
       }
       .themedListSection()
     }
@@ -102,12 +109,14 @@ struct ForYouSettings: View {
       LabeledContent("Worked out", value: diagnostics.builtAt.formatted(.relative(presentation: .named)))
       LabeledContent("Upvoted posts", value: diagnostics.upvotedCount.map(String.init) ?? "Couldn't load")
       LabeledContent("Saved posts and comments", value: diagnostics.savedCount.map(String.init) ?? "Couldn't load")
+      LabeledContent("Your comments and posts", value: diagnostics.participatedCount.map(String.init) ?? "Couldn't load")
+      LabeledContent("Posts you read here", value: "\(diagnostics.openedCount)")
       LabeledContent("Related communities", value: relatedSummary(diagnostics))
       LabeledContent("Interest matching", value: diagnostics.likedTitles.map { "\($0) titles" } ?? "Unavailable")
     } header: {
       Text("Signals")
     } footer: {
-      Text("Related communities come from the sidebars of subreddits you follow. Interest matching compares post titles with ones you upvoted and saved, on this device.")
+      Text("Related communities come from the sidebars of subreddits you follow. Posts you read here are the ones you kept open for a while in Helio, kept only on this device. Interest matching compares post titles with ones you upvoted, saved, commented on, posted and read, on this device.")
     }
     .themedListSection()
   }
@@ -150,9 +159,9 @@ struct ForYouSettings: View {
   }
 
   private func removing(_ name: String, from diagnostics: ForYouDiagnostics) -> ForYouDiagnostics {
-    ForYouDiagnostics(builtAt: diagnostics.builtAt, seeds: diagnostics.seeds, relatedFailures: diagnostics.relatedFailures,
-                      upvotedCount: diagnostics.upvotedCount, savedCount: diagnostics.savedCount, likedTitles: diagnostics.likedTitles,
-                      candidates: diagnostics.candidates.filter { $0.name != name }, unqualified: diagnostics.unqualified, lastPage: diagnostics.lastPage)
+    var diagnostics = diagnostics
+    diagnostics.candidates.removeAll { $0.name == name }
+    return diagnostics
   }
 
   private func lastPage(_ page: ForYouPageStats) -> some View {

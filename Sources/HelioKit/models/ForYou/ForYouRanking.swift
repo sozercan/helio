@@ -11,6 +11,10 @@ enum ForYouReason: Codable, Hashable, Sendable {
   case related(to: String)
   case upvoted
   case saved
+  /// You comment or post there.
+  case participated
+  /// You read posts from there, here on this device.
+  case opened
   /// A post from it was crossposted into a subreddit you follow.
   case crossposted(into: String)
 
@@ -19,18 +23,30 @@ enum ForYouReason: Codable, Hashable, Sendable {
     case let .related(seed): "Similar to r/\(seed)"
     case .upvoted: "From posts you upvoted"
     case .saved: "From things you saved"
+    case .participated: "Where you comment and post"
+    case .opened: "From posts you read"
     case let .crossposted(sub): "Crossposted to r/\(sub)"
     }
   }
 }
 
 struct ForYouCandidate: Hashable, Sendable {
-  /// The signals behind a candidate. Upvotes and saves count recent ones only.
+  /// The signals behind a candidate. Upvotes, saves, comments, posts and reads count recent ones
+  /// only.
   struct Breakdown: Hashable, Sendable {
     var upvoted = 0
     var saved = 0
+    /// Comments and posts.
+    var participated = 0
+    /// Posts read for a while.
+    var opened = 0
     var relatedTo: [String] = []
     var crossposted: [String] = []
+
+    /// The signals of which one alone isn't enough to suggest a subreddit.
+    var weakSignals: Int {
+      upvoted + saved + participated + opened + crossposted.count
+    }
 
     var summary: String {
       var parts: [String] = []
@@ -39,6 +55,12 @@ struct ForYouCandidate: Hashable, Sendable {
       }
       if saved > 0 {
         parts.append(saved == 1 ? "1 save" : "\(saved) saves")
+      }
+      if participated > 0 {
+        parts.append(participated == 1 ? "1 comment or post" : "\(participated) comments and posts")
+      }
+      if opened > 0 {
+        parts.append(opened == 1 ? "1 post read" : "\(opened) posts read")
       }
       if !relatedTo.isEmpty {
         parts.append("related to " + relatedTo.map { "r/\($0)" }.joined(separator: ", "))
@@ -83,6 +105,10 @@ struct ForYouSignals: Sendable {
   var upvoted: [String] = []
   /// The subreddit of each saved post or comment, most recently saved first.
   var saved: [String] = []
+  /// The subreddit of each of the account's comments and posts, newest first.
+  var participated: [String] = []
+  /// The subreddit of each post read for a while on this device, most recently first.
+  var opened: [String] = []
   var related: [Related] = []
   var crossposts: [Crosspost] = []
 }
@@ -115,6 +141,8 @@ enum ForYouRanking {
       var name: String
       var upvoted = 0.0
       var saved = 0.0
+      var participated = 0.0
+      var opened = 0.0
       var breakdown = ForYouCandidate.Breakdown()
     }
     var tallies: [String: Tally] = [:]
@@ -139,6 +167,18 @@ enum ForYouRanking {
         tally.breakdown.saved += 1
       }
     }
+    for (index, sub) in signals.participated.enumerated() where recencyWeight(index) > 0 {
+      record(sub) { tally in
+        tally.participated += recencyWeight(index)
+        tally.breakdown.participated += 1
+      }
+    }
+    for (index, sub) in signals.opened.enumerated() where recencyWeight(index) > 0 {
+      record(sub) { tally in
+        tally.opened += recencyWeight(index)
+        tally.breakdown.opened += 1
+      }
+    }
     for related in signals.related where !related.sub.over18 && (related.sub.subscribers ?? minRelatedSubscribers) >= minRelatedSubscribers {
       record(related.sub.name) { tally in
         if !tally.breakdown.relatedTo.contains(where: { $0.caseInsensitiveCompare(related.seed) == .orderedSame }) {
@@ -157,15 +197,16 @@ enum ForYouRanking {
       // In order of preference when two kinds weigh the same.
       let parts: [(Double, ForYouReason?)] = [
         (Double(min(breakdown.relatedTo.count, 3)) * 2, breakdown.relatedTo.first.map { .related(to: $0) }),
+        (min(tally.participated, 5) * 1.5, breakdown.participated > 0 ? .participated : nil),
         (min(tally.saved, 5) * 1.5, breakdown.saved > 0 ? .saved : nil),
         (min(tally.upvoted, 5), breakdown.upvoted > 0 ? .upvoted : nil),
+        (min(tally.opened, 5), breakdown.opened > 0 ? .opened : nil),
         (Double(min(breakdown.crossposted.count, 4)), breakdown.crossposted.first.map { .crossposted(into: $0) }),
       ]
       let score = parts.reduce(0) { $0 + $1.0 }
       let strongest = parts.filter { $0.1 != nil }.max { $0.0 < $1.0 }
       let candidate = ForYouCandidate(name: tally.name, score: score, reason: strongest?.1 ?? .upvoted, breakdown: breakdown)
-      let weakSignals = breakdown.upvoted + breakdown.saved + breakdown.crossposted.count
-      if !breakdown.relatedTo.isEmpty || weakSignals >= minWeakSignals {
+      if !breakdown.relatedTo.isEmpty || breakdown.weakSignals >= minWeakSignals {
         qualified.append(candidate)
       } else {
         unqualified.append(candidate)
