@@ -10,6 +10,8 @@ import SwiftUI
 
 struct LightBoxElementView: View {
   var el: ImgExtracted
+  /// The page's width, the lightbox's.
+  var width: CGFloat
   /// The post's title, VoiceOver's label for the image.
   var label: String?
   var onTap: (() -> Void)?
@@ -31,7 +33,7 @@ struct LightBoxElementView: View {
     }
     .modifier(LightBoxImageAccessibility(label: label ?? "Image", keepsLiveText: doLiveText))
     .id("\(el.id)\(altSize.width + altSize.height)")
-    .frame(width: .screenW)
+    .frame(width: width)
     .preferredColorScheme(.dark)
     .edgesIgnoringSafeArea(.all)
     .statusBar(hidden: true)

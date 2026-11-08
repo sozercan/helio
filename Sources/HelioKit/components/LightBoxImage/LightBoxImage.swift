@@ -37,6 +37,9 @@ struct LightBoxImage: View {
   @State private var media: LightBoxMediaStore
   /// The page a held drag is scrubbing.
   @State private var scrubIndex: Int?
+  /// The width the lightbox gets, which each page fills. Not the window's: on a folded iPhone Duo,
+  /// it stops short of the status column, which ignoring the safe area doesn't reach.
+  @State private var pageWidth: CGFloat = .screenW
   /// The posts already marked read since it opened.
   @State private var seenPosts: Set<String> = []
   /// Resets when the drag ends or is cancelled; a cancelled drag skips `onEnded`.
@@ -78,7 +81,7 @@ struct LightBoxImage: View {
       }
     case let .moved(translation):
       if let scrubIndex {
-        media.scrubber(at: scrubIndex)?.update(translation: translation, width: .screenW)
+        media.scrubber(at: scrubIndex)?.update(translation: translation, width: pageWidth)
       }
     case .ended:
       endScrub()
@@ -123,7 +126,7 @@ struct LightBoxImage: View {
     guard index != activeIndex else { return }
     activeIndex = index
     withAnimation(motionAware(spring)) {
-      xPos = -(CGFloat(index) * (.screenW + SPACING))
+      xPos = -(CGFloat(index) * (pageWidth + SPACING))
     }
   }
 
@@ -133,10 +136,10 @@ struct LightBoxImage: View {
     let onSwipe: ((Int) -> Void)? = pages.count > 1 ? { self.page(to: index + $0) } : nil
     switch page.media {
     case let .image(img):
-      LightBoxElementView(el: img, label: page.post.title, onTap: toggleOverlay, onSwipe: onSwipe, onHold: img.url.isGIF ? hold : nil, doLiveText: doLiveText, showOverlay: showOverlay, gifScrubber: img.url.isGIF ? media.gif(index) : nil, isPinching: $isPinching, isZoomed: $isZoomed)
+      LightBoxElementView(el: img, width: pageWidth, label: page.post.title, onTap: toggleOverlay, onSwipe: onSwipe, onHold: img.url.isGIF ? hold : nil, doLiveText: doLiveText, showOverlay: showOverlay, gifScrubber: img.url.isGIF ? media.gif(index) : nil, isPinching: $isPinching, isZoomed: $isZoomed)
     case let .video(video, _):
       if let player = media.video(index, onPictureInPictureStart: close) {
-        LightBoxVideoPage(video: player, holder: player.holder, posterURL: video.posterURL, label: page.post.title, selected: index == activeIndex, onTap: toggleOverlay, onSwipe: onSwipe, onHold: hold)
+        LightBoxVideoPage(video: player, holder: player.holder, width: pageWidth, posterURL: video.posterURL, label: page.post.title, selected: index == activeIndex, onTap: toggleOverlay, onSwipe: onSwipe, onHold: hold)
       }
     }
   }
@@ -158,7 +161,7 @@ struct LightBoxImage: View {
         .offset(x: !selected ? 0 : dragAxis == .vertical ? drag.width : 0, y: !selected ? 0 : dragAxis == .vertical ? drag.height : 0)
     } else {
       Color.clear
-        .frame(width: .screenW)
+        .frame(width: pageWidth)
         .accessibilityHidden(true)
     }
   }
@@ -173,17 +176,22 @@ struct LightBoxImage: View {
   }
 
   var body: some View {
-    lightbox
-      .onChange(of: activeIndex) { _, index in
-        markSeen(index)
-        media.show(index)
-        if let feedID = pages[index].post.feedID, feedID != revealedFeedID {
-          revealedFeedID = feedID
-          reveal?(feedID)
-        }
+    // Measured around it, as the pages' row is as wide as all of them together.
+    GeometryReader { geometry in
+      lightbox
+        .onChange(of: geometry.size.width, initial: true) { _, width in pageWidth = width }
+    }
+    .ignoresSafeArea()
+    .onChange(of: activeIndex) { _, index in
+      markSeen(index)
+      media.show(index)
+      if let feedID = pages[index].post.feedID, feedID != revealedFeedID {
+        revealedFeedID = feedID
+        reveal?(feedID)
       }
-      .onAppear { media.show(activeIndex) }
-      .onDisappear { media.releaseAll() }
+    }
+    .onAppear { media.show(activeIndex) }
+    .onDisappear { media.releaseAll() }
   }
 
   @ViewBuilder
@@ -198,7 +206,7 @@ struct LightBoxImage: View {
     }
     .fixedSize(horizontal: true, vertical: false)
     .offset(x: xPos + (dragAxis == .horizontal ? drag.width : 0))
-    .frame(maxWidth: .screenW, maxHeight: .screenH, alignment: .leading)
+    .frame(maxWidth: pageWidth, maxHeight: .infinity, alignment: .leading)
     .highPriorityGesture(
       scale > 1
         ? nil
@@ -242,9 +250,9 @@ struct LightBoxImage: View {
             xPos += val.translation.width - (dragOffset?.width ?? 0)
             dragOffset = nil
             // Half a phone's width: half an iPad's or a Mac window's took a long drag.
-            let threshold = min(CGFloat.screenW / 2, 200)
+            let threshold = min(pageWidth / 2, 200)
             let newActiveIndex = min(pages.count - 1, max(0, activeIndex + (predictedEnd < -threshold ? 1 : predictedEnd > threshold ? -1 : 0)))
-            let finalXPos = -(CGFloat(newActiveIndex) * (.screenW + SPACING))
+            let finalXPos = -(CGFloat(newActiveIndex) * (pageWidth + SPACING))
             let distance = abs(finalXPos - xPos)
             activeIndex = newActiveIndex
             var initialVel = abs(predictedEnd / distance)
@@ -339,15 +347,15 @@ struct LightBoxImage: View {
       }
     }
     // Pages are a window wide, so a resize moves them: keep the current one in view.
-    .onChange(of: CGFloat.screenW) {
+    .onChange(of: pageWidth) {
       endScrub()
       drag = .zero
       dragOffset = nil
       dragAxis = nil
-      xPos = -CGFloat(activeIndex) * (.screenW + SPACING)
+      xPos = -CGFloat(activeIndex) * (pageWidth + SPACING)
     }
     .onAppear {
-      xPos = -CGFloat(i) * (.screenW + SPACING)
+      xPos = -CGFloat(i) * (pageWidth + SPACING)
       markSeen(i)
       doThisAfter(0.0) {
         withAnimation(.easeOut) {

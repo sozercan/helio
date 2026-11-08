@@ -269,6 +269,8 @@ private final class PictureInPictureDelegate: NSObject, AVPictureInPictureContro
 struct LightBoxVideoPage: View {
   let video: LightBoxVideo
   @ObservedObject var holder: VideoPlayerHolder
+  /// The page's width, the lightbox's.
+  var width: CGFloat
   var posterURL: URL?
   var label: String?
   /// The page showing. The pages beside it keep their failure to themselves until they show.
@@ -315,7 +317,7 @@ struct LightBoxVideoPage: View {
           Button("Try Again") { video.retry() }
         }
       }
-      .frame(width: .screenW)
+      .frame(width: width)
       .frame(maxHeight: .infinity)
       .preferredColorScheme(.dark)
       .statusBar(hidden: true)
