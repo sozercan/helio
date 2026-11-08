@@ -21,6 +21,8 @@ struct ForYouSources: Sendable {
   var participation: @Sendable (_ userName: String, _ credential: RedditCredential) async -> [RedditAPI.ActivityItem]? = { _, _ in [] }
   /// The posts read on this device, newest first (`ForYouHistory`).
   var opened: @Sendable (_ credential: RedditCredential) -> [ForYouOpenedPost] = { _ in [] }
+  /// The posts the account already saw in For You or opened, by fullname: For You leaves them out.
+  var seen: @Sendable (_ credential: RedditCredential) async -> Set<String> = { _ in [] }
   var related: @Sendable (_ subreddit: String, _ credential: RedditCredential) async -> [ForYouRelatedSub]?
   /// The names of the subreddits the account follows, as last synced.
   var subscribed: @Sendable (_ credential: RedditCredential) async -> [String]
@@ -45,6 +47,9 @@ struct ForYouSources: Sendable {
     },
     opened: { credential in
       ForYouHistory.read(ForYouHistory.Owner(credential))
+    },
+    seen: { credential in
+      await MainActor.run { ForYouHistory.seen(ForYouHistory.Owner(credential)) }
     },
     related: { subreddit, credential in
       await RedditAPI.shared.fetchRelatedSubs(subreddit, altCredential: credential)
@@ -167,6 +172,8 @@ actor ForYouEngine {
   static let maxCandidates = 15
   /// Suggestion pages in a row with nothing to show, once Home ran out, before giving up.
   static let maxEmptySuggestionPages = 5
+  /// Home pages in a row of only posts already seen to skip, before showing none of them.
+  static let maxSeenHomePages = 5
 
   private let sources: ForYouSources
   private let now: @Sendable () -> Date
@@ -220,12 +227,18 @@ actor ForYouEngine {
     } else {
       cursor = nil
     }
+    // Like Reddit's, For You doesn't show a post again once the account saw it.
+    let seen = await sources.seen(credential)
 
     if let cursor {
       subs = cursor.subs
       reasonBySub = cursor.reasons
       wantsSuggestions = cursor.suggested != nil && !subs.isEmpty
-      async let homePage = fetchHome(sort: sort, after: cursor.home, limit: limit, credential: credential, wanted: cursor.home != nil)
+      async let homePage: ([PostData], String?)? = if cursor.home != nil {
+        await fetchHome(sort: sort, after: cursor.home, limit: limit, credential: credential, seen: seen)
+      } else {
+        nil
+      }
       async let suggestedPage = fetchSuggestions(subs: wantsSuggestions ? subs : [], after: cursor.suggested, credential: credential)
       if cursor.home != nil {
         guard let page = await homePage else { return nil }
@@ -237,7 +250,7 @@ actor ForYouEngine {
       subs = fresh.candidates.map(\.name)
       reasonBySub = Self.reasonBySub(fresh)
       wantsSuggestions = !subs.isEmpty
-      async let homePage = fetchHome(sort: sort, after: nil, limit: limit, credential: credential, wanted: true)
+      async let homePage = fetchHome(sort: sort, after: nil, limit: limit, credential: credential, seen: seen)
       async let suggestedPage = fetchSuggestions(subs: subs, after: nil, credential: credential)
       guard let page = await homePage else { return nil }
       home = page
@@ -245,7 +258,7 @@ actor ForYouEngine {
       profile = fresh
     } else {
       // The first visit: the profile is built from what Home shows, so it waits for Home.
-      guard let page = await fetchHome(sort: sort, after: nil, limit: limit, credential: credential, wanted: true) else { return nil }
+      guard let page = await fetchHome(sort: sort, after: nil, limit: limit, credential: credential, seen: seen) else { return nil }
       home = page
       let built = await buildProfileIfNeeded(credential: credential, home: page.0)
       subs = built.candidates.map(\.name)
@@ -265,7 +278,7 @@ actor ForYouEngine {
     let followed = await followedSubreddits(credential: credential, profile: profile)
     let threshold = relevanceThreshold(home: homePosts, profile: profile, cursor: cursor)
     let filter = SuggestionFilter(reasons: reasonBySub, followed: followed, excluded: sources.excluded().union(dismissed),
-                                  scorer: profile?.scorer, threshold: threshold)
+                                  seen: seen, scorer: profile?.scorer, threshold: threshold)
     var suggestedAfter = suggested?.1
     var stats = ForYouPageStats(threshold: threshold)
     var picked = pickSuggestions(from: suggested?.0 ?? [], home: homePosts, filter: filter, stats: &stats)
@@ -322,6 +335,8 @@ actor ForYouEngine {
     let followed: Set<String>
     /// Lowercased names of filtered and dismissed subreddits.
     let excluded: Set<String>
+    /// Fullnames of the posts the account already saw.
+    let seen: Set<String>
     let scorer: (any TitleScoring)?
     /// The relevance a suggestion has to reach; nil without the embedding.
     let threshold: Double?
@@ -339,7 +354,7 @@ actor ForYouEngine {
       let original = post.crosspost_parent_list?.first
       let over18 = (post.over_18 ?? false) || (original?.over_18 ?? false)
       let excluded = filter.excluded.contains(sub) || original.map { filter.excluded.contains($0.subreddit.lowercased()) } ?? false
-      return !over18 && !excluded && !(post.stickied ?? false) && !homeIDs.contains(post.name)
+      return !over18 && !excluded && !(post.stickied ?? false) && !homeIDs.contains(post.name) && !filter.seen.contains(post.name)
         && !filter.followed.contains(sub) && filter.reasons[sub] != nil
     }
     let scores = Dictionary(eligible.compactMap { post in filter.scorer?.score(post.title).map { (post.name, $0) } }, uniquingKeysWith: { first, _ in first })
@@ -403,10 +418,25 @@ actor ForYouEngine {
     return now().timeIntervalSince(profile.builtAt) < lifetime ? profile : nil
   }
 
-  private func fetchHome(sort: SubListingSortOption, after: String?, limit: Int, credential: RedditCredential, wanted: Bool) async -> ([PostData], String?)? {
-    guard wanted, let page = await sources.home(sort, after, limit, credential) else { return nil }
-    noteCrossposts(in: page.0, account: Account(credential))
-    return page
+  /// Home's next page without the posts already seen: when a whole page was, the one after it,
+  /// up to a few, so a feed of seen posts doesn't read as the end of Home. After that, the last
+  /// page as it is: seen posts again rather than an empty page, which would end the feed.
+  private func fetchHome(sort: SubListingSortOption, after: String?, limit: Int, credential: RedditCredential, seen: Set<String>) async -> ([PostData], String?)? {
+    var after = after
+    var skipped = 0
+    while true {
+      guard let page = await sources.home(sort, after, limit, credential) else { return nil }
+      noteCrossposts(in: page.0, account: Account(credential))
+      let unseen = page.0.filter { !seen.contains($0.name) }
+      if !unseen.isEmpty || page.1 == nil {
+        return (unseen, page.1)
+      }
+      if skipped == Self.maxSeenHomePages {
+        return page
+      }
+      skipped += 1
+      after = page.1
+    }
   }
 
   private func fetchSuggestions(subs: [String], after: String?, credential: RedditCredential) async -> ([PostData], String?)? {
@@ -531,6 +561,13 @@ enum ForYouFeed {
       }
     }
     return (posts.map { .post($0) }, page.after)
+  }
+
+  /// Notes a row For You showed, so it isn't shown again (`ForYouHistory`).
+  @MainActor
+  static func shown(_ entity: RedditEntityType) {
+    guard case let .post(post) = entity, let credential = RedditCredentialsManager.shared.selectedCredential else { return }
+    ForYouHistory.shown(post.fullname, owner: ForYouHistory.Owner(credential))
   }
 
   /// Stops suggesting `subreddit` in For You.

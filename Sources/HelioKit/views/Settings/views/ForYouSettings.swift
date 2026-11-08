@@ -90,7 +90,7 @@ struct ForYouSettings: View {
           }
         }
       } footer: {
-        Text("Suggestions are worked out again the next time For You loads, and every few hours. Since you first opened For You, Helio keeps the posts you read, on this device only, for every account.")
+        Text("Suggestions are worked out again the next time For You loads, and every few hours. Since you first opened For You, Helio keeps the posts you read, and for a week the ones For You showed you so it doesn't show them again, on this device only, for every account.")
       }
       .themedListSection()
     }

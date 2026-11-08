@@ -47,6 +47,8 @@ extension Defaults.Keys {
   static let forYouUsed = Key<Bool>("forYouUsed", default: false)
   /// The posts each account opened, by credential id, newest first (`ForYouHistory`).
   static let forYouOpenedPosts = Key<[String: [ForYouOpenedPost]]>("forYouOpenedPosts", default: [:])
+  /// The posts For You has shown each account, by fullname, with when (`ForYouHistory`).
+  static let forYouShownPosts = Key<[String: [String: Date]]>("forYouShownPosts", default: [:])
   /* </Heavy Defaults are kept separated, these should be in CoreData or something> */
 
   /// Steps content text is moved from the system text size (Settings > Appearance > Text Size).

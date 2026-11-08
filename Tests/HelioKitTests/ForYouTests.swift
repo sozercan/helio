@@ -174,6 +174,7 @@ struct ForYouEngineTests {
     let scorersMade = Mutex(0)
     let participation = Mutex<[RedditAPI.ActivityItem]?>([])
     let opened = Mutex<[ForYouOpenedPost]>([])
+    let seen = Mutex<Set<String>>([])
   }
 
   private func engine(
@@ -227,6 +228,7 @@ struct ForYouEngineTests {
       saved: { _, _ in [] },
       participation: { _, _ in calls.participation.withLock { $0 } },
       opened: { _ in calls.opened.withLock { $0 } },
+      seen: { _ in calls.seen.withLock { $0 } },
       related: { _, _ in [] },
       subscribed: { _ in calls.followed.withLock { $0 } },
       excluded: { calls.excluded.withLock { $0 } },
@@ -487,6 +489,41 @@ struct ForYouEngineTests {
     #expect(diagnostics.openedCount == 2)
   }
 
+  @Test func postsAlreadySeenAreNotShownAgain() async throws {
+    let calls = Calls()
+    calls.seen.withLock { $0 = Set((0 ..< 8).map { "t3_h\($0)" } + ["t3_s1"]) }
+    let page = try #require(await engine(calls: calls).page(after: nil, sort: .best, limit: 8, credential: Self.credential))
+
+    // Home's first page was all seen, so its next one shows instead of nothing.
+    #expect(calls.home.withLock { $0 } == [nil, "t3_h8"])
+    #expect(page.posts.filter { $0.subreddit == "homelab" }.map(\.name).allSatisfy { $0.hasSuffix("t3_h8") })
+    #expect(Set(page.reasons.keys) == ["t3_s2"])
+  }
+
+  @Test func pastAFewHomePagesOfOnlySeenPostsItShowsThemAgain() async throws {
+    let calls = Calls()
+    // Every Home page has the same posts, all seen, and Home never ends.
+    let homeIDs = (0 ..< 8).map { "t3_h\($0)" }
+    calls.seen.withLock { $0 = Set(homeIDs) }
+    let sources = ForYouSources(
+      home: { _, after, _, _ in
+        calls.home.withLock { $0.append(after) }
+        return ((0 ..< 8).map { Self.post("h\($0)", sub: "homelab") }, "t3_next")
+      },
+      suggestions: { _, _, _, _ in nil },
+      upvoted: { _, _ in [] },
+      saved: { _, _ in [] },
+      seen: { _ in calls.seen.withLock { $0 } },
+      related: { _, _ in [] },
+      subscribed: { _ in ["homelab"] },
+      excluded: { [] },
+    )
+    let page = try #require(await ForYouEngine(sources: sources).page(after: nil, sort: .best, limit: 8, credential: Self.credential))
+    #expect(calls.home.withLock { $0.count } == ForYouEngine.maxSeenHomePages + 1)
+    #expect(page.posts.map(\.name) == homeIDs)
+    #expect(page.after != nil)
+  }
+
   @Test func homeFailingFailsThePage() async {
     let calls = Calls()
     let page = await engine(calls: calls, homeFails: true).page(after: nil, sort: .best, limit: 8, credential: Self.credential)
@@ -573,6 +610,23 @@ struct ForYouHistoryTests {
     ForYouHistory.ended(second, subreddit: "astronomy", title: "Saturn", at: start.addingTimeInterval(15))
     ForYouHistory.ended(first, subreddit: "astronomy", title: "Saturn", at: start.addingTimeInterval(20))
     #expect(ForYouHistory.read(owner).first?.seconds == 30)
+  }
+
+  @Test func postsShownOrOpenedAreSeenForAWeek() {
+    let owner = owner()
+    defer { ForYouHistory.forget(credentialID: owner.credentialID) }
+    ForYouHistory.shown("t3_old", owner: owner, at: start)
+    ForYouHistory.shown("t3_new", owner: owner, at: start.addingTimeInterval(6 * 24 * 60 * 60))
+    ForYouHistory.record(visit("t3_opened", "pics", seconds: 2, at: start), owner: owner)
+    let now = start.addingTimeInterval(7 * 24 * 60 * 60 + 1)
+    #expect(ForYouHistory.seen(owner, now: now) == ["t3_new", "t3_opened"])
+    #expect(ForYouHistory.seen(self.owner(), now: now).isEmpty)
+
+    ForYouHistory.saveShown(now: now)
+    #expect(Defaults[.forYouShownPosts][owner.key] == ["t3_new": start.addingTimeInterval(6 * 24 * 60 * 60)])
+    ForYouHistory.forget(credentialID: owner.credentialID)
+    #expect(ForYouHistory.seen(owner, now: now).isEmpty)
+    #expect(Defaults[.forYouShownPosts][owner.key] == nil)
   }
 
   @Test func timeInTheBackgroundDoesNotCount() {
