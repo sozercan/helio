@@ -63,7 +63,9 @@ struct LightBoxImage: View {
   private func hold(_ event: LightBoxScrub) {
     switch event {
     case .began:
-      guard !isZoomed, let scrubber = media.scrubber(at: activeIndex), scrubber.begin() else { return }
+      // The page's own zoom was checked where the hold began (`LightBoxGestures`): `isZoomed` is
+      // shared by the pages, and can be left set by one VoiceOver paged away from.
+      guard let scrubber = media.scrubber(at: activeIndex), scrubber.begin() else { return }
       scrubIndex = activeIndex
       if !showOverlay {
         toggleOverlay()
