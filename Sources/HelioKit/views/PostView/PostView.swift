@@ -31,6 +31,8 @@ struct PostView: View, Equatable {
   @Environment(\.globalLoaderStart) private var globalLoaderStart
   @Environment(\.globalLoaderDismiss) private var globalLoaderDismiss
   @Environment(\.contentWidth) private var contentWidth
+  /// This page's window's phase: For You doesn't count its time in the background as reading.
+  @Environment(\.scenePhase) private var scenePhase
   @Environment(\.navColumn) private var navColumn
   @Environment(\.screenStateScope) private var screenStateScope
   /// The comments and how they're shown, taken over from the screen this one replaces when the
@@ -76,6 +78,8 @@ struct PostView: View, Equatable {
 
   /// The reply sheet opened by the menu bar's Reply; the post's bar has its own.
   @State private var showReplyModal = false
+  /// This page's stay, timed for For You's reading history (`ForYouHistory`).
+  @State private var forYouVisit: UUID?
   /// Scrolls to the comment a link opened once the comments come: taken over from a screen that
   /// was loading them.
   @State private var awaitsHighlight = false
@@ -246,6 +250,9 @@ struct PostView: View, Equatable {
           }
         }
         .onAppear {
+          if !isPreview, forYouVisit == nil {
+            forYouVisit = ForYouHistory.began(post)
+          }
           lease.adopt(in: screenStateScope)
           // Taken over from the screen this one replaced: back to where the reader left that one,
           // a comment row or the post's top, rather than to the comment a link opened.
@@ -289,6 +296,20 @@ struct PostView: View, Equatable {
 
           Task(priority: .utility) {
             await subreddit.loadIfNeeded()
+          }
+        }
+        .onDisappear {
+          if let forYouVisit {
+            ForYouHistory.ended(forYouVisit, post: post)
+            self.forYouVisit = nil
+          }
+        }
+        .onChange(of: scenePhase) { _, phase in
+          guard let forYouVisit else { return }
+          if phase == .background {
+            ForYouHistory.paused(forYouVisit, post: post)
+          } else if phase == .active {
+            ForYouHistory.resumed(forYouVisit)
           }
         }
         // A context-menu preview isn't a screen the menu bar's commands act on.

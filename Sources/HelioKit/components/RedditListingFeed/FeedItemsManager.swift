@@ -68,11 +68,15 @@ class FeedItemsManager<S> {
   /// Pages fetched in a row whose posts were all hidden, before giving up.
   private let maxHiddenPagesInARow = 5
 
-  init(sorting: S?, hideReadPosts: Bool = false, currentCredential: @escaping @MainActor () -> RedditCredential? = { RedditCredentialsManager.shared.selectedCredential }, fetchFn: @escaping ItemsFetchFn) {
+  /// Told of each row as it shows, for a feed that keeps what it has shown (For You).
+  @ObservationIgnored private let onShown: (@MainActor (RedditEntityType) -> Void)?
+
+  init(sorting: S?, hideReadPosts: Bool = false, currentCredential: @escaping @MainActor () -> RedditCredential? = { RedditCredentialsManager.shared.selectedCredential }, onShown: (@MainActor (RedditEntityType) -> Void)? = nil, fetchFn: @escaping ItemsFetchFn) {
     self.sorting = sorting
     self.hideReadPosts = hideReadPosts
     self.fetchFn = fetchFn
     self.currentCredential = currentCredential
+    self.onShown = onShown
     self.chunkSize = Defaults[.SubredditFeedDefSettings].chunkLoadSize
   }
 
@@ -250,6 +254,10 @@ class FeedItemsManager<S> {
   /// loading the next page.
   func elementAppeared(entity: RedditEntityType, prefetchMedia: Bool = true) {
     guard let index = indexByID[entity.id] else { return }
+    // Rows of another account's list can still show for a moment after switching accounts.
+    if let onShown, currentCredential()?.authorizationID == authorization {
+      onShown(entity)
+    }
     if !entities.isEmpty, index >= entities.count - 7 {
       if currentTask != nil, currentTaskIsReload {
         loadMoreHeldBack = true

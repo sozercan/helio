@@ -37,7 +37,8 @@ enum PostLayout: String, CaseIterable, Identifiable {
   /// The layouts `subId`'s feed offers. Saved has no canvas: it has comments too, which the
   /// canvas has no tiles for.
   static func available(for subId: String) -> [PostLayout] {
-    subId == savedKeyword ? [.large, .compact] : allCases
+    // Canvas tiles don't show For You's suggestion marker.
+    subId == savedKeyword || subId == ForYouFeed.id ? [.large, .compact] : allCases
   }
 
   /// Whether `subId`'s feed shows the canvas.

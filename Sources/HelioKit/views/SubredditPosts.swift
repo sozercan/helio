@@ -20,6 +20,9 @@ struct SubredditPosts: View, Equatable {
   @Default(.SubredditFeedDefSettings) private var subFeedSettings
 
   func caller(_ lastElementId: String?, _ sorting: SubListingSortOption?, _ searchQuery: String?, _ flair: String?, _ context: FeedItemsManager<SubListingSortOption>.FetchContext) async -> ([RedditEntityType]?, String?)? {
+    if subreddit.id == ForYouFeed.id {
+      return await ForYouFeed.fetchPosts(subreddit, sort: sorting ?? .best, after: lastElementId, contentWidth: contentWidth, context: context)
+    }
     if let sorting, let result = await subreddit.fetchPosts(sort: sorting, after: lastElementId, searchText: searchQuery, contentWidth: contentWidth, flair: flair, limit: context.limit, altCredential: context.credential), let entities = result.0 {
       return (entities, result.1)
     }
@@ -29,12 +32,13 @@ struct SubredditPosts: View, Equatable {
   var titleFormatted: String {
     switch subreddit.id {
     case "home": "Home"
+    case ForYouFeed.id: "For You"
     case savedKeyword: "Saved"
     default: "\(subFeedSettings.showPrefixOnFeedTitle ? "r/" : "")\(subreddit.data?.display_name ?? subreddit.id)"
     }
   }
 
   var body: some View {
-    RedditListingFeed(feedId: subreddit.id, showSubInPosts: subreddit.isFeed, title: titleFormatted, theme: selectedTheme.postLinks.bg, fetch: caller, initialSorting: subFeedSettings.preferredSort, disableSearch: subreddit.id == savedKeyword, subreddit: subreddit, hideReadPosts: subreddit.id != savedKeyword, stateOwner: subreddit)
+    RedditListingFeed(feedId: subreddit.id, showSubInPosts: subreddit.isFeed, title: titleFormatted, theme: selectedTheme.postLinks.bg, fetch: caller, initialSorting: subFeedSettings.preferredSort, disableSearch: subreddit.id == savedKeyword || subreddit.id == ForYouFeed.id, subreddit: subreddit, hideReadPosts: subreddit.id != savedKeyword && subreddit.id != ForYouFeed.id, stateOwner: subreddit, onItemShown: subreddit.id == ForYouFeed.id ? ForYouFeed.shown : nil)
   }
 }

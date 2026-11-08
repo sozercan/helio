@@ -29,7 +29,7 @@ struct RedditListingFeed<Header: View, Footer: View, S: Sorting>: View {
     RedditCredentialsManager.shared.selectedCredential(id: generalDefSettings.redditCredentialSelectedID)?.authorizationID
   }
 
-  init(feedId: String, showSubInPosts: Bool = false, title: String, theme: ThemeBG, fetch: @escaping FeedItemsManager<S>.ItemsFetchFn, @ViewBuilder header: @escaping () -> Header = { EmptyView() }, @ViewBuilder footer: @escaping () -> Footer = { EmptyView() }, initialSorting: S? = nil, disableSearch: Bool = true, subreddit: Subreddit? = nil, forceRefresh: Binding<Bool>? = nil, hideReadPosts: Bool = false, stateOwner: AnyObject? = nil) where S == SubListingSortOption {
+  init(feedId: String, showSubInPosts: Bool = false, title: String, theme: ThemeBG, fetch: @escaping FeedItemsManager<S>.ItemsFetchFn, @ViewBuilder header: @escaping () -> Header = { EmptyView() }, @ViewBuilder footer: @escaping () -> Footer = { EmptyView() }, initialSorting: S? = nil, disableSearch: Bool = true, subreddit: Subreddit? = nil, forceRefresh: Binding<Bool>? = nil, hideReadPosts: Bool = false, stateOwner: AnyObject? = nil, onItemShown: (@MainActor (RedditEntityType) -> Void)? = nil) where S == SubListingSortOption {
     self.showSubInPosts = showSubInPosts
     self.title = title
     self.theme = theme
@@ -39,7 +39,7 @@ struct RedditListingFeed<Header: View, Footer: View, S: Sorting>: View {
     self.disableSearch = disableSearch
     self.forceRefresh = forceRefresh // Assign the optional forceRefresh Binding
     self.fetch = fetch
-    let make = { FeedItemsManager(sorting: initialSorting, hideReadPosts: hideReadPosts, fetchFn: fetch) }
+    let make = { FeedItemsManager(sorting: initialSorting, hideReadPosts: hideReadPosts, onShown: onItemShown, fetchFn: fetch) }
     // With an owner, taken over from the screen this one replaces when the layout changes
     // (`ScreenStates`).
     self._lease = .init(initialValue: stateOwner.map { ScreenStates.shared.lease("feed", owner: $0, make: make) } ?? ScreenStateLease(unshared: make()))

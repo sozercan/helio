@@ -86,6 +86,8 @@ struct RouterDestinationView: View {
         PostSwipePanel()
       case .filteredSubreddits:
         FilteredSubredditsSettings()
+      case .forYou:
+        ForYouSettings()
       case .faq:
         FAQPanel()
       case .themes:
