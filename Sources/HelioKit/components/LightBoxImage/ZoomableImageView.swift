@@ -29,6 +29,9 @@ struct ZoomableScrollView<Content: View>: UIViewRepresentable {
   func makeUIView(context: Context) -> UIScrollView {
     // set up the UIScrollView
     let scrollView = UIScrollView()
+    // The image fills the page, under the safe area too: otherwise the scroll view insets it,
+    // which shows as a black band once it's touched (the folded Duo's status column).
+    scrollView.contentInsetAdjustmentBehavior = .never
     scrollView.delegate = context.coordinator // for viewForZooming(in:)
     scrollView.maximumZoomScale = 20
     scrollView.minimumZoomScale = 1
@@ -38,6 +41,7 @@ struct ZoomableScrollView<Content: View>: UIViewRepresentable {
     scrollView.showsHorizontalScrollIndicator = false
 
     // create a UIHostingController to hold our SwiftUI content
+    context.coordinator.hostingController.safeAreaRegions = []
     let hostedView = context.coordinator.hostingController.view!
     hostedView.translatesAutoresizingMaskIntoConstraints = true
     hostedView.autoresizingMask = [.flexibleWidth, .flexibleHeight]

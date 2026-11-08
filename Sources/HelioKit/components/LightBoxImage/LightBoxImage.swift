@@ -167,12 +167,40 @@ struct LightBoxImage: View {
   }
 
   /// The post's title and author, and the image's buttons.
+  /// The window's sides outside its safe area, which the title and buttons keep clear of: the
+  /// folded Duo's camera and status column. Inside the lightbox, which ignores the safe area,
+  /// the safe area reads as none.
+  private var sideInsets: EdgeInsets {
+    let window = WindowMetrics.shared
+    return EdgeInsets(top: 0, leading: max(0, window.contentFrame.minX), bottom: 0, trailing: max(0, window.size.width - window.contentFrame.maxX))
+  }
+
   @ViewBuilder
   private func infoOverlay(opacity: CGFloat) -> some View {
     if pages.indices.contains(activeIndex), let postTitle = pages[activeIndex].post.title, let badgeKit = pages[activeIndex].post.badgeKit {
       let page = pages[activeIndex]
-      LightBoxOverlay(postTitle: postTitle, badgeKit: badgeKit, avatarImageRequest: page.post.avatarImageRequest, opacity: opacity, img: page.media.image, video: media.video(activeIndex, onPictureInPictureStart: close), index: page.index, count: page.count, scrubber: media.scrubber(at: activeIndex), loading: $loading, done: $done)
+      LightBoxOverlay(postTitle: postTitle, badgeKit: badgeKit, avatarImageRequest: page.post.avatarImageRequest, opacity: opacity, safeArea: sideInsets, img: page.media.image, video: media.video(activeIndex, onPictureInPictureStart: close), index: page.index, count: page.count, scrubber: media.scrubber(at: activeIndex), loading: $loading, done: $done)
     }
+  }
+
+  private func closeButton(opacity: CGFloat) -> some View {
+    Button(action: close) {
+      // The label fills the circle, so the whole of it takes the tap: with the plain style,
+      // only the label does.
+      Label("Close", systemImage: "xmark")
+        .labelStyle(.iconOnly)
+        .fontSize(17, .semibold)
+        .frame(width: 44, height: 44)
+        .contentShape(Circle())
+    }
+    .buttonStyle(.plain)
+    .foregroundStyle(.white)
+    .glassEffect(.regular.interactive(), in: Circle())
+    .keyboardShortcut(.cancelAction)
+    .padding(.horizontal, 16)
+    .padding(.top, 8)
+    .opacity(opacity)
+    .allowsHitTesting(opacity != 0)
   }
 
   var body: some View {
@@ -182,6 +210,11 @@ struct LightBoxImage: View {
         .onChange(of: geometry.size.width, initial: true) { _, width in pageWidth = width }
     }
     .ignoresSafeArea()
+    // Inside the safe area, unlike the media: clear of the Duo's camera.
+    .overlay(alignment: .topTrailing) {
+      let interpolate = interpolatorBuilder([0, 100], value: abs(drag.height))
+      closeButton(opacity: !appearContent || !showOverlay || isPinching ? 0 : interpolate([1, 0], false))
+    }
     .onChange(of: activeIndex) { _, index in
       markSeen(index)
       media.show(index)
@@ -312,26 +345,6 @@ struct LightBoxImage: View {
       }
     }
     .ignoresSafeArea(edges: .all)
-    .overlay(alignment: .topTrailing) {
-      let chromeOpacity = !showOverlay || isPinching ? 0 : interpolate([1, 0], false)
-      Button(action: close) {
-        // The label fills the circle, so the whole of it takes the tap: with the plain style,
-        // only the label does.
-        Label("Close", systemImage: "xmark")
-          .labelStyle(.iconOnly)
-          .fontSize(17, .semibold)
-          .frame(width: 44, height: 44)
-          .contentShape(Circle())
-      }
-      .buttonStyle(.plain)
-      .foregroundStyle(.white)
-      .glassEffect(.regular.interactive(), in: Circle())
-      .keyboardShortcut(.cancelAction)
-      .padding(.horizontal, 16)
-      .padding(.top, 8)
-      .opacity(chromeOpacity)
-      .allowsHitTesting(chromeOpacity != 0)
-    }
     .compositingGroup()
     .opacity(appearContent ? 1 : 0)
     // VoiceOver's scrub gesture closes it, since it can't drag it away.

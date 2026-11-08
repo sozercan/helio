@@ -14,6 +14,8 @@ struct LightBoxOverlay: View {
   let badgeKit: BadgeKit
   let avatarImageRequest: ImageRequest?
   var opacity: CGFloat
+  /// The safe area the media runs under. The title and buttons keep clear of its sides.
+  var safeArea = EdgeInsets()
   /// The image showing, to save or share. Nil for a video.
   var img: ImgExtracted?
   /// The video showing, for its playback buttons.
@@ -106,6 +108,8 @@ struct LightBoxOverlay: View {
     }
     .multilineTextAlignment(.leading)
     .foregroundColor(.white)
+    .padding(.leading, safeArea.leading)
+    .padding(.trailing, safeArea.trailing)
     .padding(.horizontal, 12)
     .padding(.bottom, 32)
     .padding(.top, 64)
