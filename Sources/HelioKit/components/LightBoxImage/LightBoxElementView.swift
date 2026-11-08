@@ -10,9 +10,15 @@ import SwiftUI
 
 struct LightBoxElementView: View {
   var el: ImgExtracted
+  /// The page's width, the lightbox's.
+  var width: CGFloat
   /// The post's title, VoiceOver's label for the image.
   var label: String?
   var onTap: (() -> Void)?
+  /// A two-finger trackpad swipe sideways, by -1 (back) or 1 (on).
+  var onSwipe: ((Int) -> Void)?
+  /// A held drag on a GIF, which scrubs it.
+  var onHold: ((LightBoxScrub) -> Void)?
   var doLiveText: Bool
   var showOverlay: Bool
   /// Set when a sideways swipe scrubs this GIF.
@@ -21,13 +27,13 @@ struct LightBoxElementView: View {
   @State private var altSize: CGSize = .zero
   @Binding var isZoomed: Bool
   var body: some View {
-    ZoomableScrollView(onTap: onTap, isZoomed: $isZoomed) {
+    ZoomableScrollView(onTap: onTap, onSwipe: onSwipe, onHold: onHold, isZoomed: $isZoomed) {
       URLImage(url: el.url, doLiveText: doLiveText, showOverlay: showOverlay, gifScrubber: gifScrubber)
         .scaledToFit()
     }
     .modifier(LightBoxImageAccessibility(label: label ?? "Image", keepsLiveText: doLiveText))
     .id("\(el.id)\(altSize.width + altSize.height)")
-    .frame(width: .screenW)
+    .frame(width: width)
     .preferredColorScheme(.dark)
     .edgesIgnoringSafeArea(.all)
     .statusBar(hidden: true)

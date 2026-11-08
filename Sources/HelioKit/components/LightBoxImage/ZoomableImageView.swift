@@ -13,18 +13,25 @@ import UIKit
 struct ZoomableScrollView<Content: View>: UIViewRepresentable {
   private var content: Content
   private var onTap: (() -> Void)?
+  private var onSwipe: ((Int) -> Void)?
+  private var onHold: ((LightBoxScrub) -> Void)?
   @Binding var isZoomed: Bool // Add the binding parameter
 
-  init(onTap: (() -> Void)? = nil, isZoomed: Binding<Bool>, @ViewBuilder content: () -> Content) {
+  init(onTap: (() -> Void)? = nil, onSwipe: ((Int) -> Void)? = nil, onHold: ((LightBoxScrub) -> Void)? = nil, isZoomed: Binding<Bool>, @ViewBuilder content: () -> Content) {
     self.content = content()
     // set up helper class
     self.onTap = onTap
+    self.onSwipe = onSwipe
+    self.onHold = onHold
     self._isZoomed = isZoomed // Initialize the binding
   }
 
   func makeUIView(context: Context) -> UIScrollView {
     // set up the UIScrollView
     let scrollView = UIScrollView()
+    // The image fills the page, under the safe area too: otherwise the scroll view insets it,
+    // which shows as a black band once it's touched (the folded Duo's status column).
+    scrollView.contentInsetAdjustmentBehavior = .never
     scrollView.delegate = context.coordinator // for viewForZooming(in:)
     scrollView.maximumZoomScale = 20
     scrollView.minimumZoomScale = 1
@@ -34,6 +41,7 @@ struct ZoomableScrollView<Content: View>: UIViewRepresentable {
     scrollView.showsHorizontalScrollIndicator = false
 
     // create a UIHostingController to hold our SwiftUI content
+    context.coordinator.hostingController.safeAreaRegions = []
     let hostedView = context.coordinator.hostingController.view!
     hostedView.translatesAutoresizingMaskIntoConstraints = true
     hostedView.autoresizingMask = [.flexibleWidth, .flexibleHeight]
@@ -50,12 +58,24 @@ struct ZoomableScrollView<Content: View>: UIViewRepresentable {
     tapGesture.require(toFail: doubleTapGesture)
     scrollView.addGestureRecognizer(tapGesture)
 
+    let gestures = context.coordinator.gestures
+    gestures.onSwipe = onSwipe
+    gestures.onHold = onHold
+    gestures.isZoomed = { [weak scrollView] in (scrollView?.zoomScale ?? 1) > (scrollView?.minimumZoomScale ?? 1) }
+    gestures.install(on: scrollView)
+    // A finger resting to scrub isn't a tap that shows or hides the controls.
+    if let hold = gestures.hold {
+      tapGesture.require(toFail: hold)
+    }
+
     return scrollView
   }
 
   func updateUIView(_ uiView: UIScrollView, context: Context) {
     // update the hosting controller's SwiftUI content
     context.coordinator.hostingController.rootView = self.content
+    context.coordinator.gestures.onSwipe = onSwipe
+    context.coordinator.gestures.onHold = onHold
     assert(context.coordinator.hostingController.view.superview == uiView)
 
     // While not zoomed, keep contentSize matching the view, so the next pinch scales
@@ -76,6 +96,7 @@ struct ZoomableScrollView<Content: View>: UIViewRepresentable {
   class Coordinator: NSObject, UIScrollViewDelegate {
     var hostingController: UIHostingController<Content>
     var onTap: (() -> Void)?
+    let gestures = LightBoxGestures()
     @Binding var isZoomed: Bool // Use the binding here
 
     init(hostingController: UIHostingController<Content>, onTap: (() -> Void)? = nil, isZoomed: Binding<Bool>) {

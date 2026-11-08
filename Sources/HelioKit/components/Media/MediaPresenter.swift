@@ -64,16 +64,16 @@ struct MediaPresenter: View, Equatable {
     case let .imgs(imgsExtracted):
       if !showURLInstead {
         if !imgsExtracted.isEmpty, imgsExtracted[0].url.absoluteString.hasSuffix(".gif") {
-          ImageMediaPost(postTitle: postTitle, badgeKit: badgeKit, avatarImageRequest: avatarImageRequest, markAsSeen: markAsSeen, cornerRadius: cornerRadius, compact: compact, images: imgsExtracted, contentWidth: contentWidth, maxMediaHeightScreenPercentage: maxMediaHeightScreenPercentage)
+          ImageMediaPost(postTitle: postTitle, badgeKit: badgeKit, avatarImageRequest: avatarImageRequest, markAsSeen: markAsSeen, cornerRadius: cornerRadius, compact: compact, images: imgsExtracted, contentWidth: contentWidth, maxMediaHeightScreenPercentage: maxMediaHeightScreenPercentage, feedPost: fullPage ? nil : helioData)
             .nsfw(over18 && blurPostLinkNSFW, smallIcon: compact, size: mediaSize)
         } else {
-          ImageMediaPost(postTitle: postTitle, badgeKit: badgeKit, avatarImageRequest: avatarImageRequest, markAsSeen: markAsSeen, cornerRadius: cornerRadius, compact: compact, images: imgsExtracted, contentWidth: contentWidth, maxMediaHeightScreenPercentage: maxMediaHeightScreenPercentage)
+          ImageMediaPost(postTitle: postTitle, badgeKit: badgeKit, avatarImageRequest: avatarImageRequest, markAsSeen: markAsSeen, cornerRadius: cornerRadius, compact: compact, images: imgsExtracted, contentWidth: contentWidth, maxMediaHeightScreenPercentage: maxMediaHeightScreenPercentage, feedPost: fullPage ? nil : helioData)
             .nsfw(over18 && blurPostLinkNSFW, smallIcon: compact, size: mediaSize)
         }
       }
     case let .video(sharedVideo):
       if !showURLInstead {
-        VideoPlayerPost(controller: controller, cachedVideo: sharedVideo, markAsSeen: markAsSeen, compact: compact, contentWidth: contentWidth, url: sharedVideo.url, maxMediaHeightScreenPercentage: maxMediaHeightScreenPercentage, cornerRadius: cornerRadius)
+        VideoPlayerPost(controller: controller, cachedVideo: sharedVideo, markAsSeen: markAsSeen, compact: compact, contentWidth: contentWidth, url: sharedVideo.url, maxMediaHeightScreenPercentage: maxMediaHeightScreenPercentage, cornerRadius: cornerRadius, lightboxPost: LightBoxPost(key: "opened", title: postTitle, badgeKit: badgeKit, avatarImageRequest: avatarImageRequest, markAsSeen: markAsSeen), feedPost: fullPage ? nil : helioData)
           .nsfw(over18 && blurPostLinkNSFW, smallIcon: compact, size: mediaSize)
       }
     case .streamable:

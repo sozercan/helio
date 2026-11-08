@@ -1,7 +1,8 @@
 import AVFoundation
 import SwiftUI
 
-/// Swiping sideways across a fullscreen video or GIF scrubs through it, as Apollo did.
+/// Holding a fullscreen video or GIF and then dragging sideways scrubs through it, as swiping did
+/// in Apollo. A plain swipe goes to the next or previous media instead.
 enum MediaScrub {
   /// The most time a swipe across the whole window covers. Shorter clips span the whole width,
   /// so a GIF can be scrubbed end to end in one swipe while a long video still moves finely.
@@ -35,10 +36,24 @@ struct ScrubPosition: Equatable {
   }
 }
 
-/// A GIF's progress, laid out like the video player's bar: the track, with the elapsed time under
-/// its leading end and the time left under its trailing end. Dragging along it scrubs.
-struct GIFProgressBar: View {
-  let scrubber: GIFScrubber
+/// A GIF or video the lightbox can scrub, by a held drag or along its progress bar.
+@MainActor
+protocol MediaScrubbable: AnyObject {
+  /// The playhead, or nil while there's nothing to scrub yet.
+  var position: ScrubPosition? { get }
+  /// False when there's nothing to scrub.
+  func begin() -> Bool
+  /// A drag across the media, relative to where it began.
+  func update(translation: CGFloat, width: CGFloat)
+  /// A drag along the progress bar, to a fraction of the media's length.
+  func scrub(toFraction fraction: Double)
+  func end()
+}
+
+/// A GIF's or video's progress: the track, with the elapsed time under its leading end and the
+/// time left under its trailing end. Dragging along it scrubs.
+struct MediaProgressBar: View {
+  let scrubber: any MediaScrubbable
   @State private var dragging = false
   /// Resets when the drag ends or is cancelled; a cancelled drag skips `onEnded`.
   @GestureState private var touching = false
@@ -143,6 +158,13 @@ final class VideoScrubber {
   func update(translation: CGFloat, width: CGFloat) {
     guard player != nil else { return }
     target = MediaScrub.time(from: start, translation: translation, width: width, duration: duration)
+    seekToTarget()
+  }
+
+  /// Moves the playhead to a fraction of the video's length, as dragging its progress bar does.
+  func scrub(toFraction fraction: Double) {
+    guard player != nil else { return }
+    target = min(max(fraction, 0), 1) * duration
     seekToTarget()
   }
 

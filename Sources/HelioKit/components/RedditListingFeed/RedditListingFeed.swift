@@ -269,6 +269,7 @@ struct RedditListingFeed<Header: View, Footer: View, S: Sorting>: View {
         .navigationTitle(title)
         .smallTitleOnMac()
         .environment(\.defaultMinListRowHeight, 1)
+        .environment(\.feedPostsSource, itemsManager)
         .toolbar {
           // Sort and the feed's options share a glass group; the subreddit's icon is its own.
           // On Mac they're in the window toolbar (`actions`).
@@ -373,6 +374,13 @@ struct RedditListingFeed<Header: View, Footer: View, S: Sorting>: View {
           Task {
             await itemsManager.loadIfNeeded()
             await fetchFiltersIfNeeded()
+          }
+        }
+        // Follows the lightbox as it pages through the feed's media, so closing it comes back to
+        // the post it showed last. A canvas's rows are rows of tiles, which the lightbox doesn't open.
+        .onChange(of: itemsManager.revealRequest) { _, request in
+          if let request, !canvas {
+            proxy.scrollTo(request.postID, anchor: .top)
           }
         }
         .onChange(of: [itemsManager.searchQuery.debounced, itemsManager.selectedFilter?.text, itemsManager.selectedFilter?.type.rawValue, itemsManager.sorting?.meta.apiValue]) {

@@ -14,10 +14,17 @@ struct LightBoxOverlay: View {
   let badgeKit: BadgeKit
   let avatarImageRequest: ImageRequest?
   var opacity: CGFloat
-  var imagesArr: [ImgExtracted]
-  var activeIndex: Int
-  /// A lone GIF's progress bar, above the buttons.
-  var gifScrubber: GIFScrubber?
+  /// The safe area the media runs under. The title and buttons keep clear of its sides.
+  var safeArea = EdgeInsets()
+  /// The image showing, to save or share. Nil for a video.
+  var img: ImgExtracted?
+  /// The video showing, for its playback buttons.
+  var video: LightBoxVideo?
+  /// The page's place among its post's images.
+  var index: Int
+  var count: Int
+  /// A GIF's or video's progress bar, above the buttons.
+  var scrubber: (any MediaScrubbable)?
   @Binding var loading: Bool
   @Environment(\.dismiss) var dismiss
   @Binding var done: Bool
@@ -37,10 +44,10 @@ struct LightBoxOverlay: View {
 
       Spacer()
 
-      if imagesArr.count > 1 {
-        Text("\(activeIndex + 1)/\(imagesArr.count)")
+      if count > 1 {
+        Text("\(index + 1)/\(count)")
           .fontSize(16, .semibold)
-          .accessibilityLabel("Image \(activeIndex + 1) of \(imagesArr.count)")
+          .accessibilityLabel("Image \(index + 1) of \(count)")
           .padding(.horizontal, 12)
           .padding(.vertical, 8)
           .background(Capsule(style: .continuous).fill(.regularMaterial))
@@ -48,8 +55,8 @@ struct LightBoxOverlay: View {
           .allowsHitTesting(false)
       }
 
-      if let gifScrubber {
-        GIFProgressBar(scrubber: gifScrubber)
+      if let scrubber {
+        MediaProgressBar(scrubber: scrubber)
           .padding(.horizontal, 12)
           .padding(.bottom, 8)
       }
@@ -65,27 +72,34 @@ struct LightBoxOverlay: View {
 //               }
 //           }
 
-        LightBoxButton(icon: "square.and.arrow.down", label: "Save Image") {
-          withAnimation(spring) {
-            loading = true
+        if let video {
+          // A video that failed offers to try again instead.
+          if !video.failed {
+            LightBoxVideoButtons(video: video)
           }
-          saveMedia(imagesArr[activeIndex].url.absoluteString, .image) { _ in
+        } else if let img {
+          LightBoxButton(icon: "square.and.arrow.down", label: "Save Image") {
             withAnimation(spring) {
-              done = true
+              loading = true
+            }
+            saveMedia(img.url.absoluteString, .image) { _ in
+              withAnimation(spring) {
+                done = true
+              }
             }
           }
-        }
-        LightBoxButton(icon: "square.and.arrow.up", label: "Share Image") {
-          Task {
-            sharedImageData = try await downloadAndSaveImage(url: imagesArr[activeIndex].url)
+          LightBoxButton(icon: "square.and.arrow.up", label: "Share Image") {
+            Task {
+              sharedImageData = try await downloadAndSaveImage(url: img.url)
+            }
+            isPresentingShareSheet.toggle()
           }
-          isPresentingShareSheet.toggle()
-        }
-        .contentShape(Circle())
-        .sheet(isPresented: $isPresentingShareSheet) {
-          if let sharedImageData, let uiimg = UIImage(data: sharedImageData) {
-            let image = ShareImage(placeholderItem: uiimg)
-            ShareSheet(items: [image])
+          .contentShape(Circle())
+          .sheet(isPresented: $isPresentingShareSheet) {
+            if let sharedImageData, let uiimg = UIImage(data: sharedImageData) {
+              let image = ShareImage(placeholderItem: uiimg)
+              ShareSheet(items: [image])
+            }
           }
         }
       }
@@ -94,6 +108,8 @@ struct LightBoxOverlay: View {
     }
     .multilineTextAlignment(.leading)
     .foregroundColor(.white)
+    .padding(.leading, safeArea.leading)
+    .padding(.trailing, safeArea.trailing)
     .padding(.horizontal, 12)
     .padding(.bottom, 32)
     .padding(.top, 64)
@@ -128,5 +144,24 @@ struct LightBoxOverlay: View {
     .compositingGroup()
     .opacity(opacity)
     .allowsHitTesting(opacity != 0)
+  }
+}
+
+/// A video's play, sound and Picture in Picture buttons.
+private struct LightBoxVideoButtons: View {
+  let video: LightBoxVideo
+
+  var body: some View {
+    LightBoxButton(icon: video.isPlaying ? "pause.fill" : "play.fill", label: video.isPlaying ? "Pause" : "Play") {
+      video.togglePlayback()
+    }
+    LightBoxButton(icon: video.isMuted ? "speaker.slash.fill" : "speaker.wave.2.fill", label: video.isMuted ? "Unmute" : "Mute") {
+      video.isMuted.toggle()
+    }
+    if video.canPictureInPicture {
+      LightBoxButton(icon: "pip.enter", label: "Picture in Picture") {
+        video.startPictureInPicture()
+      }
+    }
   }
 }
