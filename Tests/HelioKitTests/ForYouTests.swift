@@ -575,6 +575,16 @@ struct ForYouHistoryTests {
     #expect(ForYouHistory.read(owner).first?.seconds == 30)
   }
 
+  @Test func timeInTheBackgroundDoesNotCount() {
+    let owner = owner()
+    defer { ForYouHistory.forget(credentialID: owner.credentialID) }
+    let token = ForYouHistory.began("t3_a", owner: owner, at: start)
+    ForYouHistory.paused(at: start.addingTimeInterval(8))
+    ForYouHistory.resumed(at: start.addingTimeInterval(500))
+    ForYouHistory.ended(token, subreddit: "astronomy", title: "Saturn", at: start.addingTimeInterval(512))
+    #expect(ForYouHistory.read(owner).first?.seconds == 20)
+  }
+
   @Test func aPostOpenedFromALinkIsTimedByItsFullnameAndDroppedWithoutDetails() {
     let owner = owner()
     defer { ForYouHistory.forget(credentialID: owner.credentialID) }
