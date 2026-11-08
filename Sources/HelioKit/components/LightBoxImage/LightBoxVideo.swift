@@ -306,8 +306,15 @@ struct LightBoxVideoPage: View {
         }
       }
       .accessibilityIgnoresInvertColors()
+      // One element, which the lightbox gives the page's place and paging. A failure is read in
+      // its label, and Try Again is one of its actions.
       .accessibilityElement(children: .ignore)
-      .accessibilityLabel(label ?? "Video")
+      .accessibilityLabel(video.failed && selected ? "\(label ?? "Video"), couldn't play this video" : label ?? "Video")
+      .accessibilityActions {
+        if video.failed, selected {
+          Button("Try Again") { video.retry() }
+        }
+      }
       .frame(width: .screenW)
       .frame(maxHeight: .infinity)
       .preferredColorScheme(.dark)
