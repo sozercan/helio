@@ -208,6 +208,21 @@ struct FeedItemsManagerTests {
     #expect(ids(manager.entities) == ["fresh"])
   }
 
+  @Test func rowsOfAnotherAccountsListAreNotReportedShown() async {
+    var current = Self.testCredential
+    var shown: [String] = []
+    let manager = FeedItemsManager<SubListingSortOption>(sorting: nil, currentCredential: { current }, onShown: { shown.append($0.id) }, fetchFn: { _, _, _, _, _ in
+      ([post("a", read: false)], nil)
+    })
+    await manager.reload()
+    let row = manager.entities[0]
+    manager.elementAppeared(entity: row)
+    // Switched accounts: the old list's rows show until it reloads.
+    current = RedditCredential(apiAppID: "placeholder-client-id", refreshToken: "placeholder-other-grant")
+    manager.elementAppeared(entity: row)
+    #expect(shown == [row.id])
+  }
+
   @Test func appearingRowsReserveOnlyOnePageRequest() async {
     let fetch = ControlledFetch()
     let manager = FeedItemsManager<SubListingSortOption>(sorting: nil, currentCredential: { Self.testCredential }, fetchFn: fetch.fetch)

@@ -254,7 +254,10 @@ class FeedItemsManager<S> {
   /// loading the next page.
   func elementAppeared(entity: RedditEntityType, prefetchMedia: Bool = true) {
     guard let index = indexByID[entity.id] else { return }
-    onShown?(entity)
+    // Rows of another account's list can still show for a moment after switching accounts.
+    if let onShown, currentCredential()?.authorizationID == authorization {
+      onShown(entity)
+    }
     if !entities.isEmpty, index >= entities.count - 7 {
       if currentTask != nil, currentTaskIsReload {
         loadMoreHeldBack = true

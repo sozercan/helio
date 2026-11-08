@@ -629,14 +629,41 @@ struct ForYouHistoryTests {
     #expect(Defaults[.forYouShownPosts][owner.key] == nil)
   }
 
-  @Test func timeInTheBackgroundDoesNotCount() {
+  @Test func timeInTheBackgroundDoesNotCountAndTheTimeBeforeIsKept() {
     let owner = owner()
     defer { ForYouHistory.forget(credentialID: owner.credentialID) }
     let token = ForYouHistory.began("t3_a", owner: owner, at: start)
-    ForYouHistory.paused(at: start.addingTimeInterval(8))
-    ForYouHistory.resumed(at: start.addingTimeInterval(500))
-    ForYouHistory.ended(token, subreddit: "astronomy", title: "Saturn", at: start.addingTimeInterval(512))
-    #expect(ForYouHistory.read(owner).first?.seconds == 20)
+    let other = ForYouHistory.began("t3_b", owner: owner, at: start)
+    ForYouHistory.paused(token, details: ("astronomy", "Saturn"), at: start.addingTimeInterval(12))
+    // Recorded on the way to the background, in case the app is ended there.
+    #expect(ForYouHistory.read(owner).map(\.seconds) == [12])
+
+    ForYouHistory.resumed(token, at: start.addingTimeInterval(500))
+    ForYouHistory.ended(token, subreddit: "astronomy", title: "Saturn", at: start.addingTimeInterval(508))
+    #expect(ForYouHistory.read(owner).first { $0.id == "t3_a" }?.seconds == 20)
+
+    // Another window, never in the background, kept counting.
+    ForYouHistory.ended(other, subreddit: "pics", title: "Kept", at: start.addingTimeInterval(30))
+    #expect(ForYouHistory.read(owner).first { $0.id == "t3_b" }?.seconds == 30)
+  }
+
+  @Test func oneVisitCountsForAtMostTheCapAcrossBackgrounds() {
+    let owner = owner()
+    defer { ForYouHistory.forget(credentialID: owner.credentialID) }
+    let token = ForYouHistory.began("t3_a", owner: owner, at: start)
+    ForYouHistory.paused(token, details: ("astronomy", "Saturn"), at: start.addingTimeInterval(500))
+    ForYouHistory.resumed(token, at: start.addingTimeInterval(600))
+    ForYouHistory.ended(token, subreddit: "astronomy", title: "Saturn", at: start.addingTimeInterval(1100))
+    #expect(ForYouHistory.read(owner).first?.seconds == ForYouHistory.maxSecondsPerVisit)
+  }
+
+  @Test func aPostShownAgainAfterAWeekIsRememberedAgain() {
+    let owner = owner()
+    defer { ForYouHistory.forget(credentialID: owner.credentialID) }
+    let week = ForYouHistory.shownFor
+    ForYouHistory.shown("t3_a", owner: owner, at: start)
+    ForYouHistory.shown("t3_a", owner: owner, at: start.addingTimeInterval(week + 1))
+    #expect(ForYouHistory.seen(owner, now: start.addingTimeInterval(week + 2)) == ["t3_a"])
   }
 
   @Test func aPostOpenedFromALinkIsTimedByItsFullnameAndDroppedWithoutDetails() {

@@ -46,16 +46,18 @@ enum ForYouHistory {
     }
   }
 
-  /// One post page's stay, counting only the time Helio was in front.
+  /// One post page's stay, counting only the time its window was in front.
   struct Visit {
     let post: String
     let owner: Owner
-    /// When the current stretch in front began; nil while Helio is in the background.
+    /// When the current stretch in front began; nil while its window is in the background.
     var since: Date?
-    /// The time of earlier stretches.
+    /// The time of earlier stretches not yet recorded.
     var seconds: Double = 0
+    /// The time already recorded, from when its window went to the background.
+    var recorded: Double = 0
 
-    func total(at date: Date) -> Double {
+    func unrecorded(at date: Date) -> Double {
       seconds + (since.map { date.timeIntervalSince($0) } ?? 0)
     }
   }
@@ -79,32 +81,33 @@ enum ForYouHistory {
     return began(post.fullname, owner: Owner(credential), at: Date())
   }
 
-  /// Stops the clock of every visit while Helio is in the background, as with the phone locked.
+  /// Saves the posts shown when Helio goes to the background, where it may be ended.
   private static func observeAppStateIfNeeded() {
     guard !observesAppState else { return }
     observesAppState = true
-    let center = NotificationCenter.default
-    center.addObserver(forName: UIApplication.didEnterBackgroundNotification, object: nil, queue: .main) { _ in
-      MainActor.assumeIsolated {
-        paused(at: Date())
-        saveShown()
-      }
-    }
-    center.addObserver(forName: UIApplication.willEnterForegroundNotification, object: nil, queue: .main) { _ in
-      MainActor.assumeIsolated { resumed(at: Date()) }
+    NotificationCenter.default.addObserver(forName: UIApplication.didEnterBackgroundNotification, object: nil, queue: .main) { _ in
+      MainActor.assumeIsolated { saveShown() }
     }
   }
 
-  static func paused(at date: Date) {
-    for token in visits.keys {
-      guard let visit = visits[token], visit.since != nil else { continue }
-      visits[token]?.seconds = visit.total(at: date)
-      visits[token]?.since = nil
-    }
+  /// Stops the clock of a visit while its window is in the background, as with the phone locked,
+  /// and records the time so far: the app may be ended there.
+  static func paused(_ token: UUID, post: Post) {
+    paused(token, details: post.data.map { ($0.subreddit, $0.title) }, at: Date())
   }
 
-  static func resumed(at date: Date) {
-    for token in visits.keys where visits[token]?.since == nil {
+  static func paused(_ token: UUID, details: (subreddit: String, title: String)?, at date: Date) {
+    guard var visit = visits[token], visit.since != nil else { return }
+    visit.seconds = visit.unrecorded(at: date)
+    visit.since = nil
+    if let details, visit.seconds > 0 {
+      recordTime(of: &visit, subreddit: details.subreddit, title: details.title, at: date)
+    }
+    visits[token] = visit
+  }
+
+  static func resumed(_ token: UUID, at date: Date = Date()) {
+    if visits[token]?.since == nil {
       visits[token]?.since = date
     }
   }
@@ -125,9 +128,17 @@ enum ForYouHistory {
   }
 
   static func ended(_ token: UUID, subreddit: String, title: String, at date: Date) {
-    guard let visit = visits.removeValue(forKey: token) else { return }
-    let seconds = min(visit.total(at: date), maxSecondsPerVisit)
+    guard var visit = visits.removeValue(forKey: token) else { return }
+    visit.seconds = visit.unrecorded(at: date)
+    recordTime(of: &visit, subreddit: subreddit, title: title, at: date)
+  }
+
+  /// Adds a visit's time not yet recorded to its post's entry, up to `maxSecondsPerVisit` in all.
+  private static func recordTime(of visit: inout Visit, subreddit: String, title: String, at date: Date) {
+    let seconds = max(0, min(visit.seconds, maxSecondsPerVisit - visit.recorded))
     record(ForYouOpenedPost(id: visit.post, subreddit: subreddit, title: title, lastOpened: date, seconds: seconds), owner: visit.owner)
+    visit.recorded += seconds
+    visit.seconds = 0
   }
 
   /// Adds a visit, its `seconds` the time it was open, to the post's entry, moving it to the front.
@@ -173,7 +184,10 @@ enum ForYouHistory {
   /// Notes that For You showed `post` to `owner`, when it first did.
   static func shown(_ post: String, owner: Owner, at date: Date = Date()) {
     var all = shownPosts
-    guard all[owner.key]?[post] == nil else { return }
+    // Kept from when it first showed, until that's a week old: then it showed afresh.
+    if let shownAt = all[owner.key]?[post], date.timeIntervalSince(shownAt) < shownFor {
+      return
+    }
     all[owner.key, default: [:]][post] = date
     shownCache = all
     observeAppStateIfNeeded()
