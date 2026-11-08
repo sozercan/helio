@@ -49,6 +49,8 @@ struct LightBoxPost {
   var avatarImageRequest: ImageRequest?
   /// Marks the post read once its image shows, when "Read on preview media" is on.
   var markAsSeen: (() async -> Void)?
+  /// The post's id in the feed the lightbox pages through, to scroll the feed to it.
+  var feedID: String?
 
   /// A page for each of the post's images, or its video.
   func pages(_ media: [LightBoxMedia]) -> [LightBoxPage] {
@@ -74,6 +76,8 @@ struct LightBoxTimeline: Identifiable {
   let id = UUID()
   var pages: [LightBoxPage]
   var start: Int
+  /// Scrolls the feed to a post, as the lightbox pages to its media.
+  var reveal: ((String) -> Void)?
 
   /// The media of the post opened, between the images and videos of the posts around it in the
   /// feed, so a swipe goes on to the next or previous post's. Outside a feed, or for a post the
@@ -89,7 +93,11 @@ struct LightBoxTimeline: Identifiable {
     for post in posts {
       if post.helioData === helioData {
         startPage = pages.count + start
-        pages += own
+        pages += own.map {
+          var page = $0
+          page.post.feedID = post.id
+          return page
+        }
         continue
       }
       guard let data = post.data, let postHelioData = post.helioData else { continue }
@@ -100,16 +108,25 @@ struct LightBoxTimeline: Identifiable {
         continue
       }
       let markAsSeen: (() async -> Void)? = settings.lightboxReadsPost ? { await post.toggleSeen(true) } : nil
-      pages += LightBoxPost(key: post.id, title: data.title, badgeKit: data.badgeKit, avatarImageRequest: postHelioData.avatarImageRequest, markAsSeen: markAsSeen).pages(media)
+      pages += LightBoxPost(key: post.id, title: data.title, badgeKit: data.badgeKit, avatarImageRequest: postHelioData.avatarImageRequest, markAsSeen: markAsSeen, feedID: post.id).pages(media)
     }
-    return LightBoxTimeline(pages: pages, start: startPage)
+    return LightBoxTimeline(pages: pages, start: startPage) { [weak feed] in feed?.reveal($0) }
   }
+}
+
+/// A post for the feed to scroll to. Each request is new, so asking for the same post again
+/// scrolls again.
+struct FeedRevealRequest: Equatable {
+  let postID: String
+  let token = UUID()
 }
 
 /// A feed's posts in order, for the lightbox to page on through their images.
 @MainActor
 protocol FeedPostsSource: AnyObject {
   var feedPosts: [Post] { get }
+  /// Scrolls the feed to the post with this id, the one the lightbox shows.
+  func reveal(_ postID: String)
 }
 
 extension FeedItemsManager: FeedPostsSource {
@@ -121,6 +138,10 @@ extension FeedItemsManager: FeedPostsSource {
         nil
       }
     }
+  }
+
+  func reveal(_ postID: String) {
+    revealRequest = FeedRevealRequest(postID: postID)
   }
 }
 
@@ -159,7 +180,7 @@ private struct LightBoxPresenting: ViewModifier {
     content
       .environment(\.lightBoxPresenter, presenter)
       .fullScreenCover(item: $presenter.timeline) { timeline in
-        LightBoxImage(pages: timeline.pages, i: timeline.start, doLiveText: Defaults[.BehaviorDefSettings].doLiveText)
+        LightBoxImage(pages: timeline.pages, i: timeline.start, doLiveText: Defaults[.BehaviorDefSettings].doLiveText, reveal: timeline.reveal)
       }
   }
 }

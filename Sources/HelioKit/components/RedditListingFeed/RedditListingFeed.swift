@@ -376,6 +376,13 @@ struct RedditListingFeed<Header: View, Footer: View, S: Sorting>: View {
             await fetchFiltersIfNeeded()
           }
         }
+        // Follows the lightbox as it pages through the feed's media, so closing it comes back to
+        // the post it showed last. A canvas's rows are rows of tiles, which the lightbox doesn't open.
+        .onChange(of: itemsManager.revealRequest) { _, request in
+          if let request, !canvas {
+            proxy.scrollTo(request.postID, anchor: .top)
+          }
+        }
         .onChange(of: [itemsManager.searchQuery.debounced, itemsManager.selectedFilter?.text, itemsManager.selectedFilter?.type.rawValue, itemsManager.sorting?.meta.apiValue]) {
           Task { await refetch() }
         }

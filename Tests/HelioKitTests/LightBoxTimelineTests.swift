@@ -6,8 +6,13 @@ import Testing
 struct LightBoxTimelineTests {
   private final class Feed: FeedPostsSource {
     var feedPosts: [Post]
+    var revealed: [String] = []
     init(_ posts: [Post]) {
       feedPosts = posts
+    }
+
+    func reveal(_ postID: String) {
+      revealed.append(postID)
     }
   }
 
@@ -51,6 +56,10 @@ struct LightBoxTimelineTests {
     #expect(titles == (blurred ? ["Post a", "Post d"] : ["Post a", "Post c", "Post d"]))
     #expect(timeline.pages[timeline.start].post.title == "Post d")
     #expect(timeline.pages[timeline.start].post.key == "opened")
+    // Each page knows its post in the feed, the opened one too, to scroll the feed to.
+    #expect(timeline.pages.map(\.post.feedID) == (blurred ? ["a", "d"] : ["a", "c", "d"]))
+    timeline.reveal?("a")
+    #expect(feed.revealed == ["a"])
   }
 
   @Test func goesOnToTheFeedsVideosToo() throws {

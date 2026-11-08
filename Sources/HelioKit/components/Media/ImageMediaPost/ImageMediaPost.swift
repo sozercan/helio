@@ -142,7 +142,7 @@ struct ImageMediaPost: View, Equatable {
 //      LightBoxImage(postTitle: postTitle, badgeKit: badgeKit, markAsSeen: markAsSeen, i: fullscreenIndex ?? 0, imagesArr: images)
 //    })
     .fullScreenCover(item: $lightbox) { lightbox in
-      LightBoxImage(pages: lightbox.pages, i: lightbox.start, doLiveText: Defaults[.BehaviorDefSettings].doLiveText)
+      LightBoxImage(pages: lightbox.pages, i: lightbox.start, doLiveText: Defaults[.BehaviorDefSettings].doLiveText, reveal: lightbox.reveal)
     }
   }
 }

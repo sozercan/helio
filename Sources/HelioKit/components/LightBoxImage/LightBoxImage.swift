@@ -15,6 +15,10 @@ struct LightBoxImage: View {
   var pages: [LightBoxPage]
   var i: Int
   var doLiveText: Bool
+  /// Scrolls the feed behind to the post showing.
+  var reveal: ((String) -> Void)?
+  /// The feed post last scrolled to, the one opened to begin with.
+  @State private var revealedFeedID: String?
   @Environment(\.dismiss) private var dismiss
   @State private var appearBlack = false
   @State private var appearContent = false
@@ -38,10 +42,12 @@ struct LightBoxImage: View {
   /// Resets when the drag ends or is cancelled; a cancelled drag skips `onEnded`.
   @GestureState private var dragging = false
 
-  init(pages: [LightBoxPage], i: Int, doLiveText: Bool) {
+  init(pages: [LightBoxPage], i: Int, doLiveText: Bool, reveal: ((String) -> Void)? = nil) {
     self.pages = pages
     self.i = i
     self.doLiveText = doLiveText
+    self.reveal = reveal
+    _revealedFeedID = State(initialValue: pages.indices.contains(i) ? pages[i].post.feedID : nil)
     _media = State(initialValue: LightBoxMediaStore(pages: pages))
     _activeIndex = State(initialValue: i)
   }
@@ -171,6 +177,10 @@ struct LightBoxImage: View {
       .onChange(of: activeIndex) { _, index in
         markSeen(index)
         media.show(index)
+        if let feedID = pages[index].post.feedID, feedID != revealedFeedID {
+          revealedFeedID = feedID
+          reveal?(feedID)
+        }
       }
       .onAppear { media.show(activeIndex) }
       .onDisappear { media.releaseAll() }

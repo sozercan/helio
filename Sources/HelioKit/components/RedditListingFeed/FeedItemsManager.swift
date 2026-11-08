@@ -273,6 +273,8 @@ class FeedItemsManager<S> {
   @ObservationIgnored private var shownRowIDs: [String: Int] = [:]
   /// The row at the top of the list when it last stopped scrolling; nil at the top of the feed.
   @ObservationIgnored private(set) var scrollAnchorID: String?
+  /// The post the lightbox shows, for the feed to scroll to behind it.
+  var revealRequest: FeedRevealRequest?
 
   /// Fetches through `fetchFn` from now on: the screen that took this feed over when the layout
   /// changed, as the one that made it is gone (`ScreenStates`).

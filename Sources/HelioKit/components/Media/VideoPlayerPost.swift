@@ -308,7 +308,7 @@ struct VideoPlayerPost: View, Equatable {
           }
         }
         .fullScreenCover(item: $lightbox) { lightbox in
-          LightBoxImage(pages: lightbox.pages, i: lightbox.start, doLiveText: Defaults[.BehaviorDefSettings].doLiveText)
+          LightBoxImage(pages: lightbox.pages, i: lightbox.start, doLiveText: Defaults[.BehaviorDefSettings].doLiveText, reveal: lightbox.reveal)
         }
       }
     }
