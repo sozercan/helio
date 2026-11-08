@@ -219,7 +219,9 @@ enum ForYouHistory {
   static func seen(_ owner: Owner, now: Date = Date()) -> Set<String> {
     let shown = (shownPosts[owner.key] ?? [:]).filter { now.timeIntervalSince($0.value) < shownFor }.keys
     let opened = (Defaults[.forYouOpenedPosts][owner.key] ?? []).map(\.id)
-    return Set(shown).union(opened)
+    // Open now, in this window or another, though not recorded until it closes.
+    let open = visits.values.filter { $0.owner == owner }.map(\.post)
+    return Set(shown).union(opened).union(open)
   }
 
   // MARK: Erasing

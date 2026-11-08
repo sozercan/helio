@@ -657,6 +657,15 @@ struct ForYouHistoryTests {
     #expect(ForYouHistory.read(owner).first?.seconds == ForYouHistory.maxSecondsPerVisit)
   }
 
+  @Test func aPostOpenNowCountsAsSeen() {
+    let owner = owner()
+    defer { ForYouHistory.forget(credentialID: owner.credentialID) }
+    let token = ForYouHistory.began("t3_open", owner: owner, at: start)
+    #expect(ForYouHistory.seen(owner, now: start) == ["t3_open"])
+    #expect(ForYouHistory.seen(self.owner(), now: start).isEmpty)
+    ForYouHistory.ended(token, subreddit: "pics", title: "Open", at: start.addingTimeInterval(1))
+  }
+
   @Test func aPostShownAgainAfterAWeekIsRememberedAgain() {
     let owner = owner()
     defer { ForYouHistory.forget(credentialID: owner.credentialID) }
