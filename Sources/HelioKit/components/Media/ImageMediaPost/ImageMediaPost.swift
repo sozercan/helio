@@ -38,8 +38,18 @@ struct ImageMediaPost: View, Equatable {
   var images: [ImgExtracted]
   var contentWidth: CGFloat
   var maxMediaHeightScreenPercentage: CGFloat
-  ///  @State var fullscreen = false
-  @State var fullscreenIndex: Int?
+  /// The post's data, by which the lightbox finds it among the feed's posts, to go on to the
+  /// images of the posts around it. Nil on a post's page.
+  var feedPost: PostHelioData?
+  @Environment(\.feedPostsSource) private var feed
+  @State private var lightbox: LightBoxTimeline?
+
+  /// Opens the lightbox on image `index`.
+  private func open(_ index: Int) {
+    let own = LightBoxPost(key: "opened", title: postTitle, badgeKit: badgeKit, avatarImageRequest: avatarImageRequest, markAsSeen: markAsSeen).pages(images)
+    let timeline = LightBoxTimeline.around(feedPost, in: feed, own: own, start: index)
+    withAnimation(spring) { lightbox = timeline }
+  }
 
   var body: some View {
 //    let maxMediaHeightScreenPercentage = 100.0
@@ -66,7 +76,7 @@ struct ImageMediaPost: View, Equatable {
           .background(capped ? Color.primary.opacity(0.06) : .clear)
           .mask(RR(capped ? cornerRadius : 0, Color.black))
 //          .background(sourceHeight > 0 || compact ? nil : GeometryReader { geo in Color.clear.onAppear { helioData.postDimensions.mediaSize = geo.size }.onChange(of: geo.size) { helioData.postDimensions.mediaSize = $0 } })
-          .onTapGesture { withAnimation(spring) { fullscreenIndex = 0 } }
+          .onTapGesture { open(0) }
           .mediaImageAccessibility(postTitle, index: 0, count: images.count)
           .overlay(
             !compact || images.count <= 1
@@ -82,12 +92,12 @@ struct ImageMediaPost: View, Equatable {
           HStack(spacing: ImageMediaPost.gallerySpacing) {
             GalleryThumb(cornerRadius: cornerRadius, width: compact ? scaledCompactModeThumbSize() : width, height: compact ? scaledCompactModeThumbSize() : height, url: images[0].url, imgRequest: !images.isEmpty ? images[0].request : nil)
               .equatable()
-              .onTapGesture { withAnimation(spring) { fullscreenIndex = 0 } }
+              .onTapGesture { open(0) }
               .mediaImageAccessibility(postTitle, index: 0, count: images.count)
 
             GalleryThumb(cornerRadius: cornerRadius, width: width, height: height, url: images[1].url, imgRequest: images.count > 1 ? images[1].request : nil)
               .equatable()
-              .onTapGesture { withAnimation(spring) { fullscreenIndex = 1 } }
+              .onTapGesture { open(1) }
               .mediaImageAccessibility(postTitle, index: 1, count: images.count)
           }
 
@@ -95,12 +105,12 @@ struct ImageMediaPost: View, Equatable {
             HStack(spacing: ImageMediaPost.gallerySpacing) {
               GalleryThumb(cornerRadius: cornerRadius, width: images.count == 3 ? contentWidth : width, height: height, url: images[2].url, imgRequest: images.count > 2 ? images[2].request : nil)
                 .equatable()
-                .onTapGesture { withAnimation(spring) { fullscreenIndex = 2 } }
+                .onTapGesture { open(2) }
                 .mediaImageAccessibility(postTitle, index: 2, count: images.count)
               if images.count == 4 {
                 GalleryThumb(cornerRadius: cornerRadius, width: width, height: height, url: images[3].url, imgRequest: images.count > 3 ? images[3].request : nil)
                   .equatable()
-                  .onTapGesture { withAnimation(spring) { fullscreenIndex = 3 } }
+                  .onTapGesture { open(3) }
                   .mediaImageAccessibility(postTitle, index: 3, count: images.count)
               } else if images.count > 4 {
                 Text("\(images.count - 3)+")
@@ -108,7 +118,7 @@ struct ImageMediaPost: View, Equatable {
                   .frame(width: width - 56, height: height - 56)
                   .background(Circle().fill(.primary.opacity(0.05)))
                   .frame(width: width, height: height)
-                  .onTapGesture { withAnimation(spring) { fullscreenIndex = 0 } }
+                  .onTapGesture { open(0) }
                   .accessibilityLabel("\(images.count - 3) more images")
               }
             }
@@ -125,8 +135,8 @@ struct ImageMediaPost: View, Equatable {
 //    }), content: {
 //      LightBoxImage(postTitle: postTitle, badgeKit: badgeKit, markAsSeen: markAsSeen, i: fullscreenIndex ?? 0, imagesArr: images)
 //    })
-    .fullScreenCover(item: $fullscreenIndex) { i in
-      LightBoxImage(postTitle: postTitle, badgeKit: badgeKit, avatarImageRequest: avatarImageRequest, markAsSeen: markAsSeen, i: i, imagesArr: images, doLiveText: Defaults[.BehaviorDefSettings].doLiveText)
+    .fullScreenCover(item: $lightbox) { lightbox in
+      LightBoxImage(pages: lightbox.pages, i: lightbox.start, doLiveText: Defaults[.BehaviorDefSettings].doLiveText)
     }
   }
 }

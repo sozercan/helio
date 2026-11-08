@@ -12,12 +12,8 @@ import SwiftUI
 private let SPACING = 24.0
 
 struct LightBoxImage: View {
-  var postTitle: String?
-  var badgeKit: BadgeKit?
-  var avatarImageRequest: ImageRequest?
-  var markAsSeen: (() async -> Void)?
+  var pages: [LightBoxPage]
   var i: Int
-  var imagesArr: [ImgExtracted]
   var doLiveText: Bool
   @Environment(\.dismiss) private var dismiss
   @State private var appearBlack = false
@@ -34,8 +30,22 @@ struct LightBoxImage: View {
   @State private var isZoomed: Bool = false
   @State private var scale: CGFloat = 1.0
   @State private var gifScrubber = GIFScrubber()
+  /// The posts already marked read since it opened.
+  @State private var seenPosts: Set<String> = []
   /// Resets when the drag ends or is cancelled; a cancelled drag skips `onEnded`.
   @GestureState private var dragging = false
+
+  init(pages: [LightBoxPage], i: Int, doLiveText: Bool) {
+    self.pages = pages
+    self.i = i
+    self.doLiveText = doLiveText
+  }
+
+  /// One post's images.
+  init(postTitle: String? = nil, badgeKit: BadgeKit? = nil, avatarImageRequest: ImageRequest? = nil, markAsSeen: (() async -> Void)? = nil, i: Int, imagesArr: [ImgExtracted], doLiveText: Bool) {
+    let post = LightBoxPost(key: "", title: postTitle, badgeKit: badgeKit, avatarImageRequest: avatarImageRequest, markAsSeen: markAsSeen)
+    self.init(pages: post.pages(imagesArr), i: i, doLiveText: doLiveText)
+  }
 
   private enum Axis {
     case horizontal
@@ -44,9 +54,17 @@ struct LightBoxImage: View {
     case scrub
   }
 
-  /// A single GIF scrubs when swiped sideways. In a gallery, the swipe still changes pages.
+  /// A single GIF scrubs when swiped sideways. With other images, the swipe still changes pages.
   private var scrubsGIF: Bool {
-    imagesArr.count == 1 && imagesArr[0].url.isGIF
+    pages.count == 1 && pages[0].img.url.isGIF
+  }
+
+  /// Marks the post of the page showing read, once.
+  private func markSeen(_ index: Int) {
+    guard pages.indices.contains(index) else { return }
+    let page = pages[index]
+    guard let markAsSeen = page.post.markAsSeen, seenPosts.insert(page.post.key).inserted else { return }
+    Task(priority: .background) { await markAsSeen() }
   }
 
   private func endScrub() {
@@ -68,9 +86,9 @@ struct LightBoxImage: View {
     dismiss()
   }
 
-  /// Shows image `index`, for VoiceOver, which can't drag between them.
+  /// Shows image `index`, for VoiceOver, which can't drag between them, and trackpad swipes.
   func page(to index: Int) {
-    let index = min(imagesArr.count - 1, max(0, index))
+    let index = min(pages.count - 1, max(0, index))
     guard index != activeIndex else { return }
     activeIndex = index
     withAnimation(motionAware(spring)) {
@@ -78,20 +96,50 @@ struct LightBoxImage: View {
     }
   }
 
+  /// Page `index`. Only the pages beside the one showing load their image: a feed's can be hundreds.
+  @ViewBuilder
+  private func pageView(_ index: Int, selectedScale: CGFloat) -> some View {
+    let selected = index == activeIndex
+    let page = pages[index]
+    if abs(index - activeIndex) <= 1 {
+      LightBoxElementView(el: page.img, label: page.post.title, onTap: toggleOverlay, onSwipe: pages.count > 1 ? { self.page(to: index + $0) } : nil, doLiveText: doLiveText, showOverlay: showOverlay, gifScrubber: scrubsGIF ? gifScrubber : nil, isPinching: $isPinching, isZoomed: $isZoomed)
+        .allowsHitTesting(selected)
+        .accessibilityHidden(!selected)
+        // The page, which changes as VoiceOver users swipe through the gallery.
+        .accessibilityValue(page.count > 1 ? "Image \(page.index + 1) of \(page.count)" : "")
+        .modifier(LightBoxPaging(pages: pages.count, page: { self.page(to: activeIndex + $0) }))
+        .scaleEffect(!selected ? 1 : selectedScale)
+        .blur(radius: selected && loading ? 24 : 0)
+        .offset(x: !selected ? 0 : dragAxis == .vertical ? drag.width : 0, y: !selected ? 0 : dragAxis == .vertical ? drag.height : 0)
+    } else {
+      Color.clear
+        .frame(width: .screenW)
+        .accessibilityHidden(true)
+    }
+  }
+
+  /// The post's title and author, and the image's buttons.
+  @ViewBuilder
+  private func infoOverlay(opacity: CGFloat) -> some View {
+    if pages.indices.contains(activeIndex), let postTitle = pages[activeIndex].post.title, let badgeKit = pages[activeIndex].post.badgeKit {
+      let page = pages[activeIndex]
+      LightBoxOverlay(postTitle: postTitle, badgeKit: badgeKit, avatarImageRequest: page.post.avatarImageRequest, opacity: opacity, img: page.img, index: page.index, count: page.count, gifScrubber: scrubsGIF ? gifScrubber : nil, loading: $loading, done: $done)
+    }
+  }
+
   var body: some View {
+    lightbox
+      .onChange(of: activeIndex) { _, index in markSeen(index) }
+  }
+
+  @ViewBuilder
+  private var lightbox: some View {
     let interpolate = interpolatorBuilder([0, 100], value: abs(drag.height))
+    let selectedScale = interpolate([1, 0.9], true)
     HStack(spacing: SPACING) {
-      ForEach(Array(imagesArr.enumerated()), id: \.element.id) { index, img in
-        let selected = index == activeIndex
-        LightBoxElementView(el: img, label: postTitle, onTap: toggleOverlay, doLiveText: doLiveText, showOverlay: showOverlay, gifScrubber: scrubsGIF ? gifScrubber : nil, isPinching: $isPinching, isZoomed: $isZoomed)
-          .allowsHitTesting(selected)
-          .accessibilityHidden(!selected)
-          // The page, which changes as VoiceOver users swipe through the gallery.
-          .accessibilityValue(imagesArr.count > 1 ? "Image \(index + 1) of \(imagesArr.count)" : "")
-          .modifier(LightBoxPaging(pages: imagesArr.count, page: { page(to: activeIndex + $0) }))
-          .scaleEffect(!selected ? 1 : interpolate([1, 0.9], true))
-          .blur(radius: selected && loading ? 24 : 0)
-          .offset(x: !selected ? 0 : dragAxis == .vertical ? drag.width : 0, y: i != activeIndex ? 0 : dragAxis == .vertical ? drag.height : 0)
+      // By position: a feed can hold the same image twice.
+      ForEach(pages.indices, id: \.self) { index in
+        pageView(index, selectedScale: selectedScale)
       }
     }
     .fixedSize(horizontal: true, vertical: false)
@@ -136,7 +184,7 @@ struct LightBoxImage: View {
             drag = .zero
             xPos += val.translation.width - (dragOffset?.width ?? 0)
             dragOffset = nil
-            let newActiveIndex = min(imagesArr.count - 1, max(0, activeIndex + (predictedEnd < -(.screenW / 2) ? 1 : predictedEnd > .screenW / 2 ? -1 : 0)))
+            let newActiveIndex = min(pages.count - 1, max(0, activeIndex + (predictedEnd < -(.screenW / 2) ? 1 : predictedEnd > .screenW / 2 ? -1 : 0)))
             let finalXPos = -(CGFloat(newActiveIndex) * (.screenW + SPACING))
             let distance = abs(finalXPos - xPos)
             activeIndex = newActiveIndex
@@ -174,11 +222,7 @@ struct LightBoxImage: View {
         dragAxis = nil
       }
     }
-    .overlay {
-      if let postTitle, let badgeKit {
-        LightBoxOverlay(postTitle: postTitle, badgeKit: badgeKit, avatarImageRequest: avatarImageRequest, opacity: !showOverlay || isPinching ? 0 : interpolate([1, 0], false), imagesArr: imagesArr, activeIndex: activeIndex, gifScrubber: scrubsGIF ? gifScrubber : nil, loading: $loading, done: $done)
-      }
-    }
+    .overlay { infoOverlay(opacity: !showOverlay || isPinching ? 0 : interpolate([1, 0], false)) }
     // Taps on the image show or hide the controls; Close, Escape or a swipe closes it.
     .background(
       !appearBlack
@@ -250,11 +294,9 @@ struct LightBoxImage: View {
       xPos = -CGFloat(activeIndex) * (.screenW + SPACING)
     }
     .onAppear {
-      if let markAsSeen {
-        Task(priority: .background) { await markAsSeen() }
-      }
       xPos = -CGFloat(i) * (.screenW + SPACING)
       activeIndex = i
+      markSeen(i)
       doThisAfter(0.0) {
         withAnimation(.easeOut) {
           appearContent = true

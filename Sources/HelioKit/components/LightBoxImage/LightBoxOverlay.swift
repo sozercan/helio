@@ -14,8 +14,10 @@ struct LightBoxOverlay: View {
   let badgeKit: BadgeKit
   let avatarImageRequest: ImageRequest?
   var opacity: CGFloat
-  var imagesArr: [ImgExtracted]
-  var activeIndex: Int
+  var img: ImgExtracted
+  /// The image's place among its post's images.
+  var index: Int
+  var count: Int
   /// A lone GIF's progress bar, above the buttons.
   var gifScrubber: GIFScrubber?
   @Binding var loading: Bool
@@ -37,10 +39,10 @@ struct LightBoxOverlay: View {
 
       Spacer()
 
-      if imagesArr.count > 1 {
-        Text("\(activeIndex + 1)/\(imagesArr.count)")
+      if count > 1 {
+        Text("\(index + 1)/\(count)")
           .fontSize(16, .semibold)
-          .accessibilityLabel("Image \(activeIndex + 1) of \(imagesArr.count)")
+          .accessibilityLabel("Image \(index + 1) of \(count)")
           .padding(.horizontal, 12)
           .padding(.vertical, 8)
           .background(Capsule(style: .continuous).fill(.regularMaterial))
@@ -69,7 +71,7 @@ struct LightBoxOverlay: View {
           withAnimation(spring) {
             loading = true
           }
-          saveMedia(imagesArr[activeIndex].url.absoluteString, .image) { _ in
+          saveMedia(img.url.absoluteString, .image) { _ in
             withAnimation(spring) {
               done = true
             }
@@ -77,7 +79,7 @@ struct LightBoxOverlay: View {
         }
         LightBoxButton(icon: "square.and.arrow.up", label: "Share Image") {
           Task {
-            sharedImageData = try await downloadAndSaveImage(url: imagesArr[activeIndex].url)
+            sharedImageData = try await downloadAndSaveImage(url: img.url)
           }
           isPresentingShareSheet.toggle()
         }

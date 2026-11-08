@@ -269,6 +269,7 @@ struct RedditListingFeed<Header: View, Footer: View, S: Sorting>: View {
         .navigationTitle(title)
         .smallTitleOnMac()
         .environment(\.defaultMinListRowHeight, 1)
+        .environment(\.feedPostsSource, itemsManager)
         .toolbar {
           // Sort and the feed's options share a glass group; the subreddit's icon is its own.
           // On Mac they're in the window toolbar (`actions`).

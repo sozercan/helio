@@ -64,10 +64,10 @@ struct MediaPresenter: View, Equatable {
     case let .imgs(imgsExtracted):
       if !showURLInstead {
         if !imgsExtracted.isEmpty, imgsExtracted[0].url.absoluteString.hasSuffix(".gif") {
-          ImageMediaPost(postTitle: postTitle, badgeKit: badgeKit, avatarImageRequest: avatarImageRequest, markAsSeen: markAsSeen, cornerRadius: cornerRadius, compact: compact, images: imgsExtracted, contentWidth: contentWidth, maxMediaHeightScreenPercentage: maxMediaHeightScreenPercentage)
+          ImageMediaPost(postTitle: postTitle, badgeKit: badgeKit, avatarImageRequest: avatarImageRequest, markAsSeen: markAsSeen, cornerRadius: cornerRadius, compact: compact, images: imgsExtracted, contentWidth: contentWidth, maxMediaHeightScreenPercentage: maxMediaHeightScreenPercentage, feedPost: fullPage ? nil : helioData)
             .nsfw(over18 && blurPostLinkNSFW, smallIcon: compact, size: mediaSize)
         } else {
-          ImageMediaPost(postTitle: postTitle, badgeKit: badgeKit, avatarImageRequest: avatarImageRequest, markAsSeen: markAsSeen, cornerRadius: cornerRadius, compact: compact, images: imgsExtracted, contentWidth: contentWidth, maxMediaHeightScreenPercentage: maxMediaHeightScreenPercentage)
+          ImageMediaPost(postTitle: postTitle, badgeKit: badgeKit, avatarImageRequest: avatarImageRequest, markAsSeen: markAsSeen, cornerRadius: cornerRadius, compact: compact, images: imgsExtracted, contentWidth: contentWidth, maxMediaHeightScreenPercentage: maxMediaHeightScreenPercentage, feedPost: fullPage ? nil : helioData)
             .nsfw(over18 && blurPostLinkNSFW, smallIcon: compact, size: mediaSize)
         }
       }

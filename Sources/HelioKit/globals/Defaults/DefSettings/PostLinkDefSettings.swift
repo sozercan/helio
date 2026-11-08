@@ -49,7 +49,7 @@ struct PostLinkDefSettings: Equatable, Hashable, Codable, Defaults.Serializable 
   var showVotesCluster: Bool = true
   var showUpVoteRatio: Bool = false
   var blurNSFW: Bool = true
-  var isMediaTappable: Bool = false
+  var isMediaTappable: Bool = true
   var showSelfText: Bool = true
   var enableVotesPopover: Bool = false
   var maxMediaHeightScreenPercentage: Double = 100
