@@ -130,7 +130,7 @@ struct LightBoxImage: View {
       LightBoxElementView(el: img, label: page.post.title, onTap: toggleOverlay, onSwipe: onSwipe, onHold: img.url.isGIF ? hold : nil, doLiveText: doLiveText, showOverlay: showOverlay, gifScrubber: img.url.isGIF ? media.gif(index) : nil, isPinching: $isPinching, isZoomed: $isZoomed)
     case let .video(video, _):
       if let player = media.video(index, onPictureInPictureStart: close) {
-        LightBoxVideoPage(video: player, holder: player.holder, posterURL: video.posterURL, label: page.post.title, onTap: toggleOverlay, onSwipe: onSwipe, onHold: hold)
+        LightBoxVideoPage(video: player, holder: player.holder, posterURL: video.posterURL, label: page.post.title, selected: index == activeIndex, onTap: toggleOverlay, onSwipe: onSwipe, onHold: hold)
       }
     }
   }

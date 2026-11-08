@@ -5,6 +5,7 @@
 
 import AVFoundation
 import AVKit
+import Combine
 import Defaults
 import SwiftUI
 
@@ -21,8 +22,12 @@ final class LightBoxVideo: MediaScrubbable {
   @ObservationIgnored private let scrubber = VideoScrubber()
   @ObservationIgnored private var timeObserver: Any?
   @ObservationIgnored private var statusObservation: NSKeyValueObservation?
-  @ObservationIgnored private var endObserver: NSObjectProtocol?
+  /// Loop and failure observers, for whichever item the player has: a reload replaces it.
+  @ObservationIgnored private var itemObservers: [NSObjectProtocol] = []
+  @ObservationIgnored private var failureObservation: AnyCancellable?
   @ObservationIgnored private var active = false
+  /// Released while in Picture in Picture: the observers go when it stops instead.
+  @ObservationIgnored private var released = false
   @ObservationIgnored private var pictureInPicture: AVPictureInPictureController?
   @ObservationIgnored private var pictureInPictureDelegate: PictureInPictureDelegate?
   /// Closes the lightbox, so the feed is usable while the video floats.
@@ -30,6 +35,8 @@ final class LightBoxVideo: MediaScrubbable {
 
   private(set) var position: ScrubPosition?
   private(set) var isPlaying = false
+  /// It didn't load, and retrying on its own didn't help: the page offers to try again.
+  private(set) var failed = false
   var isMuted: Bool {
     didSet { player?.isMuted = isMuted }
   }
@@ -56,6 +63,32 @@ final class LightBoxVideo: MediaScrubbable {
     timeObserver = player.addPeriodicTimeObserver(forInterval: CMTime(seconds: 0.1, preferredTimescale: 600), queue: .main) { [weak self] time in
       MainActor.assumeIsolated { self?.show(time) }
     }
+    let loop = Defaults[.VideoDefSettings].loop
+    player.actionAtItemEnd = loop ? .none : .pause
+    // Kept until it's released, Picture in Picture included, so it loops there too.
+    let center = NotificationCenter.default
+    itemObservers = [
+      center.addObserver(forName: .AVPlayerItemDidPlayToEndTime, object: nil, queue: .main) { [weak player] note in
+        guard loop, let player, note.object as? AVPlayerItem === player.currentItem else { return }
+        player.seek(to: .zero)
+      },
+      center.addObserver(forName: .AVPlayerItemFailedToPlayToEndTime, object: nil, queue: .main) { [weak self, weak player] note in
+        guard let player, note.object as? AVPlayerItem === player.currentItem else { return }
+        MainActor.assumeIsolated { self?.recover(failedToEnd: true) }
+      },
+      // Stalls usually recover once the buffer refills: only one still stuck is reloaded.
+      center.addObserver(forName: .AVPlayerItemPlaybackStalled, object: nil, queue: .main) { [weak self, weak player] note in
+        guard let player, let item = note.object as? AVPlayerItem, item === player.currentItem else { return }
+        Task { @MainActor [weak self, weak player] in
+          try? await Task.sleep(for: .seconds(4))
+          guard let player, player.currentItem === item, player.timeControlStatus == .waitingToPlayAtSpecifiedRate else { return }
+          self?.recover(failedToEnd: true)
+        }
+      },
+    ]
+    failureObservation = self.holder.$itemFailed.removeDuplicates().filter(\.self).sink { [weak self] _ in
+      MainActor.assumeIsolated { self?.recover() }
+    }
     if AVPictureInPictureController.isPictureInPictureSupported() {
       let controller = AVPictureInPictureController(playerLayer: layerView.playerLayer)
       let delegate = PictureInPictureDelegate(video: self)
@@ -73,6 +106,37 @@ final class LightBoxVideo: MediaScrubbable {
     }
   }
 
+  /// A failed item: loads it again while the holder's retries last, then offers to try again.
+  /// A borrowed player's feed row reloads it too, so only an item still failed is reloaded here,
+  /// and one that stopped short of its end or stalled is left to the row.
+  private func recover(failedToEnd: Bool = false) {
+    guard failedToEnd ? !borrowed : holder.hasFailed else { return }
+    if holder.reload() {
+      if active {
+        player?.play()
+      }
+    } else {
+      failed = true
+    }
+  }
+
+  /// Tries again after it failed, when asked.
+  func retry() {
+    failed = false
+    holder.retry()
+    if active {
+      player?.play()
+    }
+  }
+
+  /// Plays from the start a video that played to its end without looping.
+  private func play(_ player: AVPlayer) {
+    if let duration = player.currentItem?.duration.seconds, duration.isFinite, duration - player.currentTime().seconds < 0.1 {
+      player.seek(to: .zero)
+    }
+    player.play()
+  }
+
   /// Its page is showing: play it.
   func activate() {
     guard !active, let player else { return }
@@ -80,13 +144,11 @@ final class LightBoxVideo: MediaScrubbable {
     let settings = Defaults[.VideoDefSettings]
     player.isMuted = isMuted
     player.volume = 1
-    player.actionAtItemEnd = settings.loop ? .none : .pause
-    endObserver = NotificationCenter.default.addObserver(forName: .AVPlayerItemDidPlayToEndTime, object: player.currentItem, queue: .main) { [weak player] _ in
-      if settings.loop {
-        player?.seek(to: .zero)
-      }
+    // Coming back to a page whose video failed loads it again rather than replaying the failure.
+    if holder.hasFailed {
+      recover()
     }
-    player.play()
+    play(player)
     PictureInPicture.shared.fullscreenPlayers += 1
     if settings.pauseBGAudioOnFullscreen {
       scheduleAudioMixing(false)
@@ -95,19 +157,17 @@ final class LightBoxVideo: MediaScrubbable {
 
   /// Back in the app, its page still showing: play on, as the system paused it.
   func resume() {
-    if active {
-      player?.play()
+    guard active, let player else { return }
+    if holder.hasFailed {
+      recover()
     }
+    play(player)
   }
 
   /// Its page went away, or the lightbox closed: stop it, unless it went on in Picture in Picture.
   func deactivate() {
     guard active, let player else { return }
     active = false
-    if let endObserver {
-      NotificationCenter.default.removeObserver(endObserver)
-    }
-    endObserver = nil
     PictureInPicture.shared.fullscreenPlayers -= 1
     guard !PictureInPicture.shared.isPlaying(player) else { return }
     player.pause()
@@ -119,17 +179,23 @@ final class LightBoxVideo: MediaScrubbable {
     }
   }
 
-  /// Done with it. A borrowed player stays with its feed row, so its observers go now.
+  /// Done with it. A borrowed player stays with its feed row, so its observers go now, or once
+  /// Picture in Picture stops.
   func release() {
     deactivate()
+    guard !PictureInPicture.shared.isPlaying(player) else {
+      released = true
+      return
+    }
     if let timeObserver {
       player?.removeTimeObserver(timeObserver)
     }
     timeObserver = nil
     statusObservation?.invalidate()
-    if !PictureInPicture.shared.isPlaying(player) {
-      layerView.playerLayer.player = nil
-    }
+    itemObservers.forEach { NotificationCenter.default.removeObserver($0) }
+    itemObservers = []
+    failureObservation = nil
+    layerView.playerLayer.player = nil
   }
 
   func togglePlayback() {
@@ -137,11 +203,7 @@ final class LightBoxVideo: MediaScrubbable {
     if isPlaying {
       player.pause()
     } else {
-      // Played to the end without looping: start over.
-      if let position, position.duration - position.time < 0.1 {
-        player.seek(to: .zero)
-      }
-      player.play()
+      play(player)
     }
   }
 
@@ -156,6 +218,9 @@ final class LightBoxVideo: MediaScrubbable {
 
   fileprivate func pictureInPictureStopped() {
     PictureInPicture.shared.end(self)
+    if released {
+      release()
+    }
   }
 
   // MARK: MediaScrubbable
@@ -206,6 +271,8 @@ struct LightBoxVideoPage: View {
   @ObservedObject var holder: VideoPlayerHolder
   var posterURL: URL?
   var label: String?
+  /// The page showing. The pages beside it keep their failure to themselves until they show.
+  var selected: Bool
   var onTap: () -> Void
   var onSwipe: ((Int) -> Void)?
   var onHold: (LightBoxScrub) -> Void
@@ -223,6 +290,19 @@ struct LightBoxVideoPage: View {
           URLImage(url: posterURL)
             .scaledToFit()
             .allowsHitTesting(false)
+        }
+      }
+      .overlay {
+        if video.failed, selected {
+          VStack(spacing: 12) {
+            Text("Couldn't play this video")
+              .fontSize(16, .semibold)
+            Button("Try Again") { video.retry() }
+              .buttonStyle(.glass)
+          }
+          .foregroundStyle(.white)
+          .padding(20)
+          .background(.black.opacity(0.6), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
         }
       }
       .accessibilityIgnoresInvertColors()

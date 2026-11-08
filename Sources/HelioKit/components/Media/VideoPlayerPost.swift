@@ -49,6 +49,12 @@ final class VideoPlayerHolder: ObservableObject {
     return true
   }
 
+  /// Tries again once retries ran out, when the user asks.
+  func retry() {
+    reloads = 0
+    reload()
+  }
+
   var hasFailed: Bool {
     player?.status == .failed || player?.currentItem?.status == .failed
   }

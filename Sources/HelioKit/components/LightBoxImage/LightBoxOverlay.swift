@@ -71,7 +71,10 @@ struct LightBoxOverlay: View {
 //           }
 
         if let video {
-          LightBoxVideoButtons(video: video)
+          // A video that failed offers to try again instead.
+          if !video.failed {
+            LightBoxVideoButtons(video: video)
+          }
         } else if let img {
           LightBoxButton(icon: "square.and.arrow.down", label: "Save Image") {
             withAnimation(spring) {
