@@ -31,8 +31,8 @@ struct LightBoxImage: View {
   @State private var done = false
   @State private var showOverlay = true
   @State private var isPinching: Bool = false
+  /// The page showing is zoomed in, so a drag pans it instead of paging or closing.
   @State private var isZoomed: Bool = false
-  @State private var scale: CGFloat = 1.0
   /// The pages' GIF scrubbers and video players.
   @State private var media: LightBoxMediaStore
   /// The page a held drag is scrubbing.
@@ -136,7 +136,7 @@ struct LightBoxImage: View {
     let onSwipe: ((Int) -> Void)? = pages.count > 1 ? { self.page(to: index + $0) } : nil
     switch page.media {
     case let .image(img):
-      LightBoxElementView(el: img, width: pageWidth, label: page.post.title, onTap: toggleOverlay, onSwipe: onSwipe, onHold: img.url.isGIF ? hold : nil, doLiveText: doLiveText, showOverlay: showOverlay, gifScrubber: img.url.isGIF ? media.gif(index) : nil, isPinching: $isPinching, isZoomed: $isZoomed)
+      LightBoxElementView(el: img, width: pageWidth, selected: index == activeIndex, label: page.post.title, onTap: toggleOverlay, onSwipe: onSwipe, onHold: img.url.isGIF ? hold : nil, doLiveText: doLiveText, showOverlay: showOverlay, gifScrubber: img.url.isGIF ? media.gif(index) : nil, isPinching: $isPinching, isZoomed: $isZoomed)
     case let .video(video, _):
       if let player = media.video(index, onPictureInPictureStart: close) {
         LightBoxVideoPage(video: player, holder: player.holder, width: pageWidth, posterURL: video.posterURL, label: page.post.title, selected: index == activeIndex, onTap: toggleOverlay, onSwipe: onSwipe, onHold: hold)
@@ -216,6 +216,8 @@ struct LightBoxImage: View {
       closeButton(opacity: !appearContent || !showOverlay || isPinching ? 0 : interpolate([1, 0], false))
     }
     .onChange(of: activeIndex) { _, index in
+      // The page paged away from zooms out; the new one starts unzoomed.
+      isZoomed = false
       markSeen(index)
       media.show(index)
       if let feedID = pages[index].post.feedID, feedID != revealedFeedID {
@@ -241,7 +243,7 @@ struct LightBoxImage: View {
     .offset(x: xPos + (dragAxis == .horizontal ? drag.width : 0))
     .frame(maxWidth: pageWidth, maxHeight: .infinity, alignment: .leading)
     .highPriorityGesture(
-      scale > 1
+      isZoomed
         ? nil
         : DragGesture(minimumDistance: 20)
         .updating($dragging) { _, dragging, _ in dragging = true }
@@ -312,6 +314,15 @@ struct LightBoxImage: View {
           }
         },
     )
+    // A pinch can start while the drag is under way, which removes it without `onEnded`.
+    .onChange(of: isZoomed) { _, zoomed in
+      guard zoomed, dragAxis != nil, dragAxis != .scrub else { return }
+      withAnimation(motionAware(.interpolatingSpring(stiffness: 200, damping: 20, initialVelocity: 0))) {
+        drag = .zero
+        dragOffset = nil
+        dragAxis = nil
+      }
+    }
     // Stands the drag down when it ended without `onEnded`, a held drag having taken over.
     .onChange(of: dragging) { _, dragging in
       guard !dragging, dragAxis == .scrub else { return }

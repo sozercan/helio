@@ -12,6 +12,8 @@ struct LightBoxElementView: View {
   var el: ImgExtracted
   /// The page's width, the lightbox's.
   var width: CGFloat
+  /// The page showing. One paged away from zooms back out.
+  var selected = true
   /// The post's title, VoiceOver's label for the image.
   var label: String?
   var onTap: (() -> Void)?
@@ -27,7 +29,7 @@ struct LightBoxElementView: View {
   @State private var altSize: CGSize = .zero
   @Binding var isZoomed: Bool
   var body: some View {
-    ZoomableScrollView(onTap: onTap, onSwipe: onSwipe, onHold: onHold, isZoomed: $isZoomed) {
+    ZoomableScrollView(selected: selected, onTap: onTap, onSwipe: onSwipe, onHold: onHold, isZoomed: $isZoomed) {
       URLImage(url: el.url, doLiveText: doLiveText, showOverlay: showOverlay, gifScrubber: gifScrubber)
         .scaledToFit()
     }

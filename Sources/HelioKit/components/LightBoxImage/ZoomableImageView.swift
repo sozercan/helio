@@ -12,13 +12,16 @@ import UIKit
 /// Source https://stackoverflow.com/a/64110231
 struct ZoomableScrollView<Content: View>: UIViewRepresentable {
   private var content: Content
+  /// The page showing, the only one whose zoom `isZoomed` reports.
+  private var selected: Bool
   private var onTap: (() -> Void)?
   private var onSwipe: ((Int) -> Void)?
   private var onHold: ((LightBoxScrub) -> Void)?
   @Binding var isZoomed: Bool // Add the binding parameter
 
-  init(onTap: (() -> Void)? = nil, onSwipe: ((Int) -> Void)? = nil, onHold: ((LightBoxScrub) -> Void)? = nil, isZoomed: Binding<Bool>, @ViewBuilder content: () -> Content) {
+  init(selected: Bool = true, onTap: (() -> Void)? = nil, onSwipe: ((Int) -> Void)? = nil, onHold: ((LightBoxScrub) -> Void)? = nil, isZoomed: Binding<Bool>, @ViewBuilder content: () -> Content) {
     self.content = content()
+    self.selected = selected
     // set up helper class
     self.onTap = onTap
     self.onSwipe = onSwipe
@@ -76,6 +79,12 @@ struct ZoomableScrollView<Content: View>: UIViewRepresentable {
     context.coordinator.hostingController.rootView = self.content
     context.coordinator.gestures.onSwipe = onSwipe
     context.coordinator.gestures.onHold = onHold
+    context.coordinator.selected = selected
+    // A page paged away from (VoiceOver can page a zoomed one) zooms back out, so `isZoomed`,
+    // which the pages share, stays the page showing's.
+    if !selected, uiView.zoomScale > uiView.minimumZoomScale {
+      uiView.setZoomScale(uiView.minimumZoomScale, animated: false)
+    }
     assert(context.coordinator.hostingController.view.superview == uiView)
 
     // While not zoomed, keep contentSize matching the view, so the next pinch scales
@@ -97,6 +106,7 @@ struct ZoomableScrollView<Content: View>: UIViewRepresentable {
     var hostingController: UIHostingController<Content>
     var onTap: (() -> Void)?
     let gestures = LightBoxGestures()
+    var selected = true
     @Binding var isZoomed: Bool // Use the binding here
 
     init(hostingController: UIHostingController<Content>, onTap: (() -> Void)? = nil, isZoomed: Binding<Bool>) {
@@ -110,7 +120,9 @@ struct ZoomableScrollView<Content: View>: UIViewRepresentable {
     }
 
     func scrollViewDidZoom(_ scrollView: UIScrollView) {
-      isZoomed = scrollView.zoomScale > scrollView.minimumZoomScale
+      let zoomed = scrollView.zoomScale > scrollView.minimumZoomScale
+      guard selected, zoomed != isZoomed else { return }
+      isZoomed = zoomed
     }
 
     @objc func handleTap(_ gestureRecognizer: UITapGestureRecognizer) {
