@@ -43,18 +43,9 @@ enum Bench {
     let dir = Paths.label(label)
     try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
     try? FileManager.default.removeItem(at: macMarker(label))
-    let tests = repo.appendingPathComponent("App/HelioUITests")
-    let smoke = tests.appendingPathComponent("SmokeUITests.swift")
-    let original = FileManager.default.fileExists(atPath: tests.appendingPathComponent("PerfSetupUITests.swift").path)
-      ? nil : try? String(contentsOf: smoke, encoding: .utf8)
-    if let original {
-      let setup = (try? String(contentsOf: Paths.repo.appendingPathComponent("App/HelioUITests/PerfSetupUITests.swift"), encoding: .utf8)) ?? ""
-      try? (original + "\n" + setup.replacingOccurrences(of: "import XCTest\n", with: "")).write(to: smoke, atomically: true, encoding: .utf8)
-    }
-    defer {
-      if let original {
-        try? original.write(to: smoke, atomically: true, encoding: .utf8)
-      }
+    let setupTest = repo.appendingPathComponent("App/HelioUITests/PerfSetupUITests.swift")
+    guard FileManager.default.fileExists(atPath: setupTest.path) else {
+      fail("checkout at \(repo.path) is missing App/HelioUITests/PerfSetupUITests.swift")
     }
     var command = ["xcodebuild", "-project", repo.appendingPathComponent("App/Helio.xcodeproj").path, "-scheme", "Helio",
                    "-configuration", "Release", "-destination", "id=\(udid)", "-derivedDataPath", dir.appendingPathComponent("build").path,
@@ -64,9 +55,6 @@ enum Bench {
     }
     print("building \(repo.path) as \(label) (log: \(dir.path)/build.log)")
     if shell(command, log: dir.appendingPathComponent("build.log"), check: false).status != 0 {
-      if let original {
-        try? original.write(to: smoke, atomically: true, encoding: .utf8)
-      }
       fail("build failed, see \(dir.path)/build.log")
     }
     print("built")
@@ -236,16 +224,12 @@ enum Bench {
                  "PERF_SKIP_WHATS_NEW": "1", "CFFIXED_USER_HOME": home.path]
 
       let setupLog = URL(fileURLWithPath: log.path + ".setup")
-      var signedIn = false
-      for _ in 1 ... 2 where !signedIn {
-        let setupCommands = dir.appendingPathComponent("run\(i).setup.cmd")
-        FileManager.default.createFile(atPath: setupCommands.path, contents: nil)
-        try? FileManager.default.removeItem(at: setupLog)
-        let setup = launchMac(executable, env: env.merging(["PERF_LOG": setupLog.path, "PERF_CMD": setupCommands.path]) { $1 })
-        play([.wait(1), .window(width: macWindow.width, height: macWindow.height), .wait(9)], commands: setupCommands)
-        quitMac(executable, setup)
-        signedIn = (try? String(contentsOf: setupLog, encoding: .utf8))?.contains("/api/v1/me") == true
-      }
+      let setupCommands = dir.appendingPathComponent("run\(i).setup.cmd")
+      FileManager.default.createFile(atPath: setupCommands.path, contents: nil)
+      try? FileManager.default.removeItem(at: setupLog)
+      let setup = launchMac(executable, env: env.merging(["PERF_LOG": setupLog.path, "PERF_CMD": setupCommands.path]) { $1 })
+      let signedIn = waitForMacSetup(log: setupLog, commands: setupCommands, timeout: 15)
+      quitMac(executable, setup)
       guard signedIn else {
         print("run \(i): the setup launch didn't load the account, see \(setupLog.path)")
         continue
@@ -282,6 +266,33 @@ enum Bench {
       fail("can't launch \(executable.path): \(error)")
     }
     return process
+  }
+
+  static func waitForMacSetup(log: URL, commands: URL, timeout: TimeInterval) -> Bool {
+    let deadline = Date().addingTimeInterval(timeout)
+    var seq = 0
+    var windowReady = false
+    while Date() < deadline {
+      let text = (try? String(contentsOf: log, encoding: .utf8)) ?? ""
+      if !windowReady {
+        if text.contains(" window \(macWindow.width)x\(macWindow.height)") {
+          windowReady = true
+        } else {
+          seq += 1
+          if let handle = try? FileHandle(forWritingTo: commands) {
+            handle.seekToEndOfFile()
+            handle.write(Data("\(seq) window \(macWindow.width) \(macWindow.height)\n".utf8))
+            try? handle.close()
+          }
+        }
+      }
+      if text.contains("/api/v1/me"), text.contains("/subreddits/mine"), text.contains("/api/multi/mine") {
+        Thread.sleep(forTimeInterval: 0.5)
+        return true
+      }
+      Thread.sleep(forTimeInterval: 0.25)
+    }
+    return false
   }
 
   static func quitMac(_ executable: URL, _ process: Process? = nil) {

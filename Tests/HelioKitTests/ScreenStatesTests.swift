@@ -11,12 +11,6 @@ struct ScreenStatesTests {
   private let home = Owner()
   private let posts = Owner()
 
-  private func letLeasesGo() async {
-    for _ in 0 ..< 5 {
-      await Task.yield()
-    }
-  }
-
   @Test func screensOfTheSameFeedKeepTheirOwnStateOutsideALayoutChange() {
     let states = ScreenStates()
     let first = states.lease("feed", owner: home, now: start) { Model() }
@@ -136,8 +130,7 @@ struct ScreenStatesTests {
     old?.adopt(in: posts)
     let model = old?.model
     states.beginHandoff(in: posts, now: start, endsItself: false)
-    old = nil
-    await letLeasesGo()
+    await states.waitForNextRelease { old = nil }
     let new = states.lease("feed", owner: home, now: start.addingTimeInterval(1)) { Model() }
     #expect(new.model === model)
   }
@@ -147,8 +140,7 @@ struct ScreenStatesTests {
     var closed: ScreenStateLease<Model>? = states.lease("feed", owner: home, now: start) { Model() }
     closed?.adopt(in: posts)
     let closedModel = closed?.model
-    closed = nil
-    await letLeasesGo()
+    await states.waitForNextRelease { closed = nil }
     let reopened = states.lease("feed", owner: home, now: start) { Model() }
     reopened.adopt(in: posts)
     states.beginHandoff(in: posts, now: start, endsItself: false)
@@ -163,8 +155,7 @@ struct ScreenStatesTests {
     gone?.adopt(in: posts)
     let goneModel = gone?.model
     states.beginHandoff(in: posts, now: start, endsItself: false)
-    gone = nil
-    await letLeasesGo()
+    await states.waitForNextRelease { gone = nil }
     states.beginHandoff(in: posts, now: start, endsItself: false)
     let new = states.lease("web:https://example.com", owner: nil, now: start) { Model() }
     new.adopt(in: posts)
@@ -178,13 +169,11 @@ struct ScreenStatesTests {
     let oldModel = old?.model
     states.beginHandoff(in: posts, now: start, endsItself: false)
     var covered: ScreenStateLease<Model>? = states.lease("post|", owner: home, now: start) { Model() }
-    old = nil
-    await letLeasesGo()
+    await states.waitForNextRelease { old = nil }
     states.endHandoff()
     states.beginHandoff(in: posts, now: start, endsItself: false)
     let next = states.lease("post|", owner: home, now: start) { Model() }
-    covered = nil
-    await letLeasesGo()
+    await states.waitForNextRelease { covered = nil }
     states.endHandoff()
     next.adopt(in: posts)
     #expect(covered == nil)
@@ -199,8 +188,7 @@ struct ScreenStatesTests {
     let oldModel = old?.model
     states.beginHandoff(in: posts, now: start, endsItself: false)
     let covered = states.lease("post|", owner: home, now: start) { Model() }
-    old = nil
-    await letLeasesGo()
+    await states.waitForNextRelease { old = nil }
     states.endHandoff()
     covered.adopt(in: posts)
     #expect(covered.model === oldModel)
@@ -212,8 +200,7 @@ struct ScreenStatesTests {
     var old: ScreenStateLease<Model>? = states.lease("feed", owner: home) { Model() }
     old?.adopt(in: posts)
     #expect(states.count("feed") == 1)
-    old = nil
-    await letLeasesGo()
+    await states.waitForNextRelease { old = nil }
     #expect(states.count("feed") == 0)
   }
 
@@ -222,8 +209,7 @@ struct ScreenStatesTests {
     var old: ScreenStateLease<Model>? = states.lease("feed", owner: home, now: start) { Model() }
     old?.adopt(in: posts)
     states.beginHandoff(in: posts, now: start, endsItself: false)
-    old = nil
-    await letLeasesGo()
+    await states.waitForNextRelease { old = nil }
     #expect(states.count("feed") == 1)
     states.endHandoff()
     #expect(states.count("feed") == 0)

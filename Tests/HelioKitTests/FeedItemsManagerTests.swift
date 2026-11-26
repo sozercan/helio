@@ -8,13 +8,8 @@ import Testing
 struct FeedItemsManagerTests {
   private static let testCredential = RedditCredential(apiAppID: "placeholder-client-id", refreshToken: "placeholder-grant")
   private func post(_ id: String, read: Bool) -> RedditEntityType {
-    var json = try! JSONSerialization.jsonObject(with: JSONEncoder().encode(postSampleData)) as! [String: Any]
-    json["id"] = id
-    json["name"] = "t3_\(id)"
-    var data = try! JSONDecoder().decode(PostData.self, from: JSONSerialization.data(withJSONObject: json))
-    data.helioSeen = read
     let post = Post(id: id)
-    post.data = data
+    post.data = PostData.fixture(id: id, helioSeen: read)
     return .post(post)
   }
 

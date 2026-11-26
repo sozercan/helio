@@ -13,12 +13,13 @@ final class SmokeUITests: XCTestCase {
   private func dismissOnboarding() {
     let close = app.buttons["xmark.circle.fill"].firstMatch
     if close.waitForExistence(timeout: 5) {
-      let confirm = app.alerts.buttons["Yes"]
-      for _ in 0 ..< 3 where !confirm.exists {
+      let hittable = NSPredicate(format: "exists == true AND hittable == true")
+      let expectation = XCTNSPredicateExpectation(predicate: hittable, object: close)
+      if XCTWaiter.wait(for: [expectation], timeout: 5) == .completed {
         close.tap()
-        _ = confirm.waitForExistence(timeout: 3)
       }
-      if confirm.exists {
+      let confirm = app.alerts.buttons["Yes"]
+      if confirm.waitForExistence(timeout: 5) {
         confirm.tap()
       }
     }

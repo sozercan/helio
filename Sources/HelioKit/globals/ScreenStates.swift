@@ -34,6 +34,8 @@ final class ScreenStates {
   private var handoff = 0
   private var handoffEnds = Date.distantPast
   private var handedOff: [Entry] = []
+  private var releaseCount = 0
+  private var releaseWaiters: [(target: Int, continuation: CheckedContinuation<Void, Never>)] = []
 
   func beginHandoff(in scope: AnyObject, now: Date = .now, endsItself: Bool = true) {
     handoff += 1
@@ -89,6 +91,23 @@ final class ScreenStates {
     entry.holders -= 1
     if entry.holders <= 0, !handedOff.contains(where: { $0 === entry }) {
       entries.removeAll { $0 === entry }
+    }
+    releaseCount += 1
+    let ready = releaseWaiters.filter { releaseCount >= $0.target }
+    releaseWaiters.removeAll { releaseCount >= $0.target }
+    for waiter in ready {
+      waiter.continuation.resume()
+    }
+  }
+
+  func waitForNextRelease(after action: () -> Void) async {
+    let target = releaseCount + 1
+    action()
+    if releaseCount >= target {
+      return
+    }
+    await withCheckedContinuation { continuation in
+      releaseWaiters.append((target: target, continuation: continuation))
     }
   }
 

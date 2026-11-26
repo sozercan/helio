@@ -117,6 +117,50 @@ struct PostData: GenericRedditEntityDataType {
   var acceptsReplies: Bool {
     !(archived ?? false) && (!(locked ?? false) || (can_mod_post ?? false))
   }
+
+  static func fixture(
+    id: String,
+    subreddit: String = "Apple",
+    title: String = "Helio won as the best app in the universe",
+    author: String = "Helio",
+    helioSeen: Bool? = false,
+  ) -> PostData {
+    PostData(
+      subreddit: subreddit,
+      selftext: "Helio is simply the best app to ever exist. Other apps bow down before it's greatness.",
+      author_fullname: SAMPLE_USER_AVATAR,
+      saved: false,
+      gilded: 0,
+      clicked: false,
+      title: title,
+      subreddit_name_prefixed: "r/\(subreddit)",
+      hidden: false,
+      ups: 453,
+      downs: 0,
+      hide_score: false,
+      name: "t3_\(id)",
+      quarantine: false,
+      upvote_ratio: 1.0,
+      subreddit_type: "public",
+      total_awards_received: 0,
+      is_self: false,
+      created: Date().timeIntervalSince1970 - 115_200,
+      domain: "",
+      allow_live_comments: false,
+      id: id,
+      is_robot_indexable: false,
+      author: author,
+      num_comments: 42,
+      send_replies: false,
+      contest_mode: false,
+      permalink: "",
+      url: "https://raw.githubusercontent.com/sozercan/helio/main/App/Helio/Assets.xcassets/appIcons/iconStandard.appiconset/iconStandard.png",
+      subreddit_subscribers: 1263,
+      num_crossposts: 0,
+      link_flair_text: "⭐ Amazing News",
+      helioSeen: helioSeen,
+    )
+  }
 }
 
 struct GalleryData: Codable, Hashable {
