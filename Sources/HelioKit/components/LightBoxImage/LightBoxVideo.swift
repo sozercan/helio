@@ -26,6 +26,8 @@ final class LightBoxVideo: MediaScrubbable {
   @ObservationIgnored private var itemObservers: [NSObjectProtocol] = []
   @ObservationIgnored private var failureObservation: AnyCancellable?
   @ObservationIgnored private var active = false
+  /// Whether playback should resume once an async reload finishes; false when the user paused it.
+  @ObservationIgnored private var wantsPlayback = false
   /// Released while in Picture in Picture: the observers go when it stops instead.
   @ObservationIgnored private var released = false
   @ObservationIgnored private var pictureInPicture: AVPictureInPictureController?
@@ -50,7 +52,7 @@ final class LightBoxVideo: MediaScrubbable {
   }
 
   init(video: SharedVideo, holder: VideoPlayerHolder?) {
-    self.holder = holder ?? VideoPlayerHolder(url: video.url)
+    self.holder = holder ?? VideoPlayerHolder(url: video.url, dashURL: video.dashURL, fallbackURL: video.fallbackURL)
     borrowed = holder != nil
     isMuted = Defaults[.VideoDefSettings].mute
     layerView.playerLayer.videoGravity = .resizeAspect
@@ -111,11 +113,11 @@ final class LightBoxVideo: MediaScrubbable {
   /// and one that stopped short of its end or stalled is left to the row.
   private func recover(failedToEnd: Bool = false) {
     guard failedToEnd ? !borrowed : holder.hasFailed else { return }
-    if holder.reload() {
-      if active {
-        player?.play()
-      }
-    } else {
+    let started = holder.reload { [weak self] in
+      guard let self, self.active, self.wantsPlayback else { return }
+      self.player?.play()
+    }
+    if !started {
       failed = true
     }
   }
@@ -123,9 +125,10 @@ final class LightBoxVideo: MediaScrubbable {
   /// Tries again after it failed, when asked.
   func retry() {
     failed = false
-    holder.retry()
-    if active {
-      player?.play()
+    wantsPlayback = true
+    holder.retry { [weak self] in
+      guard let self, self.active, self.wantsPlayback else { return }
+      self.player?.play()
     }
   }
 
@@ -141,6 +144,7 @@ final class LightBoxVideo: MediaScrubbable {
   func activate() {
     guard !active, let player else { return }
     active = true
+    wantsPlayback = true
     let settings = Defaults[.VideoDefSettings]
     player.isMuted = isMuted
     player.volume = 1
@@ -158,6 +162,7 @@ final class LightBoxVideo: MediaScrubbable {
   /// Back in the app, its page still showing: play on, as the system paused it.
   func resume() {
     guard active, let player else { return }
+    wantsPlayback = true
     if holder.hasFailed {
       recover()
     }
@@ -168,6 +173,7 @@ final class LightBoxVideo: MediaScrubbable {
   func deactivate() {
     guard active, let player else { return }
     active = false
+    wantsPlayback = false
     PictureInPicture.shared.fullscreenPlayers -= 1
     guard !PictureInPicture.shared.isPlaying(player) else { return }
     player.pause()
@@ -201,8 +207,10 @@ final class LightBoxVideo: MediaScrubbable {
   func togglePlayback() {
     guard let player else { return }
     if isPlaying {
+      wantsPlayback = false
       player.pause()
     } else {
+      wantsPlayback = true
       play(player)
     }
   }

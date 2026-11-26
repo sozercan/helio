@@ -658,4 +658,218 @@ extension FeedItemsManagerTests {
     #expect(ids(manager.entities) == (fails ? ["visible"] : ["replacement"]))
     #expect(manager.displayMode == (fails ? .error : .endOfFeed))
   }
+
+  @Test func deduplicatesRepeatedPostsWithinTheFirstPage() async {
+    await withHideOnRead(false) {
+      let (manager, _) = makeManager(hideReadPosts: false, pages: [
+        "first": ([post("a", read: false), post("b", read: false), post("a", read: false), post("c", read: false), post("b", read: false)], "p2"),
+      ])
+      await manager.reload()
+
+      #expect(ids(manager.entities) == ["a", "b", "c"])
+      #expect(manager.displayMode == .items)
+    }
+  }
+
+  @Test func holdsNextPageWhileRateLimitedAndAutoReloadsAtReset() async {
+    await withHideOnRead(false) {
+      var limitedUntil: Date?
+      var requested: [String?] = []
+      var sleepContinuation: CheckedContinuation<Void, Never>?
+      let manager = FeedItemsManager<SubListingSortOption>(
+        sorting: nil,
+        hideReadPosts: false,
+        currentCredential: { Self.testCredential },
+        rateLimitedUntil: { _ in limitedUntil },
+        sleepUntil: { _ in
+          await withCheckedContinuation { continuation in
+            sleepContinuation = continuation
+          }
+        },
+        fetchFn: { after, _, _, _, _ in
+          requested.append(after)
+          if after == nil {
+            return ([post("p1", read: false)], "c2")
+          }
+          return ([post("p2", read: false)], nil)
+        },
+      )
+
+      await manager.reload()
+      #expect(ids(manager.entities) == ["p1"])
+      #expect(requested == [nil])
+
+      // Simulate an active rate limit: paging is held without calling fetchFn.
+      limitedUntil = Date().addingTimeInterval(60)
+      await manager.loadMore()
+      #expect(requested == [nil])
+      #expect(manager.displayMode == .error)
+
+      // Lifting the limit and waking the reset timer automatically resumes paging.
+      limitedUntil = nil
+      for _ in 0 ..< 50 where sleepContinuation == nil {
+        try? await Task.sleep(for: .milliseconds(10))
+      }
+      sleepContinuation?.resume()
+      for _ in 0 ..< 50 where manager.displayMode == .error || requested.count < 2 {
+        try? await Task.sleep(for: .milliseconds(10))
+      }
+
+      #expect(requested == [nil, "c2"])
+      #expect(ids(manager.entities) == ["p1", "p2"])
+      #expect(manager.displayMode == .endOfFeed)
+    }
+  }
+
+  @Test func autoReloadsFailedFirstPageWhenRateLimitResets() async {
+    await withHideOnRead(false) {
+      var limitedUntil: Date?
+      var attempts = 0
+      var sleepContinuation: CheckedContinuation<Void, Never>?
+      let manager = FeedItemsManager<SubListingSortOption>(
+        sorting: nil,
+        hideReadPosts: false,
+        currentCredential: { Self.testCredential },
+        rateLimitedUntil: { _ in limitedUntil },
+        sleepUntil: { _ in
+          await withCheckedContinuation { continuation in
+            sleepContinuation = continuation
+          }
+        },
+        fetchFn: { _, _, _, _, _ in
+          attempts += 1
+          if attempts == 1 {
+            limitedUntil = Date().addingTimeInterval(60)
+            return nil
+          }
+          return ([post("recovered", read: false)], nil)
+        },
+      )
+
+      await manager.reload()
+      #expect(attempts == 1)
+      #expect(manager.displayMode == .error)
+
+      limitedUntil = nil
+      for _ in 0 ..< 50 where sleepContinuation == nil {
+        try? await Task.sleep(for: .milliseconds(10))
+      }
+      sleepContinuation?.resume()
+      for _ in 0 ..< 50 where manager.displayMode == .error || attempts < 2 {
+        try? await Task.sleep(for: .milliseconds(10))
+      }
+
+      #expect(attempts == 2)
+      #expect(ids(manager.entities) == ["recovered"])
+      #expect(manager.displayMode == .endOfFeed)
+    }
+  }
+
+  @Test func rateLimitedReloadCancelsInFlightFetchAndStillAutoRetriesAtReset() async {
+    await withHideOnRead(false) {
+      let fetch = ControlledFetch()
+      var limitedUntil: Date?
+      var sleepContinuation: CheckedContinuation<Void, Never>?
+      let manager = FeedItemsManager<SubListingSortOption>(
+        sorting: nil,
+        hideReadPosts: false,
+        currentCredential: { Self.testCredential },
+        rateLimitedUntil: { _ in limitedUntil },
+        sleepUntil: { _ in
+          await withCheckedContinuation { continuation in
+            sleepContinuation = continuation
+          }
+        },
+        fetchFn: fetch.fetch,
+      )
+
+      // Start an initial fetch that stays in flight.
+      let inFlight = Task { await manager.reload() }
+      await fetch.waitForRequests(1)
+
+      // Trigger a second reload while rate-limited: it cancels the in-flight request, clears
+      // currentTask/currentRequestID immediately, and schedules the reset timer.
+      limitedUntil = Date().addingTimeInterval(60)
+      await manager.reload()
+      #expect(manager.displayMode == .error)
+
+      // Even before the cancelled request completes, waking the reset timer must run the retry.
+      limitedUntil = nil
+      for _ in 0 ..< 50 where sleepContinuation == nil {
+        try? await Task.sleep(for: .milliseconds(10))
+      }
+      sleepContinuation?.resume()
+      await fetch.waitForRequests(2)
+      fetch.complete(0, with: nil)
+      await inFlight.value
+      fetch.complete(1, with: ([post("fresh", read: false)], nil))
+      for _ in 0 ..< 50 where manager.displayMode != .endOfFeed {
+        try? await Task.sleep(for: .milliseconds(10))
+      }
+
+      #expect(ids(manager.entities) == ["fresh"])
+      #expect(manager.displayMode == .endOfFeed)
+    }
+  }
+
+  @Test func rateLimitedLoadMoreDoesNotOverwritePendingFirstPageReload() async {
+    await withHideOnRead(false) {
+      var limitedUntil: Date?
+      var sleepContinuations: [CheckedContinuation<Void, Never>] = []
+      var requests: [(after: String?, sorting: SubListingSortOption?)] = []
+      let manager = FeedItemsManager<SubListingSortOption>(
+        sorting: .hot,
+        hideReadPosts: false,
+        currentCredential: { Self.testCredential },
+        rateLimitedUntil: { _ in limitedUntil },
+        sleepUntil: { _ in
+          await withCheckedContinuation { continuation in
+            sleepContinuations.append(continuation)
+          }
+        },
+        fetchFn: { after, sorting, _, _, _ in
+          requests.append((after, sorting))
+          if after == nil, sorting == .hot {
+            return ([post("old", read: false)], "old-cursor")
+          }
+          if after == nil, sorting == .new {
+            return ([post("new-first", read: false)], "new-cursor")
+          }
+          return ([post("new-second", read: false)], nil)
+        },
+      )
+
+      await manager.reload()
+      #expect(ids(manager.entities) == ["old"])
+
+      // User changes sort while rate-limited (non-clearing reload keeps old rows on screen).
+      limitedUntil = Date().addingTimeInterval(60)
+      manager.sorting = .new
+      await manager.reload(clearItems: false)
+      #expect(manager.displayMode == .error)
+
+      // Even after the rate-limit window expires (before the retry timer wakes), a queued
+      // loadMore must not cancel the retry timer or fetch the old cursor.
+      limitedUntil = nil
+      await manager.loadMore()
+      #expect(requests.count == 1)
+
+      for _ in 0 ..< 50 where sleepContinuations.isEmpty {
+        try? await Task.sleep(for: .milliseconds(10))
+      }
+      let continuations = sleepContinuations
+      sleepContinuations = []
+      continuations.forEach { $0.resume() }
+      for _ in 0 ..< 50 where manager.displayMode != .endOfFeed {
+        try? await Task.sleep(for: .milliseconds(10))
+      }
+
+      #expect(requests.count == 3)
+      #expect(requests[1].after == nil)
+      #expect(requests[1].sorting == .new)
+      #expect(requests[2].after == "new-cursor")
+      #expect(requests[2].sorting == .new)
+      #expect(ids(manager.entities) == ["new-first", "new-second"])
+    }
+  }
 }
