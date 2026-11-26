@@ -121,4 +121,39 @@ struct VideoPlayerHolderTests {
     let fallbackAsset = holder.player?.currentItem?.asset as? AVURLAsset
     #expect(fallbackAsset?.url == fallback)
   }
+
+  @Test func coalescesConcurrentReloadsWhileDASHRecoveryIsInFlight() async throws {
+    let hls = try #require(URL(string: "https://v.redd.it/abc123/HLSPlaylist.m3u8"))
+    let fallback = try #require(URL(string: "https://v.redd.it/abc123/CMAF_720.mp4?source=fallback"))
+    let manifest = "#EXTM3U\n#EXT-X-VERSION:4\n"
+    var recoveryContinuation: CheckedContinuation<RedditVideoPlaylistRecovery.RecoveredSource?, Never>?
+    var recoveryCalls = 0
+    let holder = VideoPlayerHolder(
+      url: hls,
+      fallbackURL: fallback,
+      recoverPlaylist: { _, _, _ in
+        await MainActor.run { recoveryCalls += 1 }
+        return await withCheckedContinuation { continuation in
+          Task { @MainActor in recoveryContinuation = continuation }
+        }
+      },
+    )
+
+    var firstReplaced = false
+    var secondReplaced = false
+    #expect(holder.reload { firstReplaced = true })
+    await waitUntil { recoveryContinuation != nil }
+    // A second reload while recovery is still in flight coalesces without burning the fallback retry.
+    #expect(holder.reload { secondReplaced = true })
+    #expect(recoveryCalls == 1)
+
+    recoveryContinuation?.resume(returning: .manifest(manifest, sourceURL: hls))
+    await waitUntil { firstReplaced && secondReplaced }
+    #expect(firstReplaced && secondReplaced)
+
+    // The retry budget still allows stepping down to the MP4 fallback if the recovered manifest fails.
+    #expect(holder.reload())
+    let fallbackAsset = holder.player?.currentItem?.asset as? AVURLAsset
+    #expect(fallbackAsset?.url == fallback)
+  }
 }

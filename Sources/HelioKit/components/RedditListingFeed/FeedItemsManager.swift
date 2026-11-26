@@ -162,6 +162,10 @@ class FeedItemsManager<S> {
       }
       currentTask?.cancel()
       if let credential, let resetAt = rateLimitedUntil(credential) {
+        currentTask = nil
+        currentRequestID = nil
+        currentTaskIsReload = false
+        isLoadingMore = false
         initialLoadStarted = true
         authorization = currentAuthorization
         if clearItems || accountChanged {

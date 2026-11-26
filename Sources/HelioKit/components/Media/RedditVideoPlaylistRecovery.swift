@@ -6,6 +6,7 @@
 import AVFoundation
 import Foundation
 import os
+import UniformTypeIdentifiers
 
 /// Rebuilds a `v.redd.it` multivariant HLS playlist from `DASHPlaylist.mpd` when Reddit's CDN
 /// answers `HLSPlaylist.m3u8` with an HTTP error (such as a cached S3 403).
@@ -184,7 +185,7 @@ enum RedditVideoPlaylistRecovery {
         return false
       }
       if let contentInfo = loadingRequest.contentInformationRequest {
-        contentInfo.contentType = "application/vnd.apple.mpegurl"
+        contentInfo.contentType = UTType.m3uPlaylist.identifier
         contentInfo.contentLength = Int64(manifestData.count)
         contentInfo.isByteRangeAccessSupported = false
       }

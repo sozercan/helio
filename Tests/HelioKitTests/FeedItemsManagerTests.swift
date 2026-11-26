@@ -764,4 +764,51 @@ extension FeedItemsManagerTests {
       #expect(manager.displayMode == .endOfFeed)
     }
   }
+
+  @Test func rateLimitedReloadCancelsInFlightFetchAndStillAutoRetriesAtReset() async {
+    await withHideOnRead(false) {
+      let fetch = ControlledFetch()
+      var limitedUntil: Date?
+      var sleepContinuation: CheckedContinuation<Void, Never>?
+      let manager = FeedItemsManager<SubListingSortOption>(
+        sorting: nil,
+        hideReadPosts: false,
+        currentCredential: { Self.testCredential },
+        rateLimitedUntil: { _ in limitedUntil },
+        sleepUntil: { _ in
+          await withCheckedContinuation { continuation in
+            sleepContinuation = continuation
+          }
+        },
+        fetchFn: fetch.fetch,
+      )
+
+      // Start an initial fetch that stays in flight.
+      let inFlight = Task { await manager.reload() }
+      await fetch.waitForRequests(1)
+
+      // Trigger a second reload while rate-limited: it cancels the in-flight request, clears
+      // currentTask/currentRequestID immediately, and schedules the reset timer.
+      limitedUntil = Date().addingTimeInterval(60)
+      await manager.reload()
+      #expect(manager.displayMode == .error)
+
+      // Even before the cancelled request completes, waking the reset timer must run the retry.
+      limitedUntil = nil
+      for _ in 0 ..< 50 where sleepContinuation == nil {
+        try? await Task.sleep(for: .milliseconds(10))
+      }
+      sleepContinuation?.resume()
+      await fetch.waitForRequests(2)
+      fetch.complete(0, with: nil)
+      await inFlight.value
+      fetch.complete(1, with: ([post("fresh", read: false)], nil))
+      for _ in 0 ..< 50 where manager.displayMode != .endOfFeed {
+        try? await Task.sleep(for: .milliseconds(10))
+      }
+
+      #expect(ids(manager.entities) == ["fresh"])
+      #expect(manager.displayMode == .endOfFeed)
+    }
+  }
 }

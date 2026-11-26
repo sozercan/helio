@@ -28,6 +28,7 @@ final class VideoPlayerHolder: ObservableObject {
   private var resourceLoaderDelegate: AVAssetResourceLoaderDelegate?
   private var attemptedRecovery = false
   private var recoveryTask: Task<Void, Never>?
+  private var pendingReloadCallbacks: [@MainActor () -> Void] = []
   private var statusObservation: NSKeyValueObservation?
   private var reloads = 0
   private let maxReloads = 2
@@ -58,7 +59,18 @@ final class VideoPlayerHolder: ObservableObject {
   @MainActor
   @discardableResult
   func reload(onItemReplaced: (@MainActor () -> Void)? = nil) -> Bool {
-    guard let player, let url, reloads < maxReloads else { return false }
+    guard let player, let url else { return false }
+
+    // Coalesce concurrent reloads (e.g. feed row + lightbox) while DASH recovery is in flight
+    // so we don't overwrite the pending recovery or burn the MP4 fallback retry budget.
+    if recoveryTask != nil {
+      if let onItemReplaced {
+        pendingReloadCallbacks.append(onItemReplaced)
+      }
+      return true
+    }
+
+    guard reloads < maxReloads else { return false }
     reloads += 1
     isReadyToPlay = false
     itemFailed = false
@@ -67,13 +79,18 @@ final class VideoPlayerHolder: ObservableObject {
     // to the MP4) instead of hitting the same cached CDN 403 again.
     if !attemptedRecovery, RedditVideoPlaylistRecovery.isRedditHLSPlaylist(url) {
       attemptedRecovery = true
-      recoveryTask?.cancel()
+      if let onItemReplaced {
+        pendingReloadCallbacks.append(onItemReplaced)
+      }
       let dashURL = dashURL
       let fallbackURL = fallbackURL
       let recover = recoverPlaylist
       recoveryTask = Task { @MainActor [weak self] in
         let replacement = await recover(url, dashURL, fallbackURL)
         guard let self, !Task.isCancelled, let player = self.player else { return }
+        self.recoveryTask = nil
+        let callbacks = self.pendingReloadCallbacks
+        self.pendingReloadCallbacks = []
         self.recoveredSource = replacement
         let shouldPlay = player.timeControlStatus != .paused || player.rate > 0
         if let replacement {
@@ -85,7 +102,7 @@ final class VideoPlayerHolder: ObservableObject {
           player.replaceCurrentItem(with: AVPlayerItem(url: url))
         }
         self.observeCurrentItem()
-        onItemReplaced?()
+        callbacks.forEach { $0() }
         if shouldPlay {
           player.play()
         }
@@ -114,6 +131,9 @@ final class VideoPlayerHolder: ObservableObject {
   /// Tries again once retries ran out, when the user asks.
   @MainActor
   func retry(onItemReplaced: (@MainActor () -> Void)? = nil) {
+    recoveryTask?.cancel()
+    recoveryTask = nil
+    pendingReloadCallbacks = []
     reloads = 0
     attemptedRecovery = false
     recoveredSource = nil
@@ -408,8 +428,9 @@ struct VideoPlayerPost: View, Equatable {
   /// Swaps in a fresh item and re-attaches the observers, which are tied to the old one.
   func reload(_ player: AVPlayer) {
     _ = holder.reload {
+      guard isVisible else { return }
       observePlayback(player)
-      if autoPlayVideos, isVisible, !inLightbox {
+      if autoPlayVideos, !inLightbox {
         player.play()
       }
     }
