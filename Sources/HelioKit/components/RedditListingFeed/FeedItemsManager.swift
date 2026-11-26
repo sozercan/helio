@@ -15,6 +15,7 @@ class FeedItemsManager<S> {
   enum DisplayMode: String { case loading, empty, items, endOfFeed, error, onlyReadPosts }
 
   @ObservationIgnored private var currentTask: Task<Void, Never>?
+  @ObservationIgnored private var rateLimitRetryTask: Task<Void, Never>?
   @ObservationIgnored private var currentRequestID: UUID?
   @ObservationIgnored private var currentTaskIsReload = false
   @ObservationIgnored private var loadMoreHeldBack = false
@@ -50,17 +51,38 @@ class FeedItemsManager<S> {
   var chunkSize: Int
   @ObservationIgnored private var fetchFn: ItemsFetchFn
   private let currentCredential: @MainActor () -> RedditCredential?
+  private let rateLimitedUntil: @MainActor (RedditCredential) -> Date?
+  private let sleepUntil: @Sendable (Date) async -> Void
   @ObservationIgnored private var authorization: RedditCredential.AuthorizationID?
   private let prefetchRange = 2
   private let hideReadPosts: Bool
   private let maxHiddenPagesInARow = 5
 
-  init(sorting: S?, hideReadPosts: Bool = false, currentCredential: @escaping @MainActor () -> RedditCredential? = { RedditCredentialsManager.shared.selectedCredential }, fetchFn: @escaping ItemsFetchFn) {
+  init(
+    sorting: S?,
+    hideReadPosts: Bool = false,
+    currentCredential: @escaping @MainActor () -> RedditCredential? = { RedditCredentialsManager.shared.selectedCredential },
+    rateLimitedUntil: @escaping @MainActor (RedditCredential) -> Date? = { credential in
+      RedditRateLimit.shared.limitedUntil(account: credential.id, authorization: credential.authorizationID)
+    },
+    sleepUntil: @escaping @Sendable (Date) async -> Void = { date in
+      let delay = date.timeIntervalSinceNow
+      guard delay > 0 else { return }
+      try? await Task.sleep(for: .seconds(delay))
+    },
+    fetchFn: @escaping ItemsFetchFn,
+  ) {
     self.sorting = sorting
     self.hideReadPosts = hideReadPosts
     self.fetchFn = fetchFn
     self.currentCredential = currentCredential
+    self.rateLimitedUntil = rateLimitedUntil
+    self.sleepUntil = sleepUntil
     self.chunkSize = Defaults[.SubredditFeedDefSettings].chunkLoadSize
+  }
+
+  deinit {
+    rateLimitRetryTask?.cancel()
   }
 
   func loadIfNeeded() async {
@@ -103,6 +125,14 @@ class FeedItemsManager<S> {
         return currentTask
       }
       guard lastElementId != nil, displayMode == .items || displayMode == .onlyReadPosts || displayMode == .error else { return nil }
+      guard !(displayMode == .error && !failedLoadingMore) else {
+        loadMoreHeldBack = loadMoreHeldBack || !entities.isEmpty
+        return nil
+      }
+      if let credential, let resetAt = rateLimitedUntil(credential) {
+        holdRateLimitedFetch(paging: true, clearList: false, resetAt: resetAt, authorization: currentAuthorization)
+        return nil
+      }
     } else {
       if clearItems || accountChanged {
         loadMoreHeldBack = false
@@ -111,7 +141,14 @@ class FeedItemsManager<S> {
         loadMoreHeldBack = true
       }
       currentTask?.cancel()
+      if let credential, let resetAt = rateLimitedUntil(credential) {
+        holdRateLimitedFetch(paging: false, clearList: clearItems || accountChanged, resetAt: resetAt, authorization: currentAuthorization)
+        return nil
+      }
     }
+
+    rateLimitRetryTask?.cancel()
+    rateLimitRetryTask = nil
 
     initialLoadStarted = true
     isLoadingMore = paging
@@ -143,7 +180,9 @@ class FeedItemsManager<S> {
         self.currentRequestID = nil
         self.currentTaskIsReload = false
         self.isLoadingMore = false
-        if !paging, self.displayMode != .error {
+        if self.displayMode == .error, let credential = request.credential, let resetAt = self.rateLimitedUntil(credential) {
+          self.scheduleRateLimitRetry(until: resetAt, authorization: request.authorization)
+        } else if !paging, self.displayMode != .error {
           let resumePaging = self.loadMoreHeldBack
           self.loadMoreHeldBack = false
           if resumePaging, self.displayMode == .items, self.currentCredential()?.authorizationID == request.authorization, !Task.isCancelled {
@@ -180,11 +219,13 @@ class FeedItemsManager<S> {
 
     if !loadingMore {
       listRequest = request
+      var newLoadedEntitiesIds: Set<String> = []
+      let uniqueEntities = shownEntities.filter { newLoadedEntitiesIds.insert($0.fullname).inserted }
       withAnimation {
-        displayMode = skipPage ? .items : gaveUp ? .onlyReadPosts : shownEntities.isEmpty ? .empty : reachedEnd ? .endOfFeed : .items
-        entities = shownEntities
+        displayMode = skipPage ? .items : gaveUp ? .onlyReadPosts : uniqueEntities.isEmpty ? .empty : reachedEnd ? .endOfFeed : .items
+        entities = uniqueEntities
         self.lastElementId = after
-        loadedEntitiesIds = Set(shownEntities.map(\.fullname))
+        loadedEntitiesIds = newLoadedEntitiesIds
       }
     } else {
       var newLoadedEntitiesIds = loadedEntitiesIds
@@ -201,6 +242,40 @@ class FeedItemsManager<S> {
     if skipPage {
       isLoadingMore = true
       await fetchPage(loadingMore: true, after: after, hiddenPagesInARow: hiddenPagesInARow + 1, request: request, requestID: requestID)
+    }
+  }
+
+  private func holdRateLimitedFetch(paging: Bool, clearList: Bool, resetAt: Date, authorization: RedditCredential.AuthorizationID?) {
+    if paging {
+      failedLoadingMore = true
+      withAnimation { displayMode = .error }
+    } else {
+      currentTask = nil
+      currentRequestID = nil
+      currentTaskIsReload = false
+      isLoadingMore = false
+      initialLoadStarted = true
+      self.authorization = authorization
+      if clearList {
+        entities = []
+        loadedEntitiesIds = []
+        lastElementId = nil
+      }
+      failedLoadingMore = false
+      withAnimation { displayMode = .error }
+    }
+    scheduleRateLimitRetry(until: resetAt, authorization: authorization)
+  }
+
+  private func scheduleRateLimitRetry(until resetAt: Date, authorization: RedditCredential.AuthorizationID?) {
+    rateLimitRetryTask?.cancel()
+    let sleepUntil = sleepUntil
+    rateLimitRetryTask = Task { @MainActor [weak self] in
+      await sleepUntil(resetAt)
+      guard let self, !Task.isCancelled else { return }
+      self.rateLimitRetryTask = nil
+      guard self.displayMode == .error, self.currentTask == nil, self.currentCredential()?.authorizationID == authorization else { return }
+      await self.retry()
     }
   }
 

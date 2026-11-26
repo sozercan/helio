@@ -58,6 +58,10 @@ Implemented in `Sources/HelioKit/components/Media/VideoPlayerPost.swift`.
   - `actionAtItemEnd = .none` keeps the player rolling at item end so seeking to `.zero` loops without pausing.
   - `AVPlayerItemPlaybackStalled` waits a 4-second grace period before reloading because transient buffer refills normally recover on their own (shared with `LightBoxVideo.swift`).
   - Because AVFoundation posts no notification when an item fails to become playable, KVO-backed `itemFailed` state triggers retries.
+- **`v.redd.it` HLS playlist recovery** (`Sources/HelioKit/components/Media/RedditVideoPlaylistRecovery.swift`, `VideoPlayerPost.swift`, `mediaExtractor.swift`):
+  - Reddit's CDN occasionally responds to `HLSPlaylist.m3u8` with a cached S3 403 while `DASHPlaylist.mpd` and the sibling `CMAF_<height>.m3u8` / `CMAF_AUDIO_<kbps>.m3u8` variant playlists remain reachable.
+  - `mediaExtractor` retains the post's `dash_url` and direct MP4 `fallback_url` alongside the HLS URL. On HLS failure, `RedditVideoPlaylistRecovery` fetches `DASHPlaylist.mpd`, synthesizes an equivalent multivariant `.m3u8` referencing the absolute remote `CMAF_*.m3u8` playlists, and serves it in memory via an `AVAssetResourceLoaderDelegate` on a custom scheme (retaining adaptive streaming and audio without temp files or local-to-remote file restrictions).
+  - Concurrent reloads coalesce onto an in-flight recovery without burning the retry budget; if the recovered playlist also fails, the player steps down to the direct MP4 fallback.
 - **Observer cleanup and view updates**:
   - `NotificationCenter` block observers are stored in a token bag and removed by token in `deinit` (`removeObserver(self, ...)` is a no-op for block observers), preventing leaks even when SwiftUI recycles cells without `onDisappear`.
   - `VideoPlayerPost.==` includes `contentWidth` and layout inputs so rotation and column resizes update video dimensions.

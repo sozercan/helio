@@ -165,11 +165,11 @@ func mediaExtractor(compact: Bool, contentWidth: Double = .screenW, _ data: Post
   }
 
   if let videoPreview = data.preview?.reddit_video_preview, let videoURL = (videoPreview.hls_url ?? videoPreview.fallback_url).flatMap(URL.init(string:)) {
-    return .video(SharedVideo.get(url: videoURL, size: videoSize(data, width: videoPreview.width, height: videoPreview.height), posterURL: previewPosterURL(data)))
+    return .video(SharedVideo.get(url: videoURL, size: videoSize(data, width: videoPreview.width, height: videoPreview.height), posterURL: previewPosterURL(data), dashURL: videoPreview.dash_url.flatMap(URL.init(string:)), fallbackURL: videoPreview.fallback_url.flatMap(URL.init(string:))))
   }
 
   if let redditVideo = data.media?.reddit_video, let videoURL = (redditVideo.hls_url ?? redditVideo.fallback_url).flatMap(URL.init(string:)) {
-    return .video(SharedVideo.get(url: videoURL, size: videoSize(data, width: redditVideo.width.map(Double.init), height: redditVideo.height.map(Double.init)), posterURL: previewPosterURL(data)))
+    return .video(SharedVideo.get(url: videoURL, size: videoSize(data, width: redditVideo.width.map(Double.init), height: redditVideo.height.map(Double.init)), posterURL: previewPosterURL(data), dashURL: redditVideo.dash_url.flatMap(URL.init(string:)), fallbackURL: redditVideo.fallback_url.flatMap(URL.init(string:))))
   }
 
   if data.media?.type == "youtube.com", let oembed = data.media?.oembed, let html = oembed.html, let ytID = extractYoutubeIdFromOEmbed(html), let thumbURL = oembed.thumbnail_url.flatMap(URL.init(string:)) ?? URL(string: "https://i.ytimg.com/vi/\(ytID)/hqdefault.jpg"), let watchURL = URL(string: "https://www.youtube.com/watch?v=\(ytID)") {

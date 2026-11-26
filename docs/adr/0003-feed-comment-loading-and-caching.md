@@ -23,6 +23,8 @@ Implemented in `Sources/HelioKit/components/RedditListingFeed/FeedItemsManager.s
 - **Reload continuity and paging intent**:
   - A non-clearing refresh keeps `displayMode` at `.items` while `entities` are present so displayed rows stay mounted until replaced.
   - `loadMoreHeldBack` records paging intent during an in-flight reload because still-visible rows will not re-fire `onAppear` if the refresh returns the same posts.
+  - First-page and subsequent fetches deduplicate post IDs within a single page because Reddit occasionally repeats the same post in one response; the first copy is kept.
+  - While the account is rate-limited, `FeedItemsManager` holds paging and reloads and schedules an automatic retry when the rate-limit window resets, rather than failing on every scroll. A pending first-page reload in `.error` (e.g. after a sort or filter change) must not be superseded by stale pagination even if the rate-limit window has just expired.
 - **End-of-feed and hidden-read pagination**:
   - End-of-feed checks `after == nil || fetchedEntities.isEmpty` rather than comparing against page size: Reddit can return short pages and lossy listing decoding can skip individual children, so a nonempty page with a cursor remains pageable (while fetching without a cursor would restart from page 1).
   - `canLoadMore` includes `.onlyReadPosts` so Next Post navigation can continue past consecutive hidden-read pages, matching the feed's "keep looking" action.
