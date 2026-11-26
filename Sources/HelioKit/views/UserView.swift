@@ -58,49 +58,70 @@ struct UserView: View {
             }
 
             VStack {
+              let accentColor = selectedTheme.general.accentColor()
               HStack {
                 if let postKarma = data.link_karma {
-                  DataBlock(icon: "highlighter", label: "Post karma",
-                            value: "\(formatBigNumber(postKarma))")
-                    .transition(.opacity)
-                    .onTapGesture {
-                      withAnimation(.easeInOut(duration: 0.2)) {
-                        if dataTypeFilter == "posts" {
-                          dataTypeFilter = ""
-                        } else {
-                          dataTypeFilter = "posts"
-                        }
+                  DataBlock(
+                    icon: "highlighter",
+                    label: "Post karma",
+                    value: "\(formatBigNumber(postKarma))",
+                    iconColor: accentColor,
+                    labelColor: selectedTheme.postLinks.theme.badge.statsText.color(),
+                    valueColor: selectedTheme.postLinks.theme.titleText.color(),
+                  )
+                  .transition(.opacity)
+                  .onTapGesture {
+                    withAnimation(.easeInOut(duration: 0.2)) {
+                      if dataTypeFilter == "posts" {
+                        dataTypeFilter = ""
+                      } else {
+                        dataTypeFilter = "posts"
                       }
                     }
-                    .overlay(dataTypeFilter == "posts" ?
-                      Color.accentColor.opacity(0.2)
-                      .clipShape(RoundedRectangle(cornerRadius: 20))
-                      .allowsHitTesting(false)
-                      : nil)
+                  }
+                  .overlay(dataTypeFilter == "posts" ?
+                    accentColor.opacity(0.2)
+                    .clipShape(RoundedRectangle(cornerRadius: 20))
+                    .allowsHitTesting(false)
+                    : nil)
                 }
 
                 if let commentKarma = data.comment_karma {
-                  DataBlock(icon: "checkmark.message.fill", label: "Comment karma", value: "\(formatBigNumber(commentKarma))")
-                    .transition(.opacity)
-                    .onTapGesture {
-                      withAnimation(.easeInOut(duration: 0.2)) {
-                        if dataTypeFilter == "comments" {
-                          dataTypeFilter = ""
-                        } else {
-                          dataTypeFilter = "comments"
-                        }
+                  DataBlock(
+                    icon: "checkmark.message.fill",
+                    label: "Comment karma",
+                    value: "\(formatBigNumber(commentKarma))",
+                    iconColor: accentColor,
+                    labelColor: selectedTheme.postLinks.theme.badge.statsText.color(),
+                    valueColor: selectedTheme.postLinks.theme.titleText.color(),
+                  )
+                  .transition(.opacity)
+                  .onTapGesture {
+                    withAnimation(.easeInOut(duration: 0.2)) {
+                      if dataTypeFilter == "comments" {
+                        dataTypeFilter = ""
+                      } else {
+                        dataTypeFilter = "comments"
                       }
                     }
-                    .overlay(dataTypeFilter == "comments" ?
-                      Color.accentColor.opacity(0.2)
-                      .clipShape(RoundedRectangle(cornerRadius: 20))
-                      .allowsHitTesting(false)
-                      : nil)
+                  }
+                  .overlay(dataTypeFilter == "comments" ?
+                    accentColor.opacity(0.2)
+                    .clipShape(RoundedRectangle(cornerRadius: 20))
+                    .allowsHitTesting(false)
+                    : nil)
                 }
               }
               if let created = data.created {
-                DataBlock(icon: "star.fill", label: "User since", value: "\(Date(timeIntervalSince1970: TimeInterval(created)).toFormat("MMM dd, yyyy"))")
-                  .transition(.opacity)
+                DataBlock(
+                  icon: "star.fill",
+                  label: "User since",
+                  value: "\(Date(timeIntervalSince1970: TimeInterval(created)).toFormat("MMM dd, yyyy"))",
+                  iconColor: accentColor,
+                  labelColor: selectedTheme.postLinks.theme.badge.statsText.color(),
+                  valueColor: selectedTheme.postLinks.theme.titleText.color(),
+                )
+                .transition(.opacity)
               }
             }
             .fixedSize(horizontal: false, vertical: true)

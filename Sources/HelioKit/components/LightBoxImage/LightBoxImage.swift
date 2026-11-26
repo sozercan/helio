@@ -22,7 +22,7 @@ struct LightBoxImage: View {
   @State private var done = false
   @State private var showOverlay = true
   @State private var isPinching: Bool = false
-  @State private var isZoomed: Bool = false
+  @State private var zoomedPages = LightBoxZoomState()
   @State private var scale: CGFloat = 1.0
   @State private var media: LightBoxMediaStore
   @State private var scrubIndex: Int?
@@ -108,12 +108,19 @@ struct LightBoxImage: View {
     }
   }
 
+  private func zoomBinding(for index: Int) -> Binding<Bool> {
+    Binding(
+      get: { zoomedPages.isZoomed(at: index) },
+      set: { zoomedPages.setZoomed($0, at: index) },
+    )
+  }
+
   @ViewBuilder
   private func pageContent(_ index: Int, _ page: LightBoxPage) -> some View {
     let onSwipe: ((Int) -> Void)? = pages.count > 1 ? { self.page(to: index + $0) } : nil
     switch page.media {
     case let .image(img):
-      LightBoxElementView(el: img, width: pageWidth, label: page.post.title, onTap: toggleOverlay, onSwipe: onSwipe, onHold: img.url.isGIF ? hold : nil, doLiveText: doLiveText, showOverlay: showOverlay, gifScrubber: img.url.isGIF ? media.gif(index) : nil, isPinching: $isPinching, isZoomed: $isZoomed)
+      LightBoxElementView(el: img, width: pageWidth, label: page.post.title, onTap: toggleOverlay, onSwipe: onSwipe, onHold: img.url.isGIF ? hold : nil, doLiveText: doLiveText, showOverlay: showOverlay, gifScrubber: img.url.isGIF ? media.gif(index) : nil, isPinching: $isPinching, isZoomed: zoomBinding(for: index))
     case let .video(video, _):
       if let player = media.video(index, onPictureInPictureStart: close) {
         LightBoxVideoPage(video: player, holder: player.holder, width: pageWidth, posterURL: video.posterURL, label: page.post.title, selected: index == activeIndex, onTap: toggleOverlay, onSwipe: onSwipe, onHold: hold)
@@ -183,6 +190,7 @@ struct LightBoxImage: View {
       closeButton(opacity: !appearContent || !showOverlay || isPinching ? 0 : interpolate([1, 0], false))
     }
     .onChange(of: activeIndex) { _, index in
+      zoomedPages.activePageDidChange(to: index)
       markSeen(index)
       media.show(index)
       if let feedID = pages[index].post.feedID, feedID != revealedFeedID {
@@ -207,7 +215,7 @@ struct LightBoxImage: View {
     .offset(x: xPos + (dragAxis == .horizontal ? drag.width : 0))
     .frame(maxWidth: pageWidth, maxHeight: .infinity, alignment: .leading)
     .highPriorityGesture(
-      scale > 1
+      scale > 1 || zoomedPages.isZoomed(at: activeIndex)
         ? nil
         : DragGesture(minimumDistance: 20)
         .updating($dragging) { _, dragging, _ in dragging = true }
@@ -340,6 +348,26 @@ struct LightBoxImage: View {
     }
     .commandTarget(CommandTargets.Target(kind: .modal))
     .transition(.opacity)
+  }
+}
+
+struct LightBoxZoomState: Equatable {
+  private(set) var zoomedPages: Set<Int> = []
+
+  func isZoomed(at index: Int) -> Bool {
+    zoomedPages.contains(index)
+  }
+
+  mutating func setZoomed(_ zoomed: Bool, at index: Int) {
+    if zoomed {
+      zoomedPages.insert(index)
+    } else {
+      zoomedPages.remove(index)
+    }
+  }
+
+  mutating func activePageDidChange(to index: Int) {
+    zoomedPages = zoomedPages.intersection([index])
   }
 }
 
