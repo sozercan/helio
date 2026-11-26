@@ -23,6 +23,13 @@ struct WebSessionTests {
     #expect(RedditWebSession.tokenSubject("not-a-jwt") == .unknown)
   }
 
+  @Test func isCurrentClientTokenRejectsOtherClientIDs() throws {
+    #expect(try RedditWebSession.isCurrentClientToken(jwt(["cid": RedditWebSession.clientID])))
+    #expect(try !RedditWebSession.isCurrentClientToken(jwt(["cid": "old-client-id"])))
+    #expect(try RedditWebSession.isCurrentClientToken(jwt(["sub": "t2_placeholder"])))
+    #expect(RedditWebSession.isCurrentClientToken("not-a-jwt"))
+  }
+
   @Test func renewedCookiesReplaceAndExpireStoredOnes() throws {
     let renewed = try cookie("reddit_session", "renewed-session")
     let expired = try #require(HTTPCookie(properties: [
