@@ -191,4 +191,25 @@ struct RelayoutTests {
     let narrow = try #require(post.pageLayout(contentWidth: 600, theme: theme))
     #expect((narrow.mediaSize?.width ?? 0) < (wide.mediaSize?.width ?? 0))
   }
+
+  @Test func feedManagerPassesCurrentContentWidthAndRelayoutsIfWidthChangesInFlight() async throws {
+    let credential = RedditCredential(apiAppID: "placeholder-client-id", refreshToken: "placeholder-grant")
+    var capturedWidths: [Double] = []
+    let fetchedPost = try post()
+    var managerRef: FeedItemsManager<SubListingSortOption>?
+    let manager = FeedItemsManager<SubListingSortOption>(sorting: .best, contentWidth: 400, currentCredential: { credential }, fetchFn: { _, _, _, _, context in
+      capturedWidths.append(context.contentWidth)
+      fetchedPost.setupHelioData(contentWidth: context.contentWidth, theme: self.theme, fetchAvatar: false)
+      managerRef?.contentWidth = 700
+      return ([.post(fetchedPost)], "after-1")
+    })
+    managerRef = manager
+
+    await manager.reload()
+    #expect(capturedWidths == [400])
+    #expect(fetchedPost.helioData?.layoutWidth == 700)
+
+    await manager.loadMore()
+    #expect(capturedWidths == [400, 700])
+  }
 }

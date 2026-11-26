@@ -124,7 +124,7 @@ struct ReplyModal<Content: View>: View {
       ScrollView {
         VStack(spacing: 12) {
           VStack(alignment: .leading) {
-            if let me = RedditAPI.shared.me?.data, let avatarLink = me.icon_img ?? me.snoovatar_img, let rootURL = rootURLString(avatarLink), let avatarURL = URL(string: rootURL) {
+            if let me = RedditCredentialsManager.profile.user?.data, let avatarLink = me.icon_img ?? me.snoovatar_img, let rootURL = rootURLString(avatarLink), let avatarURL = URL(string: rootURL) {
               BadgeView(avatarRequest: ImageRequest(url: avatarURL), saved: false, author: me.name, userFlair: "", created: Date().timeIntervalSince1970, avatarURL: me.icon_img ?? me.snoovatar_img, theme: selectedTheme.comments.theme.badge, commentsCount: "0", votesCount: "0")
             }
             MDEditor(text: $textWrapper.replyText)
@@ -194,7 +194,7 @@ struct ReplyModal<Content: View>: View {
       }
       .onAppear {
         Task(priority: .utility) {
-          if RedditAPI.shared.me == nil {
+          if RedditCredentialsManager.profile.user == nil {
             await RedditCredentialsManager.profile.refresh()
           }
         }

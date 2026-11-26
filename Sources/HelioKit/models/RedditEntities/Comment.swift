@@ -183,7 +183,7 @@ extension Comment {
         newComment.saved = false
         newComment.archived = false
         newComment.count = 0
-        let author = await MainActor.run { RedditAPI.shared.me?.data }
+        let author = await MainActor.run { RedditCredentialsManager.profile.user?.data }
         newComment.author = author?.name ?? ""
         newComment.created_utc = nil
         newComment.send_replies = nil

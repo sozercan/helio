@@ -67,6 +67,7 @@ struct RedditListingFeed<Header: View, Footer: View, S: Sorting>: View {
   }
 
   var body: some View {
+    let _ = itemsManager.contentWidth = contentWidth
     let shallowCachedFilters = filters.map { $0.getShallow() }
     let compactPerSubreddit = feedDefSettings.compactPerSubreddit
     let postLinkSettings = postLinkDefSettings

@@ -18,7 +18,7 @@ extension User {
     self.init(id: id, typePrefix: "\(User.prefix)_")
   }
 
-  func refetchOverview(_ dataTypeFilter: String? = nil, _ after: String? = nil, limit: Int = Defaults[.SubredditFeedDefSettings].chunkLoadSize, altCredential: RedditCredential? = nil) async -> ([Either<Post, Comment>]?, String?)? {
+  func refetchOverview(_ dataTypeFilter: String? = nil, _ after: String? = nil, contentWidth: Double = .screenW, limit: Int = Defaults[.SubredditFeedDefSettings].chunkLoadSize, altCredential: RedditCredential? = nil) async -> ([Either<Post, Comment>]?, String?)? {
     let name = data?.name ?? data?.id ?? id
     if let overviewDataResult = await RedditAPI.shared.fetchUserOverview(name, dataTypeFilter, after, limit: limit, altCredential: altCredential), let overviewData = overviewDataResult.0 {
       await MainActor.run {
@@ -28,7 +28,7 @@ extension User {
       return (overviewData.map {
         switch $0 {
         case let .first(postData):
-          .first(Post(data: postData))
+          .first(Post(data: postData, contentWidth: contentWidth))
         case let .second(commentData):
           .second(Comment(data: commentData))
         }

@@ -137,9 +137,6 @@ private struct RelayoutPostsModifier: ViewModifier {
         guard !Task.isCancelled else { return }
         posts().forEach { $0.relayout(contentWidth: contentWidth, theme: theme) }
       }
-      .onChange(of: posts().map { $0.helioData?.layoutWidth ?? 0 }) {
-        posts().forEach { $0.relayout(contentWidth: contentWidth, theme: theme) }
-      }
       .onChange(of: feedDefSettings.compactPerSubreddit) {
         withAnimation { posts().forEach { $0.relayout(contentWidth: contentWidth, theme: theme) } }
       }

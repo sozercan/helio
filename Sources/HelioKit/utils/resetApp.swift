@@ -8,8 +8,7 @@ func resetPreferences() {
 }
 
 func resetCaches() {
-  Caches.postsAttrStr.cache.removeAll()
-  Caches.videos.cache.removeAll()
+  Caches.streamable.removeAll()
 }
 
 func resetCoreData(keeping: Set<String> = []) {

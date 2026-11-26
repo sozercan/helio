@@ -76,6 +76,7 @@ struct Search: View {
           return nil
         }
         await MainActor.run {
+          actualNewPosts.forEach { $0.relayout(contentWidth: contentWidth, theme: theme) }
           withAnimation {
             resultPosts = actualNewPosts
             loading = false

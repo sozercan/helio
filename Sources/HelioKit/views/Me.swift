@@ -11,7 +11,7 @@ struct Me: View {
   var body: some View {
     NavigationStack(path: $router.fullPath) {
       Group {
-        if let user = RedditAPI.shared.me {
+        if let user = RedditCredentialsManager.profile.user {
           UserView(user: user)
             .id("me-user-view-\(user.id)")
 
