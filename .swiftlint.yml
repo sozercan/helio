@@ -124,4 +124,7 @@ custom_rules:
     severity: warning
     match_kinds:
       - comment
+      - comment.mark
+      - comment.url
       - doccomment
+      - doccomment.field
