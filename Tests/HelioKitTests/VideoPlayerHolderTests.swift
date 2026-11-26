@@ -156,4 +156,31 @@ struct VideoPlayerHolderTests {
     let fallbackAsset = holder.player?.currentItem?.asset as? AVURLAsset
     #expect(fallbackAsset?.url == fallback)
   }
+
+  @Test func lightboxDoesNotRestartVideoPausedDuringDASHRecovery() async throws {
+    let hls = try #require(URL(string: "https://v.redd.it/abc123/HLSPlaylist.m3u8"))
+    let manifest = "#EXTM3U\n#EXT-X-VERSION:4\n"
+    var recoveryContinuation: CheckedContinuation<RedditVideoPlaylistRecovery.RecoveredSource?, Never>?
+    let holder = VideoPlayerHolder(
+      url: hls,
+      recoverPlaylist: { _, _, _ in
+        await withCheckedContinuation { continuation in
+          Task { @MainActor in recoveryContinuation = continuation }
+        }
+      },
+    )
+    let video = LightBoxVideo(video: SharedVideo(url: hls, size: CGSize(width: 720, height: 1280)), holder: holder)
+    video.activate()
+    video.retry()
+    await waitUntil { recoveryContinuation != nil }
+
+    // User pauses while recovery is in flight.
+    video.togglePlayback()
+    #expect(video.player?.timeControlStatus == .paused)
+
+    recoveryContinuation?.resume(returning: .manifest(manifest, sourceURL: hls))
+    await waitUntil { (video.player?.currentItem?.asset as? AVURLAsset)?.url.scheme == RedditVideoPlaylistRecovery.customScheme }
+    #expect(video.player?.timeControlStatus == .paused)
+    video.release()
+  }
 }

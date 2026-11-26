@@ -146,11 +146,10 @@ class FeedItemsManager<S> {
       }
       guard lastElementId != nil, displayMode == .items || displayMode == .onlyReadPosts || displayMode == .error else { return nil }
       // While the account is rate-limited, hold the next page instead of failing on every scroll
-      // and retry automatically once the window resets.
+      // and retry automatically once the window resets. If a first-page reload is already held in
+      // `.error`, keep that reload pending instead of replacing it with stale pagination.
       if let credential, let resetAt = rateLimitedUntil(credential) {
-        failedLoadingMore = true
-        withAnimation { displayMode = .error }
-        scheduleRateLimitRetry(until: resetAt, authorization: currentAuthorization)
+        holdRateLimitedFetch(paging: true, clearList: false, resetAt: resetAt, authorization: currentAuthorization)
         return nil
       }
     } else {
@@ -162,20 +161,7 @@ class FeedItemsManager<S> {
       }
       currentTask?.cancel()
       if let credential, let resetAt = rateLimitedUntil(credential) {
-        currentTask = nil
-        currentRequestID = nil
-        currentTaskIsReload = false
-        isLoadingMore = false
-        initialLoadStarted = true
-        authorization = currentAuthorization
-        if clearItems || accountChanged {
-          entities = []
-          loadedEntitiesIds = []
-          lastElementId = nil
-        }
-        failedLoadingMore = false
-        withAnimation { displayMode = .error }
-        scheduleRateLimitRetry(until: resetAt, authorization: currentAuthorization)
+        holdRateLimitedFetch(paging: false, clearList: clearItems || accountChanged, resetAt: resetAt, authorization: currentAuthorization)
         return nil
       }
     }
@@ -287,6 +273,34 @@ class FeedItemsManager<S> {
       isLoadingMore = true
       await fetchPage(loadingMore: true, after: after, hiddenPagesInARow: hiddenPagesInARow + 1, request: request, requestID: requestID)
     }
+  }
+
+  private func holdRateLimitedFetch(paging: Bool, clearList: Bool, resetAt: Date, authorization: RedditCredential.AuthorizationID?) {
+    if paging {
+      if displayMode == .error, !failedLoadingMore {
+        if !entities.isEmpty {
+          loadMoreHeldBack = true
+        }
+      } else {
+        failedLoadingMore = true
+        withAnimation { displayMode = .error }
+      }
+    } else {
+      currentTask = nil
+      currentRequestID = nil
+      currentTaskIsReload = false
+      isLoadingMore = false
+      initialLoadStarted = true
+      self.authorization = authorization
+      if clearList {
+        entities = []
+        loadedEntitiesIds = []
+        lastElementId = nil
+      }
+      failedLoadingMore = false
+      withAnimation { displayMode = .error }
+    }
+    scheduleRateLimitRetry(until: resetAt, authorization: authorization)
   }
 
   private func scheduleRateLimitRetry(until resetAt: Date, authorization: RedditCredential.AuthorizationID?) {

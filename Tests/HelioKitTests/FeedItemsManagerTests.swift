@@ -811,4 +811,63 @@ extension FeedItemsManagerTests {
       #expect(manager.displayMode == .endOfFeed)
     }
   }
+
+  @Test func rateLimitedLoadMoreDoesNotOverwritePendingFirstPageReload() async {
+    await withHideOnRead(false) {
+      var limitedUntil: Date?
+      var sleepContinuations: [CheckedContinuation<Void, Never>] = []
+      var requests: [(after: String?, sorting: SubListingSortOption?)] = []
+      let manager = FeedItemsManager<SubListingSortOption>(
+        sorting: .hot,
+        hideReadPosts: false,
+        currentCredential: { Self.testCredential },
+        rateLimitedUntil: { _ in limitedUntil },
+        sleepUntil: { _ in
+          await withCheckedContinuation { continuation in
+            sleepContinuations.append(continuation)
+          }
+        },
+        fetchFn: { after, sorting, _, _, _ in
+          requests.append((after, sorting))
+          if after == nil, sorting == .hot {
+            return ([post("old", read: false)], "old-cursor")
+          }
+          if after == nil, sorting == .new {
+            return ([post("new-first", read: false)], "new-cursor")
+          }
+          return ([post("new-second", read: false)], nil)
+        },
+      )
+
+      await manager.reload()
+      #expect(ids(manager.entities) == ["old"])
+
+      // User changes sort while rate-limited (non-clearing reload keeps old rows on screen).
+      limitedUntil = Date().addingTimeInterval(60)
+      manager.sorting = .new
+      await manager.reload(clearItems: false)
+      #expect(manager.displayMode == .error)
+
+      // A queued loadMore while still rate-limited must not overwrite the pending .new reload.
+      await manager.loadMore()
+
+      limitedUntil = nil
+      for _ in 0 ..< 50 where sleepContinuations.count < 2 {
+        try? await Task.sleep(for: .milliseconds(10))
+      }
+      let continuations = sleepContinuations
+      sleepContinuations = []
+      continuations.forEach { $0.resume() }
+      for _ in 0 ..< 50 where manager.displayMode != .endOfFeed {
+        try? await Task.sleep(for: .milliseconds(10))
+      }
+
+      #expect(requests.count == 3)
+      #expect(requests[1].after == nil)
+      #expect(requests[1].sorting == .new)
+      #expect(requests[2].after == "new-cursor")
+      #expect(requests[2].sorting == .new)
+      #expect(ids(manager.entities) == ["new-first", "new-second"])
+    }
+  }
 }
