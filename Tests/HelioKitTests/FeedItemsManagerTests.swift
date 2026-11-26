@@ -848,11 +848,13 @@ extension FeedItemsManagerTests {
       await manager.reload(clearItems: false)
       #expect(manager.displayMode == .error)
 
-      // A queued loadMore while still rate-limited must not overwrite the pending .new reload.
-      await manager.loadMore()
-
+      // Even after the rate-limit window expires (before the retry timer wakes), a queued
+      // loadMore must not cancel the retry timer or fetch the old cursor.
       limitedUntil = nil
-      for _ in 0 ..< 50 where sleepContinuations.count < 2 {
+      await manager.loadMore()
+      #expect(requests.count == 1)
+
+      for _ in 0 ..< 50 where sleepContinuations.isEmpty {
         try? await Task.sleep(for: .milliseconds(10))
       }
       let continuations = sleepContinuations

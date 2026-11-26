@@ -145,9 +145,14 @@ class FeedItemsManager<S> {
         return currentTask
       }
       guard lastElementId != nil, displayMode == .items || displayMode == .onlyReadPosts || displayMode == .error else { return nil }
+      // A pending first-page reload in `.error` (for example after a sort or filter change) must
+      // not be superseded by stale pagination even if the rate-limit window has just expired.
+      guard !(displayMode == .error && !failedLoadingMore) else {
+        loadMoreHeldBack = loadMoreHeldBack || !entities.isEmpty
+        return nil
+      }
       // While the account is rate-limited, hold the next page instead of failing on every scroll
-      // and retry automatically once the window resets. If a first-page reload is already held in
-      // `.error`, keep that reload pending instead of replacing it with stale pagination.
+      // and retry automatically once the window resets.
       if let credential, let resetAt = rateLimitedUntil(credential) {
         holdRateLimitedFetch(paging: true, clearList: false, resetAt: resetAt, authorization: currentAuthorization)
         return nil
@@ -277,14 +282,8 @@ class FeedItemsManager<S> {
 
   private func holdRateLimitedFetch(paging: Bool, clearList: Bool, resetAt: Date, authorization: RedditCredential.AuthorizationID?) {
     if paging {
-      if displayMode == .error, !failedLoadingMore {
-        if !entities.isEmpty {
-          loadMoreHeldBack = true
-        }
-      } else {
-        failedLoadingMore = true
-        withAnimation { displayMode = .error }
-      }
+      failedLoadingMore = true
+      withAnimation { displayMode = .error }
     } else {
       currentTask = nil
       currentRequestID = nil
