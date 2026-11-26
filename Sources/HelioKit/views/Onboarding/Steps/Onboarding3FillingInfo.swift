@@ -1,10 +1,3 @@
-//
-//  Onboarding3FillingInfo.swift
-//  Helio
-//
-//  Created by Igor Marcossi on 01/08/23.
-//
-
 import SwiftUI
 
 struct Onboarding3FillingInfo: View {

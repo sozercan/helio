@@ -1,10 +1,3 @@
-//
-//  fetchSub.swift
-//  Helio
-//
-//  Created by Igor Marcossi on 30/06/23.
-//
-
 import Alamofire
 import Foundation
 

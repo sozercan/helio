@@ -1,11 +1,5 @@
-//
-//  AppMark.swift
-//  Helio
-//
-
 import SwiftUI
 
-/// Helio's mark, a sun, for places that show the app itself (welcome, About, credentials).
 struct AppMark: View {
   var size: CGFloat
 

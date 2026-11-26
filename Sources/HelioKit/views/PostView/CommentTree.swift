@@ -1,22 +1,10 @@
-//
-//  CommentTree.swift
-//  Helio
-//
-//  Flattens a post's comment forest into one List row per comment, "more" stub and
-//  root-thread decoration. Each row renders as a single view, so the List can lay rows
-//  out lazily instead of evaluating every nested comment up front, and collapsing a
-//  comment only removes its descendants' rows.
-//
-
 import SwiftUI
 
 struct CommentRow: Identifiable {
   enum Kind {
     case rootTop
     case comment(hiddenReplyCount: Int)
-    /// "Load N more" stub. `parent` is nil for root-level stubs.
     case more(parent: Comment?)
-    /// The "_" stub that opens the rest of a deep thread.
     case continueThread
     case rootBottom(isLastRoot: Bool)
   }
@@ -45,8 +33,6 @@ enum CommentTree {
     let isRoot = parent == nil
 
     if comment.kind == "more" {
-      // Every "continue thread" stub shares the data id "_", so key it by its parent.
-      // (`comment.id` has the kind appended, e.g. "_more".)
       let row = data.id == "_"
         ? CommentRow(id: "\(parent?.id ?? "root")-continue", kind: .continueThread, comment: comment, arrowKinds: arrowKinds, isRoot: isRoot)
         : CommentRow(id: comment.id, kind: .more(parent: parent), comment: comment, arrowKinds: arrowKinds, isRoot: isRoot)
@@ -65,7 +51,6 @@ enum CommentTree {
     }
   }
 
-  /// Loaded descendants plus the unloaded counts of any "more" stubs.
   static func replyCount(_ comments: [Comment]) -> Int {
     comments.reduce(0) { total, comment in
       total + (comment.kind == "more" ? (comment.data?.count ?? 0) : 1 + replyCount(comment.childrenHelio))

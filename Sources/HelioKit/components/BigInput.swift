@@ -1,10 +1,3 @@
-//
-//  BigInput.swift
-//  Helio
-//
-//  Created by Igor Marcossi on 10/12/23.
-//
-
 import SwiftUI
 
 struct BigInput: View {

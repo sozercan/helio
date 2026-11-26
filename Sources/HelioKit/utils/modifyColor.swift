@@ -1,10 +1,3 @@
-//
-//  modifyColor.swift
-//  Helio
-//
-//  Created by Igor Marcossi on 27/07/23.
-//
-
 import Foundation
 import SwiftUI
 
@@ -24,8 +17,6 @@ extension UIColor {
     var green: CGFloat = 0
     var alpha: CGFloat = 0
 
-    // Extract r,g,b,a components from the
-    // current UIColor
     getRed(
       &red,
       green: &green,
@@ -33,9 +24,6 @@ extension UIColor {
       alpha: &alpha,
     )
 
-    // Create a new UIColor modifying each component
-    // by componentDelta, making the new UIColor either
-    // lighter or darker.
     return UIColor(
       red: add(componentDelta, toComponent: red),
       green: add(componentDelta, toComponent: green),
@@ -44,8 +32,6 @@ extension UIColor {
     )
   }
 
-  /// Add value to component ensuring the result is
-  /// between 0 and 1
   private func add(_ value: CGFloat, toComponent: CGFloat) -> CGFloat {
     max(0, min(1, toComponent + value))
   }

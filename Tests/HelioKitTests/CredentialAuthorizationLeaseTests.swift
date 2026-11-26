@@ -8,8 +8,6 @@ struct CredentialAuthorizationLeaseTests {
   enum Invalidation: CaseIterable, Sendable { case replace, delete, wipe }
   private enum CommitFailure: Error { case expected }
 
-  /// Explicit events hold the commit open while the UI actor invalidates its grant.
-  /// The bounded contention window is a test deadlock guard, not a latency budget.
   private final class Gate: @unchecked Sendable {
     private let condition = NSCondition()
     private var leaseEntered = false
@@ -66,8 +64,6 @@ struct CredentialAuthorizationLeaseTests {
       while !mutationAttempted {
         condition.wait()
       }
-      // A broken check-then-commit implementation can finish invalidation now.
-      // The real lease blocks it; release the held commit after this guard window.
       let deadline = Date().addingTimeInterval(0.25)
       while !mutationCompleted, condition.wait(until: deadline) {}
       releaseCommit = true
@@ -101,8 +97,6 @@ struct CredentialAuthorizationLeaseTests {
     let gate = Gate()
     let commit = Task.detached {
       await withCheckedContinuation { (continuation: CheckedContinuation<Bool?, Never>) in
-        // Deliberate lock contention must not occupy Swift executor workers:
-        // a small CI pool could otherwise have no worker left to release the gate.
         Thread {
           do {
             try continuation.resume(returning: manager.withCurrentAuthorization(authorization) {
@@ -122,7 +116,6 @@ struct CredentialAuthorizationLeaseTests {
     }
     await gate.waitForLease()
     Thread { gate.releaseAfterContention() }.start()
-    // No suspension between this event and the synchronous UI-owned mutation.
     gate.attemptMutation()
     invalidate(operation, manager: manager, account: account)
     gate.completeMutation()

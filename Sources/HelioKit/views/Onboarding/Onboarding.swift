@@ -1,10 +1,3 @@
-//
-//  Onboarding.swift
-//  Helio
-//
-//  Created by Igor Marcossi on 31/07/23.
-//
-
 import Defaults
 import SwiftUI
 
@@ -102,7 +95,6 @@ struct Onboarding: View {
       tryingToDismiss = true
     }
     .tabViewStyle(PageTabViewStyle(indexDisplayMode: .never))
-    //    .padding(.bottom, 16)
     .onChange(of: currentTab) { _ in withAnimation { UIApplication.shared.dismissKeyboard() } }
     .background(
       ZStack {
@@ -114,7 +106,6 @@ struct Onboarding: View {
           }
           .frame(maxWidth: .infinity, maxHeight: .infinity)
           .opacity(1)
-          //                    .drawingGroup()
         }
       }
       .frame(maxWidth: .infinity, maxHeight: 200)
@@ -130,7 +121,6 @@ struct Onboarding: View {
     .ignoresSafeArea(edges: .bottom)
     .onAppear {
       showStars = true
-      // The swinging sign settles without the swing under Reduce Motion.
       withAnimation(reduceMotion ? nil : HANG_ANIM) {
         hanging = false
       }
@@ -178,10 +168,8 @@ struct Star: View {
       .resizable()
       .scaledToFit()
       .frame(width: size, height: size)
-      //            .foregroundColor(Color(NSColor(hex: colorScheme == .dark ? "F9EFBA" : "fafafa")))
       .foregroundColor(Color.hex(colorScheme == .dark ? "F9EFBA" : "7B733C"))
       .rotationEffect(Angle(degrees: rotation))
-      //            .shadow(color: Color(NSColor(hex: colorScheme == .dark ? "FFA262" : "656565")), radius: size * 0.75, y: colorScheme == .dark ? 0 : size * 0.5)
       .shadow(color: Color.hex(colorScheme == .dark ? "FFA262" : "A9A400"), radius: size * 0.75, y: colorScheme == .dark ? 0 : size * 0.5)
       .shadow(color: Color.hex(colorScheme == .dark ? "FFA262" : "A9A400").opacity(0.75), radius: size * 1.25, y: colorScheme == .dark ? 0 : size * 0.5)
       .offset(y: up ? offset : 0)
@@ -195,7 +183,6 @@ struct Star: View {
       .onAppear {
         timer.upstream.connect().cancel()
         position.x = (((totalWidth - 48) / CGFloat(starsCount - 1)) * CGFloat(number)) + 24 + (CGFloat.rand(0 ... 24) * ([-1, 1].randomElement())!)
-        // With Reduce Motion, the stars are just there: no rising and no drifting.
         if reduceMotion {
           position.y = CGFloat.rand(50 ... CGFloat(200 - Int(size) - 30))
           rotation = CGFloat.random(in: -20 ... 20)
@@ -206,9 +193,6 @@ struct Star: View {
             timer = Timer.publish(every: duration, on: .current, in: .common).autoconnect()
             position.y = CGFloat.rand(50 ... CGFloat(200 - Int(size) - 30))
             move()
-//            offset = CGFloat.rand(8...16)
-//            up.toggle()
-//            rotation = CGFloat.random(in: -20...20)
           }
         }
       }

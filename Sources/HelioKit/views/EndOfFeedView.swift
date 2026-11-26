@@ -1,10 +1,3 @@
-//
-//  EndOfFeedView.swift
-//  Helio
-//
-//  Created by Ethan Bills on 11/21/23.
-//
-
 import SwiftUI
 
 struct EndOfFeedView: View {
@@ -23,14 +16,12 @@ struct EndOfFeedView: View {
         .lineLimit(4)
     }
     .padding()
-    // At least 150 tall; taller when larger text needs it. Flat on the list, like the rows above.
     .frame(minWidth: 0, maxWidth: .infinity, minHeight: 150, alignment: .center)
     .contentShape(Rectangle())
     .onTapGesture {
       self.handleTap()
     }
     .listRowInsets(EdgeInsets())
-//    .padding(.horizontal, 24)
     .alert(isPresented: $showAlert) {
       Alert(
         title: Text("Secrets Unveiled"),

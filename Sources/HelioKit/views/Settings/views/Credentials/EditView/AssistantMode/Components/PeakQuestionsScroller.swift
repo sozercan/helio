@@ -1,10 +1,3 @@
-//
-//  PeakQuestionsScroller.swift
-//  Helio
-//
-//  Created by Igor Marcossi on 05/01/24.
-//
-
 import SwiftUI
 import WrappingHStack
 
@@ -53,7 +46,6 @@ struct PeakQuestionsOverlay: View {
         if !isSelected {
           scaledDown = !isSelected
         }
-//        if !isAnswer { shadow = true }
         selectedQuestion = isSelected ? nil : q
       }
     }

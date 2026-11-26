@@ -1,10 +1,3 @@
-//
-//  fromHex.swift
-//  Helio
-//
-//  Created by Igor Marcossi on 27/06/23.
-//
-
 import Foundation
 import SwiftUI
 import UIKit
@@ -16,7 +9,6 @@ extension UIColor {
     let hexString = trimHex.starts(with: "#") ? dropHash : trimHex
     let ui64 = UInt64(hexString, radix: 16)
     let value = ui64 != nil ? Int(ui64!) : 0
-    // #RRGGBB
     var components = (
       R: CGFloat((value >> 16) & 0xFF) / 255,
       G: CGFloat((value >> 08) & 0xFF) / 255,
@@ -24,7 +16,6 @@ extension UIColor {
       a: CGFloat(alpha),
     )
     if String(hexString).count == 8 {
-      // #RRGGBBAA
       components = (
         R: CGFloat((value >> 24) & 0xFF) / 255,
         G: CGFloat((value >> 16) & 0xFF) / 255,

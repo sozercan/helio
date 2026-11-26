@@ -1,10 +1,3 @@
-//
-//  PostFloatingPill.swift
-//  Helio
-//
-//  Created by Igor Marcossi on 06/07/23.
-//
-
 import SwiftUI
 
 struct PostFloatingPill: View {
@@ -12,7 +5,6 @@ struct PostFloatingPill: View {
   var subreddit: Subreddit
   var updateComments: (() -> Void)?
   var showUpVoteRatio: Bool
-  /// Narrow windows: Share, Save and Reply fold into one menu so the votes stay in reach.
   var compact: Bool = false
 
   @Environment(\.useTheme) private var selectedTheme
@@ -36,7 +28,6 @@ struct PostFloatingPill: View {
         let permalink = "https://reddit.com\(data.permalink.urlEncoded)"
 
         if !selectedTheme.posts.inlineFloatingPill {
-          // The post page's bottom bar: monochrome icons on glass, like the system's bars.
           HStack(spacing: 2) {
             if compact {
               Menu {
@@ -80,7 +71,7 @@ struct PostFloatingPill: View {
           .foregroundStyle(.primary)
           .floating()
         } else {
-          HStack { // Set spacing to 0 to make buttons stretch evenly
+          HStack {
             LightBoxButton(icon: saveIcon(data), label: saveLabel(data)) { toggleSave() }
               .padding(.vertical, -2)
 

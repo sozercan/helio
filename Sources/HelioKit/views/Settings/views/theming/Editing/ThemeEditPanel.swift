@@ -1,10 +1,3 @@
-//
-//  ThemeEditPanel.swift
-//  Helio
-//
-//  Created by Igor Marcossi on 08/09/23.
-//
-
 import Combine
 import DebouncedOnChange
 import Defaults

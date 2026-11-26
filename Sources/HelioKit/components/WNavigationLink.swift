@@ -1,10 +1,3 @@
-//
-//  WNavigationLink.swift
-//  Helio
-//
-//  Created by Igor Marcossi on 19/09/23.
-//
-
 import SwiftUI
 
 struct WListButton<Content: View>: View {
@@ -47,8 +40,6 @@ struct WListButton<Content: View>: View {
     }
     .themedListRow(active: forcedActive || active, isButton: !showArrow)
     .onAppear { withAnimation { forcedActive = false } }
-//    .id("\(uuid.uuidString)-\(pressed ? "pressed" : "")")
-//    .themedListRowLikeBG(enablePadding: true, disableBG: true, active: active)
   }
 }
 

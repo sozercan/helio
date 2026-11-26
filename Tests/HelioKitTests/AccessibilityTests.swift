@@ -21,10 +21,8 @@ struct ContentTextScaleTests {
     #expect(small < 17)
     #expect(large > 17)
     #expect(accessibility > large)
-    // Titles and bodies wrap, so they keep growing.
     #expect(ContentTextScale.size(17, dynamicTypeSize: .accessibility5) > accessibility)
     #if targetEnvironment(macCatalyst)
-      // `UIFontMetrics` doesn't scale on Mac Catalyst: text follows iOS's body sizes instead.
       #expect([small, large, accessibility] == [14, 23, 33])
     #endif
   }
@@ -64,7 +62,6 @@ struct DynamicTypeRelayoutTests {
     let largeAttr = try #require(post.helioData?.titleAttr)
     #expect(largeAttr !== defaultAttr)
     let font = try #require(largeAttr.attribute(.font, at: 0, effectiveRange: nil) as? UIFont)
-    // Mac Catalyst too: Text Size scales content text there by iOS's body sizes.
     #expect(largeTitle.height > defaultTitle.height)
     #expect(font.pointSize > theme.postLinks.theme.titleText.size)
     #expect(post.helioData?.layoutDynamicTypeSize == .accessibility2)

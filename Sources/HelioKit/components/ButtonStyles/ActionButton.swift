@@ -1,10 +1,3 @@
-//
-//  ActionButton.swift
-//  Helio
-//
-//  Created by Igor Marcossi on 06/12/23.
-//
-
 import SwiftUI
 
 struct SecondaryOutlinedActionButtonPrimitive: PrimitiveButtonStyle {

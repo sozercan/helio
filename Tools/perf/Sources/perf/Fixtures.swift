@@ -1,12 +1,6 @@
 import Foundation
 
-/// The fake Reddit data the shim serves. Four Home pages of 25 posts (images, external links,
-/// links to other Reddit posts and subreddits, crossposts, galleries, videos, YouTube, self posts
-/// with Markdown), a ~160-comment thread per post, subreddit about pages, subscriptions, inbox and
-/// multis. Authors repeat across posts and comments like on Reddit. Seeded, so every run gets the
-/// same data. Images are made by the shim; there's no media.
 enum Fixtures {
-  /// Bump when the data changes, so existing fixture directories are regenerated.
   static let version = 1
 
   static func ensure() -> URL {
@@ -26,7 +20,6 @@ enum Fixtures {
   }
 }
 
-/// SplitMix64: a small seeded generator, so fixtures are the same on every machine.
 struct SeededRandom {
   var state: UInt64
 
@@ -66,7 +59,6 @@ private struct Generator {
   let domains = ["apple.com", "theverge.com", "arstechnica.com", "nytimes.com", "bbc.co.uk", "github.com", "wired.com", "techcrunch.com"]
   let vocabulary = ("the quick brown fox jumps over lazy dog swift reddit apollo client fixture performance scroll "
     + "layout render image video comment thread markdown link preview cache batch request token").split(separator: " ").map(String.init)
-  /// Post kinds by position in a page of 25.
   let pattern = ["self", "image", "link", "image", "self", "crosspost", "image", "link", "self", "gallery", "image", "redditlink",
                  "self", "image", "link", "video", "image", "self", "youtube", "image", "link", "self", "image", "sublink", "image"]
 
@@ -108,7 +100,6 @@ private struct Generator {
   mutating func post(_ i: Int, kind: String, id override: String? = nil) -> JSON {
     let id = override ?? String(format: "pf%04d", i)
     let sub = subs[i % subs.count]
-    // The first three posts have fixed scores, so they're easy to find in the UI.
     let score = i < 3 ? [1300, 2400, 3500][i] : random.int(5 ... 40000)
     var d = basePost(id: id, sub: sub, title: "Post \(i): \(words(random.int(6 ... 18)))", author: authors[(i * 7) % authors.count],
                      ageHours: 1 + i % 23, score: score, comments: random.int(0 ... 3000))
@@ -210,7 +201,6 @@ private struct Generator {
       return kids
     }
     var roots = build(0, parent: "t3_\(id)", budget: 160)
-    // A known first comment, so tests can tell the comments loaded.
     var first = roots[0]["data"] as! JSON
     first["body"] = "Top comment for \(id)"
     first["body_html"] = markdownHTML("Top comment for \(id)")

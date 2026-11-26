@@ -1,10 +1,3 @@
-//
-//  ShortCommentPostLink.swift
-//  Helio
-//
-//  Created by Igor Marcossi on 04/07/23.
-//
-
 import Defaults
 import SwiftUI
 

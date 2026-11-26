@@ -1,10 +1,3 @@
-//
-//  ExpandableText.swift
-//  Helio
-//
-//  Created by Daniel Inama on 05/10/23.
-//
-
 import SwiftUI
 
 struct ExpandableText: View {
@@ -118,7 +111,6 @@ private extension View {
   }
 }
 
-/// https://www.fivestars.blog/articles/swiftui-share-layout-information/
 private struct SizePreferenceKey: PreferenceKey {
   static var defaultValue: CGSize = .zero
   static func reduce(value: inout CGSize, nextValue: () -> CGSize) {}

@@ -7,7 +7,6 @@ struct AuthRedirectTests {
     let url = RedditAPI.shared.getAuthorizationCodeURL("client", state: "s")
     let items = try #require(URLComponents(url: url, resolvingAgainstBaseURL: false)?.queryItems)
     let redirect = try #require(items.first { $0.name == "redirect_uri" }?.value)
-    // Reddit rejects non-https redirects for keys with a secret.
     #expect(redirect == RedditAPI.appRedirectURI)
     #expect(URL(string: redirect)?.scheme == "https")
   }

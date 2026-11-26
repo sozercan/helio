@@ -1,6 +1,5 @@
 import Foundation
 
-/// Owns the selected account's profile. API calls (including draft authorization) only return data.
 @MainActor
 @Observable
 final class SelectedAccountProfile {
@@ -9,7 +8,6 @@ final class SelectedAccountProfile {
   private(set) var user: User?
   private(set) var state: State = .signedOut
   @ObservationIgnored private var requestID: UUID?
-  /// Observable selection identity, including switches while both profiles are loading.
   private(set) var authorizationID: RedditCredential.AuthorizationID?
   @ObservationIgnored private var task: Task<Void, Never>?
   private let currentAccount: @MainActor () -> RedditCredential?
@@ -32,7 +30,6 @@ final class SelectedAccountProfile {
     await reload()?.value
   }
 
-  /// Starts synchronously on account changes, clearing the previous account before fetching.
   @MainActor
   @discardableResult
   func reload() -> Task<Void, Never>? {

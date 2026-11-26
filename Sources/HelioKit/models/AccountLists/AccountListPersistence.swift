@@ -3,8 +3,6 @@ import Foundation
 import os
 import Synchronization
 
-/// A captured account's subscription and multi lists. Selection is not ownership: a
-/// still-installed grant may finish syncing even after another account is selected.
 @MainActor
 struct AccountListPersistence {
   fileprivate struct MutationKey: Hashable {
@@ -48,7 +46,6 @@ struct AccountListPersistence {
     }
   }
 
-  /// This lock covers only small revision bookkeeping, never disk/network work.
   private static let stateRevisions = RevisionLedger()
 
   func captureSnapshot() -> Snapshot {
@@ -80,16 +77,12 @@ struct AccountListPersistence {
   }
 
   private var authorizationIsInstalled: Bool {
-    // UI-owned checks must not wait for the lease held by a background disk save.
     credentialsManager.credentials.contains { $0.authorizationID == authorization }
   }
 
   func beginMutation(fullname: String) -> MutationTicket? {
     guard authorizationIsInstalled else { return nil }
     let key = MutationKey(authorization: authorization, fullname: fullname)
-    // An optimistic value is not a confirmed baseline for another operation.
-    // Subscription and favorite gestures share this reservation because removing
-    // a subscription may remove the row that a pending favorite would roll back.
     guard Self.mutations[key] == nil else { return nil }
     let id = UUID()
     Self.mutations[key] = id
@@ -137,8 +130,6 @@ struct AccountListPersistence {
       let existing = try context.fetch(request)
 
       let protected = revisions.protectedRows(for: snapshot)
-      // CloudKit may deliver duplicate rows. Keep one per Reddit fullname, as the
-      // subscription sync did before, without touching another account's rows.
       var byID: [String: CachedSub] = [:]
       for sub in existing {
         let id = sub.uuid ?? ""
@@ -150,11 +141,7 @@ struct AccountListPersistence {
         }
       }
       for var data in subscriptions {
-        // Membership in this endpoint is authoritative even when the optional
-        // user flag is omitted from a listing entry.
         data.user_is_subscriber = true
-        // An optimistic unsubscribe may already have removed this row. Do not
-        // recreate it from a response whose fetch began before the mutation.
         if protected.contains(data.name), byID[data.name] == nil {
           continue
         }
@@ -194,8 +181,6 @@ struct AccountListPersistence {
         data.subreddits = data.subreddits?.map { sub in
           var sub = sub
           if let fullname = sub.data?.name, protected.contains(fullname) {
-            // Existing members are reused with their current state. A member
-            // recreated after a local deletion must not regain stale flags.
             sub.data?.user_is_subscriber = false
             sub.data?.user_has_favorited = false
           }
@@ -215,7 +200,6 @@ struct AccountListPersistence {
       let subRequest = CachedSub.fetchRequest()
       subRequest.predicate = predicateForAccount(credentialID)
       for sub in try context.fetch(subRequest) where !sub.user_is_subscriber {
-        // Removing a multi/member may orphan a row retained by subscription sync.
         if sub.multis?.contains(where: { !$0.isDeleted }) != true {
           context.delete(sub)
         }
@@ -224,9 +208,6 @@ struct AccountListPersistence {
     }
   }
 
-  /// Sets the requested state rather than toggling row existence. A multi can have
-  /// cached this subreddit without the account being subscribed to it. Existing
-  /// metadata (including a newer favorite) is not replaced by the caller's snapshot.
   @discardableResult
   func setSubscription(_ subscribed: Bool, subreddit: SubredditData, expecting expected: Bool? = nil) async -> Bool {
     let credentialID = credential.id
@@ -241,8 +222,6 @@ struct AccountListPersistence {
     return result != nil
   }
 
-  /// Capture the persisted favorite and the write's revision in the same transaction
-  /// as the optimistic change, not from a potentially stale subreddit view model.
   func optimisticallySetSubscription(_ subscribed: Bool, subreddit: SubredditData, expecting expected: Bool) async -> SubscriptionRollback? {
     let credentialID = credential.id
     let result = await transaction(fullname: subreddit.name) { context -> SubredditData? in
@@ -258,8 +237,6 @@ struct AccountListPersistence {
     return SubscriptionRollback(authorization: authorization, previous: result.value, requested: subscribed, revision: result.revision)
   }
 
-  /// A multi may recreate an optimistically deleted row with default flags. Restore
-  /// its confirmed favorite too, but never replace a subsequent local row write.
   @discardableResult
   func rollbackSubscription(_ rollback: SubscriptionRollback) async -> Bool {
     guard rollback.authorization == authorization else { return false }
@@ -276,8 +253,6 @@ struct AccountListPersistence {
     return result != nil
   }
 
-  /// Only existing rows are favorited. Failure rollback is conditional so it does
-  /// not blindly overwrite a newer local toggle or recreate an unsubscribed row.
   @discardableResult
   func setFavorite(_ favorited: Bool, fullname: String, expecting expected: Bool? = nil) async -> Bool {
     let result = await transaction(fullname: fullname) { context -> Bool? in
@@ -294,10 +269,6 @@ struct AccountListPersistence {
     return result != nil
   }
 
-  /// All bulk snapshots share one private queue, including their reads and updates.
-  /// Parallel network fetches cannot reconcile the same missing row concurrently.
-  /// Only the final validation/save
-  /// takes the credential owner's lease, which serializes grant invalidation.
   private func bulkTransaction(_ update: @escaping @Sendable (NSManagedObjectContext) throws -> Bool) async -> Bool {
     let context = context ?? PersistenceController.shared.accountListsContext
     let manager = credentialsManager
@@ -325,7 +296,6 @@ struct AccountListPersistence {
     }
   }
 
-  /// The save notification is consumed only by Core Data's cross-context merge API.
   private struct LocalWriteResult<Value: Sendable>: @unchecked Sendable {
     let value: Value?
     let revision: UInt64?
@@ -337,8 +307,6 @@ struct AccountListPersistence {
     let manager = credentialsManager
     let authorization = authorization
     let revisions = Self.stateRevisions
-    // Queue the entire local transaction behind bulk reconciliation, not only its save.
-    // The isolated writer protects unrelated pending edits in an injected/shared context.
     let result = await source.perform {
       guard manager.containsAuthorization(authorization), let coordinator = source.persistentStoreCoordinator else {
         return LocalWriteResult<Value>(value: nil, revision: nil, notification: nil)

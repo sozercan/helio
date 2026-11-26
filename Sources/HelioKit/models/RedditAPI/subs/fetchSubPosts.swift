@@ -1,10 +1,3 @@
-//
-//  fetchSubPosts.swift
-//  Helio
-//
-//  Created by Igor Marcossi on 28/06/23.
-//
-
 import Alamofire
 import Defaults
 import Foundation
@@ -62,17 +55,14 @@ extension RedditAPI {
 
     if searchText != nil {
       subID += "search\(appendedFileType)"
-    } else {
-      if let sort {
-        subID += Self.listingEndpoint(sort)
-      }
+    } else if let sort {
+      subID += Self.listingEndpoint(sort)
     }
 
     if let searchText {
       subID += subID.contains("?") ? "&q=\(searchText)" : "?q=\(searchText)"
       subID += "&restrict_sr=on"
 
-      // Add preferred sort to search url
       subID += "&sort=\(Defaults[.SubredditFeedDefSettings].preferredSearchSort)"
     }
 
@@ -83,7 +73,6 @@ extension RedditAPI {
     return subID
   }
 
-  /// The listing for a sort relative to a subreddit or multi path, such as `top.json?t=week`.
   static func listingEndpoint(_ sort: SubListingSortOption) -> String {
     switch sort {
     case .best: "best.json"

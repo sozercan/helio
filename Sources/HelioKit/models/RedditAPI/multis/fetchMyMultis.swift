@@ -1,17 +1,9 @@
-//
-//  fetchMyMultis.swift
-//  Helio
-//
-//  Created by Igor Marcossi on 20/08/23.
-//
-
 import Alamofire
 @preconcurrency import CoreData
 import Foundation
 import os
 
 extension RedditAPI {
-  /// `account`: whose multis; the selected account when nil.
   func fetchMyMultis(account: RedditCredential? = nil) async -> Bool {
     let persistence = await MainActor.run {
       (account ?? RedditCredentialsManager.shared.selectedCredential).flatMap { AccountListPersistence(account: $0) }

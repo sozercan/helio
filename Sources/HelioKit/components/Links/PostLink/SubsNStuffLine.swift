@@ -1,10 +1,3 @@
-//
-//  SubsNStuffLine.swift
-//  Helio
-//
-//  Created by Igor Marcossi on 24/09/23.
-//
-
 import SwiftUI
 
 struct SubsNStuffLine: View, Equatable {
@@ -12,7 +5,6 @@ struct SubsNStuffLine: View, Equatable {
     true
   }
 
-  ///  static let height = Tag.height + 4
   static let height: CGFloat = 1
 
   var body: some View {
@@ -21,6 +13,5 @@ struct SubsNStuffLine: View, Equatable {
     }
     .padding(.horizontal, 2)
     .frame(height: SubsNStuffLine.height)
-    //    }
   }
 }

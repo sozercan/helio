@@ -1,10 +1,3 @@
-//
-//  simpleHighlight.swift
-//  Helio
-//
-//  Created by Igor Marcossi on 07/01/24.
-//
-
 import SwiftUI
 
 extension View {

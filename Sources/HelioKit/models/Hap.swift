@@ -1,10 +1,3 @@
-//
-//  Hap.swift
-//  Helio
-//
-//  Created by Igor Marcossi on 16/12/23.
-//
-
 import CoreHaptics
 import SwiftUI
 
@@ -53,10 +46,6 @@ class Hap {
   func updateContinuous(intensity: Float, sharpness: Float) {
     guard supportsHaptics, let continuousPlayer = self.continuousPlayer else { return }
 
-    //    if continuousHapticTimer == nil {
-    //      self.startPlayingContinuousHaptics()
-    //    }
-
     let intensityParameter = CHHapticDynamicParameter(parameterID: .hapticIntensityControl, value: intensity, relativeTime: 0)
     let sharpnessParameter = CHHapticDynamicParameter(parameterID: .hapticSharpnessControl, value: sharpness, relativeTime: 0)
 
@@ -65,16 +54,6 @@ class Hap {
     } catch {
       print("Dynamic Parameter Error: \(error)")
     }
-
-    //    setupTimer()
-
-    //    func setupTimer() {
-    //      continuousHapticTimer?.invalidate()
-    //      continuousHapticTimer = .init(timeInterval: Date().timeIntervalSince1970 + 0.5, repeats: false, block: { _ in
-    //        self.continuousHapticTimer = nil
-    //        self.stopPlayingContinuousHaptics()
-    //      })
-    //    }
   }
 
   func play(intensity: Float, sharpness: Float) {
@@ -129,7 +108,6 @@ class Hap {
 
     engine.playsHapticsOnly = true
 
-    // The stopped handler alerts you of engine stoppage.
     engine.stoppedHandler = { reason in
       print("Stop Handler: The engine stopped for reason: \(reason.rawValue)")
       switch reason {

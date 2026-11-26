@@ -1,10 +1,3 @@
-//
-//  getFlairs.swift
-//  Helio
-//
-//  Created by Igor Marcossi on 27/07/23.
-//
-
 import Alamofire
 import Defaults
 import Foundation

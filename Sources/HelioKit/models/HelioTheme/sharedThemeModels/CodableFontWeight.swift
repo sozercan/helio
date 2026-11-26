@@ -1,10 +1,3 @@
-//
-//  CodableFontWeight.swift
-//  Helio
-//
-//  Created by Igor Marcossi on 21/11/23.
-//
-
 import Foundation
 import SwiftUI
 
@@ -23,10 +16,6 @@ enum CodableFontWeight: Codable, Hashable, CaseIterable, Equatable {
       .semibold
     case .bold:
       .bold
-//    case .heavy:
-//      return .heavy
-//    case .black:
-//      return .black
     }
   }
 
@@ -42,10 +31,6 @@ enum CodableFontWeight: Codable, Hashable, CaseIterable, Equatable {
       .semibold
     case .bold:
       .bold
-//    case .heavy:
-//      return .heavy
-//    case .black:
-//      return .black
     }
   }
 }

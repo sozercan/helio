@@ -1,10 +1,3 @@
-//
-//  isVideoPlayer.swift
-//  Helio
-//
-//  Created by Igor Marcossi on 31/07/23.
-//
-
 import AVKit
 import Foundation
 

@@ -1,10 +1,3 @@
-//
-//  BaseCache.swift
-//  Helio
-//
-//  Created by Igor Marcossi on 20/09/23.
-//
-
 import Combine
 import Foundation
 import SwiftUI
@@ -24,7 +17,6 @@ struct CacheItem<T>: Identifiable, Equatable {
 class BaseCache<T: Any>: ObservableObject {
   @Published var cache: [String: CacheItem<T>] = [:]
   let cacheLimit: Int
-  /// Optional teardown run (on the main actor) for the item evicted when the cache overflows.
   var onEvict: ((T) -> Void)?
 
   init(cacheLimit: Int = 50, cache: [String: CacheItem<T>] = [:]) {

@@ -1,10 +1,3 @@
-//
-//  antagonist.swift
-//  Helio
-//
-//  Created by Igor Marcossi on 31/12/23.
-//
-
 import SwiftUI
 
 extension Color {

@@ -54,7 +54,6 @@ struct CommandTargetsTests {
     var focused: [String] = []
     _ = targets.register(.init(kind: .subs, focusSearch: { focused.append("subs") }))
     let feed = targets.register(.init(kind: .feed, focusSearch: { focused.append("feed") }))
-    // A post has no search field, so Find skips it.
     _ = targets.register(.init(kind: .post, post: Post(id: "a", subID: "apple")))
     targets.find()
     targets.unregister(feed)
@@ -83,7 +82,6 @@ struct AdjacentPostTests {
   private let home = Router.NavDest.reddit(.subFeed(Subreddit(id: "home")))
   private let profile = Router.NavDest.reddit(.user(User(id: "someone")))
 
-  /// The posts tab with `feed` as its feed and the post at `open` in the post column.
   private func router(open: Int, columns: Bool, above: [Router.NavDest] = []) -> Router {
     let router = Router(id: "test")
     router.firstIsSidebarSelection = columns
@@ -95,7 +93,6 @@ struct AdjacentPostTests {
   @Test func theFeedsPostsStayAvailableWhileItsPostCoversIt() {
     let targets = CommandTargets()
     let registration = targets.register(.init(kind: .feed, column: .feed, posts: { feed }))
-    // Collapsed into one stack, the open post hides the feed.
     targets.unregister(registration)
     let router = router(open: 1, columns: false)
     #expect(targets.adjacentPost(1, in: router)?.id == feed[2].id)
@@ -143,12 +140,10 @@ struct AdjacentPostTests {
   }
 
   @Test func aProfileOpenedOverAStandalonePostIsAFeedToMoveThrough() {
-    // A post opened by itself, its author's profile over it, and a post from that profile.
     let router = Router(id: "test")
     router.firstIsSidebarSelection = true
     router.fullPath = [.reddit(.post(feed[0])), profile, .reddit(.post(feed[1]))]
     #expect(CommandTargets.feedPostID(in: router) == feed[1].id)
-    // Under a screen that isn't a feed, the feed kept from before doesn't count.
     router.fullPath = [home, .reddit(.subInfo(Subreddit(id: "apple"))), .reddit(.post(feed[1]))]
     #expect(CommandTargets.feedPostID(in: router) == nil)
   }
@@ -162,7 +157,6 @@ struct AdjacentPostTests {
   @Test func findNeedsAFieldOrAnAccountForTheSearchTab() {
     let targets = CommandTargets()
     #expect(!targets.canFind(credential: nil))
-    // A search field that shows is always there to focus.
     let registration = targets.register(.init(kind: .feed, column: .feed, focusSearch: {}))
     #expect(targets.canFind(credential: nil))
     targets.unregister(registration)
@@ -173,10 +167,8 @@ struct AdjacentPostTests {
     let targets = CommandTargets()
     let registration = targets.register(.init(kind: .feed, column: .feed, posts: { feed }))
     targets.unregister(registration)
-    // Its stack was discarded (the account changed), not just covered.
     targets.forgetPostsFeed(registration)
     #expect(targets.adjacentPost(1, in: router(open: 1, columns: false)) == nil)
-    // Forgetting another registration leaves the kept feed alone.
     let kept = targets.register(.init(kind: .feed, column: .feed, posts: { feed }))
     targets.unregister(kept)
     targets.forgetPostsFeed(UUID())
@@ -188,7 +180,6 @@ struct AdjacentPostTests {
     var loaded = feed
     let more = Post(id: "d", subID: "apple")
     let registration = targets.register(.init(kind: .feed, column: .feed, posts: { loaded }, canLoadMore: { true }, loadMore: { loaded.append(more) }))
-    // Collapsed into one stack, the open post covers the feed, so its rows can't page it.
     targets.unregister(registration)
     let router = router(open: 2, columns: false)
     #expect(targets.adjacentPost(1, in: router) == nil)
@@ -202,7 +193,6 @@ struct AdjacentPostTests {
     var loaded = feed
     var pages = 0
     let more = Post(id: "d", subID: "apple")
-    // Saved can return a page of comments only: the first load adds no post.
     let registration = targets.register(.init(kind: .feed, column: .feed, posts: { loaded }, canLoadMore: { true }, loadMore: {
       pages += 1
       if pages == 2 {
@@ -232,7 +222,6 @@ struct AdjacentPostTests {
     let router = router(open: 2, columns: false)
     #expect(!targets.canOpenAdjacentPost(1, in: router))
     #expect(targets.openAdjacentPost(1, in: router) == nil)
-    // Previous never loads a page.
     _ = targets.register(.init(kind: .feed, column: .feed, posts: { feed }, canLoadMore: { true }, loadMore: {}))
     #expect(!targets.canOpenAdjacentPost(-1, in: self.router(open: 0, columns: false)))
   }
@@ -278,7 +267,6 @@ struct AdjacentPostTests {
     var loaded = feed
     _ = targets.register(.init(kind: .feed, column: .feed, posts: { loaded }, canLoadMore: { true }, loadMore: {
       loaded.append(Post(id: "d", subID: "apple"))
-      // Another feed showing the same posts, with the same post open.
       _ = targets.register(.init(kind: .feed, column: .feed, posts: { loaded }))
     }))
     let router = router(open: 2, columns: true)
@@ -304,16 +292,13 @@ struct AdjacentPostTests {
 }
 
 struct ModalTests {
-  /// A reply being written, or a full-screen image or video.
   @Test func aModalSuspendsThePostCommands() {
     let targets = CommandTargets()
     _ = targets.register(.init(kind: .post, post: Post(id: "a", subID: "apple")))
     #expect(!targets.showsModal)
     let reply = targets.register(.init(kind: .modal))
     #expect(targets.showsModal)
-    // Find and the Post commands are off while it shows.
     #expect(targets.isCovered())
-    // A modal isn't a post, refresh or search target.
     #expect(targets.openPost?.post != nil)
     #expect(!targets.canRefresh)
     targets.unregister(reply)
@@ -356,7 +341,6 @@ struct SubsListSelectionTests {
     #expect(Subreddits.RowSelection.row(for: apple, chosen: nil) == row)
     #expect(Set([row]).contains(.init(dest: apple)))
     #expect(Subreddits.RowSelection(dest: apple, inFavorites: true) != row)
-    // Built-in feeds still don't match a subreddit of the same name.
     let rHome = try Router.NavDest.reddit(.subFeed(Subreddit(data: JSONDecoder().decode(SubredditData.self, from: Data(#"{"name": "t5_2qs0q", "id": "2qs0q", "display_name": "home", "url": "/r/home/", "public_description": ""}"#.utf8)))))
     #expect(Subreddits.RowSelection(dest: .reddit(.subFeed(Subreddit(id: "home")))) != .init(dest: rHome))
   }

@@ -1,10 +1,3 @@
-//
-//  BigInfoCredential.swift
-//  Helio
-//
-//  Created by Igor Marcossi on 10/12/23.
-//
-
 import SwiftUI
 
 struct BigInfoCredential: View {

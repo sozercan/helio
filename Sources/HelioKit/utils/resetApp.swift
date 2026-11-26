@@ -1,10 +1,3 @@
-//
-//  resetApp.swift
-//  Helio
-//
-//  Created by Igor Marcossi on 04/09/23.
-//
-
 import CoreData
 import Defaults
 import Foundation
@@ -19,7 +12,6 @@ func resetCaches() {
   Caches.videos.cache.removeAll()
 }
 
-/// - Parameter keeping: entity names to leave untouched.
 func resetCoreData(keeping: Set<String> = []) {
   let container = PersistenceController.shared.container
   let entities = container.managedObjectModel.entities
@@ -33,7 +25,6 @@ func resetCoreData(keeping: Set<String> = []) {
     do {
       _ = try container.viewContext.performAndWait {
         try container.viewContext.executeAndMergeChanges(deleteRequest)
-//        try container.viewContext.save()
       }
     } catch let error as NSError {
       debugPrint(error)
@@ -41,7 +32,6 @@ func resetCoreData(keeping: Set<String> = []) {
   }
 }
 
-/// Forgets which posts have been read.
 func clearReadHistory() {
   resetCoreData(keeping: Set(PersistenceController.shared.container.managedObjectModel.entities.compactMap(\.name)).subtracting(["SeenPost"]))
 }

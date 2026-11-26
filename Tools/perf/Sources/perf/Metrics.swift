@@ -1,6 +1,5 @@
 import Foundation
 
-/// What a benchmark run logged (see the shim): requests, periodic samples and markers.
 struct RunLog {
   struct Request {
     let time: Double
@@ -16,7 +15,6 @@ struct RunLog {
   var requests: [Request] = []
   var samples: [Sample] = []
   var marks: [String: Double] = [:]
-  /// Seconds since 1970 when the shim loaded, to line the log up with a trace.
   var wallClock: Double?
 
   init(text: String) {
@@ -44,24 +42,18 @@ struct RunLog {
     }
   }
 
-  /// A sampled value at a time: the last sample at or before it.
   func value(_ key: String, at time: Double) -> Double {
     (samples.last { $0.time <= time } ?? samples.first)?.values[key] ?? 0
   }
 }
 
 enum Metrics {
-  /// The measured windows: scrolling Home, opening a post and scrolling its comments, everything,
-  /// and on Mac opening posts one after another and resizing the window.
   static let windows = [("feed", "scroll_start", "scroll_end"), ("post", "post_open", "cscroll_end"), ("switch", "switch_start", "switch_end"),
                         ("resize", "resize_start", "resize_end"), ("all", "home_open", "end")]
 
-  /// The endpoint a request went to. `image` and `link_preview` aren't Reddit API requests.
   static func category(method: String, url: String) -> String {
     let parts = URLComponents(string: url)
     let host = parts?.host?.lowercased() ?? "", path = parts?.path ?? ""
-    // Reddit's web pages (link previews of a post or subreddit) aren't API requests: those go to
-    // oauth.reddit.com, `/api/` or `.json`.
     let webPage = host != "oauth.reddit.com" && !path.hasPrefix("/api/") && !path.hasSuffix(".json")
     if !host.hasSuffix("reddit.com") || host.hasPrefix("i.") || host.contains("preview") || webPage {
       let media = path.range(of: #"\.(jpg|jpeg|png|gif|webp|mp4)$"#, options: .regularExpression) != nil
@@ -90,8 +82,6 @@ enum Metrics {
     }
   }
 
-  /// A run's metrics, or nil when it didn't reach the end of the scenario or a deep link didn't
-  /// open: its screens weren't shown, so neither their requests nor their timings count.
   static func metrics(of log: RunLog) -> [String: Double]? {
     guard let end = log.marks["end"], log.marks["open_failed"] == nil, !log.samples.isEmpty else { return nil }
     var out: [String: Double] = [:]
@@ -145,7 +135,6 @@ enum Metrics {
     return sorted.count % 2 == 1 ? sorted[sorted.count / 2] : (sorted[sorted.count / 2 - 1] + sorted[sorted.count / 2]) / 2
   }
 
-  /// Timing first, then request counts.
   static func ordered(_ keys: some Collection<String>) -> [String] {
     keys.sorted { a, b in
       let (countA, countB) = (a.hasPrefix("requests."), b.hasPrefix("requests."))
@@ -185,7 +174,6 @@ enum Metrics {
     }
   }
 
-  /// Compares counts with the budget. A request kind the budget doesn't list has a budget of 0.
   static func budgetRows(median: [String: Double], budget: [String: Double]) -> [BudgetRow] {
     let keys = Set(budget.keys).union(median.keys.filter { $0.hasPrefix("requests.") })
     return ordered(keys).map { BudgetRow(key: $0, value: median[$0] ?? 0, limit: budget[$0] ?? 0) }
@@ -196,7 +184,6 @@ enum Metrics {
           let object = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else { fail("can't read \(budgetFile.path)") }
     let budget = object.compactMapValues { ($0 as? NSNumber)?.doubleValue }
     let median = summarize(label).median
-    // Fewer requests pass, so make sure the scenario ran: Home loaded and the post asked for comments.
     guard (median["requests.feed"] ?? 0) > 0, (median["post_request_ms"] ?? -1) >= 0 else {
       fail("the benchmark didn't load Home and a post's comments; see the run logs")
     }

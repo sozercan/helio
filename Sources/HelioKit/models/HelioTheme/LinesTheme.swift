@@ -1,10 +1,3 @@
-//
-//  LinesTheme.swift
-//  Helio
-//
-//  Created by Igor Marcossi on 07/09/23.
-//
-
 import Foundation
 
 enum LineTypeTheme: Codable, Hashable, CaseIterable, Equatable {

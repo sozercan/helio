@@ -1,10 +1,3 @@
-//
-//  vibrate.swift
-//  Helio
-//
-//  Created by Igor Marcossi on 29/11/23.
-//
-
 import CoreHaptics
 import SwiftUI
 
@@ -161,7 +154,6 @@ struct VibrateModifier<T: Equatable>: ViewModifier {
 
       engine.playsHapticsOnly = true
 
-      // The stopped handler alerts you of engine stoppage.
       engine.stoppedHandler = { reason in
         print("Stop Handler: The engine stopped for reason: \(reason.rawValue)")
         switch reason {

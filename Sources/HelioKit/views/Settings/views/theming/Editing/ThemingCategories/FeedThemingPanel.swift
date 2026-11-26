@@ -1,10 +1,3 @@
-//
-//  FeedThemingPanel.swift
-//  Helio
-//
-//  Created by Igor Marcossi on 14/09/23.
-//
-
 import Defaults
 import SwiftUI
 
@@ -16,7 +9,6 @@ struct FeedThemingPanel: View {
   @Default(.PostLinkDefSettings) private var postLinkDefSettings
 
   @Environment(\.contentWidth) private var contentWidth
-  /// The panel's own width: in an iPad form sheet it's narrower than the window.
   @State private var panelWidth: Double = 0
   private var previewWidth: Double {
     panelWidth > 0 ? panelWidth : contentWidth
@@ -59,7 +51,6 @@ struct FeedThemingPanel: View {
             PostLink(id: previewPostSample.id, theme: theme.postLinks, showSub: true, secondary: true, compactPerSubreddit: nil, contentWidth: previewWidth, defSettings: postLinkDefSettings)
               .equatable()
               .environment(\.useTheme, theme)
-            //            .allowsHitTesting(false)
 
             NiceDivider(divider: theme.postLinks.divider)
 

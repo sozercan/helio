@@ -1,10 +1,3 @@
-//
-//  Tabber.swift
-//  Helio
-//
-//  Created by Igor Marcossi on 24/06/23.
-//
-
 import Defaults
 import SpriteKit
 import SwiftUI
@@ -24,8 +17,6 @@ struct Tabber: View {
     Tabber.updateTabAndNavBar(tabTheme: theme.general.tabBarBG, navTheme: theme.general.navPanelBG)
   }
 
-  /// Blurry bars are left to the system, which draws them in Liquid Glass with the scroll edge
-  /// effect. Only opaque theme colors override the appearance.
   static func updateTabAndNavBar(tabTheme: ThemeForegroundBG, navTheme: ThemeForegroundBG) {
     if !navTheme.blurry {
       let navAppearance = UINavigationBarAppearance()
@@ -41,7 +32,6 @@ struct Tabber: View {
     }
   }
 
-  /// Me's tab title: the username, if the setting asks for it.
   private var meTitle: String {
     appearanceDefSettings.showUsernameInTabBar ? RedditAPI.shared.me?.data?.name ?? "Me" : "Me"
   }
@@ -81,7 +71,6 @@ struct Tabber: View {
           .hidesTabBarOnMac()
       }
 
-      // The search role puts Search in its own glass button after the tab bar.
       Tab("Search", systemImage: "magnifyingglass", value: Nav.TabIdentifier.search, role: .search) {
         WithCredentialOnly(credential: redditCredentialsManager.selectedCredential) {
           Search(router: nav[.search])
@@ -91,16 +80,12 @@ struct Tabber: View {
         .hidesTabBarOnMac()
       }
     }
-    // Only the bottom tab bar minimizes. On wide layouts (iPad, unfolded iPhone Duo) it would only
-    // keep the posts split view from showing its sidebar.
     .tabBarMinimizeBehavior(isWideLayout ? .automatic : .onScrollDown)
     .openFromWebListener()
     .newCredentialListener()
-    .themeImportingListener() // From local file
+    .themeImportingListener()
     .globalLoaderProvider()
     .refetchMeListener()
-    // Selection/onboarding and the initial profile must not wait for a background
-    // scheduling window while the user is already interacting with the app.
     .task(priority: .userInitiated) {
       autoSelectCredentialIfNil()
       checkForOnboardingStatus()
@@ -109,8 +94,6 @@ struct Tabber: View {
       }
     }
     .task(priority: .utility) {
-      // Before the first page a link opens in the app: on Mac each one, elsewhere each one while
-      // an extension is on.
       if Nav.opensWebPagesInApp || WebExtensionStore.shared.hasEnabledExtensions {
         await WebExtensionRuntime.shared.start()
       }
@@ -129,12 +112,6 @@ struct Tabber: View {
 }
 
 private extension View {
-  /// Mac shows the tabs in `MacTabToolbar` instead. The tab's screens also run up under that
-  /// toolbar, as in Mac apps such as Reminders, so the theme's background fills the window to
-  /// its top edge and the subs sidebar runs its full height, instead of stopping under a band of
-  /// the window's own grey. Each column still keeps its content below the toolbar, which UIKit
-  /// gives it as safe area.
-  @ViewBuilder
   func hidesTabBarOnMac() -> some View {
     #if targetEnvironment(macCatalyst)
       toolbar(.hidden, for: .tabBar)

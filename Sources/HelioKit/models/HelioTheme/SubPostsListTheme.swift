@@ -1,10 +1,3 @@
-//
-//  SubPostsListTheme.swift
-//  Helio
-//
-//  Created by Igor Marcossi on 21/11/23.
-//
-
 import Foundation
 
 struct SubPostsListTheme: Codable, Equatable, Hashable {

@@ -116,3 +116,12 @@ custom_rules:
     excluded_match_kinds:
       - comment
       - doccomment
+
+  no_comments:
+    name: "No code comments"
+    regex: "(?m)(//(?![ \\t]*(?:swift-tools-version:|swiftlint:|swiftformat:))|/\\*)"
+    message: "Code comments are banned. Delete tautologies/stale notes, file an issue for excuses, or move architectural decisions to docs/adr/ (run /delete-comment)."
+    severity: warning
+    match_kinds:
+      - comment
+      - doccomment

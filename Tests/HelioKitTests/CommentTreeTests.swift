@@ -2,7 +2,6 @@ import Foundation
 import Testing
 @testable import HelioKit
 
-/// Swift Testing also declares a `Comment` type.
 private typealias RedditComment = HelioKit.Comment
 
 @MainActor
@@ -16,7 +15,6 @@ struct CommentTreeTests {
     return comment
   }
 
-  /// Rows as readable labels keyed by the comments' data ids (entity ids have the kind appended).
   private func labels(_ rows: [CommentRow]) -> [String] {
     rows.map { row in
       let id = row.comment.data?.id ?? "?"

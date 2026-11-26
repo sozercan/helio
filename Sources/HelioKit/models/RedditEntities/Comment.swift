@@ -1,10 +1,3 @@
-//
-//  Comment.swift
-//  Helio
-//
-//  Created by Igor Marcossi on 28/06/23.
-//
-
 import CoreData
 import Defaults
 import Foundation
@@ -47,7 +40,6 @@ extension Comment {
     }
   }
 
-  /// Loads a comment known only by id (a link to it inside a post).
   func fetchItself() {
     let fullname = fullname
     Task(priority: .utility) {
@@ -66,9 +58,6 @@ extension Comment {
 
   func setupHelioData() {
     self.helioData = .init()
-//    guard let helioData = self.helioData, let data = self.data else { return }
-//    let theme = InMemoryTheme.shared.currentTheme.comments.theme
-//    let cs: ColorScheme = UIScreen.main.traitCollection.userInterfaceStyle == .dark ? .dark : .light
   }
 
   static func initMultiple(datas: [ListingChild<T>], parent: [GenericRedditEntity<T, B>]? = nil) -> [Comment] {
@@ -83,12 +72,10 @@ extension Comment {
     }
     var ids: [String] = []
     walk(comments) { ids.append($0.id) }
-    // toggleCollapsed stores the entity id, which has the kind appended (e.g. "abct1").
     let context = PersistenceController.shared.primaryBGContext
     let fetchRequest = NSFetchRequest<CollapsedComment>(entityName: "CollapsedComment")
     fetchRequest.predicate = NSPredicate(format: "commentID IN %@", ids)
     let collapsedIDs = context.performAndWait { Set(((try? context.fetch(fetchRequest)) ?? []).compactMap(\.commentID)) }
-    // Keep Reddit's own collapsed flag (low score, crowd control) unless the user collapsed it.
     if !collapsedIDs.isEmpty {
       walk(comments) {
         if collapsedIDs.contains($0.id) {
@@ -99,8 +86,6 @@ extension Comment {
     return comments
   }
 
-  /// Collapses or expands the comment (toggles when `collapsed` is nil) and stores the result.
-  /// The record follows the new state: Reddit can collapse a comment that has no record.
   func toggleCollapsed(_ collapsed: Bool? = nil, optimistic: Bool = false) {
     let newState = collapsed ?? !(data?.collapsed ?? false)
     if optimistic, data?.collapsed != newState {
@@ -138,24 +123,11 @@ extension Comment {
   func loadChildren(parent: CommentParentElement, postFullname: String, avatarSize: Double, post: Post?) async {
     if let kind, kind == "more", let data, let count = data.count, let parent_id = data.parent_id, let childrenIDS = data.children {
       let actualID = id
-      //      if actualID.hasSuffix("-more") {
-      //        actualID.removeLast(5)
-      //      }
 
       let childrensLimit = 25
 
       if let children = await RedditAPI.shared.fetchMoreReplies(comments: count > 0 ? Array(childrenIDS.prefix(childrensLimit)) : [String(parent_id.dropFirst(3))], moreID: actualID, postFullname: postFullname) {
         let parentID = data.parent_id ?? ""
-        //        switch parent {
-        //        case .comment(let comment):
-        //          if let name = comment.data?.parent_id ?? comment.data?.name {
-        //              parentID = name
-        //          }
-        //        case .post(_):
-        //          if let postID = children[0].data?.link_id {
-        //            parentID = postID
-        //          }
-        //        }
 
         let loadedComments: [Comment] = nestComments(children, parentID: parentID)
 
@@ -297,12 +269,6 @@ extension Comment {
 
   func edit(_ newBody: String) async -> Bool? {
     if let data, let name = data.name {
-      //      let oldBody = data.body
-      //      await MainActor.run {
-      //        withAnimation {
-      //          self.data?.body = newBody
-      //        }
-      //      }
       let result = await RedditAPI.shared.edit(fullname: name, newText: newBody)
       if result ?? false {
         await MainActor.run {
@@ -311,13 +277,6 @@ extension Comment {
           }
         }
       }
-      //      if result == nil || !result! {
-      //        await MainActor.run {
-      //          withAnimation {
-      //            self.data?.body = oldBody
-      //          }
-      //        }
-      //      }
       return result
     }
     return nil
@@ -346,10 +305,6 @@ class CommentHelioData: Hashable {
     lhs.avatarImageRequest?.url == rhs.avatarImageRequest?.url
   }
 
-  //  var permaURL: URL? = nil
-  //  @Published var extractedMedia: MediaExtractedType? = nil
-  //  var subreddit: Subreddit?
-  //  @Published var mediaImageRequest: [ImageRequest] = []
   var avatarImageRequest: ImageRequest?
   var commentBodySize: CGSize = .zero
   var bodyAttr: NSAttributedString?
@@ -366,30 +321,14 @@ struct CommentData: GenericRedditEntityDataType {
   }
 
   var subreddit_id: String?
-  ///  let approved_at_utc: Int?
-  ///  let author_is_blocked: Bool?
-  ///  let comment_type: String?
-  ///  let awarders: [String]?
-  ///  let mod_reason_by: String?
-  ///  let banned_by: String?
-  ///  let author_flair_type: String?
-  ///  let total_awards_received: Int?
   var subreddit: String?
-  //  let author_flair_template_id: String?
   var likes: Bool?
   var replies: Either<String, Listing<CommentData>>?
-  //  let user_reports: [String]?
   var saved: Bool?
   var id: String
-  //  let banned_at_utc: String?
-  //  let mod_reason_title: String?
-  //  let gilded: Int?
   var archived: Bool?
-  //  let collapsed_reason_code: String?
-  //  let no_follow: Bool?
   var count: Int?
   var author: String?
-  //  let can_mod_post: Bool?
   var created_utc: Double?
   var send_replies: Bool?
   var parent_id: String?
@@ -397,42 +336,21 @@ struct CommentData: GenericRedditEntityDataType {
   var author_fullname: String?
   var approved_by: String?
   var mod_note: String?
-  //  let all_awardings: [String]?
   var collapsed: Bool?
   var body: String?
-  //  let edited: Bool?
   var top_awarded_type: String?
-  //  let author_flair_css_class: String?
   var name: String?
   var is_submitter: Bool?
   var downs: Int?
-  //  let author_flair_richtext: [String]?
-  //  let author_patreon_flair: Bool?
   var children: [String]?
   var body_html: String?
-  //  let removal_reason: String?
-  //  let collapsed_reason: String?
-  //  let distinguished: String?
-  //  let associated_award: String?
-  //  let stickied: Bool?
-  //  let author_premium: Bool?
-  //  let can_gild: Bool?
-  //  let gildings: [String: String]?
-  //  let unrepliable_reason: String?
-  //  let author_flair_text_color: String?
-  /// Reddit hides scores on new comments in some subreddits.
   var score_hidden: Bool?
   var permalink: String?
-  //  let subreddit_type: String?
-  //  let locked: Bool?
-  //  let report_reasons: String?
   var created: Double?
   var author_flair_text: String?
-  //  let treatment_tags: [String]?
   var link_id: String?
   var link_title: String?
   var subreddit_name_prefixed: String?
-  //  let controversiality: Int?
   var depth: Int?
   var author_flair_background_color: String?
   var collapsed_because_crowd_control: String?
@@ -457,17 +375,6 @@ struct CommentData: GenericRedditEntityDataType {
     VotesKit(ups: ups ?? 0, ratio: 0, likes: likes, id: id)
   }
 }
-
-// Encode AttributedString manually
-// func encode(to encoder: Encoder) throws {
-//   var container = encoder.container(keyedBy: CodingKeys.self)
-//
-//   // ...encode all other properties...
-//
-//   if let helioBodyAttr = helioBodyAttr {
-//       try container.encode(helioBodyAttr.markdownRepresentation, forKey: .helioBodyAttr)
-//   }
-// }
 
 enum CommentSortOption: Codable, CaseIterable, Identifiable, Defaults.Serializable {
   var id: String {

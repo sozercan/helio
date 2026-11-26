@@ -1,10 +1,3 @@
-//
-//  removeDefaultThemeFromThemes.swift
-//  Helio
-//
-//  Created by Igor Marcossi on 30/11/23.
-//
-
 import Defaults
 import Foundation
 

@@ -1,10 +1,3 @@
-//
-//  PostPageDefSettings.swift
-//  Helio
-//
-//  Created by Igor Marcossi on 15/12/23.
-//
-
 import Defaults
 
 struct PostPageDefSettings: Equatable, Hashable, Codable, Defaults.Serializable {

@@ -1,10 +1,3 @@
-//
-//  GalleryThumb.swift
-//  Helio
-//
-//  Created by Igor Marcossi on 22/08/23.
-//
-
 import Defaults
 import Nuke
 import SwiftUI
@@ -20,8 +13,6 @@ struct GalleryThumb: View, Equatable {
   var url: URL
   var imgRequest: ImageRequest?
   var posterURL: URL?
-
-  //  @Environment(\.useTheme) private var selectedTheme
 
   var body: some View {
     URLImage(url: url, imgRequest: imgRequest, processors: [.resize(width: width)], size: CGSize(width: width, height: height ?? 0), posterURL: posterURL)

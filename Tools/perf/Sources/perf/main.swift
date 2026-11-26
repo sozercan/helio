@@ -18,7 +18,6 @@ Mac. Markers: home_open, scroll_start, scroll_end, post_open, cscroll_start, csc
 on Mac switch_start, switch_end, resize_start, resize_end.
 """
 
-/// Positional arguments and `--name value` options (`--profile` takes none).
 struct Arguments {
   var positional: [String] = []
   var options: [String: String] = [:]

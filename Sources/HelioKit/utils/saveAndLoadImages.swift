@@ -1,10 +1,3 @@
-//
-//  saveAndLoadImages.swift
-//  Helio
-//
-//  Created by Igor Marcossi on 07/09/23.
-//
-
 import Foundation
 import SwiftUI
 import UIKit
@@ -15,7 +8,6 @@ func saveImage(image: UIImage) -> String? {
   guard let documentsDirectory = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first else { return nil }
 
   let id = UUID().uuidString
-//  let fileName = id
   var data: Data?
   var ext: String?
   if let newData = image.jpegData(compressionQuality: 1) {
@@ -30,11 +22,9 @@ func saveImage(image: UIImage) -> String? {
 
   let fileURL = documentsDirectory.appendingPathComponent("\(id).\(ext)")
 
-  // Checks if file exists, removes it if so.
   if FileManager.default.fileExists(atPath: fileURL.path) {
     do {
       try FileManager.default.removeItem(atPath: fileURL.path)
-//      print("Removed old image")
     } catch let removeError {
       print("couldn't remove file at path", removeError)
     }
@@ -62,24 +52,6 @@ func loadImage(fileName: String) -> UIImage? {
 
   return nil
 }
-
-// struct ZipDocument: FileDocument {
-//    static var readableContentTypes = [UTType.zip]
-//    var zipfile: URL
-//
-//    init(url: URL) {
-//        self.zipfile = url
-//    }
-//
-//    init(configuration: ReadConfiguration) throws {
-//        // We don't read files, so we just need to fulfill the requirements of the protocol here, no actual implementation.
-//        throw CocoaError(.fileReadCorruptFile)
-//    }
-//
-//    func fileWrapper(configuration: WriteConfiguration) throws -> FileWrapper {
-//        return try FileWrapper(url: zipfile, options: .immediate)
-//    }
-// }
 
 func createZip(images: [String], theme: HelioTheme) throws -> URL {
   let fileManager = FileManager.default

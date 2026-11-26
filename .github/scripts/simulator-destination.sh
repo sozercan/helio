@@ -1,17 +1,8 @@
 #!/usr/bin/env bash
-# Prints an xcodebuild destination for an iPhone simulator on the newest installed iOS
-# runtime (26 or later, the deployment target). Runner images vary: simulator names change
-# with each Xcode and some images ship without an iOS runtime, so nothing is hard-coded.
-# Installs the runtime and creates a device when needed. Diagnostics go to stderr.
-#
-# iPhone Duo is skipped: a runtime can hold only the Duo (iOS 27.1 on the xcode-27 image), and
-# its simulator is slow to start for unit tests, so a regular iPhone on an older runtime wins.
 set -euo pipefail
 
 min_major=26
 
-# Available iOS runtimes at or above min_major, best first, as JSON lines: general runtimes
-# before device-specific ones (such as iOS-27-1-iPhone19-4), then newest first.
 runtimes() {
   xcrun simctl list runtimes available --json | jq -c --argjson min "$min_major" '
     [.runtimes[] | select(.platform == "iOS")
@@ -20,8 +11,6 @@ runtimes() {
         (.version | split(".") | map(tonumber))]) | reverse | .[]'
 }
 
-# A regular iPhone (not Duo) on `runtime`: an existing one, else a new one. Empty when the
-# runtime can't run one.
 iphone_on() {
   local runtime=$1 runtime_id udid device_type
   runtime_id=$(jq -r .identifier <<<"$runtime")
@@ -31,8 +20,6 @@ iphone_on() {
     device_type=$(jq -r '[.supportedDeviceTypes[] | select(.productFamily == "iPhone") | select(.name | test("Duo") | not)] | last | .identifier // empty' <<<"$runtime")
     [ -z "$device_type" ] && return 0
     echo "No iPhone simulator on $runtime_id; creating one ($device_type)" >&2
-    # A failed create doesn't stop the script here (inside a command substitution): treat it,
-    # or an empty result, as this runtime not running one and let the caller try the next.
     udid=$(xcrun simctl create "CI iPhone" "$device_type" "$runtime_id") || return 0
   fi
   [ -n "$udid" ] || return 0

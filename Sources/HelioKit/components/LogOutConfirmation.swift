@@ -1,18 +1,10 @@
-//
-//  LogOutConfirmation.swift
-//  Helio
-//
-
 import SwiftUI
 
-/// Asks before logging out of an account, wherever Log Out was chosen: the accounts menu in a
-/// navigation bar, the Mac window toolbar or the menu bar. The alert is on the app's root view.
 @MainActor
 @Observable
 final class LogOutConfirmation {
   static let shared = LogOutConfirmation()
 
-  /// The account waiting for the answer.
   var credential: RedditCredential?
 
   func ask(_ cred: RedditCredential) {
@@ -25,8 +17,6 @@ final class LogOutConfirmation {
 }
 
 extension View {
-  /// Shows `LogOutConfirmation`'s alert. Logging out removes the account from Helio, as
-  /// deleting its credential in Settings does.
   func logOutConfirmation() -> some View {
     modifier(LogOutConfirmationModifier())
   }

@@ -1,25 +1,14 @@
-//
-//  VoteButton.swift
-//  Helio
-//
-//  Created by Daniel Inama on 12/08/23.
-//
-
 import SwiftUI
 
 extension Color {
   static let upvote = Color(UIColor(light: UIColor(hex: "FF5D00"), dark: UIColor(hex: "F36700")))
   static let downvote = Color(UIColor(light: UIColor(hex: "565FE3"), dark: UIColor(hex: "6263E1")))
-  /// Scores in the vote colors: the button fills are too light for text on white (3.1:1) and
-  /// too dark on black, so text uses shades that reach 4.5:1.
   static let upvoteText = Color(UIColor(light: UIColor(hex: "C84300"), dark: UIColor(hex: "F36700")))
   static let downvoteText = Color(UIColor(light: UIColor(hex: "565FE3"), dark: UIColor(hex: "7B7CE8")))
 }
 
-/// An arrow that fills a rounded square with its vote color while active.
 struct VoteButton: View, Equatable {
   static let size: CGFloat = 30
-  /// The tap target around the drawn square, so adjacent buttons stay easy to hit.
   static let hitSize: CGFloat = 44
 
   static func == (lhs: VoteButton, rhs: VoteButton) -> Bool {
@@ -29,7 +18,6 @@ struct VoteButton: View, Equatable {
   var active: Bool
   var color: Color
   var image: String
-  /// What VoiceOver calls it, "Upvote" or "Downvote".
   var label: String
   var action: () -> Void
 

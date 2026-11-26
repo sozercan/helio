@@ -1,10 +1,3 @@
-//
-//  importApolloReadHistory.swift
-//  Helio
-//
-//  Imports the read posts stored in an Apollo backup (`ReadPostIDs` in preferences.plist).
-//
-
 import CoreData
 import Foundation
 import Zip
@@ -32,7 +25,6 @@ enum ApolloReadHistory {
     var invalid: Int
   }
 
-  /// Reads Apollo's read post ids from a backup .zip or preferences.plist and marks them read.
   static func importBackup(at url: URL) async throws -> ImportResult {
     let parsed = try postIDs(inBackupAt: url)
     let imported = try await markRead(postIDs: parsed.ids)
@@ -55,7 +47,6 @@ enum ApolloReadHistory {
       let workDir = fileManager.temporaryDirectory.appendingPathComponent("apollo-import-\(UUID().uuidString)", isDirectory: true)
       defer { try? fileManager.removeItem(at: workDir) }
       try fileManager.createDirectory(at: workDir, withIntermediateDirectories: true)
-      // Zip needs a path it can read after the security scope ends.
       let zipCopy = workDir.appendingPathComponent("backup.zip")
       try fileManager.copyItem(at: url, to: zipCopy)
       let unzipped = workDir.appendingPathComponent("unzipped", isDirectory: true)
@@ -91,7 +82,6 @@ enum ApolloReadHistory {
     return (ids, invalid)
   }
 
-  /// Bare base-36 post id, without a "t3_" prefix.
   static func postID(_ raw: String) -> String? {
     var id = raw.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
     if id.hasPrefix("t3_") {
@@ -101,8 +91,6 @@ enum ApolloReadHistory {
     return id
   }
 
-  /// Adds read entries for posts that don't have one. Returns how many were added.
-  /// Uses its own context, so a failed import leaves nothing half-inserted in the shared one.
   static func markRead(postIDs ids: [String]) async throws -> Int {
     let context = PersistenceController.shared.container.newBackgroundContext()
     context.mergePolicy = NSMergePolicy.mergeByPropertyObjectTrump

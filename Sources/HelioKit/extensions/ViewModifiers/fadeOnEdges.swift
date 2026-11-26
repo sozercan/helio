@@ -1,10 +1,3 @@
-//
-//  fadeOnEdges.swift
-//  Helio
-//
-//  Created by Igor Marcossi on 19/12/23.
-//
-
 import SmoothGradient
 import SwiftUI
 

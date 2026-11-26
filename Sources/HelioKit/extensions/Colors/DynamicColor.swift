@@ -1,17 +1,9 @@
-//
-//  DynamicColor.swift
-//  Helio
-//
-//  Created by Igor Marcossi on 14/12/23.
-//
-
 import SwiftUI
 import UIKit
 
 extension Color {}
 
 extension UIColor {
-  /// A color for light and dark mode, with optional stronger versions for Increase Contrast.
   convenience init(light: UIColor, dark: UIColor, highContrastLight: UIColor? = nil, highContrastDark: UIColor? = nil) {
     self.init(dynamicProvider: { traits in
       let highContrast = traits.accessibilityContrast == .high

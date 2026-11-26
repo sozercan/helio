@@ -1,10 +1,3 @@
-//
-//  RR.swift
-//  Helio
-//
-//  Created by Igor Marcossi on 26/06/23.
-//
-
 import SwiftUI
 
 struct FilledRoundedRectangle<S: ShapeStyle>: View, Equatable {

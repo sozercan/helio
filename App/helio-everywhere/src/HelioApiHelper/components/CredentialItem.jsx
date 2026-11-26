@@ -1,10 +1,7 @@
 import { useState, useEffect } from "react"
 import { HiMiniTrash } from "@react-icons/all-files/hi2/HiMiniTrash"
-// import { HiMiniTrash } from "react-icons/hi2"
 import { GiHouseKeys } from "@react-icons/all-files/gi/GiHouseKeys"
-// import { GiHouseKeys } from "react-icons/gi"
 import { PiKeyFill } from "@react-icons/all-files/pi/PiKeyFill"
-// import { PiKeyFill } from "react-icons/pi"
 import { motion } from "framer-motion"
 
 const CredentialItem = ({ credential, del, use, setSpinner }) => {
@@ -48,7 +45,6 @@ const CredentialItem = ({ credential, del, use, setSpinner }) => {
   const { name, appID, appSecret } = credential
   const bordered = !del && !use
   return (
-    // <></>
     <motion.div layout="position" className={`existentCredential${bordered ? " bordered" : ""}`}>
       <GiHouseKeys />
       <div className="body">

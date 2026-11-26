@@ -1,10 +1,3 @@
-//
-//  InMemoryTheme.swift
-//  Helio
-//
-//  Created by Igor Marcossi on 25/01/24.
-//
-
 import Defaults
 import Foundation
 import SwiftUI

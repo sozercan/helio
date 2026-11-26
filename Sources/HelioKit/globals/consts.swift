@@ -1,10 +1,3 @@
-//
-//  consts.swift
-//  Helio
-//
-//  Created by Igor Marcossi on 20/07/23.
-//
-
 import Foundation
 import HighlightedTextEditor
 import Lottie
@@ -14,8 +7,6 @@ import UIKit
 let spring = Animation.interpolatingSpring(stiffness: 300, damping: 30, initialVelocity: 0)
 let draggingAnimation = Animation.interpolatingSpring(stiffness: 1000, damping: 75, initialVelocity: 0)
 
-/// `animation`, or with Reduce Motion on, a short ease-out to the same place: no bounce or
-/// overshoot. For springs that end gestures, like a swipe snapping back.
 @MainActor
 func motionAware(_ animation: Animation) -> Animation {
   UIAccessibility.isReduceMotionEnabled ? .easeOut(duration: 0.2) : animation

@@ -1,10 +1,3 @@
-//
-//  CommentsThemingPanel.swift
-//  Helio
-//
-//  Created by Igor Marcossi on 07/09/23.
-//
-
 import SwiftUI
 
 private enum Category: String, CaseIterable {
@@ -24,7 +17,6 @@ struct CommentsGeneralSettings: View {
       LabeledSlider(label: "Outer horizontal padding", value: $theme.comments.theme.outerHPadding, range: 0 ... 64)
         .resetter($theme.comments.theme.outerHPadding, defaultTheme.comments.theme.outerHPadding)
       Divider()
-      // Hack for bypassing SwiftUI views limit
       Group {
         LabeledSlider(label: "Root comments spacing", value: $theme.comments.spacing, range: 0 ... 64)
           .resetter($theme.comments.spacing, defaultTheme.comments.spacing)
@@ -45,7 +37,6 @@ struct CommentsGeneralSettings: View {
     }
 
     FakeSection("Indentation lines") {
-      // Colored bars: one straight bar per reply, colored by depth. Off: curved guides in one color.
       Toggle("Colored depth bars", isOn: Binding(
         get: { !theme.comments.theme.indentColors.isEmpty },
         set: { theme.comments.theme.indentColors = $0 ? rainbowIndentColors : [] },
@@ -56,7 +47,6 @@ struct CommentsGeneralSettings: View {
       LabeledSlider(label: bars ? "Indent per depth" : "Corner curvature", value: $theme.comments.theme.indentCurve, range: 3 ... 32)
         .resetter($theme.comments.theme.indentCurve, defaultTheme.comments.theme.indentCurve)
 
-      // With bars, this color draws the separators between comments.
       SchemesColorPicker(theme: $theme.comments.theme.indentColor, defaultVal: defaultTheme.comments.theme.indentColor)
 
       if bars {
@@ -105,7 +95,6 @@ struct CommentsThemingPanel: View {
   @Binding var theme: HelioTheme
   @State private var selectedCategory = Category.general.rawValue
   @State private var sampleComment = Comment(data: getCommentSampleData())
-  ///
   var body: some View {
     ScrollWithPreview(handlerBGOnly: false, theme: theme.postLinks.bg) {
       VStack(spacing: 32) {
@@ -135,7 +124,6 @@ struct CommentsThemingPanel: View {
       .highPriorityGesture(DragGesture())
       .frame(height: (.screenH - getSafeArea().top - getSafeArea().bottom) / 2, alignment: .top)
       .clipped()
-//      .mask(RR(20, .black).padding(.horizontal, theme.comments.theme.outerHPadding))
     }
     .scrollContentBackground(.hidden)
     .themedListBG(theme.lists.bg)

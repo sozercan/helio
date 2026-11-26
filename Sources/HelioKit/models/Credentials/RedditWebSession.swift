@@ -1,41 +1,22 @@
-//
-//  RedditWebSession.swift
-//  Helio
-//
-
 import Alamofire
 import Foundation
 import os
 import Synchronization
 
-/// Signing in without an API key. The user signs in on reddit.com (`RedditWebLoginView`), Helio
-/// keeps the session's cookies, and it trades them for ~24 h OAuth bearer tokens at the token
-/// service Reddit's web site uses. Those tokens work on the same `oauth.reddit.com` REST API
-/// an API key's do.
 enum RedditWebSession {
-  /// The client id of Reddit's desktop web site (the one `token_v2` belongs to). It has no secret
-  /// and is sent with every signed-out reddit.com page load.
   static let clientID = "0R-WAMhuoo-MyQ"
   static let loginURL = URL(string: "https://www.reddit.com/login")!
   static let tokenURL = "https://accounts.reddit.com/api/access_token"
-  /// The cookie that carries a reddit.com sign-in. Reddit sets it for signed-out visitors too, so
-  /// its presence alone doesn't prove one.
   static let sessionCookieName = "reddit_session"
 
   private static let logger = Logger(subsystem: "com.sertacozercan.helio", category: "WebSession")
 
-  /// How long a session whose token request failed waits before asking again. Without it every
-  /// API request would ask anew while the token service is down or refusing.
   static let failedMintCooldown: TimeInterval = 30
-  /// When each session's last token request failed, by its cookies.
   private static let failedMints = Mutex<[String: Date]>([:])
 
   enum MintResult: Equatable {
-    /// `cookies`: the session's cookies with any Reddit renewed in the response.
     case token(RedditCredential.AccessToken, cookies: String)
-    /// Reddit no longer recognizes the session: the user has to sign in again.
     case signedOut
-    /// Anything else, such as a dropped connection. The session may still be good.
     case failed
   }
 
@@ -71,7 +52,6 @@ enum RedditWebSession {
         encoder: JSONParameterEncoder.default,
         headers: headers,
         requestModifier: { request in
-          // The session's cookies go in the header above, never into the shared cookie store.
           request.httpShouldHandleCookies = false
           request.cachePolicy = .reloadIgnoringLocalAndRemoteCacheData
         },
@@ -88,11 +68,9 @@ enum RedditWebSession {
     case let .success(data):
       switch tokenSubject(data.access_token) {
       case .signedOut:
-        // A signed-out session still gets a token, for an anonymous visitor.
         logger.notice("Token service returned a signed-out token; the web session ended")
         return .signedOut
       case .unknown:
-        // Keeps the session: a token Helio can't read says nothing about it.
         logger.error("Token service returned a token Helio can't read")
         return .failed
       case .account:
@@ -111,16 +89,11 @@ enum RedditWebSession {
 
   enum TokenSubject { case account, signedOut, unknown }
 
-  /// Whom a bearer acts for, from its JWT subject: a signed-out visitor's is a logged-out id
-  /// (`loid`) instead of an account.
   static func tokenSubject(_ token: String) -> TokenSubject {
     guard let subject = jwtClaims(token)?["sub"] as? String else { return .unknown }
     return subject.hasPrefix("loid") ? .signedOut : .account
   }
 
-  /// Whether a cached web-session token was minted for `clientID` (or isn't a readable JWT with a
-  /// `cid` claim). Forces a fresh mint when Reddit blocks an older client id, since `oauth.reddit.com`
-  /// answers those with a 403 block page instead of a 401.
   static func isCurrentClientToken(_ token: String) -> Bool {
     guard let cid = jwtClaims(token)?["cid"] as? String else { return true }
     return cid == clientID
@@ -135,8 +108,6 @@ enum RedditWebSession {
     return try? JSONSerialization.jsonObject(with: data) as? [String: Any]
   }
 
-  /// `header` with the cookies a response set: new values replace old ones, and cookies the
-  /// response expired are dropped.
   static func merging(_ header: String, with setCookies: [HTTPCookie]) -> String {
     var pairs: [(name: String, value: String)] = header.split(separator: ";").compactMap { pair in
       let parts = pair.trimmingCharacters(in: .whitespaces).split(separator: "=", maxSplits: 1)
@@ -160,12 +131,10 @@ enum RedditWebSession {
     }
   }
 
-  /// The value of reddit.com's session cookie, or `nil` when there is none.
   static func sessionCookieValue(from cookies: [HTTPCookie]) -> String? {
     redditCookies(cookies).first { $0.name == sessionCookieName && !$0.value.isEmpty }?.value
   }
 
-  /// The reddit.com cookies as a `Cookie` header, or `nil` when the session cookie isn't among them.
   static func cookieHeader(from cookies: [HTTPCookie]) -> String? {
     guard sessionCookieValue(from: cookies) != nil else { return nil }
     return redditCookies(cookies).map { "\($0.name)=\($0.value)" }.joined(separator: "; ")
@@ -173,17 +142,12 @@ enum RedditWebSession {
 
   enum SignInResult {
     case signedIn(RedditCredential)
-    /// The token service says the cookies are a signed-out visitor's.
     case signedOut
-    /// Anything else, such as a dropped connection or a profile Reddit wouldn't return.
     case failed
   }
 
-  /// Turns `credential` into a web-session credential for the signed-in session and fills in its
-  /// account. The token service, not the cookies, decides whether someone is signed in.
   static func signIn(_ credential: RedditCredential, cookies: String, userAgent: String) async -> SignInResult {
     var signedIn = credential
-    // Clearing the API key first: changing it resets the identity set below.
     signedIn.apiAppID = ""
     signedIn.apiAppSecret = ""
     signedIn.clearIdentity()
@@ -204,7 +168,6 @@ enum RedditWebSession {
     }
     signedIn.accessToken = token
     signedIn.webSessionCookies = renewedCookies
-    // Not `fetchMe`, which would also make this account the app's current one before it's saved.
     let me = await RedditAPI.shared.doRequest("\(RedditAPI.redditApiURLBase)/api/v1/me", method: .get, decodable: UserData.self, altCredential: signedIn, saveToken: false)
     guard case let .success(me) = me else { return .failed }
     signedIn.setProfile(from: me)

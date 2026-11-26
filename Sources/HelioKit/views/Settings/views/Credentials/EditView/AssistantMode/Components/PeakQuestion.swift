@@ -1,10 +1,3 @@
-//
-//  PeakQuestion.swift
-//  Helio
-//
-//  Created by Igor Marcossi on 04/01/24.
-//
-
 import SwiftUI
 
 struct PeakQuestion: Identifiable, Equatable {

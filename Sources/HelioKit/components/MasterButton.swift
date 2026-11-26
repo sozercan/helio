@@ -1,10 +1,3 @@
-//
-//  MasterButton.swift
-//  Helio
-//
-//  Created by Igor Marcossi on 29/06/23.
-//
-
 import SwiftUI
 
 enum MasterButtonMode {
@@ -63,7 +56,6 @@ struct MasterButton: View {
       .transition(.scaleAndBlur)
     }
     .fontSize(textSize, textWeight, design: textDesign)
-    //            .padding(.vertical, padding)
     .padding(.horizontal, 10 * 1.5)
     .foregroundColor(textColor)
     .frame(maxWidth: fullWidth ? .infinity : nil, maxHeight: fullHeight ? .infinity : height, alignment: align)

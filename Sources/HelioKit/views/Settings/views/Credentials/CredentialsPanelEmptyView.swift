@@ -1,10 +1,3 @@
-//
-//  CredentialsPanelEmptyView.swift
-//  Helio
-//
-//  Created by Igor Marcossi on 31/12/23.
-//
-
 import Defaults
 import SwiftUI
 

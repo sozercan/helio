@@ -1,14 +1,6 @@
-//
-//  themedListSection.swift
-//  Helio
-//
-//  Created by Igor Marcossi on 06/12/23.
-//
-
 import Foundation
 import SwiftUI
 
-/// A view modifier to apply a themed background to a list row.
 struct ThemedListSectionModifier: ViewModifier {
   var disable = false
   @Environment(\.useTheme) private var theme

@@ -52,11 +52,9 @@ struct LightBoxTimelineTests {
 
     let timeline = try LightBoxTimeline.around(last.helioData, in: feed, own: own(last), start: 0)
     let titles = timeline.pages.map(\.post.title)
-    // No page for the text post, nor for a blurred NSFW one.
     #expect(titles == (blurred ? ["Post a", "Post d"] : ["Post a", "Post c", "Post d"]))
     #expect(timeline.pages[timeline.start].post.title == "Post d")
     #expect(timeline.pages[timeline.start].post.key == "opened")
-    // Each page knows its post in the feed, the opened one too, to scroll the feed to.
     #expect(timeline.pages.map(\.post.feedID) == (blurred ? ["a", "d"] : ["a", "c", "d"]))
     timeline.reveal?("a")
     #expect(feed.revealed == ["a"])
@@ -72,7 +70,6 @@ struct LightBoxTimelineTests {
       return
     }
     #expect(shared.url.absoluteString == "https://v.redd.it/v/HLSPlaylist.m3u8")
-    // Another post's video gets a player of its own in the lightbox.
     #expect(holder == nil)
     #expect(timeline.pages[1].media.isScrubbable)
     #expect(!timeline.pages[0].media.isScrubbable)

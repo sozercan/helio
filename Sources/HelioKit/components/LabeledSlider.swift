@@ -1,10 +1,3 @@
-//
-//  LabeledSlider.swift
-//  Helio
-//
-//  Created by Igor Marcossi on 09/09/23.
-//
-
 import SwiftUI
 
 struct LabeledSlider: View {
@@ -21,7 +14,6 @@ struct LabeledSlider: View {
         Text(step == 1 ? Int(value).description : String(format: "%.2f", value))
           .foregroundStyle(Color.secondaryText)
       }
-//      .padding(.vertical, 8)
       HStack {
         Text(Int(range.lowerBound).description)
           .fontSize(15)

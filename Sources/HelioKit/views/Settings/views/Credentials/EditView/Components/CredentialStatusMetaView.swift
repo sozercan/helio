@@ -1,10 +1,3 @@
-//
-//  CredentialStatusMetaView.swift
-//  Helio
-//
-//  Created by Igor Marcossi on 08/01/24.
-//
-
 import SwiftUI
 
 struct CredentialStatusMetaView: View {

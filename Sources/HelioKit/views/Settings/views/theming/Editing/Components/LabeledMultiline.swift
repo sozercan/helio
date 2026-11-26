@@ -1,10 +1,3 @@
-//
-//  LabeledMultiline.swift
-//  Helio
-//
-//  Created by Igor Marcossi on 16/09/23.
-//
-
 import SwiftUI
 
 struct LabeledMultiline<Content: View>: View {

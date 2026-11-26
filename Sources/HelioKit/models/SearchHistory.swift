@@ -1,10 +1,3 @@
-//
-//  SearchHistory.swift
-//  Helio
-//
-//  Recent and favorite searches, kept on device.
-//
-
 import Defaults
 import Foundation
 
@@ -21,10 +14,8 @@ extension Defaults.Keys {
 }
 
 enum SearchHistory {
-  /// Non-favorite searches kept; favorites are never pruned.
   static let maxRecents = 20
 
-  /// Adds or refreshes a search, moving it to the top.
   static func record(_ query: String, type: SearchType, in items: [SearchHistoryItem]) -> [SearchHistoryItem] {
     let query = query.trimmingCharacters(in: .whitespacesAndNewlines)
     guard !query.isEmpty else { return items }
@@ -41,7 +32,6 @@ enum SearchHistory {
     }() }
   }
 
-  /// Past searches containing `text`, favorites first.
   static func suggestions(for text: String, in items: [SearchHistoryItem], limit: Int = 5) -> [SearchHistoryItem] {
     let text = text.trimmingCharacters(in: .whitespacesAndNewlines)
     guard !text.isEmpty else { return [] }

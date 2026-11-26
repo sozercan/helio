@@ -1,10 +1,3 @@
-//
-//  User.swift
-//  Helio
-//
-//  Created by Igor Marcossi on 28/06/23.
-//
-
 import Defaults
 import Foundation
 import SwiftUI

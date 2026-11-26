@@ -1,12 +1,3 @@
-//
-//  AppAssets.swift
-//  Helio
-//
-//  Xcode generates asset symbols (`Image(.loader)`) per module, and the asset catalog
-//  is compiled into the app target, so HelioKit declares the ones it uses against the
-//  main bundle.
-//
-
 import SwiftUI
 
 extension ImageResource {

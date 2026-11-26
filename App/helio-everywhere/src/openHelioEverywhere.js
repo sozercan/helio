@@ -1,5 +1,5 @@
 browser.webNavigation.onBeforeNavigate.addListener(function(details) {
-  if (details.frameId === 0) { // Ensure it's the main frame
+  if (details.frameId === 0) {
     console.log('Navigating to:', details.url);
     
     try {
@@ -7,12 +7,10 @@ browser.webNavigation.onBeforeNavigate.addListener(function(details) {
       console.log('Parsed URL:', url);
 
       if (url.hostname.includes('reddit.com')) {
-        // Modify the URL before navigation
         var newUrl = details.url.replace(/(https?:\/\/)?(www\.)?reddit\.com/gi, 'helioapp://reddit.com');
         console.log('Modified URL:', newUrl);
 
-        // Redirect to the modified URL
-        browser.webNavigation.onBeforeNavigate.removeListener(listener); // Remove the listener to avoid infinite loop
+        browser.webNavigation.onBeforeNavigate.removeListener(listener);
         browser.webNavigation.navigate({ url: newUrl });
       }
     } catch (e) {
@@ -21,5 +19,4 @@ browser.webNavigation.onBeforeNavigate.addListener(function(details) {
   }
 });
 
-// Start listening for navigation events
 var listener = browser.webNavigation.onBeforeNavigate.addListener(function() {});

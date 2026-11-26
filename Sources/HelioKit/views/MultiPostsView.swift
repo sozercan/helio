@@ -1,10 +1,3 @@
-//
-//  MultiPostsView.swift
-//  Helio
-//
-//  Created by Igor Marcossi on 20/08/23.
-//
-
 import Defaults
 import SwiftUI
 
@@ -13,7 +6,6 @@ struct MultiPostsView: View {
 
   @Environment(\.useTheme) private var selectedTheme
   @Environment(\.contentWidth) private var contentWidth
-  ///  @Environment(\.colorScheme) private var cs
   @Default(.SubredditFeedDefSettings) var subFeedSettings
 
   func caller(_ lastElementId: String?, _ sorting: SubListingSortOption?, _ searchQuery: String?, _ flair: String?, _ context: FeedItemsManager<SubListingSortOption>.FetchContext) async -> ([RedditEntityType]?, String?)? {

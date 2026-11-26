@@ -1,24 +1,11 @@
-//
-//  Comment util.swift
-//  Helio
-//
-//  Created by Ethan Bills on 1/11/24.
-//
-
 import Foundation
 import SwiftUI
 
-/// Utility class for handling comments.
 class CommentUtils {
-  /// Shared instance of CommentUtils.
   static let shared = CommentUtils()
 
-  /// Private initializer to enforce singleton pattern.
   private init() {}
 
-  // MARK: - Comment Section Helpers
-
-  /// Preference key to track the anchor points of comments.
   struct AnchorsKey: PreferenceKey {
     typealias Value = [String: Anchor<CGPoint>]
     static var defaultValue: Value {
@@ -30,7 +17,6 @@ class CommentUtils {
     }
   }
 
-  /// Finds the top comment row based on anchors and geometry proxy.
   func topCommentRow(of anchors: CommentUtils.AnchorsKey.Value, in proxy: GeometryProxy) -> String? {
     var yBest = CGFloat.infinity
     var answer: String?

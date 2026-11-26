@@ -15,7 +15,6 @@ struct CredentialStoreMutationTests {
     .init(token: value, expiration: 3600, lastRefresh: Date(timeIntervalSince1970: 1000))
   }
 
-  /// Never hold shared preference changes across a suspension or another test's actor turn.
   private func withSelection(_ id: UUID?, _ operation: @MainActor () throws -> Void) rethrows {
     let previousID = Defaults[.GeneralDefSettings].redditCredentialSelectedID
     defer { Defaults[.GeneralDefSettings].redditCredentialSelectedID = previousID }

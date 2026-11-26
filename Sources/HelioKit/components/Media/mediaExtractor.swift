@@ -1,10 +1,3 @@
-//
-//  mediaExtractor.swift
-//  Helio
-//
-//  Created by Igor Marcossi on 21/08/23.
-//
-
 import Alamofire
 import Foundation
 import Nuke
@@ -20,7 +13,6 @@ struct ImgExtracted: Equatable, Identifiable {
   let url: URL
   let size: CGSize
   let request: ImageRequest
-  /// Static preview shown while an animated image loads.
   var posterURL: URL?
   var id: String {
     self.url.absoluteString
@@ -82,11 +74,6 @@ enum MediaExtractedType: Equatable {
 }
 
 extension MediaExtractedType {
-  /// Whether a feed lets this be tapped. A link always opens: a page's card or address, or a card
-  /// for the Reddit post, subreddit or user the post links to, as the card says where it goes.
-  /// Pictures and videos open from the feed only with "Open media from feed" on, else a tap on
-  /// them opens the post. A linked comment shows as the comment itself in large rows (a tap
-  /// collapses it), and as a link only in compact ones.
   func isTappableInFeed(mediaTappable: Bool, compact: Bool) -> Bool {
     switch self {
     case .link, .post, .subreddit, .user: true
@@ -95,7 +82,6 @@ extension MediaExtractedType {
     }
   }
 
-  /// Starts loading the post, comment, user or subreddit a post links to.
   func loadLinkedEntity() {
     switch self {
     case let .post(extracted): extracted?.entity.fetchItself()
@@ -112,19 +98,10 @@ extension MediaExtractedType {
   }
 }
 
-/// Decodes an image at the size its `Resize` processor fills, a square `side` points wide, so a
-/// large image isn't decoded whole and then redrawn smaller: ImageIO reads it at that size. Not
-/// for GIFs, which would lose their frames.
 func decodingFilling(_ side: Double) -> ImageRequest.ThumbnailOptions {
   ImageRequest.ThumbnailOptions(size: CGSize(width: side, height: side), unit: .points, contentMode: .aspectFill)
 }
 
-/// A single image's processing. A compact row's thumbnail fills its square, and so does an image
-/// whose size Reddit didn't give, which shows in a square until it loads. Otherwise the image is
-/// `contentWidth` points wide, the width it's shown at (narrower when its height is capped):
-/// filling a square instead, as gallery cells do, made a wide image several times the pixels it's
-/// shown with. ImageIO decodes it at that size, unless it's a GIF (`compactThumbnailsGIFs` keeps
-/// a compact thumbnail's decoding for one).
 func singleImageProcessing(compact: Bool, contentWidth: Double, url: URL, knownSize: Bool = true, compactThumbnailsGIFs: Bool = false) -> (processors: [ImageProcessing], userInfo: [ImageRequest.UserInfoKey: Any]) {
   guard contentWidth > 0 || compact else { return ([], [:]) }
   guard compact else {
@@ -143,18 +120,12 @@ func singleImageProcessing(compact: Bool, contentWidth: Double, url: URL, knownS
   return (processors, [.thumbnailKey: ImageRequest.ThumbnailOptions(size: square, unit: .points, contentMode: .aspectFill)])
 }
 
-/// ORDER MATTERS!
-/// Without `fetchLinkMetadata`, link previews download their page, and linked Reddit posts,
-/// comments, users and subreddits load, only once they show (`PostHelioData.deferredMedia`).
 func mediaExtractor(compact: Bool, contentWidth: Double = .screenW, _ data: PostData, theme: HelioTheme? = nil, fetchLinkMetadata: Bool = true) -> MediaExtractedType? {
   guard !data.is_self else { return nil }
 
   let contentWidth = contentWidth - ((theme?.postLinks.theme.innerPadding.horizontal ?? 0) * 2) - ((theme?.postLinks.theme.outerHPadding ?? 0) * 2)
 
-  // A crosspost's own url and media describe the original post's media (often a bare
-  // v.redd.it link with no `media`), which can't be played from here. Show the original.
   if let postEmbed = data.crosspost_parent_list?.first {
-    // The outer post/page owns avatar registration for the complete embedded tree.
     return .repost(Post(data: postEmbed, contentWidth: contentWidth, secondary: true, theme: theme, fetchAvatar: false, fetchLinkMetadata: fetchLinkMetadata))
   }
 
@@ -188,13 +159,11 @@ func mediaExtractor(compact: Bool, contentWidth: Double = .screenW, _ data: Post
       }
       return nil
     }
-    // If no item had usable metadata, fall through instead of showing an empty gallery.
     if !galleryArr.isEmpty {
       return .imgs(galleryArr)
     }
   }
 
-  // Prefer the HLS stream, but play the MP4 fallback when Reddit omits it.
   if let videoPreview = data.preview?.reddit_video_preview, let videoURL = (videoPreview.hls_url ?? videoPreview.fallback_url).flatMap(URL.init(string:)) {
     return .video(SharedVideo.get(url: videoURL, size: videoSize(data, width: videoPreview.width, height: videoPreview.height), posterURL: previewPosterURL(data)))
   }
@@ -203,7 +172,6 @@ func mediaExtractor(compact: Bool, contentWidth: Double = .screenW, _ data: Post
     return .video(SharedVideo.get(url: videoURL, size: videoSize(data, width: redditVideo.width.map(Double.init), height: redditVideo.height.map(Double.init)), posterURL: previewPosterURL(data)))
   }
 
-  // Only the video id is required; the rest of the oEmbed payload is often missing.
   if data.media?.type == "youtube.com", let oembed = data.media?.oembed, let html = oembed.html, let ytID = extractYoutubeIdFromOEmbed(html), let thumbURL = oembed.thumbnail_url.flatMap(URL.init(string:)) ?? URL(string: "https://i.ytimg.com/vi/\(ytID)/hqdefault.jpg"), let watchURL = URL(string: "https://www.youtube.com/watch?v=\(ytID)") {
     let thumbReq = youTubeThumbnailRequest(thumbURL, contentWidth: contentWidth, theme: theme)
     let size = CGSize(width: CGFloat(oembed.width ?? 16), height: CGFloat(oembed.height ?? 9))
@@ -225,7 +193,6 @@ func mediaExtractor(compact: Bool, contentWidth: Double = .screenW, _ data: Post
     return .imgs([imgExtracted])
   }
 
-  // Prefer the full-size i.redd.it image, falling back to the (signed) preview URL.
   if let images = data.preview?.images, !images.isEmpty, let image = images[0].source, let rawSrc = image.url, !rawSrc.contains("external-preview"), let imgURL = rootURL(rawSrc.replacing("/preview.", with: "/i.").escape) ?? loadableMediaURL(rawSrc.escape), let width = image.width, let height = image.height {
     let (processors, userInfo) = singleImageProcessing(compact: compact, contentWidth: contentWidth, url: imgURL, compactThumbnailsGIFs: true)
     let imgExtracted = ImgExtracted(url: imgURL, size: CGSize(width: width, height: height), request: ImageRequest(url: imgURL, processors: processors + [ImageProcessors.ScaleFixer()], userInfo: userInfo))
@@ -266,7 +233,6 @@ func mediaExtractor(compact: Bool, contentWidth: Double = .screenW, _ data: Post
         }
         let post = Post(id: postId, typePrefix: Post.prefix)
         return linked(.post(EntityExtracted(subredditID: subredditName, postID: postId, entity: post)))
-//        return .post(id: postId, subreddit: subredditName)
       }
       let sub = Subreddit(id: subredditName)
       return linked(.subreddit(EntityExtracted(subredditID: subredditName, entity: sub)))
@@ -275,7 +241,6 @@ func mediaExtractor(compact: Bool, contentWidth: Double = .screenW, _ data: Post
       let username = pathComponents[1]
       let user = User(id: username, typePrefix: User.prefix)
       return linked(.user(EntityExtracted(userID: username, entity: user)))
-//      return .user(username: username)
 
     default:
       if !data.is_self, let linkURL = URL(string: data.url) {
@@ -292,30 +257,24 @@ func mediaExtractor(compact: Bool, contentWidth: Double = .screenW, _ data: Post
 }
 
 extension URL {
-  /// By path extension, so signed URLs (`….gif?s=…`) and `.GIF` count too.
   var isGIF: Bool {
     pathExtension.lowercased() == "gif"
   }
 }
 
-/// The post's link when it's straight to an image file, by its extension, without tracking
-/// parameters.
 func directImageURL(_ data: PostData) -> URL? {
   guard let url = URL(string: data.url.escape), IMAGES_FORMATS.contains(".\(url.pathExtension.lowercased())") else { return nil }
   return loadableMediaURL(url)
 }
 
-/// A YouTube embed's thumbnail, downsampled for the column.
 func youTubeThumbnailRequest(_ url: URL, contentWidth: Double, theme: HelioTheme?) -> ImageRequest {
   ImageRequest(url: url, processors: [.resize(width: getPostContentWidth(contentWidth: contentWidth, theme: theme))], priority: .normal)
 }
 
-/// Reddit's static preview of a post, used as a poster while its video or GIF loads.
 func previewPosterURL(_ data: PostData) -> URL? {
   data.preview?.images?.first?.source?.url.flatMap { loadableMediaURL($0.escape) }
 }
 
-/// The video's own size, or the preview image's when Reddit leaves it out.
 private func videoSize(_ data: PostData, width: Double?, height: Double?) -> CGSize {
   if let width, let height, width > 0, height > 0 {
     return CGSize(width: width, height: height)
@@ -324,8 +283,6 @@ private func videoSize(_ data: PostData, width: Double?, height: Double?) -> CGS
   return CGSize(width: source?.width ?? 0, height: source?.height ?? 0)
 }
 
-/// Drops tracking parameters and keeps the rest of the query: signed images (Reddit's
-/// previews, CDNs with tokens) only load with theirs.
 private func loadableMediaURL(_ url: URL) -> URL {
   guard var components = URLComponents(url: url, resolvingAgainstBaseURL: false),
         let items = components.queryItems, !items.isEmpty else { return url }
@@ -345,7 +302,6 @@ private func loadableMediaURL(_ string: String) -> URL? {
 }
 
 private func extractYoutubeIdFromOEmbed(_ text: String) -> String? {
-  // Only ID characters: without a query, the URL is followed by a quote and the rest of the HTML.
   let pattern = "(?<=www\\.youtube\\.com/embed/)[A-Za-z0-9_-]+"
   let regex = try? NSRegularExpression(pattern: pattern)
   return regex?.firstMatch(in: text, options: [], range: NSRange(text.startIndex..., in: text)).map {

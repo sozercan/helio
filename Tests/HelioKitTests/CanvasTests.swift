@@ -26,11 +26,9 @@ struct PostLayoutTests {
     #expect(PostLayout.of("pics", compactPerSubreddit: compact, compactByDefault: true, canvasSubreddits: canvas) == .large)
   }
 
-  /// Saved has comments, which the canvas has no tiles for.
   @Test func savedOffersNoCanvas() {
     #expect(PostLayout.available(for: "pics") == PostLayout.allCases)
     #expect(!PostLayout.available(for: savedKeyword).contains(.canvas))
-    // A canvas stored for it from before shows rows.
     #expect(!PostLayout.isCanvas(savedKeyword, canvasSubreddits: [savedKeyword]))
     #expect(PostLayout.of(savedKeyword, compactPerSubreddit: [:], compactByDefault: true, canvasSubreddits: [savedKeyword]) == .compact)
   }
@@ -38,7 +36,6 @@ struct PostLayoutTests {
 
 @MainActor
 struct CanvasTileTests {
-  /// A refresh brings new models for the same posts; their tiles have to draw the new ones.
   @Test func aRefreshedPostRedrawsItsTile() {
     let sub = Subreddit(id: "pics")
     let post = Post(id: "abc")
@@ -55,25 +52,21 @@ struct CanvasGridTests {
     #expect(grid.columns == columns)
     #expect(grid.hinge == nil)
     #expect(grid.tileSize >= min(CanvasGrid.minTileWidth, (width - CanvasGrid.spacing) / 2) - 1)
-    // The tiles and the gaps between them fit the width.
     #expect(grid.tileSize * CGFloat(grid.columns) + CanvasGrid.spacing * CGFloat(grid.columns - 1) <= width)
   }
 
   @Test func aHingeAcrossTheGridSplitsItEvenly() throws {
-    // An open iPhone Duo spanned: two 420-point screens and a 28-point hinge.
     let grid = CanvasGrid(width: 868, division: 420 ... 448)
     #expect(grid.columns % 2 == 0)
     let hinge = try #require(grid.hinge)
     #expect(hinge.columnsBefore * 2 == grid.columns)
     #expect(hinge.leadingWidth == 420)
     #expect(hinge.width == 28)
-    // Each side's tiles fit before and after the hinge.
     let side = grid.tileSize * CGFloat(hinge.columnsBefore) + CanvasGrid.spacing * CGFloat(hinge.columnsBefore - 1)
     #expect(side <= 420)
   }
 
   @Test func aHingeOutsideTheGridIsIgnored() {
-    // The posts tab's feed column ends at the hinge.
     let grid = CanvasGrid(width: 420, division: 420 ... 448)
     #expect(grid.hinge == nil)
     #expect(grid.columns == 2)
@@ -107,12 +100,9 @@ struct CanvasThumbnailTests {
         ],
       ]]]
     }
-    // The tile is a square from the middle, so the shorter side has to cover it: 640×480 is
-    // too short for 600.
     #expect(CanvasThumbnail.url(for: data, pixelWidth: 600)?.absoluteString == "https://preview.redd.it/a.jpg?width=1080&s=w")
     #expect(CanvasThumbnail.url(for: data, pixelWidth: 300)?.absoluteString == "https://preview.redd.it/a.jpg?width=640&s=y")
     #expect(CanvasThumbnail.url(for: data, pixelWidth: 240)?.absoluteString == "https://preview.redd.it/a.jpg?width=320&s=x")
-    // Larger than every rendition: the source.
     #expect(CanvasThumbnail.url(for: data, pixelWidth: 3000)?.absoluteString == "https://preview.redd.it/a.jpg?width=2000&s=src")
     #expect(CanvasThumbnail.kind(of: data) == .image)
   }
@@ -138,7 +128,6 @@ struct CanvasThumbnailTests {
       json["link_flair_text"] = nil
     }
     #expect(CanvasThumbnail.accessibilityLabel(for: spoiler) == "\(spoiler.title), Spoiler")
-    // A crosspost of an NSFW post.
     var original = try #require(try JSONSerialization.jsonObject(with: JSONEncoder().encode(postSampleData)) as? [String: Any])
     original["over_18"] = true
     let crosspost = try data { json in
@@ -157,7 +146,6 @@ struct CanvasThumbnailTests {
       json["thumbnail"] = "https://b.thumbs.redditmedia.com/abc.jpg"
     }
     #expect(CanvasThumbnail.url(for: video, pixelWidth: 300)?.absoluteString == "https://b.thumbs.redditmedia.com/abc.jpg")
-    // Reddit's stand-ins aren't pictures: the post is a text tile.
     for standIn in ["self", "default", "nsfw", "spoiler", ""] {
       let post = try data { json in
         json["url"] = "https://example.com/article"
@@ -189,7 +177,6 @@ struct CanvasThumbnailTests {
     #expect(CanvasThumbnail.url(for: link, pixelWidth: 300) == nil)
   }
 
-  /// A crosspost shows the original's picture, so either post's flags hide it.
   @Test func aCrosspostIsHiddenWhenEitherPostIsNSFWOrASpoiler() throws {
     let plain = try data { _ in }
     #expect(CanvasThumbnail.veil(for: plain) == nil)
@@ -213,7 +200,6 @@ struct CanvasThumbnailTests {
     #expect(try CanvasThumbnail.veil(for: crosspost("spoiler", onOriginal: true)) == .spoiler)
     #expect(try CanvasThumbnail.veil(for: crosspost("over_18", onOriginal: false)) == .nsfw)
     #expect(try CanvasThumbnail.veil(for: data { $0["crosspost_parent_list"] = [original] }) == nil)
-    // NSFW wins over a spoiler on the other post.
     var nsfwOriginal = original
     nsfwOriginal["over_18"] = true
     let spoilerOfNSFW = try data { json in

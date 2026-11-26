@@ -1,10 +1,3 @@
-//
-//  OnboardingWelcome.swift
-//  Helio
-//
-//  Created by Igor Marcossi on 01/08/23.
-//
-
 import SwiftUI
 
 struct OnboardingWelcome: View {
@@ -83,10 +76,3 @@ struct OnboardingWelcomeWrapper: View {
     }
   }
 }
-
-//
-// struct OnboardingWelcome_Previews: PreviewProvider {
-//  static var previews: some View {
-//    OnboardingWelcome()
-//  }
-// }

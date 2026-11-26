@@ -1,10 +1,3 @@
-//
-//  HelioThemeMeta.swift
-//  Helio
-//
-//  Created by Igor Marcossi on 21/11/23.
-//
-
 import Foundation
 
 struct HelioThemeMeta: Codable, Hashable, Equatable {

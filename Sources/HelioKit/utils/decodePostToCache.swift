@@ -1,10 +1,3 @@
-//
-//  decodePostToCache.swift
-//  Helio
-//
-//  Created by Igor Marcossi on 21/09/23.
-//
-
 import Foundation
 
 func decodePostToCache(id: String, str: String?) {

@@ -1,10 +1,3 @@
-//
-//  ImageThemePicker.swift
-//  Helio
-//
-//  Created by Igor Marcossi on 14/09/23.
-//
-
 import PhotosUI
 import SwiftUI
 
@@ -14,7 +7,6 @@ struct ImageThemePicker: View {
   @State var uiImage: UIImage?
 
   @State private var selectedItem: PhotosPickerItem? = nil
-  ///  @State private var selectedImageData: Data? = nil
   var body: some View {
     HStack {
       Text(label)
@@ -42,9 +34,7 @@ struct ImageThemePicker: View {
         }
         .onChange(of: selectedItem) { newItem in
           Task {
-            // Retrieve selected asset in the form of Data
             if let data = try? await newItem?.loadTransferable(type: Data.self), let uiImg = UIImage(data: data),
-               //                selectedImageData = data
                let imgName = saveImage(image: uiImg)
             {
               image = imgName

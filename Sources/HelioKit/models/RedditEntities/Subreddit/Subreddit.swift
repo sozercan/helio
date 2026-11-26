@@ -1,10 +1,3 @@
-//
-//  Subreddit.swift
-//  Helio
-//
-//  Created by Igor Marcossi on 26/06/23.
-//
-
 import CoreData
 import Defaults
 import Foundation
@@ -32,8 +25,6 @@ extension Subreddit {
     feedsAndSuch.contains(self.id)
   }
 
-  /// Favorites without a subscription are a separate, device-local list.
-  /// Returns true when added and false when removed.
   @MainActor
   func localFavoriteToggle() -> Bool {
     let wasLiked = Defaults[.likedButNotSubbed].contains(self)
@@ -66,8 +57,6 @@ extension Subreddit {
       if RedditCredentialsManager.shared.selectedCredential?.authorizationID == credential.authorizationID {
         withAnimation { self.data?.user_has_favorited = requested }
       }
-      // The existing favorite wrapper resolves selection at request time. Use its
-      // same payload and transport with the account captured by the local write.
       let result = await RedditAPI.shared.doRequest(
         "\(RedditAPI.redditApiURLBase)/api/favorite", method: .post,
         params: RedditAPI.FavoritePayload(make_favorite: requested, sr_name: name),
@@ -119,7 +108,6 @@ extension Subreddit {
       let saved: Bool
       switch result {
       case .success:
-        // Persist the acknowledged state even when the initial write was optimistic.
         state = requested
         saved = await persistence.setSubscription(requested, subreddit: data)
       case .failure:
@@ -149,8 +137,6 @@ extension Subreddit {
     }
   }
 
-  /// Loads the subreddit's data unless it has it, sharing `/api/info` requests and recent
-  /// results with other lookups. `refreshSubreddit` always asks Reddit.
   func loadIfNeeded() async {
     guard data == nil, !feedsAndSuch.contains(id) else { return }
     if let data = await RedditInfoLoader.shared.subreddit(named: id) {
@@ -160,16 +146,12 @@ extension Subreddit {
     }
   }
 
-  /// Subreddits whose flairs were fetched this session: they rarely change, and every visit to
-  /// a feed asked again.
   private static let flairsFetched = Mutex<Set<String>>([])
 
   static func fetchAndCacheFlairsFrom(_ subID: String) async {
-    // Home, Popular and the like are feeds, not subreddits: Reddit has no flairs for them.
     let key = subID.lowercased()
     guard !feedsAndSuch.contains(subID), flairsFetched.withLock({ $0.insert(key).inserted }) else { return }
     guard let flairs = await RedditAPI.shared.getFlairs(subID) else {
-      // Failed: the next visit tries again.
       flairsFetched.withLock { _ = $0.remove(key) }
       return
     }
@@ -200,8 +182,6 @@ extension Subreddit {
     return nil
   }
 
-  /// Keeps the flairs seen on the feed's posts as filters. One background save per page: the
-  /// main queue is busy laying the page out.
   func cacheFlairsFromPosts(_ entities: [RedditEntityType]) async {
     var flairs: [String: (textColor: String?, bgColor: String?)] = [:]
     for entity in entities {
@@ -266,13 +246,6 @@ extension Subreddit {
     }
     return nil
   }
-
-//  func fetchPinnedPosts() async -> [Post]? {
-//    if let response = await RedditAPI.shared.fetchSubPosts(data?.url ?? (id == "home" ? "" : id), limit: 10, sort: .best, after: nil, searchText: nil, flair: nil), let data = response.0 {
-//      return Post.initMultiple(datas: data.compactMap { $0.data?.stickied == true ? $0.data : nil }, sub: self, contentWidth: .screenW)
-//    }
-//    return nil
-//  }
 }
 
 struct SubListingSort: Codable, Identifiable {
@@ -323,21 +296,12 @@ extension SubListingSortOption: CaseIterable {
 }
 
 extension Subreddit {
-  /// What per-subreddit settings (compact mode) are kept by: its fullname (t5_...), which the
-  /// sidebar's cached copy and Reddit's own details both carry, else its name. Not `id`, which
-  /// is the fullname in the cached copy, the bare id in Reddit's details and the name in a
-  /// subreddit known only by name, so it changes as details come in.
-  ///
-  /// A setting saved before under one of those (the bare id or the name) keeps its key, so it
-  /// still applies; a bare id can't be told from a name to move it.
   var settingsKey: String {
     Self.settingsKey(fullname: data?.name, bareID: data?.id, name: data?.display_name, id: id, saved: CachedDefaults[.SubredditFeedDefSettings].compactPerSubreddit)
   }
 
-  /// The first of the subreddit's keys a setting is saved under, else its fullname (else its id).
   static func settingsKey(fullname: String?, bareID: String?, name: String?, id: String, saved: [String: Bool]) -> String {
     let fullname = fullname.flatMap { $0.isEmpty ? nil : $0 }
-    // A subreddit opened by name was saved under the name as written, often lowercased.
     let keys = [fullname, bareID, name, name?.lowercased(), id].compactMap(\.self)
     return keys.first { saved[$0] != nil } ?? fullname ?? id
   }

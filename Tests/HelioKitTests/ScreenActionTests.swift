@@ -11,7 +11,6 @@ struct ScreenActionTests {
     _ = targets.register(.init(kind: .feed, column: .feed, actions: [sort("first feed")]))
     let second = targets.register(.init(kind: .feed, column: .feed, actions: [sort("second feed")]))
     _ = targets.register(.init(kind: .post, column: .post, actions: [sort("post")]))
-    // A screen without actions, such as a user's page, doesn't hide the feed's.
     _ = targets.register(.init(kind: .feed, column: .feed))
     #expect(targets.actions(in: .feed).map(\.title) == ["second feed"])
     #expect(targets.actions(in: .post).map(\.title) == ["post"])
@@ -86,7 +85,6 @@ struct ScreenActionTests {
     }
     let duplicated = ScreenAction.feedOptions(layout: .large, setLayout: { _ in }, filters: [flair("News", .flair, color: "#ff0000"), flair("News", .flair, color: "#00ff00")], selected: nil, select: { _ in })
     #expect(flairChoices(duplicated) == ["All Posts", "News"])
-    // A refresh made the selected flair moderator-only, so no flair is listed, but it's still on.
     let selected = flair("News", .modFlair)
     let filtered = ScreenAction.feedOptions(layout: .large, setLayout: { _ in }, filters: [selected], selected: selected, select: { _ in })
     #expect(flairChoices(filtered) == ["All Posts"])
@@ -109,7 +107,6 @@ struct ScreenActionTests {
       }
     }
     #expect(submenus.count == SubListingSortOption.allCases.count { $0.meta.children != nil })
-    // Best comes first, checked.
     if case let .choice(_, _, isOn, select) = entries.first {
       #expect(isOn)
       select()
@@ -119,15 +116,12 @@ struct ScreenActionTests {
 
   @Test func toolbarEditsKeepTheItemsAtEitherEnd() {
     let tabs = "tabs", toggle = "toggle", flex = "flex"
-    // Actions appear between the sidebar button and the tabs.
     let edit = toolbarEdit(from: [toggle, flex, tabs], to: [toggle, flex, "sort", "info", tabs])
     #expect(edit?.range == 2 ..< 2)
     #expect(edit?.insert == ["sort", "info"])
-    // And go again.
     let back = toolbarEdit(from: [toggle, flex, "sort", "info", tabs], to: [toggle, flex, tabs])
     #expect(back?.range == 2 ..< 4)
     #expect(back?.insert == [])
-    // Another tab drops the sidebar button but keeps the tabs.
     let otherTab = toolbarEdit(from: [toggle, flex, tabs], to: ["account", flex, tabs])
     #expect(otherTab?.range == 0 ..< 1)
     #expect(otherTab?.insert == ["account"])
@@ -205,7 +199,6 @@ struct ScreenActionTests {
     let two = ScreenAction.switchAccount(manager: RedditCredentialsManager(credentials: [only, other]), selectedID: other.id) { _ in }
     #expect(titles(two) == [["placeholder-one", "placeholder-two"], ["Log Out u/placeholder-two"]])
 
-    // Reddit signed the selected account out: the other one is still offered.
     let signedOut = account("placeholder-signed-out", signedIn: false)
     let fallback = ScreenAction.switchAccount(manager: RedditCredentialsManager(credentials: [signedOut, other]), selectedID: signedOut.id) { _ in }
     #expect(titles(fallback) == [["placeholder-two"], ["Log Out u/placeholder-signed-out"]])

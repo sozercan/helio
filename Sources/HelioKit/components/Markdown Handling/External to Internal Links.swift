@@ -1,10 +1,3 @@
-//
-//  External to Internal Links.swift
-//  Helio
-//
-//  Created by Ethan Bills on 1/10/24.
-//
-
 import Foundation
 import MarkdownUI
 
@@ -27,8 +20,6 @@ class MarkdownUtil {
     return cache
   }()
 
-  /// `text` rewritten by `formatForMarkdown` and parsed. Rows render it on every update and on
-  /// every scroll back into view, so each text is formatted and parsed once.
   static func markdownContent(_ text: String, showSpoiler: Bool = false) -> MarkdownContent {
     let key = "\(showSpoiler ? "s" : "h")\(text)" as NSString
     if let cached = parsed.object(forKey: key) {
@@ -42,42 +33,36 @@ class MarkdownUtil {
   static func formatForMarkdown(_ text: String, showSpoiler: Bool = false) -> String {
     var processedText = text
 
-    // Replace http:// or https:// in existing markdown links
     processedText = processedText.replacingOccurrences(
       of: #"([[(\w\])\/.:*]+])\((https?:\/\/)(\S+?|)(?:)\)"#,
       with: "$1(helioapp://$3)",
       options: .regularExpression,
     )
 
-    // Replace URLs with http:// or https:// (if not already in markdown format)
     processedText = processedText.replacingOccurrences(
       of: #"\b(?<!\[)(https?:\/\/)(.*\.(?:png|jpe?g|bmp|tiff|webp|svgz?|ico)(?:\?.*)?)(?!\])\b"#,
       with: "[![$0]($0)](helioapp://$2)",
       options: .regularExpression,
     )
 
-    // Replace URLs with http:// or https:// (if not already in markdown format)
     processedText = processedText.replacingOccurrences(
       of: "\\b(?<!\\[|\\()(https?://)(\\S+)(?!\\]|\\))\\b",
       with: "[$0](helioapp://$2)",
       options: .regularExpression,
     )
 
-    // Replace /u/example or u/example
     processedText = processedText.replacingOccurrences(
       of: "(\\s|^)(/?u/\\w+)(\\s|\\b)",
       with: " [$2](helioapp://$2) ",
       options: [.regularExpression, .caseInsensitive],
     )
 
-    // Replace /r/example or r/example
     processedText = processedText.replacingOccurrences(
       of: "(\\s|^)(/?r/\\w+)(\\s|\\b)",
       with: " [$2](helioapp://$2) ",
       options: [.regularExpression, .caseInsensitive],
     )
 
-    // Replace &#x200B; and &nbsp; with a space
     processedText = processedText.replacingOccurrences(
       of: "&amp;#x200B;|&amp;nbsp;",
       with: " ",

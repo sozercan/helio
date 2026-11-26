@@ -1,10 +1,3 @@
-//
-//  Onboarding7Ending.swift
-//  Helio
-//
-//  Created by Igor Marcossi on 01/08/23.
-//
-
 import SwiftUI
 
 struct Onboarding7Ending: View {

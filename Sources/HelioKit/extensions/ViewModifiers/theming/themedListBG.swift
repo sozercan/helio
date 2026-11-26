@@ -1,17 +1,9 @@
-//
-//  themedListBG.swift
-//  Helio
-//
-//  Created by Igor Marcossi on 08/09/23.
-//
-
 import SwiftUI
 
 struct ThemedListBGModifier: ViewModifier {
   var bg: ThemeBG
   var disable = false
   var forceNonBrighter = false
-  /// With `disable`, leaves the list's own background, such as a sidebar's material.
   var keepSystemBackground = false
 
   @Environment(\.colorScheme) private var cs

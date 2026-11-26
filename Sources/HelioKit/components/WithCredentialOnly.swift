@@ -1,10 +1,3 @@
-//
-//  WithCredentialOnly.swift
-//  Helio
-//
-//  Created by Igor Marcossi on 06/12/23.
-//
-
 import SwiftUI
 
 struct WithCredentialOnly<Content: View>: View {
@@ -32,7 +25,6 @@ struct WithCredentialOnly<Content: View>: View {
         .buttonStyle(.actionOutlined)
         .opacity(0.5)
 
-        // The Me tab's switcher sits behind this screen, so offer the other accounts and Log Out here.
         if credential != nil {
           AccountSwitcherMenu()
             .buttonStyle(.actionOutlined)
@@ -46,7 +38,6 @@ struct WithCredentialOnly<Content: View>: View {
     }
   }
 
-  /// Reddit ended the account's web session: signing in again picks up where it left off.
   private func signedOut(_ credential: RedditCredential) -> some View {
     VStack(spacing: 20) {
       VStack(spacing: 12) {
@@ -67,7 +58,6 @@ struct WithCredentialOnly<Content: View>: View {
       }
       .buttonStyle(.action)
 
-      // The other accounts, and Log Out for this one.
       AccountSwitcherMenu()
         .buttonStyle(.actionOutlined)
     }

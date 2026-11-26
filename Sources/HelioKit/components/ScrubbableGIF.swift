@@ -2,13 +2,10 @@ import ImageIO
 import SwiftUI
 import UIKit
 
-/// A GIF's frame timing, read from its data: when each frame starts and how long the loop is.
 struct GIFTimeline: Equatable {
-  /// Each frame's start time, from 0.
   let starts: [Double]
   let duration: Double
 
-  /// Browsers show frames with no delay, or a near-zero one, for a tenth of a second.
   static let defaultDelay = 0.1
 
   init(delays: [Double]) {
@@ -30,10 +27,8 @@ struct GIFTimeline: Equatable {
     })
   }
 
-  /// The frame showing at `time`.
   func frame(at time: Double) -> Int {
     guard !starts.isEmpty else { return 0 }
-    // The last frame starting at or before `time`.
     var low = 0
     var high = starts.count - 1
     while low < high {
@@ -48,8 +43,6 @@ struct GIFTimeline: Equatable {
   }
 }
 
-/// Plays a GIF with a playhead that can be moved, which Gifu has no way to do. Frames are decoded
-/// one at a time off the main thread, so memory stays at about one frame whatever the GIF's length.
 final class ScrubbableGIFView: UIView {
   private let source: CGImageSource?
   let timeline: GIFTimeline
@@ -62,12 +55,9 @@ final class ScrubbableGIFView: UIView {
   private var decoding = false
   private var displayLink: CADisplayLink?
   private var lastTick: CFTimeInterval?
-  /// The frame last reported to `onPlayhead`, so it's called once per frame, not per screen refresh.
   private var reportedFrame = -1
-  /// Called with the playhead each time it reaches another frame, for the progress bar.
   var onPlayhead: ((Double) -> Void)?
 
-  /// Data ImageIO can't read leaves it empty, as Gifu would.
   init(data: Data) {
     source = CGImageSourceCreateWithData(data as CFData, nil)
     timeline = source.map(GIFTimeline.init(source:)) ?? GIFTimeline(delays: [])
@@ -86,12 +76,10 @@ final class ScrubbableGIFView: UIView {
     fatalError("init(coder:) has not been implemented")
   }
 
-  /// SwiftUI sizes it from this, so `.scaledToFit()` keeps the GIF's shape.
   override var intrinsicContentSize: CGSize {
     pixelSize
   }
 
-  /// The display link holds its target, so it only runs while the view is in a window.
   override func didMoveToWindow() {
     super.didMoveToWindow()
     displayLink?.invalidate()
@@ -116,7 +104,6 @@ final class ScrubbableGIFView: UIView {
     }
   }
 
-  /// False for a GIF with one frame, which has nothing to scrub.
   func beginScrub() -> Bool {
     guard timeline.starts.count > 1 else { return false }
     isScrubbing = true
@@ -124,12 +111,10 @@ final class ScrubbableGIFView: UIView {
     return true
   }
 
-  /// Moves the playhead by a swipe of `translation` from where the scrub began.
   func scrub(translation: CGFloat, width: CGFloat) {
     scrub(to: MediaScrub.time(from: scrubStart, translation: translation, width: width, duration: timeline.duration))
   }
 
-  /// Moves the playhead to `time`, as dragging the progress bar does.
   func scrub(to time: Double) {
     playhead = min(max(time, 0), timeline.duration)
     let frame = timeline.frame(at: playhead)
@@ -138,12 +123,10 @@ final class ScrubbableGIFView: UIView {
     onPlayhead?(playhead)
   }
 
-  /// Plays on from where the scrub left it.
   func endScrub() {
     isScrubbing = false
   }
 
-  /// Decodes `frame` and shows it. While a decode runs, only the latest frame asked for is kept.
   private func show(frame: Int) {
     wantedFrame = frame
     guard !decoding, frame != shownFrame, let source else { return }
@@ -167,14 +150,10 @@ final class ScrubbableGIFView: UIView {
   }
 }
 
-/// Async and not on an actor, so the decode runs off the main thread. The frame is decoded now,
-/// for display, but the source doesn't keep it: it would otherwise hold every frame it decoded.
 private func decodeFrame(_ source: CGImageSource, _ index: Int) async -> CGImage? {
   CGImageSourceCreateImageAtIndex(source, index, [kCGImageSourceShouldCacheImmediately: true, kCGImageSourceShouldCache: false] as CFDictionary)
 }
 
-/// Connects the lightbox's swipe and progress bar to the GIF it shows. The view registers itself
-/// when it's made. Only the progress bar reads `position`, so playback doesn't redraw the lightbox.
 @MainActor @Observable
 final class GIFScrubber: MediaScrubbable {
   @ObservationIgnored fileprivate weak var view: ScrubbableGIFView? {
@@ -187,19 +166,16 @@ final class GIFScrubber: MediaScrubbable {
     }
   }
 
-  /// The playhead, or nil for a GIF that's still loading or has a single frame.
   private(set) var position: ScrubPosition?
 
   func begin() -> Bool {
     view?.beginScrub() ?? false
   }
 
-  /// A swipe across the GIF, relative to where it began.
   func update(translation: CGFloat, width: CGFloat) {
     view?.scrub(translation: translation, width: width)
   }
 
-  /// A drag along the progress bar, to a fraction of the GIF's length.
   func scrub(toFraction fraction: Double) {
     guard let view else { return }
     view.scrub(to: fraction * view.timeline.duration)
@@ -210,7 +186,6 @@ final class GIFScrubber: MediaScrubbable {
   }
 }
 
-/// A GIF the lightbox can scrub. Made once per GIF: the body runs again on every lightbox update.
 struct ScrubbableGIF: UIViewRepresentable {
   let data: Data
   let scrubber: GIFScrubber

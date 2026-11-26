@@ -63,7 +63,6 @@ function randomize() {
         backgroundColor: randomColor,
         opacity: randomOpacity,
         transitionDuration: `${transitionDuration}s`,
-      //   filter: "blur(150px)",
         ...style,
       }}
     />

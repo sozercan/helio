@@ -1,10 +1,3 @@
-//
-//  Badge.swift
-//  Helio
-//
-//  Created by Igor Marcossi on 01/07/23.
-//
-
 import Defaults
 import Foundation
 import NukeUI
@@ -73,10 +66,7 @@ struct BadgeView: View, Equatable {
   var likes: Bool?
   var openSub: (() -> Void)?
   var subName: String?
-  /// Makes the numbers line its own tap target. Without one, a tap on it goes to the nearest
-  /// tappable view, the author's name, instead of the row.
   var onTapStats: (() -> Void)?
-  /// Shown next to the score when set, for the "Show upvote ratio" setting.
   var upvoteRatio: Double?
 
   nonisolated func openUser() {
@@ -94,7 +84,6 @@ struct BadgeView: View, Equatable {
           .highPriorityGesture(TapGesture().onEnded(openUser))
       }
 
-      // Apollo's two lines: who and where, then the numbers.
       VStack(alignment: .leading, spacing: BadgeView.authorStatsSpacing) {
         if showsFirstLine {
           HStack(alignment: .center, spacing: 4) {
@@ -130,7 +119,6 @@ struct BadgeView: View, Equatable {
               }
 
               if let flairs = flairWithoutEmojis(str: userFlair) {
-                // TODO: Load flair emojis via GET /api/v1/{subreddit}/emojis/{emoji_name}
                 ForEach(flairs, id: \.self) {
                   UserFlair(flair: $0, flairText: theme.flairText, flairBackground: theme.flairBackground).equatable()
                 }
@@ -155,7 +143,6 @@ struct BadgeView: View, Equatable {
             .buttonStyle(.plain)
           }
 
-          // The numbers read as one element, "4.8K points, 1.3K comments, 2 hours ago".
           HStack(alignment: .center, spacing: theme.statsText.size * 0.62) {
             if let votesCount {
               BadgeStat(icon: likes == false ? "arrow.down" : "arrow.up", text: votesCount, label: likes == nil ? "\(votesCount) points" : "\(votesCount) points, \(likes == true ? "upvoted" : "downvoted")")
@@ -178,7 +165,6 @@ struct BadgeView: View, Equatable {
 
             BadgeStat(icon: "clock", text: timeSince(Int(created)), label: spokenTimeSince(Int(created)))
 
-            // The first line holds the saved mark; without it, show it here.
             if saved, !showAvatar, !showsFirstLine {
               Image(systemName: "bookmark.fill").foregroundStyle(.green)
                 .accessibilityLabel("Saved")
@@ -198,11 +184,9 @@ struct BadgeView: View, Equatable {
   }
 }
 
-/// An outline SF Symbol and its number, like Apollo's meta line.
 struct BadgeStat: View {
   var icon: String
   var text: String
-  /// What VoiceOver reads instead of the symbol's name and the number, like "1.3K comments".
   var label: String
 
   var body: some View {
@@ -221,7 +205,6 @@ struct Badge: View {
   var usernameColor: Color?
   var avatarURL: String?
   var theme: BadgeTheme
-  //  var extraInfo: [BadgeExtraInfo] = []
 
   var body: some View {
     if let data = post.data {

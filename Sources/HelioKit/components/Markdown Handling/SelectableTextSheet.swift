@@ -1,11 +1,3 @@
-//
-//  SelectableTextSheet.swift
-//  Helio
-//
-//  A sheet for selecting and copying a post or comment body. Inline bodies stay
-//  non-selectable so taps (like tap-to-collapse) aren't delayed by text interaction.
-//
-
 import MarkdownUI
 import SwiftUI
 

@@ -1,10 +1,3 @@
-//
-//  UnseenType.swift
-//  Helio
-//
-//  Created by Igor Marcossi on 21/11/23.
-//
-
 import Foundation
 
 enum UnseenType: Codable, Hashable, Equatable {
