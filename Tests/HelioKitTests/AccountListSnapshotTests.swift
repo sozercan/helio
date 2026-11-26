@@ -21,7 +21,6 @@ extension AccountListSyncAuthorizationTests {
     #expect(oldResponse)
     #expect(try savedSubscription(in: context, account: account, fullname: removed.name) == nil)
     #expect(try savedSubscription(in: context, account: account, fullname: added.name)?.user_is_subscriber == true)
-    // A later, fresh authoritative sync is not pinned to old local revisions.
     let freshResponse = await owner.replaceSubscriptions(with: [])
     #expect(freshResponse)
     #expect(try savedLists(in: context, account: account).subs.isEmpty)
@@ -98,7 +97,6 @@ extension AccountListSyncAuthorizationTests {
     let snapshot = owner.captureSnapshot()
     let ticket = try #require(owner.beginMutation(fullname: original.name))
     defer { owner.finish(ticket) }
-    // The view's favorite can be stale; rollback must use the persisted baseline.
     var staleView = original
     staleView.user_has_favorited = false
     let change = try #require(await owner.optimisticallySetSubscription(false, subreddit: staleView, expecting: true))
@@ -116,7 +114,6 @@ extension AccountListSyncAuthorizationTests {
     let restored = try savedSubscription(in: context, account: account, fullname: original.name)
     #expect(restored?.user_is_subscriber == true)
     #expect(restored?.user_has_favorited == true)
-    // Receipts are single-use; their own successful rollback advances the revision.
     #expect(await owner.rollbackSubscription(change) == false)
   }
 

@@ -1,17 +1,9 @@
-//
-//  AdvancedInstructions.swift
-//  Helio
-//
-//  Created by Igor Marcossi on 07/01/24.
-//
-
 import Lottie
 import SwiftUI
 
 struct AdvancedInstructions: View {
   @State private var open = false
   @State private var copied = false
-  //  @State private var playbackMode: LottiePlaybackMode = .paused(at: .progress(0))
   @Environment(\.colorScheme) private var cs
   var body: some View {
     let rgb = UIColor(cs == .dark ? .white : .black).rgb

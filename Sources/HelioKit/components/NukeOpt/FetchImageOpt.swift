@@ -1,77 +1,45 @@
-//
-//  FetchImageOpt.swift
-//  Helio
-//
-//  Created by Igor Marcossi on 14/04/24.
-//
-
 import Combine
 import Nuke
 import NukeUI
 import SwiftUI
 
-/// An observable object that simplifies image loading in SwiftUI.
 @MainActor @Observable
 public final class FetchImageOpt: Identifiable, LazyImageStateOpt {
-  /// Returns the current fetch result.
   public private(set) var result: Result<ImageResponse, Error>?
 
-  /// Returns the fetched image.
-  ///
-  /// - note: In case pipeline has `isProgressiveDecodingEnabled` option enabled
-  /// and the image being downloaded supports progressive decoding, the `image`
-  /// might be updated multiple times during the download.
   public private(set) var imageContainer: ImageContainer?
 
-  /// Returns `true` if the image is being loaded.
   public private(set) var isLoading = false
 
-  /// Animations to be used when displaying the loaded images. By default, `nil`.
-  ///
-  /// - note: Animation isn't used when image is available in memory cache.
   public var transaction = Transaction(animation: nil)
 
   private var _progress: Progress?
 
-  /// The download progress.
   @Observable
   public final class Progress {
-    /// The number of bytes that the task has received.
     public internal(set) var completed: Int64 = 0
 
-    /// A best-guess upper bound on the number of bytes of the resource.
     public internal(set) var total: Int64 = 0
   }
 
-  /// Updates the priority of the task, even if the task is already running.
-  /// `nil` by default
   public var priority: ImageRequest.Priority? {
     didSet { priority.map { imageTask?.priority = $0 } }
   }
 
-  /// A pipeline used for performing image requests.
   public var pipeline: ImagePipeline = .shared
 
-  /// Image processors to be applied unless the processors are provided in the
-  /// request. `[]` by default.
   public var processors: [any ImageProcessing] = []
 
-  /// Gets called when the request is started.
   public var onStart: ((ImageTask) -> Void)?
 
-  /// Gets called when the current request is completed.
   public var onCompletion: ((Result<ImageResponse, Error>) -> Void)?
 
   private var imageTask: ImageTask?
   private var lastResponse: ImageResponse?
   private var cancellable: AnyCancellable?
 
-  /// Initializes the image. To load an image, use one of the `load()` methods.
   public init() {}
 
-  // MARK: Loading Images
-
-  /// Loads an image with the given request.
   public func load(_ request: ImageRequest?) {
     assert(Thread.isMainThread, "Must be called from the main thread")
 
@@ -89,10 +57,9 @@ public final class FetchImageOpt: Identifiable, LazyImageStateOpt {
       request.priority = priority
     }
 
-    // Quick synchronous memory cache lookup
     if let image = pipeline.cache[request] {
       if image.isPreview {
-        imageContainer = image // Display progressive image
+        imageContainer = image
       } else {
         let response = ImageResponse(container: image, request: request, cacheType: .memory)
         handle(result: .success(response))
@@ -127,7 +94,6 @@ public final class FetchImageOpt: Identifiable, LazyImageStateOpt {
   }
 
   private func handle(preview: ImageResponse) {
-    // Display progressively decoded image
     self.imageContainer = preview.container
   }
 
@@ -142,28 +108,16 @@ public final class FetchImageOpt: Identifiable, LazyImageStateOpt {
     self.onCompletion?(result)
   }
 
-  // MARK: Load (Async/Await)
-
-  // MARK: Load (Combine)
-
-  // MARK: Cancel
-
-  /// Marks the request as being cancelled. Continues to display a downloaded image.
   public func cancel() {
-    // pipeline-based
-    imageTask?.cancel() // Guarantees that no more callbacks will be delivered
+    imageTask?.cancel()
     imageTask = nil
 
-    // publisher-based
     cancellable = nil
   }
 
-  /// Resets the `FetchImage` instance by cancelling the request and removing
-  /// all of the state including the loaded image.
   public func reset() {
     cancel()
 
-    // Avoid publishing unchanged values
     if isLoading {
       isLoading = false
     }
@@ -176,6 +130,6 @@ public final class FetchImageOpt: Identifiable, LazyImageStateOpt {
     if _progress != nil {
       _progress = nil
     }
-    lastResponse = nil // publisher-only
+    lastResponse = nil
   }
 }

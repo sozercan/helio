@@ -1,10 +1,3 @@
-//
-//  Inbox.swift
-//  Helio
-//
-//  Created by Igor Marcossi on 24/06/23.
-//
-
 import Defaults
 import SwiftUI
 
@@ -33,9 +26,3 @@ struct Inbox: View {
     }
   }
 }
-
-// struct Inbox_Previews: PreviewProvider {
-//    static var previews: some View {
-//        Inbox()
-//    }
-// }

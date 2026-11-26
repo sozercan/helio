@@ -1,10 +1,3 @@
-//
-//  ComingFrom.swift
-//  Helio
-//
-//  Created by Igor Marcossi on 31/12/23.
-//
-
 import SwiftUI
 
 extension AnyTransition {
@@ -36,7 +29,6 @@ struct ComeFromBotTrans: ViewModifier {
     content
       .scaleEffect(isActive ? 1 : 0.01, anchor: edgeToUnit(side))
       .opacity(isActive ? 1 : 0)
-      //            .offset(x: isActive || !hor ? 0 : offsetFor(side), y: isActive || hor ? 0 : offsetFor(side))
       .zIndex(isActive ? 0 : -1)
       .animation(.bouncy.delay(delay), value: isActive)
   }

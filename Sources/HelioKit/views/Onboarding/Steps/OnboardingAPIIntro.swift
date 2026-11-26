@@ -1,10 +1,3 @@
-//
-//  OnboardingAPIIntro.swift
-//  Helio
-//
-//  Created by Igor Marcossi on 01/08/23.
-//
-
 import SwiftUI
 
 private struct Feature: View {

@@ -1,20 +1,10 @@
-//
-//  WebExtensionsPanel.swift
-//  Helio
-//
-//  The web extensions the user added.
-//
-
 import SwiftUI
 import UniformTypeIdentifiers
 import WebKit
 
-/// Adds, turns on and off, and removes the web extensions that run in the pages links open
-/// (`WebExtensionStore`), and opens an extension's own settings page.
 struct WebExtensionsPanel: View {
   @State private var store = WebExtensionStore.shared
   @State private var choosingFolder = false
-  /// What failed, and why: the alert shows it.
   @State private var failure: (title: String, message: String)?
   @State private var optionsPage: OptionsPage?
   @Environment(\.useTheme) private var theme
@@ -67,7 +57,6 @@ struct WebExtensionsPanel: View {
     }
   }
 
-  /// Runs a change to the list, showing why it failed if it did.
   private func attempt(_ title: String, _ change: () throws -> Void) {
     do {
       try change()
@@ -112,8 +101,6 @@ struct WebExtensionsPanel: View {
   }
 }
 
-/// An extension's settings page, which it shows with its own configuration (its origin, its
-/// storage, its APIs).
 private struct OptionsPage: Identifiable {
   let title: String
   let url: URL
@@ -140,7 +127,6 @@ private struct OptionsPageView: UIViewRepresentable {
 
   func updateUIView(_: WKWebView, context _: Context) {}
 
-  /// Settings pages ask before resetting things (`confirm()`), which needs a dialog.
   @MainActor
   final class DialogPresenter: NSObject, WKUIDelegate {
     func webView(_ webView: WKWebView, runJavaScriptAlertPanelWithMessage message: String, initiatedByFrame frame: WKFrameInfo) async {

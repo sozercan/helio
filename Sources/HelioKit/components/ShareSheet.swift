@@ -1,10 +1,3 @@
-//
-//  ShareSheet.swift
-//  Helio
-//
-//  Created by Daniel Inama on 31/08/23.
-//
-
 import LinkPresentation
 import SwiftUI
 
@@ -19,8 +12,6 @@ struct ShareSheet: UIViewControllerRepresentable {
   func updateUIViewController(_ uiViewController: UIActivityViewController, context: Context) {}
 }
 
-/// Image that you can share using a Share Sheet
-/// This will also display all the metadata correctly
 class ShareImage: UIActivityItemProvider {
   var image: UIImage
 
@@ -54,8 +45,6 @@ class ShareImage: UIActivityItemProvider {
 }
 
 class ShareUtils {
-  /// Walk to the top-most presented view controller so presentation works even when a context
-  /// menu, sheet, or fullscreen cover is on screen.
   static func topViewController(_ base: UIViewController? = nil) -> UIViewController? {
     let scenes = UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }
     let scene = scenes.first(where: { $0.activationState == .foregroundActive }) ?? scenes.first
@@ -74,13 +63,9 @@ class ShareUtils {
 
   static func shareItem(item: String, sourceView: UIView? = nil) {
     guard let url = URL(string: item) else { return }
-    // The small delay lets a dismissing context menu clear first; presenting on the top-most VC
-    // makes this work from a context-menu Button (SwiftUI's ShareLink inside .contextMenu is broken
-    // — the menu dismisses but the share sheet never presents).
     DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
       guard let top = topViewController() else { return }
       let activityViewController = UIActivityViewController(activityItems: [url], applicationActivities: nil)
-      // Source for iPad popover.
       if let popoverController = activityViewController.popoverPresentationController {
         popoverController.sourceView = sourceView ?? top.view
         popoverController.sourceRect = sourceView?.bounds ?? CGRect(x: top.view.bounds.midX, y: top.view.bounds.midY, width: 0, height: 0)

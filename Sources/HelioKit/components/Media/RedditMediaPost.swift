@@ -1,10 +1,3 @@
-//
-//  RedditMediaPost.swift
-//  Helio
-//
-//  Created by Igor Marcossi on 31/07/23.
-//
-
 import Combine
 import SwiftUI
 
@@ -16,7 +9,6 @@ struct RedditMediaPost: View {
     HStack(spacing: 16) {
       switch entity {
       case let .comment(comment):
-        //            ShortCommentPostLink(comment: comment)
         if let commentHelioData = comment.helioData {
           CommentLink(showReplies: false, comment: comment, commentHelioData: commentHelioData, children: comment.childrenHelio)
             .padding(.vertical, 8)

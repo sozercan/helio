@@ -116,7 +116,6 @@ struct VideoPlayerHolderTests {
     #expect(recoveredAsset?.url.scheme == RedditVideoPlaylistRecovery.customScheme)
     #expect(recoveredAsset?.resourceLoader.delegate != nil)
 
-    // If the rebuilt HLS playlist also fails, the next reload falls back to the direct MP4.
     #expect(holder.reload())
     let fallbackAsset = holder.player?.currentItem?.asset as? AVURLAsset
     #expect(fallbackAsset?.url == fallback)
@@ -143,7 +142,6 @@ struct VideoPlayerHolderTests {
     var secondReplaced = false
     #expect(holder.reload { firstReplaced = true })
     await waitUntil { recoveryContinuation != nil }
-    // A second reload while recovery is still in flight coalesces without burning the fallback retry.
     #expect(holder.reload { secondReplaced = true })
     #expect(recoveryCalls == 1)
 
@@ -151,7 +149,6 @@ struct VideoPlayerHolderTests {
     await waitUntil { firstReplaced && secondReplaced }
     #expect(firstReplaced && secondReplaced)
 
-    // The retry budget still allows stepping down to the MP4 fallback if the recovered manifest fails.
     #expect(holder.reload())
     let fallbackAsset = holder.player?.currentItem?.asset as? AVURLAsset
     #expect(fallbackAsset?.url == fallback)
@@ -174,7 +171,6 @@ struct VideoPlayerHolderTests {
     video.retry()
     await waitUntil { recoveryContinuation != nil }
 
-    // User pauses while recovery is in flight.
     video.togglePlayback()
     #expect(video.player?.timeControlStatus == .paused)
 

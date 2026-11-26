@@ -1,10 +1,3 @@
-//
-//  fetchUsers.swift
-//  Helio
-//
-//  Created by Igor Marcossi on 04/07/23.
-//
-
 import Alamofire
 import Defaults
 import Foundation
@@ -48,8 +41,6 @@ extension RedditAPI {
     }
   }
 
-  /// Sets the avatars of the comments and all their replies, with one lookup and one main-queue
-  /// hop for the whole tree.
   func updateCommentsWithAvatar(comments: [Comment], avatarSize: Double) async {
     var all: [Comment] = []
     func walk(_ comments: [Comment]) {

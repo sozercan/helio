@@ -7,7 +7,6 @@ import Testing
 @Suite(.serialized)
 struct FeedItemsManagerTests {
   private static let testCredential = RedditCredential(apiAppID: "placeholder-client-id", refreshToken: "placeholder-grant")
-  /// `PostData`'s ids are constants, so re-key the sample post through its Codable form.
   private func post(_ id: String, read: Bool) -> RedditEntityType {
     var json = try! JSONSerialization.jsonObject(with: JSONEncoder().encode(postSampleData)) as! [String: Any]
     json["id"] = id
@@ -97,10 +96,8 @@ struct FeedItemsManagerTests {
       #expect(requested().count == 6)
       #expect(manager.entities.isEmpty)
       #expect(manager.displayMode == .onlyReadPosts)
-      // Next Post can go on paging too, as the feed's own button does.
       #expect(manager.canLoadMore)
 
-      // Continuing resumes from where the scan stopped.
       await manager.loadMore()
       #expect(requested()[6] == "p6")
     }
@@ -199,7 +196,6 @@ struct FeedItemsManagerTests {
     fetch.complete(1, with: ([post("stale", read: false)], nil))
     await page.value
 
-    // The stale page's cleanup must not let an appearing row start another request.
     manager.elementAppeared(entity: manager.entities[1])
     #expect(fetch.requests.count == 3)
     #expect(ids(manager.entities) == ["a", "b"])
@@ -222,7 +218,6 @@ struct FeedItemsManagerTests {
     #expect(fetch.requests.count == 2)
     #expect(fetch.requests[1].after == "p2")
     fetch.complete(1, with: ([post("c", read: false)], nil))
-    // Join the reserved request rather than sending another one.
     await manager.loadMore()
     #expect(ids(manager.entities) == ["a", "b", "c"])
   }
@@ -389,7 +384,6 @@ struct FeedItemsManagerTests {
 extension FeedItemsManagerTests {
   @Test func keepsPagingAfterAShortPageThatHasACursor() async {
     let (manager, requested) = makeManager(hideReadPosts: false, pages: [
-      // Reddit may return fewer items than requested, including when decoding skips an item.
       "first": ([post("a", read: false)], "p2"),
       "p2": ([post("b", read: false), post("c", read: false)], nil),
     ])
@@ -429,7 +423,6 @@ extension FeedItemsManagerTests {
     manager.chunkSize = 1
     await manager.reload()
 
-    // A failed query change retains the old rows, but retry must not continue their cursor.
     manager.sorting = .new
     await manager.reload()
     #expect(manager.displayMode == .error)
@@ -481,7 +474,6 @@ extension FeedItemsManagerTests {
     fetch.complete(0, with: ([post("old", read: false)], "h2"))
     await old.value
 
-    // The obsolete first page's cleanup cannot release the current page reservation.
     manager.elementAppeared(entity: manager.entities[1])
     #expect(fetch.requests.count == 3)
     #expect(fetch.requests[2].after == "p2")
@@ -505,11 +497,9 @@ extension FeedItemsManagerTests {
     await fetch.waitForRequests(2)
     manager.elementAppeared(entity: manager.entities[0])
     manager.elementAppeared(entity: manager.entities[0])
-    // Rows still on screen must not fetch the old cursor while refreshing.
     #expect(fetch.requests.map(\.after) == [nil, nil])
     #expect(ids(manager.entities) == ["a"])
 
-    // The same row stays on screen, so no new appearance should be needed to continue.
     fetch.complete(1, with: ([post("a", read: false)], "q2"))
     await fetch.waitForRequests(3)
     #expect(fetch.requests.map(\.after) == [nil, nil, "q2"])
@@ -535,7 +525,6 @@ extension FeedItemsManagerTests {
     manager.sorting = .new
     let refresh = Task { await manager.reload() }
     await fetch.waitForRequests(3)
-    // Live settings can change again; the handoff belongs to the refreshed list's query.
     manager.sorting = .hot
     fetch.complete(2, with: ([post("a", read: false)], "q2"))
     await fetch.waitForRequests(4)
@@ -545,7 +534,6 @@ extension FeedItemsManagerTests {
     await refresh.value
     await manager.loadMore()
 
-    // Cancellation is cooperative: the replaced page may still return data or an error.
     fetch.complete(1, with: fails ? nil : ([post("stale", read: false)], "p3"))
     await oldPage.value
     #expect(fetch.requests.count == 4)
@@ -576,7 +564,6 @@ extension FeedItemsManagerTests {
     fetch.complete(0, with: ([post("a", read: false)], "h2"))
     await first.value
 
-    // The controls changed, but the shown list has not reloaded yet.
     manager.sorting = .new
     manager.searchQuery.setNow("changed")
     manager.chunkSize = 2
@@ -600,7 +587,6 @@ extension FeedItemsManagerTests {
     await manager.reload()
     #expect(manager.displayMode == .items)
 
-    // Re-selecting or flipping the sort starts no request, so it must not show a spinner.
     manager.sorting = .hot
     manager.sorting = .new
     manager.sorting = .hot
@@ -699,13 +685,11 @@ extension FeedItemsManagerTests {
       #expect(ids(manager.entities) == ["p1"])
       #expect(requested == [nil])
 
-      // Simulate an active rate limit: paging is held without calling fetchFn.
       limitedUntil = Date().addingTimeInterval(60)
       await manager.loadMore()
       #expect(requested == [nil])
       #expect(manager.displayMode == .error)
 
-      // Lifting the limit and waking the reset timer automatically resumes paging.
       limitedUntil = nil
       for _ in 0 ..< 50 where sleepContinuation == nil {
         try? await Task.sleep(for: .milliseconds(10))
@@ -783,17 +767,13 @@ extension FeedItemsManagerTests {
         fetchFn: fetch.fetch,
       )
 
-      // Start an initial fetch that stays in flight.
       let inFlight = Task { await manager.reload() }
       await fetch.waitForRequests(1)
 
-      // Trigger a second reload while rate-limited: it cancels the in-flight request, clears
-      // currentTask/currentRequestID immediately, and schedules the reset timer.
       limitedUntil = Date().addingTimeInterval(60)
       await manager.reload()
       #expect(manager.displayMode == .error)
 
-      // Even before the cancelled request completes, waking the reset timer must run the retry.
       limitedUntil = nil
       for _ in 0 ..< 50 where sleepContinuation == nil {
         try? await Task.sleep(for: .milliseconds(10))
@@ -842,14 +822,11 @@ extension FeedItemsManagerTests {
       await manager.reload()
       #expect(ids(manager.entities) == ["old"])
 
-      // User changes sort while rate-limited (non-clearing reload keeps old rows on screen).
       limitedUntil = Date().addingTimeInterval(60)
       manager.sorting = .new
       await manager.reload(clearItems: false)
       #expect(manager.displayMode == .error)
 
-      // Even after the rate-limit window expires (before the retry timer wakes), a queued
-      // loadMore must not cancel the retry timer or fetch the old cursor.
       limitedUntil = nil
       await manager.loadMore()
       #expect(requests.count == 1)

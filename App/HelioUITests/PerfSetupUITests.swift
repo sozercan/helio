@@ -1,8 +1,5 @@
 import XCTest
 
-/// First launch for `Tools/perf/perf.py`: a fresh install on fixture data, taken through
-/// onboarding and What's New, so the benchmark then launches as a returning user. Skipped unless
-/// the perf tool passes its network shim.
 final class PerfSetupUITests: XCTestCase {
   func testSetup() throws {
     let env = ProcessInfo.processInfo.environment
@@ -32,7 +29,6 @@ final class PerfSetupUITests: XCTestCase {
       sleep(1)
     }
     XCTAssertTrue(home.waitForExistence(timeout: 10))
-    // Let the launch requests (token, account, subscriptions) land before quitting.
     sleep(5)
     app.terminate()
   }

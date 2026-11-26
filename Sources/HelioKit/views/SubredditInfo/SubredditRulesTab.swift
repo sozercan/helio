@@ -1,10 +1,3 @@
-//
-//  SubredditRulesTab.swift
-//  Helio
-//
-//  Created by Igor Marcossi on 19/07/23.
-//
-
 import MarkdownUI
 import SwiftUI
 

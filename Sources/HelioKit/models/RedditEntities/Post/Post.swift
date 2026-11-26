@@ -1,10 +1,3 @@
-//
-//  Post.swift
-//  Helio
-//
-//  Created by Igor Marcossi on 26/06/23.
-//
-
 import Alamofire
 import CoreData
 import Defaults
@@ -42,9 +35,6 @@ extension Post {
     self.helioData = newHelioData
   }
 
-  /// Loads a post known only by id (a link to it inside another post) and gives it the subreddit
-  /// its post page needs. It's laid out when opened (`layoutIfNeeded`): laying it out now would
-  /// also load the posts it links to, and theirs.
   func fetchItself() {
     let fullname = fullname
     Task(priority: .utility) {
@@ -64,7 +54,6 @@ extension Post {
     }
   }
 
-  /// Lays out a post loaded but never laid out, such as one linked from another post.
   func layoutIfNeeded(contentWidth: Double? = nil) {
     guard let data, helioData?.layoutWidth ?? 0 == 0 else { return }
     setupHelioData(data: data, contentWidth: contentWidth, theme: InMemoryTheme.shared.currentTheme, sub: helioData?.subreddit)
@@ -74,10 +63,6 @@ extension Post {
     CachedDefaults[.SubredditFeedDefSettings].compactPerSubreddit[sub?.settingsKey ?? data.subreddit_id ?? ""] ?? CachedDefaults[.PostLinkDefSettings].compactMode.enabled
   }
 
-  /// Whether link previews download their page, and linked Reddit posts, comments, users and
-  /// subreddits load, while the feed's page is laid out, ahead of showing. A canvas feed shows
-  /// none, so its posts' previews wait until they show, such as when the post opens, instead of
-  /// downloading every linked page.
   static func fetchesLinkMetadata(_ data: PostData, sub: Subreddit?) -> Bool {
     !PostLayout.isCanvas(sub?.settingsKey ?? data.subreddit_id ?? "", canvasSubreddits: CachedDefaults[.canvasSubreddits])
   }
@@ -87,14 +72,9 @@ extension Post {
       return true
     }
     guard helioData != nil else { return false }
-    // Relayout rebuilds embedded Post objects. Rebind their cached avatars, while
-    // a fresh page with no avatars still waits for its one page-owned lookup.
     return Self.avatarSubjects(for: [self]).contains { $0.helioData?.avatarImageRequest != nil }
   }
 
-  /// Without a `contentWidth` (refreshing a post, changing theme), keeps the width the post
-  /// was last laid out for: the full window would be wrong in a split view's column.
-  /// Embedded posts take `fetchLinkMetadata` from the post they're in.
   func setupHelioData(data: PostData? = nil, contentWidth: Double? = nil, secondary: Bool = false, theme: HelioTheme, sub: Subreddit? = nil, fetchAvatar: Bool = true, fetchLinkMetadata: Bool? = nil) {
     let updateAvatarFamily = shouldUpdateAvatarFamily(fetchAvatar: fetchAvatar)
     let lastWidth = self.helioData?.layoutWidth ?? 0
@@ -112,7 +92,6 @@ extension Post {
       self.helioData?.permaURL = URL(string: "https://reddit.com\(data.permalink.urlEncoded)")
 
       var extractedMedia = mediaExtractor(compact: compact, contentWidth: contentWidth, data, theme: theme, fetchLinkMetadata: fetchLinkMetadata)
-      // Extracting builds players, embedded posts and link previews, so a large row shares its media.
       var extractedMediaForcedNormal = compact ? mediaExtractor(compact: false, contentWidth: contentWidth, data, theme: theme, fetchLinkMetadata: fetchLinkMetadata) : extractedMedia
 
       switch extractedMedia {
@@ -123,7 +102,6 @@ extension Post {
           extractedMedia = .video(sharedVideo)
           extractedMediaForcedNormal = .video(sharedVideo)
         } else {
-          // A canvas shows no video, so it resolves one only when a preview or the post page shows it.
           let resolve: () -> Void = { [weak self] in
             self?.resolveStreamable(streamable, contentWidth: contentWidth, secondary: secondary, theme: theme, sub: sub)
           }
@@ -134,10 +112,8 @@ extension Post {
           }
         }
       case .post, .comment, .user, .subreddit:
-        // Left unloaded by `mediaExtractor`; the large media the post page shows loads it.
         if !fetchLinkMetadata {
           self.helioData?.deferredMedia = { [weak self] in
-            // Both copies: compact rows keep their own, which shows if the feed switches to Large.
             self?.helioData?.extractedMediaForcedNormal?.loadLinkedEntity()
             if compact {
               self?.helioData?.extractedMedia?.loadLinkedEntity()
@@ -176,7 +152,6 @@ extension Post {
     }
   }
 
-  /// The title's flair tag, in Reddit's colors or, uncolored, in `uncolored` (the theme's).
   static func extractFlairData(data: PostData, uncolored: PostLinkTheme.TitleFlair? = nil) -> PrependTag? {
     if let flair = data.link_flair_text, let cleansed = flairWithoutEmojis(str: flair), !cleansed.joined().isEmpty {
       if let bgColor = data.link_flair_background_color, !bgColor.isEmpty {
@@ -186,32 +161,9 @@ extension Post {
       if let uncolored {
         return PrependTag(label: flair, bgColor: uncolored.background.uiColor(), textColor: uncolored.text.uiColor())
       }
-      // Uncolored flair is drawn into an image once, so it can't follow the appearance:
-      // a translucent grey reads as Apollo's grey pill on both white and black.
       return PrependTag(label: flair, bgColor: UIColor(white: 0.5, alpha: 0.16), textColor: UIColor(white: 0.5, alpha: 1))
     }
     return nil
-    //
-    //        if bgColor == "D5D7D9" && checkDefaultsForColor {
-    //          if let subId = data.subreddit_id, let flairText = data.link_flair_text {
-    //            let context = PersistenceController.shared.container.newBackgroundContext()
-    //            let fetchRequest = NSFetchRequest<CachedFilter>(entityName: "CachedFilter")
-    //            fetchRequest.predicate = NSPredicate(format: "subreddit_id == %@ && text == %@ && type == 'flair'", subId, flairText)
-    //
-    //            let prevSubFlairs = (context.performAndWait { try? context.fetch(fetchRequest) }) ?? []
-    //            if let prevFlair = prevSubFlairs.first {
-    //              context.performAndWait {
-    //                bgColor = prevFlair.background_color ?? bgColor
-    //                textColor = prevFlair.text_color ?? textColor
-    //              }
-    //            }
-    //          }
-    //        }
-    //
-    //        return FilterData(text: cleansed.joined(separator: " "), text_color: textColor, background_color: bgColor)
-    //      }
-    //
-    //      return nil
   }
 
   static func avatarSubjects(for posts: [Post]) -> [Post] {
@@ -220,7 +172,6 @@ extension Post {
     var index = 0
     while index < subjects.count {
       let post = subjects[index]
-      // Compact and forced-normal layouts can own different embedded Post objects.
       for media in [post.helioData?.extractedMedia, post.helioData?.extractedMediaForcedNormal] {
         if case let .repost(repost) = media, included.insert(ObjectIdentifier(repost)).inserted {
           subjects.append(repost)
@@ -256,8 +207,6 @@ extension Post {
       }
 
       Task(priority: .utility) {
-        // Register a page and its crossposts together. Separate tasks can outlive
-        // AvatarLoader's coalescing window and split one page into extra requests.
         await RedditAPI.shared.updatePostsWithAvatar(posts: avatarSubjects(for: posts), avatarSize: theme.postLinks.theme.badge.avatar.size)
       }
 
@@ -267,52 +216,6 @@ extension Post {
     return []
   }
 
-  //  static func saveFlairsFromPosts(sub: Subreddit, posts: [Post]) {
-  //    let context = PersistenceController.shared.container.newBackgroundContext()
-  //    let fetchRequest = NSFetchRequest<CachedFilter>(entityName: "CachedFilter")
-  //    fetchRequest.predicate = NSPredicate(format: "subreddit_id == %@", sub.id)
-  //
-  //    var prevSubFlairs = (context.performAndWait { try? context.fetch(fetchRequest) }) ?? []
-  //
-  //    context.performAndWait {
-  //      posts.forEach { post in
-  //        if let data = post.data, let flairText = data.link_flair_text {
-  //          guard let flairData = Post.extractFlairData(data: data) else { return }
-  //
-  //          if let prev = prevSubFlairs.first(where: { $0.text == flairText }) {
-  //            prev.occurences = prev.occurences + 1
-  //
-  //            if flairData.background_color != "D5D7D9" && flairData.background_color != prev.background_color {
-  //              prev.background_color = flairData.background_color
-  //              prev.text_color = flairData.text_color
-  //            }
-  //          } else {
-  //            let newFilter = CachedFilter(context: context)
-  //
-  //            newFilter.subreddit_id = sub.id
-  //            newFilter.type = "flair"
-  //            newFilter.text = flairData.text
-  //            newFilter.text_color = flairData.text_color
-  //            newFilter.background_color = flairData.background_color
-  //            newFilter.occurences = 1
-  //
-  //            prevSubFlairs.append(newFilter)
-  //          }
-  //        }
-  //      }
-  //
-  //      try? context.save()
-  //
-  //      let flairFilters = prevSubFlairs.map({ FilterData.from($0) })
-  //      DispatchQueue.main.async {
-  //        withAnimation {
-  //          sub.helioData?.flairs = flairFilters
-  //        }
-  //      }
-  //    }
-  //  }
-
-  /// Turns a Streamable link into its video, then lays the post out for it.
   private func resolveStreamable(_ streamable: StreamableExtracted, contentWidth: Double, secondary: Bool, theme: HelioTheme, sub: Subreddit?) {
     Task(priority: .utility) {
       if let video = await self.loadStreamableMedia(streamable: streamable) {
@@ -323,7 +226,6 @@ extension Post {
             self.helioData?.extractedMedia = .video(video)
             self.helioData?.extractedMediaForcedNormal = .video(video)
 
-            // The post may have been laid out again for another width since.
             let width = self.helioData?.layoutWidth ?? contentWidth
             let textSize = self.helioData?.layoutDynamicTypeSize ?? ContentTextScale.dynamicTypeSize
             self.helioData?.postDimensions = getPostDimensions(post: self, helioData: self.helioData, columnWidth: width, secondary: secondary, rawTheme: theme, subId: sub?.settingsKey, dynamicTypeSize: textSize)
@@ -401,14 +303,11 @@ extension Post {
     var filteredSubreddits = Defaults[.filteredSubreddits]
 
     if let index = filteredSubreddits.firstIndex(of: subreddit) {
-      // Subreddit exists in the array, remove it
       filteredSubreddits.remove(at: index)
     } else {
-      // Subreddit doesn't exist in the array, add it
       filteredSubreddits.append(subreddit)
     }
 
-    // Update the Defaults value with the modified array
     Defaults[.filteredSubreddits] = filteredSubreddits
   }
 
@@ -516,7 +415,6 @@ extension Post {
     var ids = [String]()
 
     if let children = comments?.children {
-      // Not `0 ... count - 1`: a listing with no children, such as empty replies, would trap.
       for child in children {
         if child.kind == "more" {
           continue
@@ -551,55 +449,12 @@ extension Post {
             }
           }
         }
-        //        if let data = data {
-        //          let newComment = CommentData(
-        //            subreddit_id: data.subreddit_id,
-        //            subreddit: data.subreddit,
-        //            likes: true,
-        //            saved: false,
-        //            id: UUID().uuidString,
-        //            archived: false,
-        //            count: 0,
-        //            author: RedditAPI.shared.me?.data?.name ?? "",
-        //            created_utc: nil,
-        //            send_replies: nil,
-        //            parent_id: id,
-        //            score: nil,
-        //            author_fullname: "t2_\(redditAPI.me?.data?.id ?? "")",
-        //            approved_by: nil,
-        //            mod_note: nil,
-        //            collapsed: nil,
-        //            body: text,
-        //            top_awarded_type: nil,
-        //            name: nil,
-        //            downs: 0,
-        //            children: nil,
-        //            body_html: nil,
-        //            created: Double(Int(Date().timeIntervalSince1970)),
-        //            link_id: data.id,
-        //            link_title: data.title,
-        //            subreddit_name_prefixed: data.subreddit_name_prefixed,
-        //            depth: 0,
-        //            author_flair_background_color: nil,
-        //            collapsed_because_crowd_control: nil,
-        //            mod_reports: nil,
-        //            num_reports: nil,
-        //            ups: 1
-        //          )
-        //          await MainActor.run {
-        //            withAnimation {
-        //              childrenHelio.append(Comment(data: newComment))
-        //            }
-        //          }
-        //        }
       }
       return result
     }
     return false
   }
 
-  /// `appliesDetails`: whether the post's details still apply when they come (`full`), for a
-  /// caller that a newer request can supersede.
   func refreshPost(commentID: String? = nil, sort: CommentSortOption = .confidence, subreddit: String? = nil, full: Bool = true, appliesDetails: @MainActor @escaping () -> Bool = { true }) async -> ([Comment]?, String?)? {
     if let subreddit = data?.subreddit ?? subreddit, let response = await RedditAPI.shared.fetchPost(subreddit: subreddit, postID: id, commentID: commentID, sort: sort), response.count >= 2 {
       if let post = response[0] {
@@ -609,7 +464,6 @@ extension Post {
             await MainActor.run {
               guard appliesDetails() else { return }
               var newData = actualData.data?.children?[0].data
-              // Read is kept on the device, not sent by Reddit: keep it.
               if self.data?.helioSeen == true {
                 newData?.helioSeen = true
               }

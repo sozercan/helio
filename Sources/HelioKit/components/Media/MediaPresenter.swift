@@ -1,10 +1,3 @@
-//
-//  MediaPresenter.swift
-//  Helio
-//
-//  Created by Igor Marcossi on 22/08/23.
-//
-
 import Defaults
 import NukeUI
 import SwiftUI
@@ -41,8 +34,6 @@ struct MediaPresenter: View, Equatable {
 
   var helioData: PostHelioData
   var fullPage = false
-  /// The media's size on a post page, from the page's own layout. Not read from the post's
-  /// cache: two pages of the post in different columns would overwrite each other's.
   var pageMediaSize: CGSize?
   weak var controller: UIViewController?
   let postTitle: String
@@ -160,8 +151,6 @@ struct MediaPresenter: View, Equatable {
     }
   }
 
-  /// A post, comment, user or subreddit the post links to, loaded once it shows if the post
-  /// deferred it (`PostHelioData.deferredMedia`).
   private func linkedEntity(_ entity: RedditEntityType) -> some View {
     RedditMediaPost(entity: entity)
       .task { helioData.resolveDeferredMedia() }

@@ -1,10 +1,3 @@
-//
-//  RedditCredentialsManager.swift
-//  Helio
-//
-//  Created by Igor Marcossi on 19/11/23.
-//
-
 import Alamofire
 import Combine
 import Defaults
@@ -39,14 +32,10 @@ final class RedditCredentialsManager {
     selectedCredential(id: Defaults[.GeneralDefSettings].redditCredentialSelectedID)
   }
 
-  /// Reuse the installed selection/fallback while letting views observe the Defaults ID.
   func selectedCredential(id: UUID?) -> RedditCredential? {
     credentials.first { $0.id == id } ?? credentials.first
   }
 
-  /// Whether the stored selection names a saved credential. It can name one that's gone, such as
-  /// a deleted account or one the keychain didn't keep; `selectedCredential` then falls back to
-  /// the first, but views keyed by the stored ID, such as the subs list, would show nothing.
   var selectionIsSaved: Bool {
     let id = Defaults[.GeneralDefSettings].redditCredentialSelectedID
     return credentials.contains { $0.id == id }
@@ -71,8 +60,6 @@ final class RedditCredentialsManager {
     }
   }
 
-  /// An in-memory store: no keychain, onboarding or account-list network side effects.
-  /// The callback lets a local profile owner observe the same synchronous lifecycle boundary.
   init(credentials: [RedditCredential], reloadSelectedProfile: @escaping @MainActor () -> Void = {}) {
     persistence = nil
     self.reloadSelectedProfile = reloadSelectedProfile
@@ -84,8 +71,6 @@ final class RedditCredentialsManager {
     authorizations.withLock { $0.contains(authorization) }
   }
 
-  /// Background persistence may commit while the grant remains installed. Grant
-  /// invalidation uses this same lease; main-actor selection reads never take it.
   nonisolated func withCurrentAuthorization<Result>(_ authorization: RedditCredential.AuthorizationID, _ commit: () throws -> Result) rethrows -> Result? {
     try authorizations.withLock { current in
       guard current.contains(authorization) else { return nil }
@@ -96,8 +81,6 @@ final class RedditCredentialsManager {
   private func publishCredentials(_ updated: [RedditCredential]) {
     let ids = Set(updated.compactMap(\.authorizationID))
     if ids != Set(credentials.compactMap(\.authorizationID)) {
-      // Invalidate before publishing the replacement. An already leased commit
-      // finishes before this mutation, never after a replacement account's write.
       authorizations.withLock { $0 = ids }
     }
     credentials = updated
@@ -157,14 +140,11 @@ final class RedditCredentialsManager {
     authorizations.withLock { $0 = Set(credentials.compactMap(\.authorizationID)) }
   }
 
-  /// Launch and account switches sync subscriptions and multis at most this often. Subscribing
-  /// in the app updates the local copy, and pulling the subreddit list syncs right away.
   static let subsSyncInterval: TimeInterval = 60 * 60
 
   func updateMe() {
     reloadSelectedProfile()
     guard persistence != nil, let credential = selectedCredential, let authorization = credential.authorizationID else { return }
-    // A credential signed in to another account is synced again.
     let syncKey = "\(credential.id.uuidString)|\(credential.userName ?? "")"
     if let syncedAt = Defaults[.subsSyncedAt][syncKey], Date().timeIntervalSince(syncedAt) < Self.subsSyncInterval {
       return
@@ -172,7 +152,6 @@ final class RedditCredentialsManager {
     guard syncingAccounts.insert(authorization).inserted else { return }
     Task(priority: .utility) {
       defer { self.syncingAccounts.remove(authorization) }
-      // As this account: the selection can change before the task runs.
       async let subsSynced = RedditAPI.shared.fetchSubsAndSyncCoreData(account: credential)
       async let multisSynced = RedditAPI.shared.fetchMyMultis(account: credential)
       if await subsSynced, await multisSynced {
@@ -181,7 +160,6 @@ final class RedditCredentialsManager {
     }
   }
 
-  /// Mutations and their persistence/profile effects finish in the same main-actor turn.
   func saveCred(_ cred: RedditCredential, forceCreate: Bool = true) {
     let index = credentials.firstIndex { $0.id == cred.id }
     guard index != nil || forceCreate else { return }
@@ -197,7 +175,6 @@ final class RedditCredentialsManager {
       updated.append(cred)
     }
     publishCredentials(updated)
-    // Auto-select if no saved credential is currently selected.
     if !selectionIsSaved {
       Defaults[.GeneralDefSettings].redditCredentialSelectedID = cred.id
     }
@@ -207,7 +184,6 @@ final class RedditCredentialsManager {
     }
   }
 
-  /// Main's conditional edit/renewal API shares the synchronous mutation owner.
   func updateCred(_ id: UUID, _ change: (inout RedditCredential) -> Bool) {
     guard let index = credentials.firstIndex(where: { $0.id == id }) else { return }
     var current = credentials[index]
@@ -222,7 +198,6 @@ final class RedditCredentialsManager {
     }
   }
 
-  /// Untouched web-session edits keep the current rotated cookies, token and grant.
   func saveDraft(_ draft: RedditCredential, openedAs original: RedditCredential) {
     var draft = draft
     if let authorization = original.authorizationID,
@@ -231,7 +206,6 @@ final class RedditCredentialsManager {
        current.authorizationID == authorization,
        draft.userName == original.userName
     {
-      // /me may have backfilled a migrated record while this editor was open.
       draft.userName = current.userName
     }
     if let current = credentials.first(where: { $0.id == draft.id }),
@@ -257,7 +231,6 @@ final class RedditCredentialsManager {
     }
   }
 
-  /// A refresh only updates the authorization that requested it, preserving newer edits.
   func updateAccessToken(_ token: RedditCredential.AccessToken?, for authorization: RedditCredential.AuthorizationID) {
     guard let index = credentials.firstIndex(where: { $0.id == authorization.credentialID }) else { return }
     var current = credentials[index]
@@ -276,7 +249,6 @@ final class RedditCredentialsManager {
     withAnimation {
       publishCredentials(credentials.filter { $0.id != cred.id })
     }
-    // Deleting the selected account selects the one `selectedCredential` falls back to.
     if !selectionIsSaved, let fallback = credentials.first {
       Defaults[.GeneralDefSettings].redditCredentialSelectedID = fallback.id
     }

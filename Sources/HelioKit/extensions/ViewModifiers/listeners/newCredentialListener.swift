@@ -1,10 +1,3 @@
-//
-//  newCredentialListener.swift
-//  Helio
-//
-//  Created by Igor Marcossi on 10/12/23.
-//
-
 import Foundation
 import SwiftUI
 

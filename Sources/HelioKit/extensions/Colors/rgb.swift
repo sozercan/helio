@@ -1,8 +1,3 @@
-//
-//  rgb.swift
-//  Helio
-//
-
 import UIKit
 
 extension UIColor {

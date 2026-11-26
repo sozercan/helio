@@ -1,10 +1,3 @@
-//
-//  ThemesPanel.swift
-//  Helio
-//
-//  Created by Igor Marcossi on 08/09/23.
-//
-
 import Defaults
 import SwiftUI
 import UniformTypeIdentifiers

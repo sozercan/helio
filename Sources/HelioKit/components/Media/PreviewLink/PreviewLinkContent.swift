@@ -1,10 +1,3 @@
-//
-//  PreviewLinkContent.swift
-//  Helio
-//
-//  Created by Igor Marcossi on 30/07/23.
-//
-
 import Combine
 import Defaults
 import Foundation
@@ -13,8 +6,6 @@ import OpenGraph
 import SafariServices
 import SwiftUI
 import UIKit
-
-// import SkeletonUI
 import YouTubePlayerKit
 
 struct PreviewLinkContent: View {
@@ -24,8 +15,6 @@ struct PreviewLinkContent: View {
   static let height: CGFloat = 88
   var body: some View {
     PreviewLinkContentRaw(compact: compact, imageReq: viewModel.imageReq, title: viewModel.title, description: viewModel.description, loading: viewModel.loading, url: url)
-      // A canvas post's preview waits until it shows, such as when the post opens. Keyed by the
-      // model, so one a refresh replaces loads too, though this view is already showing.
       .task(id: ObjectIdentifier(viewModel)) { viewModel.loadIfNeeded() }
   }
 }
@@ -76,8 +65,6 @@ struct PreviewLinkContentRaw: View, Equatable {
 
             Text(cleanURL(url: url))
               .contentFont(13, relativeTo: .meta)
-              // The theme's secondary text, which High Contrast keeps at 7:1 (Apollo's is the
-              // app's `secondaryText`).
               .foregroundStyle(selectedTheme.postLinks.theme.badge.statsText.color())
               .lineLimit(1)
           }
@@ -107,21 +94,18 @@ struct PreviewLinkContentRaw: View, Equatable {
       }
       .frame(width: compact ? scaledCompactModeThumbSize() : 76, height: compact ? scaledCompactModeThumbSize() : 76)
       .clipped()
-      // Concentric with the card: its 16 radius less the 6 padding. Alone in compact rows, 12.
       .mask(RR(compact ? 12 : 10, Color.black))
       .background(RR(compact ? 12 : 10, Color.primary.opacity(0.1)))
     }
     .padding(.vertical, compact ? 0 : 6)
     .padding(.leading, compact ? 0 : 10)
     .padding(.trailing, compact ? 0 : 6)
-    // As tall as the thumbnail, or taller when larger text needs it.
     .frame(maxWidth: compact ? nil : .infinity, minHeight: compact ? nil : PreviewLinkContent.height)
     .background(compact ? nil : RR(16, Color.primary.opacity(0.1)))
     .contentShape(Rectangle())
   }
 }
 
-/// Compact previews show only the image, so they name the link: its title, or where it goes.
 private struct CompactLinkLabel: ViewModifier {
   var label: String?
 

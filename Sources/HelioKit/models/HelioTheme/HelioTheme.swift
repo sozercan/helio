@@ -1,10 +1,3 @@
-//
-//  HelioTheme.swift
-//  Helio
-//
-//  Created by Igor Marcossi on 07/09/23.
-//
-
 import Defaults
 import Foundation
 import SwiftUI
@@ -14,10 +7,6 @@ struct HelioTheme: Codable, Identifiable, Hashable, Equatable, Defaults.Serializ
     case metadata, id, postLinks, posts, comments, lists, general
   }
 
-  /// The theme's parts, in a box that copies share until one of them is changed. A theme is
-  /// nearly 4KB, and every view that reads it from the environment (`useTheme`) holds the whole
-  /// value: such views were as big, and SwiftUI copies views on the stack as it updates them.
-  /// Deep in a layout, as after rotating, that ran Debug builds out of main-thread stack.
   private final class Parts {
     var metadata: HelioThemeMeta
     var id: String
@@ -79,7 +68,6 @@ struct HelioTheme: Codable, Identifiable, Hashable, Equatable, Defaults.Serializ
     set { uniqueParts().general = newValue }
   }
 
-  /// The parts, copied first if another theme shares them.
   private mutating func uniqueParts() -> Parts {
     if !isKnownUniquelyReferenced(&parts) {
       parts = parts.copy()

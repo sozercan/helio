@@ -1,53 +1,33 @@
-//
-//  RedditVideoPlaylistRecovery.swift
-//  Helio
-//
-
 import AVFoundation
 import Foundation
 import os
 import UniformTypeIdentifiers
 
-/// Rebuilds a `v.redd.it` multivariant HLS playlist from `DASHPlaylist.mpd` when Reddit's CDN
-/// answers `HLSPlaylist.m3u8` with an HTTP error (such as a cached S3 403).
-///
-/// The variant playlists (`CMAF_<height>.m3u8`, `CMAF_AUDIO_<kbps>.m3u8`) and `DASHPlaylist.mpd`
-/// stay reachable even while `HLSPlaylist.m3u8` 403s. Serving the rebuilt manifest through an
-/// `AVAssetResourceLoaderDelegate` on a custom scheme lets `AVPlayer` load the remote `https://`
-/// variant playlists directly with adaptive streaming and audio, without local-to-remote file
-/// restrictions or temporary files on disk.
 enum RedditVideoPlaylistRecovery {
   private static let logger = Logger(subsystem: "com.sertacozercan.helio", category: "Video")
   static let customScheme = "helio-hls"
 
   enum RecoveredSource: Equatable, Sendable {
-    /// A rebuilt HLS multivariant manifest served in memory for `sourceURL`.
     case manifest(String, sourceURL: URL)
-    /// A direct fallback URL (typically `CMAF_<height>.mp4`).
     case directURL(URL)
   }
 
-  /// Whether `url` is a `v.redd.it` `HLSPlaylist.m3u8` URL that can be recovered via `DASHPlaylist.mpd`.
   static func isRedditHLSPlaylist(_ url: URL) -> Bool {
     guard let host = url.host?.lowercased(), host == "v.redd.it" else { return false }
     return url.lastPathComponent.lowercased() == "hlsplaylist.m3u8"
   }
 
-  /// Derives the sibling `DASHPlaylist.mpd` URL for a `v.redd.it` HLS URL when no explicit
-  /// `dash_url` was provided by the listing.
   static func dashURL(for hlsURL: URL) -> URL? {
     guard isRedditHLSPlaylist(hlsURL) else { return nil }
     return hlsURL.deletingLastPathComponent().appendingPathComponent("DASHPlaylist.mpd")
   }
 
-  /// Converts an `https://` HLS URL to the custom scheme intercepted by `PlaylistResourceLoader`.
   static func customSchemeURL(for hlsURL: URL) -> URL? {
     guard var components = URLComponents(url: hlsURL, resolvingAgainstBaseURL: false) else { return nil }
     components.scheme = customScheme
     return components.url
   }
 
-  /// Builds an `AVPlayerItem` and retains any `AVAssetResourceLoaderDelegate` needed to serve it.
   static func makePlayerItem(for source: RecoveredSource) -> (item: AVPlayerItem, delegate: AVAssetResourceLoaderDelegate?) {
     switch source {
     case let .manifest(manifest, sourceURL):
@@ -63,10 +43,6 @@ enum RedditVideoPlaylistRecovery {
     }
   }
 
-  /// Resolves a replacement playback source for a failed `v.redd.it` HLS stream:
-  /// 1. Fetches `dashURL` (or the sibling `DASHPlaylist.mpd`) and synthesizes a multivariant
-  ///    `.m3u8` pointing to the absolute `CMAF_*.m3u8` variant playlists.
-  /// 2. Falls back to `fallbackURL` (typically `CMAF_<height>.mp4`) if DASH recovery fails.
   static func recover(
     hlsURL: URL,
     dashURL: URL?,
@@ -92,8 +68,6 @@ enum RedditVideoPlaylistRecovery {
     return fallbackURL.map(RecoveredSource.directURL)
   }
 
-  /// Parses a Reddit `DASHPlaylist.mpd` document and builds an equivalent HLS multivariant playlist
-  /// whose variant URIs are absolute `https://v.redd.it/<id>/<name>.m3u8` URLs.
   static func buildMultivariantPlaylist(fromDASHData data: Data, baseURL: URL) -> String? {
     let parser = DASHParser()
     guard let parsed = parser.parse(data), !parsed.videos.isEmpty else { return nil }
@@ -102,7 +76,6 @@ enum RedditVideoPlaylistRecovery {
     let audioGroupID = "audio"
     let hasAudio = !parsed.audios.isEmpty
 
-    // Pick the highest-bitrate audio track as default when multiple audio renditions exist.
     let sortedAudios = parsed.audios.sorted { ($0.bandwidth ?? 0) > ($1.bandwidth ?? 0) }
     for (index, audio) in sortedAudios.enumerated() {
       guard let playlistURI = variantPlaylistURL(from: audio.baseURL, baseURL: baseURL) else { continue }
@@ -143,8 +116,6 @@ enum RedditVideoPlaylistRecovery {
     return lines.joined(separator: "\n") + "\n"
   }
 
-  /// Converts a DASH representation's `BaseURL` (e.g. `CMAF_720.mp4` or `CMAF_AUDIO_128.mp4`)
-  /// into the sibling HLS variant playlist URL (`https://v.redd.it/<id>/CMAF_720.m3u8`).
   static func variantPlaylistURL(from dashBaseURL: String, baseURL: URL) -> URL? {
     let trimmed = dashBaseURL.trimmingCharacters(in: .whitespacesAndNewlines)
     guard !trimmed.isEmpty else { return nil }
@@ -168,11 +139,8 @@ enum RedditVideoPlaylistRecovery {
     return data
   }
 
-  /// Serves the synthesized multivariant `.m3u8` manifest to `AVURLAsset` for our custom scheme.
-  /// AVFoundation then fetches the absolute `https://` variant playlists directly.
   final class PlaylistResourceLoader: NSObject, AVAssetResourceLoaderDelegate {
     private let manifestData: Data
-    // AVAssetResourceLoader requires a DispatchQueue for its delegate callbacks.
     // swiftlint:disable:next no_dispatch_queue
     let queue = DispatchQueue(label: "com.sertacozercan.helio.hls-recovery")
 

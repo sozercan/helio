@@ -1,10 +1,3 @@
-//
-//  BehaviorDefSettings.swift
-//  Helio
-//
-//  Created by Igor Marcossi on 15/12/23.
-//
-
 import Defaults
 
 struct BehaviorDefSettings: Equatable, Hashable, Codable, Defaults.Serializable {

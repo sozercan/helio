@@ -1,10 +1,3 @@
-//
-//  StringJSONConversions.swift
-//  Helio
-//
-//  Created by Igor Marcossi on 23/11/23.
-//
-
 import Foundation
 
 extension Encodable {

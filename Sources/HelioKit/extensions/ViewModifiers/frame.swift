@@ -1,10 +1,3 @@
-//
-//  frame.swift
-//  Helio
-//
-//  Created by Igor Marcossi on 01/10/23.
-//
-
 import Foundation
 import SwiftUI
 

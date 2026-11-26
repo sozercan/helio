@@ -86,7 +86,6 @@ class PinchZoomView: UIView, UIGestureRecognizerDelegate {
     let scaledImageWidth = imageWidth * scale
 
     let overFlowFromCenterTopHeight = max(0, (scaledImageHeight - imageHeight) * CGFloat(anchor.y)) - offset.height
-//    let overFlowFromCenterLeftWidth = max(0, (scaledImageWidth - imageWidth) * CGFloat(anchor.x)) - offset.width
     let blackAreaLeft = -(max(0, (scaledImageWidth - .screenW) * CGFloat(anchor.x)) - offset.width)
     let blackAreaTop = ((.screenH - imgSize.height) / 2) - overFlowFromCenterTopHeight
 
@@ -141,25 +140,21 @@ class PinchZoomView: UIView, UIGestureRecognizerDelegate {
       if scaledImageHeight <= .screenH {
         let move = (blackAreaBot - blackAreaTop) / 2
         newOffset.height += move
-      } else {
-        if blackAreaTop > 0 {
-          newOffset.height -= blackAreaTop
-        } else
-        if blackAreaBot > 0 {
-          newOffset.height += blackAreaBot
-        }
+      } else if blackAreaTop > 0 {
+        newOffset.height -= blackAreaTop
+      } else
+      if blackAreaBot > 0 {
+        newOffset.height += blackAreaBot
       }
 
       if scaledImageWidth <= .screenW {
         let move = (blackAreaRight - blackAreaLeft) / 2
         newOffset.width += move
-      } else {
-        if blackAreaLeft > 0 {
-          newOffset.width -= blackAreaLeft
-        } else
-        if blackAreaRight > 0 {
-          newOffset.width += blackAreaRight
-        }
+      } else if blackAreaLeft > 0 {
+        newOffset.width -= blackAreaLeft
+      } else
+      if blackAreaRight > 0 {
+        newOffset.width += blackAreaRight
       }
 
       withAnimation(.interpolatingSpring(stiffness: 300, damping: 30, initialVelocity: max(abs(velocity.x), abs(velocity.y)) / 1000.0)) {
@@ -186,8 +181,6 @@ class PinchZoomView: UIView, UIGestureRecognizerDelegate {
       let overFlowFromCenterLeftWidth = max(0, (scaledImageWidth - imageWidth) * CGFloat(anchor.x)) - offset.width
       let blackAreaLeft = -(max(0, (scaledImageWidth - .screenW) * CGFloat(anchor.x)) - offset.width)
       let blackAreaTop = ((.screenH - imgSize.height) / 2) - overFlowFromCenterTopHeight
-//      let blackAreaRight = blackAreaLeft < 0 ? .screenW - (scaledImageWidth + blackAreaLeft) : 0
-//      let blackAreaBot = -(scaledImageHeight - .screenH - blackAreaTop)
 
       let newAnchor = UnitPoint(x: (startLocation.x + -blackAreaLeft) / scaledImageWidth, y: (startLocation.y + -blackAreaTop) / scaledImageHeight)
 
@@ -201,7 +194,6 @@ class PinchZoomView: UIView, UIGestureRecognizerDelegate {
 
     case .changed:
       if gesture.numberOfTouches != numberOfTouches {
-        // If the number of fingers being used changes, the start location needs to be adjusted to avoid jumping.
         let newLocation = gesture.location(in: self)
         let jumpDifference = CGSize(width: newLocation.x - location.x, height: newLocation.y - location.y)
         startLocation = CGPoint(x: startLocation.x + jumpDifference.width, y: startLocation.y + jumpDifference.height)
@@ -233,25 +225,21 @@ class PinchZoomView: UIView, UIGestureRecognizerDelegate {
       if scaledImageHeight <= .screenH {
         let move = (blackAreaBot - blackAreaTop) / 2
         newOffset.height += move
-      } else {
-        if blackAreaTop > 0 {
-          newOffset.height -= blackAreaTop
-        } else
-        if blackAreaBot > 0 {
-          newOffset.height += blackAreaBot
-        }
+      } else if blackAreaTop > 0 {
+        newOffset.height -= blackAreaTop
+      } else
+      if blackAreaBot > 0 {
+        newOffset.height += blackAreaBot
       }
 
       if scaledImageWidth <= .screenW {
         let move = (blackAreaRight - blackAreaLeft) / 2
         newOffset.width += move
-      } else {
-        if blackAreaLeft > 0 {
-          newOffset.width -= blackAreaLeft
-        } else
-        if blackAreaRight > 0 {
-          newOffset.width += blackAreaRight
-        }
+      } else if blackAreaLeft > 0 {
+        newOffset.width -= blackAreaLeft
+      } else
+      if blackAreaRight > 0 {
+        newOffset.width += blackAreaRight
       }
 
       let impactFeedbackgenerator = UIImpactFeedbackGenerator(style: .light)

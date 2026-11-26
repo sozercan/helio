@@ -1,22 +1,9 @@
-//
-//  LazyImageOpt.swift
-//  Helio
-//
-//  Created by Igor Marcossi on 14/04/24.
-//
-
 import Combine
 import Foundation
 import Nuke
 import NukeUI
 import SwiftUI
 
-/// A view that asynchronously loads and displays an image.
-///
-/// ``LazyImage`` is designed to be similar to the native [`AsyncImage`](https://developer.apple.com/documentation/SwiftUI/AsyncImage),
-/// but it uses [Nuke](https://github.com/kean/Nuke) for loading images. You
-/// can take advantage of all of its features, such as caching, prefetching,
-/// task coalescing, smart background decompression, request priorities, and more.
 @MainActor
 @available(iOS 14.0, tvOS 14.0, watchOS 7.0, macOS 10.16, *)
 public struct LazyImageOpt<Content: View>: View {
@@ -30,28 +17,15 @@ public struct LazyImageOpt<Content: View>: View {
   private var onDisappearBehavior: DisappearBehavior? = .cancel
   private var onCompletion: ((Result<ImageResponse, Error>) -> Void)?
 
-  // MARK: Initializers
-
-  /// Loads and displays an image using `SwiftUI.Image`.
-  ///
-  /// - Parameters:
-  ///   - url: The image URL.
   public init(url: URL?) where Content == Image {
     self.init(request: url.map { ImageRequest(url: $0) })
   }
 
-  /// Loads and displays an image using `SwiftUI.Image`.
-  ///
-  /// - Parameters:
-  ///   - request: The image request.
   public init(request: ImageRequest?) where Content == Image {
     self.context = request.map(LazyImageContextOpt.init)
     self.transaction = Transaction(animation: nil)
   }
 
-  /// Loads an images and displays custom content for each state.
-  ///
-  /// See also ``init(request:transaction:content:)``
   public init(url: URL?,
               transaction: Transaction = Transaction(animation: nil),
               @ViewBuilder content: @escaping (LazyImageStateOpt) -> Content)
@@ -59,23 +33,6 @@ public struct LazyImageOpt<Content: View>: View {
     self.init(request: url.map { ImageRequest(url: $0) }, transaction: transaction, content: content)
   }
 
-  /// Loads an images and displays custom content for each state.
-  ///
-  /// - Parameters:
-  ///   - request: The image request.
-  ///   - content: The view to show for each of the image loading states.
-  ///
-  /// ```swift
-  /// LazyImage(request: $0) { state in
-  ///     if let image = state.image {
-  ///         image // Displays the loaded image.
-  ///     } else if state.error != nil {
-  ///         Color.red // Indicates an error.
-  ///     } else {
-  ///         Color.blue // Acts as a placeholder.
-  ///     }
-  /// }
-  /// ```
   public init(request: ImageRequest?,
               transaction: Transaction = Transaction(animation: nil),
               @ViewBuilder content: @escaping (LazyImageStateOpt) -> Content)
@@ -85,25 +42,15 @@ public struct LazyImageOpt<Content: View>: View {
     self.makeContent = content
   }
 
-  // MARK: Options
-
-  /// Sets processors to be applied to the image.
-  ///
-  /// If you pass an image requests with a non-empty list of processors as
-  /// a source, your processors will be applied instead.
   public func processors(_ processors: [any ImageProcessing]?) -> Self {
     map { $0.context?.request.processors = processors ?? [] }
   }
 
   public enum DisappearBehavior {
-    /// Cancels the current request but keeps the presentation state of
-    /// the already displayed image.
     case cancel
-    /// Lowers the request's priority to very low
     case lowerPriority
   }
 
-  /// Override the behavior on disappear. By default, the view is reset.
   public func onDisappear(_ behavior: DisappearBehavior?) -> Self {
     map { $0.onDisappearBehavior = behavior }
   }
@@ -113,8 +60,6 @@ public struct LazyImageOpt<Content: View>: View {
     closure(&copy)
     return copy
   }
-
-  // MARK: Body
 
   public var body: some View {
     ZStack {

@@ -2,8 +2,6 @@ import Foundation
 import Testing
 @testable import HelioKit
 
-/// Theme parts and swipe actions keep their large fields in boxes (`Boxed`), so the views that
-/// hold them stay small. They still have to behave, and encode, as the plain values.
 struct BoxedTests {
   private struct Plain: Codable, Equatable {
     var name: String

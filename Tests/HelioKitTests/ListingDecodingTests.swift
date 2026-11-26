@@ -3,7 +3,6 @@ import Testing
 @testable import HelioKit
 
 struct ListingDecodingTests {
-  /// The sample post as a JSON object, with `changes` applied.
   private func postJSON(_ changes: [String: Any]) throws -> [String: Any] {
     var json = try #require(try JSONSerialization.jsonObject(with: JSONEncoder().encode(postSampleData)) as? [String: Any])
     json.merge(changes) { _, new in new }
@@ -33,7 +32,6 @@ struct ListingDecodingTests {
   }
 
   @Test func aListingOfAnotherTypeStillFailsSoEitherFallsBack() throws {
-    // The comments endpoint returns [post listing, comment listing], decoded by trying posts first.
     let comment = try #require(try JSONSerialization.jsonObject(with: JSONEncoder().encode(getCommentSampleData(false))) as? [String: Any])
     let response = try JSONSerialization.data(withJSONObject: [
       ["kind": "Listing", "data": ["children": [["kind": "t3", "data": postJSON(["id": "p"])]]]],

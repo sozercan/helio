@@ -1,10 +1,3 @@
-//
-//  GuidedTutorialScene.swift
-//  Helio
-//
-//  Created by Igor Marcossi on 04/01/24.
-//
-
 import AVKit
 import SwiftUI
 
@@ -82,7 +75,6 @@ struct GuidedTutorialScene: View {
     .themedListBG(theme.lists.bg)
     .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
     .background(Color.hitbox)
-    //    .gesture(selectedQuestion == nil ? nil : TapGesture().onEnded { withAnimation(.snappy) { selectedQuestion = nil } })
     .contentShape(Rectangle())
     .multilineTextAlignment(.center)
   }

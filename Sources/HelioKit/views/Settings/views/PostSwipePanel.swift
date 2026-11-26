@@ -1,10 +1,3 @@
-//
-//  PostSwipePanel.swift
-//  Helio
-//
-//  Created by Igor Marcossi on 11/08/23.
-//
-
 import Defaults
 import SwiftUI
 
@@ -51,7 +44,6 @@ struct PostSwipePanel: View {
             Label("Long Drag Right", image: "longDragRight")
           }
         }
-//          .themedListRowLikeBG(enablePadding: true, disableBG: true)
       }
       .themedListSection()
     }

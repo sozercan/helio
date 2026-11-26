@@ -1,10 +1,3 @@
-//
-//  FAQPanel.swift
-//  Helio
-//
-//  Created by Daniel Inama on 15/08/23.
-//
-
 import SwiftUI
 
 struct FAQPanel: View {

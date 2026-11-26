@@ -1,10 +1,3 @@
-//
-//  PreviewLink.swift
-//  Helio
-//
-//  Created by Igor Marcossi on 28/07/23.
-//
-
 import Foundation
 import SwiftUI
 import YouTubePlayerKit

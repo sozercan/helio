@@ -1,38 +1,26 @@
-//
-//  ZoomableImageView.swift
-//  Helio
-//
-//  Created by Daniel Inama on 27/08/23.
-//
-
 import Foundation
 import SwiftUI
 import UIKit
 
-/// Source https://stackoverflow.com/a/64110231
 struct ZoomableScrollView<Content: View>: UIViewRepresentable {
   private var content: Content
   private var onTap: (() -> Void)?
   private var onSwipe: ((Int) -> Void)?
   private var onHold: ((LightBoxScrub) -> Void)?
-  @Binding var isZoomed: Bool // Add the binding parameter
+  @Binding var isZoomed: Bool
 
   init(onTap: (() -> Void)? = nil, onSwipe: ((Int) -> Void)? = nil, onHold: ((LightBoxScrub) -> Void)? = nil, isZoomed: Binding<Bool>, @ViewBuilder content: () -> Content) {
     self.content = content()
-    // set up helper class
     self.onTap = onTap
     self.onSwipe = onSwipe
     self.onHold = onHold
-    self._isZoomed = isZoomed // Initialize the binding
+    self._isZoomed = isZoomed
   }
 
   func makeUIView(context: Context) -> UIScrollView {
-    // set up the UIScrollView
     let scrollView = UIScrollView()
-    // The image fills the page, under the safe area too: otherwise the scroll view insets it,
-    // which shows as a black band once it's touched (the folded Duo's status column).
     scrollView.contentInsetAdjustmentBehavior = .never
-    scrollView.delegate = context.coordinator // for viewForZooming(in:)
+    scrollView.delegate = context.coordinator
     scrollView.maximumZoomScale = 20
     scrollView.minimumZoomScale = 1
     scrollView.bouncesZoom = true
@@ -40,7 +28,6 @@ struct ZoomableScrollView<Content: View>: UIViewRepresentable {
     scrollView.showsVerticalScrollIndicator = false
     scrollView.showsHorizontalScrollIndicator = false
 
-    // create a UIHostingController to hold our SwiftUI content
     context.coordinator.hostingController.safeAreaRegions = []
     let hostedView = context.coordinator.hostingController.view!
     hostedView.translatesAutoresizingMaskIntoConstraints = true
@@ -63,7 +50,6 @@ struct ZoomableScrollView<Content: View>: UIViewRepresentable {
     gestures.onHold = onHold
     gestures.isZoomed = { [weak scrollView] in (scrollView?.zoomScale ?? 1) > (scrollView?.minimumZoomScale ?? 1) }
     gestures.install(on: scrollView)
-    // A finger resting to scrub isn't a tap that shows or hides the controls.
     if let hold = gestures.hold {
       tapGesture.require(toFail: hold)
     }
@@ -72,14 +58,11 @@ struct ZoomableScrollView<Content: View>: UIViewRepresentable {
   }
 
   func updateUIView(_ uiView: UIScrollView, context: Context) {
-    // update the hosting controller's SwiftUI content
     context.coordinator.hostingController.rootView = self.content
     context.coordinator.gestures.onSwipe = onSwipe
     context.coordinator.gestures.onHold = onHold
     assert(context.coordinator.hostingController.view.superview == uiView)
 
-    // While not zoomed, keep contentSize matching the view, so the next pinch scales
-    // from the right baseline instead of a stale or zero size (black bars, erratic panning).
     if uiView.zoomScale == uiView.minimumZoomScale {
       let hostedView = context.coordinator.hostingController.view!
       hostedView.frame = uiView.bounds
@@ -91,13 +74,11 @@ struct ZoomableScrollView<Content: View>: UIViewRepresentable {
     Coordinator(hostingController: UIHostingController(rootView: self.content), onTap: self.onTap, isZoomed: $isZoomed)
   }
 
-  // MARK: - Coordinator
-
   class Coordinator: NSObject, UIScrollViewDelegate {
     var hostingController: UIHostingController<Content>
     var onTap: (() -> Void)?
     let gestures = LightBoxGestures()
-    @Binding var isZoomed: Bool // Use the binding here
+    @Binding var isZoomed: Bool
 
     init(hostingController: UIHostingController<Content>, onTap: (() -> Void)? = nil, isZoomed: Binding<Bool>) {
       self.hostingController = hostingController
@@ -121,7 +102,6 @@ struct ZoomableScrollView<Content: View>: UIViewRepresentable {
       if let scrollView = gestureRecognizer.view as? UIScrollView {
         if scrollView.zoomScale == 1 {
           let tapLocation = gestureRecognizer.location(in: scrollView)
-          // CGPoint(x: tapLocation.x / 1.35, y: tapLocation.y * 0.87) -- Magic numbers go brrrr
           let zoomRect = CGRect(origin: CGPoint(x: tapLocation.x / 1.35, y: tapLocation.y * 0.87), size: CGSize(width: 100, height: 100))
           scrollView.zoom(to: zoomRect, animated: true)
         } else {
@@ -129,17 +109,5 @@ struct ZoomableScrollView<Content: View>: UIViewRepresentable {
         }
       }
     }
-
-//        func scrollViewDidScroll(_ scrollView: UIScrollView) {
-//            let offsetY = scrollView.contentOffset.y
-//            let contentHeight = scrollView.contentSize.height
-//            let scrollViewHeight = scrollView.bounds.height
-//            print()
-//            print(offsetY)
-//
-//            if offsetY < (contentHeight / 2) || offsetY > (contentHeight / 2) {
-//                scrollView.setContentOffset(CGPoint(x: 0, y: contentHeight - scrollViewHeight), animated: false)
-//            }
-//        }
   }
 }

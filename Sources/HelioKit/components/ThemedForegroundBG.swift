@@ -1,10 +1,3 @@
-//
-//  ThemedForegroundBG.swift
-//  Helio
-//
-//  Created by Igor Marcossi on 06/12/23.
-//
-
 import SwiftUI
 
 struct ThemedForegroundBG: View, Equatable {
@@ -36,8 +29,6 @@ struct ThemedForegroundRawBG<S: Shape>: View, Equatable {
   @Environment(\.brighterBG) private var brighter
   @Environment(\.isInSidebar) private var isInSidebar
   var body: some View {
-    // Marks the row whose screen is opening, in a stack or in the subs list. The subs sidebar's
-    // rows don't pass `active`: its list draws the system selection.
     let marksActive = active && (!isWideLayout || isInSidebar)
     ZStack {
       if let shiny {

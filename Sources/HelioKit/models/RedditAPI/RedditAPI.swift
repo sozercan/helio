@@ -1,10 +1,3 @@
-//
-//  RedditAPI.swift
-//  Helio
-//
-//  Created by Igor Marcossi on 24/06/23.
-//
-
 import Alamofire
 import AuthenticationServices
 import Combine
@@ -20,8 +13,6 @@ class RedditAPI {
   static let redditApiURLBase = "https://oauth.reddit.com"
   static let redditWWWApiURLBase = "https://www.reddit.com"
   static let appURLScheme = "helioapp"
-  /// Reddit only accepts https redirects for web-app keys (the ones with a secret). This page
-  /// forwards the query to `helioapp://auth-success`, where `authorize` picks it up.
   static let appRedirectURI: String = "https://sozercan.github.io/helio/auth-success"
 
   private let currentAccount: @Sendable () async -> RedditCredential?
@@ -34,17 +25,14 @@ class RedditAPI {
     self.currentAccount = currentAccount
   }
 
-  /// Resolve selection once when both the endpoint and dispatch depend on the account.
   func captureAccount() async -> RedditCredential? {
     await currentAccount()
   }
 
-  /// Compatibility read-through; the API layer no longer owns or publishes account state.
   @MainActor var me: User? {
     RedditCredentialsManager.profile.user
   }
 
-  /// This is a replacement for getRequestHeader. We need to replace every instance of the former by this one
   func fetchRequestHeaders(
     force: Bool = false,
     includeAuth: Bool = true,
@@ -159,7 +147,6 @@ class RedditAPI {
     }
   }
 
-  /// `renewedToken`: this request already renewed its token after a 401, which it does once.
   func _doRequest<D: Decodable>(
     attempt: Int = 0,
     forceAuth: Bool = false,
@@ -171,8 +158,6 @@ class RedditAPI {
     req: (HTTPHeaders) async -> Result<D, AFError>,
   ) async -> Result<D, AFError> {
     guard !Task.isCancelled else { return .failure(.explicitlyCancelled) }
-    // Resolve selection exactly once. Retries and token renewal must remain on this account,
-    // and an absent account must not become a deferred "use whoever is selected later".
     var credential = altCredential
     if authenticated, credential == nil {
       credential = await currentAccount()
@@ -186,7 +171,6 @@ class RedditAPI {
 
     let result = await req(headers)
     guard case let .failure(error) = result, !Task.isCancelled else { return result }
-    // A 401 means the token expired or was revoked early: renew it once.
     if authenticated, !renewedToken, error.responseCode == 401 {
       let rejected = headers["Authorization"].map { String($0.dropFirst("Bearer ".count)) }
       return await self._doRequest(attempt: attempt, forceAuth: true, authenticated: authenticated, altCredential: credential, saveToken: saveToken,
@@ -194,7 +178,6 @@ class RedditAPI {
     }
     if attempt < Self.maxRetries, Self.isTransient(error) {
       try? await Task.sleep(for: .milliseconds(300 * (attempt + 1)))
-      // Keeps the rejected token: a credential snapshot (`altCredential`) still holds it.
       return await self._doRequest(attempt: attempt + 1, authenticated: authenticated, altCredential: credential, saveToken: saveToken,
                                    rejectedToken: rejectedToken, renewedToken: renewedToken, req: req)
     }
@@ -203,9 +186,6 @@ class RedditAPI {
 
   static let maxRetries = 2
 
-  /// Whether sending the same request again can succeed: a dropped connection or one of
-  /// Reddit's intermittent 5xx. A 4xx (other than 401), a 429 or an undecodable body fails the
-  /// same way every time, and each retry still counts against the rate limit.
   static func isTransient(_ error: AFError) -> Bool {
     if let code = error.responseCode {
       return (500 ... 599).contains(code)
@@ -259,8 +239,6 @@ class RedditAPI {
 
   enum AuthorizationResult { case code(String), cancelled, failed }
 
-  /// Runs Reddit's OAuth consent page in an in-app browser session and returns the
-  /// authorization code once the redirect page forwards to `helioapp://auth-success`.
   @MainActor
   func authorize(appID: String, using session: WebAuthenticationSession) async -> AuthorizationResult {
     let state = UUID().uuidString
@@ -342,8 +320,6 @@ struct ListingData<T: Codable & Hashable>: Codable, Defaults.Serializable, Hasha
   let modhash: String?
   let geo_filter: String?
   var children: [ListingChild<T>]?
-  /// Items left out because they failed to decode. Not part of the JSON. Callers that treat the
-  /// listing as complete, like the subscription sync that deletes what's missing, must check it.
   var skippedChildren = 0
 
   private enum CodingKeys: String, CodingKey {
@@ -352,8 +328,6 @@ struct ListingData<T: Codable & Hashable>: Codable, Defaults.Serializable, Hasha
 }
 
 extension ListingData {
-  /// Decodes children one by one: an item Reddit sends in an unexpected shape is skipped
-  /// instead of failing the whole page (a mixed feed like Home hits odd posts often).
   init(from decoder: Decoder) throws {
     let container = try decoder.container(keyedBy: CodingKeys.self)
     after = try container.decodeIfPresent(String.self, forKey: .after)
@@ -366,9 +340,6 @@ extension ListingData {
     }
     let decoded = lossyChildren.compactMap(\.value)
     let errors = lossyChildren.compactMap(\.error)
-    // When no item decodes, this is the wrong listing type, not a page with a bad item: callers
-    // like the comments response (`Either<Listing<PostData>, Listing<CommentData>>`) rely on
-    // the failure to try the other type.
     if decoded.isEmpty, let error = errors.first {
       throw error
     }
@@ -382,7 +353,6 @@ extension ListingData {
 
 private let listingLogger = Logger(subsystem: "com.sertacozercan.helio", category: "Listing")
 
-/// Never throws, so one bad child doesn't stop the array decoding the rest.
 private struct LossyListingChild<T: Codable & Hashable>: Decodable {
   let value: ListingChild<T>?
   let error: Error?

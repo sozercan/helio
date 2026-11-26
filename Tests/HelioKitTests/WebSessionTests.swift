@@ -4,7 +4,6 @@ import Testing
 @testable import HelioKit
 
 struct WebSessionTests {
-  /// An unsigned JWT with `claims` as its payload.
   private func jwt(_ claims: [String: Any]) throws -> String {
     let payload = try JSONSerialization.data(withJSONObject: claims).base64EncodedString()
       .replacingOccurrences(of: "+", with: "-").replacingOccurrences(of: "/", with: "_").replacingOccurrences(of: "=", with: "")
@@ -18,7 +17,6 @@ struct WebSessionTests {
   @Test func tokenSubjectTellsSignedOutFromUnreadable() throws {
     #expect(try RedditWebSession.tokenSubject(jwt(["sub": "loid", "exp": 1])) == .signedOut)
     #expect(try RedditWebSession.tokenSubject(jwt(["sub": "t2_placeholder", "exp": 1])) == .account)
-    // A token Helio can't read mustn't sign the user out.
     #expect(try RedditWebSession.tokenSubject(jwt(["exp": 1])) == .unknown)
     #expect(RedditWebSession.tokenSubject("not-a-jwt") == .unknown)
   }
@@ -71,7 +69,6 @@ struct WebSessionTests {
     #expect(decoded.isWebSession)
     #expect(decoded.webSessionCookies == "reddit_session=placeholder")
 
-    // A session Reddit signed out waits for the user to sign in again.
     credential.webSessionCookies = nil
     #expect(credential.validationStatus == .valid)
     #expect(credential.renewalKey == nil)
@@ -116,7 +113,6 @@ struct RateLimitTests {
     clock.advance(80)
     try limit.record(response(429, ["x-ratelimit-reset": "120"]), account: account)
     #expect(limit.limitedUntil(account: account) == clock.now.addingTimeInterval(120))
-    // Other accounts have their own budget.
     #expect(limit.limitedUntil(account: UUID()) == nil)
 
     clock.advance(121)
@@ -129,12 +125,10 @@ struct RateLimitTests {
     let limit = RedditRateLimit(now: { clock.now })
     let account = UUID()
     try limit.record(response(429, ["x-ratelimit-remaining": "0", "x-ratelimit-reset": "200"]), account: account)
-    // Sent before the 429, answered after it.
     clock.advance(1)
     try limit.record(response(200, ["x-ratelimit-remaining": "3.0", "x-ratelimit-reset": "199"]), account: account)
     #expect(limit.limitedUntil(account: account) != nil)
 
-    // The next window starts over.
     clock.advance(200)
     try limit.record(response(200, ["x-ratelimit-remaining": "99.0", "x-ratelimit-reset": "600"]), account: account)
     #expect(limit.limitedUntil(account: account) == nil)

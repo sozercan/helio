@@ -1,10 +1,3 @@
-//
-//  floating.swift
-//  Helio
-//
-//  Created by Igor Marcossi on 11/07/23.
-//
-
 import Defaults
 import Foundation
 import SwiftUI
@@ -13,7 +6,6 @@ struct FloatingModifier: ViewModifier {
   @Environment(\.useTheme) private var selectedTheme
   func body(content: Content) -> some View {
     if selectedTheme.general.floatingPanelsBG.blurry {
-      // Blurry floating panels are Liquid Glass, which reacts to touches on its own.
       content
         .glassEffect(.regular.interactive(), in: Capsule(style: .continuous))
         .contentShape(Capsule(style: .continuous))

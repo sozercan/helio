@@ -1,10 +1,3 @@
-//
-//  GeneralTheme.swift
-//  Helio
-//
-//  Created by Igor Marcossi on 19/09/23.
-//
-
 import Foundation
 
 struct GeneralTheme: Codable, Hashable, Equatable {

@@ -1,23 +1,3 @@
-// Network fixtures, metrics and a driver for Helio perf runs in the simulator, loaded into the
-// app with DYLD_INSERT_LIBRARIES by `perf`. Never part of the app. `perf` builds it with
-// `-Xlinker -init -Xlinker _helio_perf_init`, so `start()` runs when the library loads.
-//
-// - Serves every http(s) request from $PERF_FIXTURES (see Fixtures.swift) after a delay
-//   ($PERF_LATENCY_MS for Reddit, $PERF_OTHER_LATENCY_MS for everything else) and generates
-//   images, so nothing reaches the network.
-// - Writes to $PERF_LOG: `R <ms> <method> <url>` per request, `M <ms> cpu= main= fp= peak= hitch=
-//   hitches= frames=` every 250 ms, `P <ms> <name>` markers, and `S`/`W` clock lines. Times are ms
-//   since the library loaded. A hitch is a main-thread frame over 1.5x the display interval.
-// - Runs commands appended to $PERF_CMD, one per line: `<seq> mark <name>`, `<seq> open <url>`
-//   (hands the URL to the scene like a tapped link, without the system's "Open in" prompt) and
-//   `<seq> scroll <seconds> <points per second>` (scrolls the largest visible scroll view).
-// - With $PERF_SEED_CREDENTIAL set, stores a placeholder Reddit account in the keychain.
-// - On Mac: `<seq> window <width> <height>` sizes the window, `<seq> resize <seconds> <min width>
-//   <max width>` drags its width from max to min and back like a live resize. With
-//   $PERF_MEMORY_KEYCHAIN set, the keychain is an in-memory store: an unprovisioned Mac Catalyst
-//   build can't use the real one, and runs then never touch the user's. With $PERF_SKIP_WHATS_NEW
-//   set, this version's What's New counts as seen.
-
 import Foundation
 import ObjectiveC
 import QuartzCore
@@ -57,7 +37,6 @@ enum Shim {
   static func start() {
     mainThread = mach_thread_self()
     if env["PERF_SKIP_WHATS_NEW"] != nil, let version = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String {
-      // WhatsNewKit's UserDefaults store: one key per presented version.
       UserDefaults.standard.set(version, forKey: "WhatsNewKit.\(version)")
     }
     if env["PERF_SEED_CREDENTIAL"] != nil {
@@ -80,8 +59,6 @@ enum Shim {
     timer.resume()
     return timer
   }
-
-  // MARK: Metrics
 
   static func sample() {
     var usage = rusage()
@@ -110,9 +87,6 @@ enum Shim {
                now, cpu, mainCPU, footprint, peak, frames.hitchMs, frames.hitches, frames.frames))
   }
 
-  // MARK: Network
-
-  /// Alamofire and Nuke make their own sessions, which ignore registered protocol classes.
   static func interceptSessions() {
     URLProtocol.registerClass(FixtureProtocol.self)
 
@@ -140,8 +114,6 @@ enum Shim {
     }
   }
 
-  /// A placeholder account in the keychain format Helio reads, with no access token, so the first
-  /// request refreshes it like a launch after the hour-long token expired.
   static func seedCredential() {
     let credential: [String: String] = [
       "id": "11111111-1111-1111-1111-111111111111", "apiAppID": "fixturefixturefixture1", "apiAppSecret": "fixture",
@@ -154,7 +126,6 @@ enum Shim {
     ]
     var add = query
     add[kSecValueData as String] = try? JSONSerialization.data(withJSONObject: credential)
-    // Calls from this library aren't interposed, so the in-memory store is called directly.
     if MemoryKeychain.enabled {
       _ = MemoryKeychain.delete(query)
       _ = MemoryKeychain.add(add)
@@ -165,11 +136,6 @@ enum Shim {
   }
 }
 
-// MARK: - In-memory keychain
-
-/// Generic and internet passwords kept in memory, in place of the keychain, when
-/// $PERF_MEMORY_KEYCHAIN is set. Enough of SecItem for KeychainAccess: matching by class,
-/// service, account and server, `kSecMatchLimit` one or all, and returning data, attributes or both.
 enum MemoryKeychain {
   static let enabled = Shim.env["PERF_MEMORY_KEYCHAIN"] != nil
   private static let lock = NSLock()
@@ -235,8 +201,6 @@ enum MemoryKeychain {
     }
   }
 
-  // The app's calls, through dyld's interpose table below. With the store off they go on to the
-  // keychain: calls from this library aren't interposed.
   typealias AddOrCopy = @convention(c) (CFDictionary, UnsafeMutablePointer<CFTypeRef?>?) -> OSStatus
   typealias Update = @convention(c) (CFDictionary, CFDictionary) -> OSStatus
   typealias Delete = @convention(c) (CFDictionary) -> OSStatus
@@ -267,7 +231,6 @@ func perfSecItemDelete(_ query: CFDictionary) -> OSStatus {
   MemoryKeychain.deleteItem(query)
 }
 
-/// dyld's interpose table: (replacement, original) pairs.
 @section("__DATA,__interpose") @used
 let interposeSecItemAdd: (MemoryKeychain.AddOrCopy, MemoryKeychain.AddOrCopy) = (perfSecItemAdd, SecItemAdd)
 @section("__DATA,__interpose") @used
@@ -276,8 +239,6 @@ let interposeSecItemCopyMatching: (MemoryKeychain.AddOrCopy, MemoryKeychain.AddO
 let interposeSecItemUpdate: (MemoryKeychain.Update, MemoryKeychain.Update) = (perfSecItemUpdate, SecItemUpdate)
 @section("__DATA,__interpose") @used
 let interposeSecItemDelete: (MemoryKeychain.Delete, MemoryKeychain.Delete) = (perfSecItemDelete, SecItemDelete)
-
-// MARK: - Fixture responses
 
 final class FixtureProtocol: URLProtocol {
   override class func canInit(with request: URLRequest) -> Bool {
@@ -329,14 +290,13 @@ final class FixtureProtocol: URLProtocol {
   static func response(url: URL, method: String) -> (Int, String, Data) {
     let host = url.host?.lowercased() ?? "", path = url.path, ext = url.pathExtension.lowercased()
     let parts = url.pathComponents.filter { $0 != "/" }
-    // Reddit's web pages (link previews of a post or subreddit), not its API: OAuth, `/api/` or `.json`.
     let webPage = host != "oauth.reddit.com" && !path.hasPrefix("/api/") && !path.hasSuffix(".json")
     let reddit = host.hasSuffix("reddit.com") && !host.hasPrefix("i.") && !host.contains("preview") && !webPage
     var type = "application/json"
     let body: Data?
 
     if ["mp4", "m3u8", "mov"].contains(ext) {
-      body = nil // No media in the fixtures: videos fail to load.
+      body = nil
     } else if !reddit, host == "fixture.local" || ["jpg", "jpeg", "png", "gif", "webp"].contains(ext) || host.hasSuffix("redd.it") || host.hasSuffix("ytimg.com") {
       body = Images.jpeg(named: url.lastPathComponent)
       type = "image/jpeg"
@@ -378,7 +338,6 @@ final class FixtureProtocol: URLProtocol {
     } else if path.contains("flair") {
       body = json([Any]())
     } else {
-      // Feeds ("/", "/best", "/r/x/hot", ...), paged by `after`.
       let after = query(url, "after") ?? ""
       body = file("feed_\(after.isEmpty ? "first" : after).json") ?? file("empty_listing.json")
     }
@@ -387,8 +346,6 @@ final class FixtureProtocol: URLProtocol {
   }
 }
 
-/// JPEGs for image URLs: `p<n>` post images, `t<n>` thumbnails, anything else an avatar-sized
-/// square. Sizes match the dimensions the fixtures declare in their preview data.
 enum Images {
   static let sizes: [String: CGSize] = [
     "p1": CGSize(width: 1200, height: 675), "p2": CGSize(width: 1200, height: 1200), "p3": CGSize(width: 1200, height: 900),
@@ -411,7 +368,6 @@ enum Images {
       let bottom = UIColor(hue: CGFloat((seed / 360) % 360) / 360, saturation: 0.7, brightness: 0.45, alpha: 1)
       let gradient = CGGradient(colorsSpace: CGColorSpaceCreateDeviceRGB(), colors: [top.cgColor, bottom.cgColor] as CFArray, locations: nil)!
       context.cgContext.drawLinearGradient(gradient, start: .zero, end: CGPoint(x: size.width, y: size.height), options: [])
-      // Some detail, so the JPEG isn't trivially small.
       for i in 0 ..< 40 {
         UIColor(white: CGFloat(i % 5) / 5, alpha: 0.25).setFill()
         let x = CGFloat((seed &* UInt64(i + 3) &* 7) % UInt64(max(size.width, 1)))
@@ -424,8 +380,6 @@ enum Images {
     return data
   }
 }
-
-// MARK: - Frames and driver
 
 final class FrameWatch: NSObject {
   static let shared = FrameWatch()
@@ -446,8 +400,6 @@ final class FrameWatch: NSObject {
   }
 
   @objc private func tick(_ link: CADisplayLink) {
-    // The interval the link asked for. `duration` is the display's, which on a 120 Hz Mac display
-    // is half the 60 fps asked for, so every frame would count as a hitch.
     let interval = link.targetTimestamp - link.timestamp
     let expected = interval > 0 ? interval : link.duration > 0 ? link.duration : 1.0 / 60
     lock.withLock {
@@ -503,10 +455,6 @@ final class Scroller: NSObject {
   }
 }
 
-/// Drags a Mac window's width from wide to narrow and back over `seconds`, a step per frame,
-/// like a live resize: each step lays the window out again. Steps set the AppKit window's frame,
-/// as dragging its edge does; `requestGeometryUpdate` would run each one as an animated size
-/// transition instead. Logs how many steps it took and their average time.
 final class Resizer: NSObject {
   weak var scene: UIWindowScene?
   let seconds: Double, wide: Double, narrow: Double
@@ -534,7 +482,6 @@ final class Resizer: NSObject {
       began = link.timestamp
     }
     let progress = min(1, (link.timestamp - began) / seconds)
-    // 1 at both ends, 0 halfway.
     let toward = abs(1 - 2 * progress)
     let width = narrow + (wide - narrow) * toward
     let start = CACurrentMediaTime()
@@ -556,7 +503,6 @@ final class Resizer: NSObject {
     }
   }
 
-  /// Sets the app's AppKit window to `width`, keeping its top left corner. False without one.
   static func setAppKitWidth(_ width: Double) -> Bool {
     guard let app = (NSClassFromString("NSApplication") as? NSObject.Type)?.value(forKey: "sharedApplication") as? NSObject,
           let window = ((app.value(forKey: "windows") as? [NSObject]) ?? []).first(where: { ($0.value(forKey: "isVisible") as? Bool) == true }),
@@ -564,7 +510,6 @@ final class Resizer: NSObject {
     let setFrame = NSSelectorFromString("setFrame:display:")
     guard let method = class_getInstanceMethod(type(of: window), setFrame) else { return false }
     typealias SetFrame = @convention(c) (AnyObject, Selector, CGRect, Bool) -> Void
-    // AppKit's origin is the bottom left, so the top stays put with the same height.
     unsafeBitCast(method_getImplementation(method), to: SetFrame.self)(window, setFrame, CGRect(x: frame.minX, y: frame.minY, width: width, height: frame.height), true)
     return true
   }
@@ -629,9 +574,6 @@ enum Driver {
     UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }.first
   }
 
-  /// A Mac window's size, at a fixed place on the screen, so every run lays out the same. The app
-  /// comes to the front too: launched from a shell it stays behind other windows, and a covered
-  /// window can stop drawing.
   static func setWindow(_ size: CGSize) {
     guard let scene = windowScene else {
       Shim.log(String(format: "P %.0f no_window", Shim.now))
@@ -664,9 +606,7 @@ enum Driver {
 
   static var resizer: Resizer?
 
-  /// The largest visible scroll view that can scroll vertically: the feed or the post's comments.
   static func mainScrollView() -> UIScrollView? {
-    // A Mac app that isn't frontmost has no key window.
     let window = windowScene.flatMap { $0.keyWindow ?? $0.windows.first }
     guard let window else { return nil }
     var best: (UIScrollView, CGFloat)?

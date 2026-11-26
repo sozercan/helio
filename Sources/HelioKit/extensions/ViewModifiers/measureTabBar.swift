@@ -1,10 +1,3 @@
-//
-//  measureTabBar.swift
-//  Helio
-//
-//  Created by Igor Marcossi on 09/12/23.
-//
-
 import SwiftUI
 
 struct TabBarMeasurerAccessor: UIViewControllerRepresentable {
@@ -29,15 +22,11 @@ struct TabBarMeasurerAccessor: UIViewControllerRepresentable {
       report()
     }
 
-    /// Folding iPhone Duo or resizing a window can move the tab bar.
     override func viewDidLayoutSubviews() {
       super.viewDidLayoutSubviews()
       report()
     }
 
-    /// The tab bar's height above the bottom safe area, or 0 when it isn't a horizontal bar
-    /// along the bottom of the window: iPad and unfolded iPhone Duo show it at the top, folded
-    /// iPhone Duo down the side.
     private func report() {
       guard let tabBar = tabBarController?.tabBar, let window = tabBar.window else { return }
       let frame = tabBar.convert(tabBar.bounds, to: window)

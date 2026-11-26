@@ -5,7 +5,6 @@ import UIKit
 @testable import HelioKit
 
 struct MediaExtractorTests {
-  /// The sample post re-keyed with Reddit-shaped JSON overrides.
   private func postData(_ overrides: [String: Any]) throws -> PostData {
     var json = try JSONSerialization.jsonObject(with: JSONEncoder().encode(postSampleData)) as! [String: Any]
     json["url"] = "https://example.com/article"
@@ -39,18 +38,12 @@ struct MediaExtractorTests {
     }
     let known = ["images": [["source": ["url": "https://preview.redd.it/abc.jpg", "width": 1200, "height": 400]]]]
     #expect(try resize(known) == ImageProcessors.Resize(width: 400, unit: .points, upscale: true).identifier)
-    // Shown in a square until it loads: a width-only resize would leave it too short to fill one.
     let square = ImageProcessors.Resize(size: CGSize(width: 400, height: 400), unit: .points, contentMode: .aspectFill, crop: false, upscale: true)
     #expect(try resize(nil) == square.identifier)
   }
 
-  /// Runs a request's decoding and processors on a large JPEG, as the pipeline does, at the
-  /// screen's scale: the image comes out the column's width in points, with the pixels a sharp
-  /// one needs, however wide it is.
   @Test(arguments: [(4000, 1000), (1200, 1200), (900, 2700)])
   func decodesASingleImageSharpAtTheWidthItsShown(width: Int, height: Int) throws {
-    // In the app the window's scale comes from its screen, which is also what the renderers and
-    // Nuke use; a test host has no window to report it.
     WindowMetrics.shared.update(displayScale: UIGraphicsImageRendererFormat.preferred().scale)
     let format = UIGraphicsImageRendererFormat()
     format.scale = 1
@@ -206,8 +199,6 @@ struct MediaExtractorTests {
   }
 }
 
-/// A canvas feed shows no link previews, so its posts' previews download the linked page only
-/// once they show.
 struct DeferredLinkPreviewTests {
   private func postData(_ overrides: [String: Any]) throws -> PostData {
     var json = try #require(try JSONSerialization.jsonObject(with: JSONEncoder().encode(postSampleData)) as? [String: Any])
@@ -250,7 +241,6 @@ struct DeferredLinkPreviewTests {
     #expect(!model.hasStartedLoading)
   }
 
-  /// Canvas shows no video, so a Streamable link waits until its media shows, and resolves once.
   @Test func aDeferredStreamableResolvesOnlyWhenItShows() throws {
     let data = try postData(["url": "https://streamable.com/deferred\(UUID().uuidString.prefix(8))", "domain": "streamable.com"])
     let post = Post(data: data, contentWidth: 400, theme: defaultTheme, fetchAvatar: false, fetchLinkMetadata: false)
@@ -261,7 +251,6 @@ struct DeferredLinkPreviewTests {
     }
     #expect(helioData.deferredMedia != nil)
 
-    // Stands in for the request, which the test doesn't make.
     var resolved = 0
     helioData.deferredMedia = { resolved += 1 }
     helioData.resolveDeferredMedia()
@@ -269,8 +258,6 @@ struct DeferredLinkPreviewTests {
     #expect(resolved == 1)
   }
 
-  /// Canvas shows no linked user, post, comment or subreddit, so each loads only once its media
-  /// shows, as on the post page; large and compact feeds load them as they're laid out.
   @Test(arguments: [
     "https://www.reddit.com/u/placeholder_user",
     "https://www.reddit.com/r/apple/comments/abc123/a_title/",
@@ -290,14 +277,12 @@ struct DeferredLinkPreviewTests {
     }
     #expect(helioData.deferredMedia != nil)
 
-    // Stands in for the request, which the test doesn't make.
     var resolved = 0
     helioData.deferredMedia = { resolved += 1 }
     helioData.resolveDeferredMedia()
     helioData.resolveDeferredMedia()
     #expect(resolved == 1)
 
-    // Refreshing the post once its media has shown, as its page does, loads it right away.
     post.setupHelioData(theme: defaultTheme, fetchAvatar: false)
     #expect(helioData.fetchesLinkMetadata)
     #expect(helioData.deferredMedia == nil)
@@ -312,8 +297,6 @@ struct FeedLinkTapTests {
       #expect(MediaExtractedType.user(nil).isTappableInFeed(mediaTappable: false, compact: compact))
       #expect(!MediaExtractedType.imgs([]).isTappableInFeed(mediaTappable: false, compact: compact))
     }
-    // A large row shows a linked comment as the comment, which a tap collapses; a compact row
-    // shows its address.
     #expect(!MediaExtractedType.comment(nil).isTappableInFeed(mediaTappable: false, compact: false))
     #expect(MediaExtractedType.comment(nil).isTappableInFeed(mediaTappable: false, compact: true))
   }

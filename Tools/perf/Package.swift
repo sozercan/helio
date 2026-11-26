@@ -1,5 +1,4 @@
 // swift-tools-version: 6.0
-// `perf`: measures Helio in the iOS simulator or on Mac against fixture Reddit data. See README.md.
 
 import PackageDescription
 

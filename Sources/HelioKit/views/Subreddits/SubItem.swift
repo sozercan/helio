@@ -1,10 +1,3 @@
-//
-//  SubItem.swift
-//  Helio
-//
-//  Created by Igor Marcossi on 05/08/23.
-//
-
 import Defaults
 import SwiftUI
 
@@ -25,8 +18,6 @@ struct SubItemButton: View, Equatable {
   }
 }
 
-/// A subreddit's row in the subs list, which the list selects (`tag`) to open its feed. In the
-/// sidebar the list draws the selection; in a stack the row marks it while the feed opens.
 struct SubItem: View, Equatable {
   static func == (lhs: SubItem, rhs: SubItem) -> Bool {
     lhs.sub == rhs.sub && lhs.sub.data?.user_is_subscriber == rhs.sub.data?.user_is_subscriber && lhs.isActive == rhs.isActive && lhs.inSidebar == rhs.inSidebar
@@ -36,9 +27,7 @@ struct SubItem: View, Equatable {
   var inSidebar: Bool
   var sub: Subreddit
   var cachedSub: CachedSub
-  /// Opens the subreddit's feed, for the context menu.
   var open: () -> Void
-  /// A selected sidebar row has the accent behind it.
   @Environment(\.backgroundProminence) private var prominence
   @Environment(\.useTheme) private var theme
 
@@ -59,7 +48,6 @@ struct SubItem: View, Equatable {
 
         Spacer()
 
-        // VoiceOver gets the toggle as an action of the row instead.
         Button(favorite ? "Remove from Favorites" : "Add to Favorites", systemImage: "star.fill", action: favoriteToggle)
           .labelStyle(.iconOnly)
           .buttonStyle(.borderless)
@@ -74,7 +62,6 @@ struct SubItem: View, Equatable {
         }
       }
       .contentShape(Rectangle())
-      // In a stack, the theme's row, marked while its feed opens.
       .if(!inSidebar) { $0.listRowBackground(ThemedForegroundBG(theme: theme.lists.foreground, active: isActive)) }
       .contextMenu {
         Button("Open", systemImage: "arrow.forward", action: open)
@@ -83,7 +70,6 @@ struct SubItem: View, Equatable {
           ShareUtils.shareItem(item: "https://reddit.com/r/\(name)")
         }
         Divider()
-        // Search also finds subs cached for a multi that aren't subscribed to.
         if data.user_is_subscriber == true {
           Button("Unsubscribe", systemImage: "minus.circle", role: .destructive) {
             sub.subscribeToggle(optimistic: true)

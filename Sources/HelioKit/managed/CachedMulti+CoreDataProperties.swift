@@ -1,11 +1,3 @@
-//
-//  CachedMulti+CoreDataProperties.swift
-//  Helio
-//
-//  Created by Igor Marcossi on 25/08/23.
-//
-//
-
 import CoreData
 import Foundation
 
@@ -75,8 +67,6 @@ public extension CachedMulti {
     self.helioCredentialID = credentialID
   }
 }
-
-// MARK: Generated accessors for subreddits
 
 public extension CachedMulti {
   @objc(addSubredditsObject:)

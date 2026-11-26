@@ -1,10 +1,3 @@
-//
-//  PostLinkThemingPanel.swift
-//  Helio
-//
-//  Created by Igor Marcossi on 07/09/23.
-//
-
 import Defaults
 import SwiftUI
 
@@ -21,14 +14,12 @@ struct PostLinkThemingPanel: View {
   @Default(.PostLinkDefSettings) private var postLinkDefSettings
 
   @Environment(\.contentWidth) private var contentWidth
-  /// The panel's own width: in an iPad form sheet it's narrower than the window.
   @State private var panelWidth: Double = 0
   private var previewWidth: Double {
     panelWidth > 0 ? panelWidth : contentWidth
   }
 
   var body: some View {
-//    ScrollWithPreview(theme: theme.postLinks.bg) {
     ScrollWithPreview(theme: theme.postLinks.bg) {
       VStack(alignment: .trailing, spacing: 24) {
         TagsOptionsCarousel($selectedCategory, Category.allCases.map(\.rawValue))
@@ -44,18 +35,15 @@ struct PostLinkThemingPanel: View {
           EmptyView()
         }
       }
-//      .animation(nil, value: selectedCategory)
       .padding(.top, 12)
       .padding(.bottom, 12)
     } preview: {
       VStack {
         if let helioData = previewPostSample.helioData {
           PostLink(id: previewPostSample.id, theme: theme.postLinks, showSub: true, secondary: false, compactPerSubreddit: nil, contentWidth: previewWidth, defSettings: postLinkDefSettings)
-//          .equatable()
             .environment(\.contextPost, previewPostSample)
             .environment(\.contextSubreddit, previewPostSubSample)
             .environment(\.contextPostHelioData, helioData)
-//          .environment(\.useTheme, theme)
             .allowsHitTesting(false)
         }
       }

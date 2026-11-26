@@ -1,10 +1,3 @@
-//
-//  GuidedAuthSuccessScene.swift
-//  Helio
-//
-//  Created by Igor Marcossi on 06/01/24.
-//
-
 import SwiftUI
 
 struct GuidedAuthSuccessScene: View {
@@ -39,10 +32,6 @@ struct GuidedAuthSuccessScene: View {
     .frame(maxHeight: .infinity, alignment: .top)
     .onAppear {
       Task {
-        // SHAME ON ME (KINARK) FOR THIS PROFANITY BELOW
-        // but I wasn't into learning .haap files syntax
-        // nor modifiying my haptics class lol
-        // but it works... so.........
         doThisAfter(0.1) {
           Hap.shared.play(intensity: 1, sharpness: 0.85)
           doThisAfter(0.5) {
@@ -84,10 +73,5 @@ struct GuidedAuthSuccessScene: View {
         }
       }
     }
-//    .overlay {
-//      GeometryReader { g in
-//        BetterLottieView("confetti", size: g.size, color: nil, contentMode: .fill)
-//      }.ignoresSafeArea(.all)
-//    }
   }
 }

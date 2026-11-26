@@ -1,21 +1,8 @@
-//
-//  MacUpdater.swift
-//  Helio
-//
-
 #if targetEnvironment(macCatalyst)
   import Foundation
   import Observation
   import os
 
-  /// Sparkle updates for the Mac app, through the macOS plugin `HelioMacUpdater.bundle`
-  /// (Sources/HelioMacUpdater, built by App/HelioMacUpdater): Sparkle is AppKit, which a Mac
-  /// Catalyst app can't link, so the plugin is loaded at runtime and called through the
-  /// Objective-C runtime.
-  ///
-  /// The checks go to the appcast on GitHub Pages and the update itself to GitHub Releases, and
-  /// only once the user allows them: Sparkle asks on the second launch, and Settings can turn
-  /// them off.
   @MainActor
   @Observable
   final class MacUpdater {
@@ -23,16 +10,9 @@
 
     private static let logger = Logger(subsystem: "com.sertacozercan.helio", category: "Updater")
     private static let automaticallyChecksKey = "automaticallyChecksForUpdates"
-    /// The plugin's updater, not started until `start()`. Nil when the bundle is missing or the
-    /// app has no update key, which Sparkle needs to trust an ad-hoc signed update; then
-    /// there's no menu item or setting.
     @ObservationIgnored private let updater: NSObject?
     @ObservationIgnored private var started = false
-    /// Sparkle's setting as last read. Sparkle's own prompt changes it too, so it's read again
-    /// whenever the app's user defaults change, where Sparkle keeps it.
     private var checksAutomatically = false
-    /// False while Sparkle downloads the feed or an update in the background, when a check
-    /// does nothing.
     private(set) var canCheckForUpdates = false
 
     var isAvailable: Bool {
@@ -52,7 +32,6 @@
       guard updater != nil else { return }
       refresh()
       observeCanCheckForUpdates()
-      // The singleton lives as long as the app, so the observer is never removed.
       NotificationCenter.default.addObserver(forName: UserDefaults.didChangeNotification, object: nil, queue: .main) { [weak self] _ in
         MainActor.assumeIsolated { self?.refresh() }
       }
@@ -75,13 +54,10 @@
       }
     }
 
-    /// Starts Sparkle's schedule, once. Call it after the first window shows: Sparkle's prompt
-    /// opens right away, and one opened before the window ends up behind it.
     func start() {
       guard !started, let updater else { return }
       started = true
       let start = NSSelectorFromString("start")
-      // `start` returns an Objective-C BOOL, which `perform` can't return; call it directly.
       typealias Start = @convention(c) (AnyObject, Selector) -> Bool
       if !unsafeBitCast(updater.method(for: start), to: Start.self)(updater, start) {
         Self.logger.error("The updater didn't start")

@@ -1,10 +1,3 @@
-//
-//  Onboarding2CreateApp.swift
-//  Helio
-//
-//  Created by Igor Marcossi on 01/08/23.
-//
-
 import SwiftUI
 
 struct Onboarding2CreateApp: View {

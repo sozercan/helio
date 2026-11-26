@@ -1,10 +1,3 @@
-//
-//  injectInTabDestinations.swift
-//  Helio
-//
-//  Created by Igor Marcossi on 02/09/23.
-//
-
 import Defaults
 import SwiftUI
 
@@ -28,14 +21,12 @@ extension View {
   }
 }
 
-/// The screen for a navigation destination.
 struct RouterDestinationView: View {
   let dest: Router.NavDest
 
   var body: some View {
     Group {
       if case let .web(url) = dest {
-        // A page lays itself out for the column's whole width.
         WebPageScreen(url: url)
       } else {
         screen.readableWidth()

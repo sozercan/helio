@@ -1,10 +1,3 @@
-//
-//  CommentLinkFull.swift
-//  Helio
-//
-//  Created by Igor Marcossi on 17/07/23.
-//
-
 import Defaults
 import SwiftUI
 
@@ -53,7 +46,6 @@ struct CommentLinkFull: View {
       .background(bars ? theme.bg() : curveColor)
       .contentShape(Rectangle())
       .onTapGesture {
-        // Reddit cut the thread off below this stub's parent: open the thread from there.
         if let parentID = data.parent_id, parentID.hasPrefix("t1_") {
           Nav.to(.reddit(.postHighlighted(post, parentID)), from: navColumn)
         } else {

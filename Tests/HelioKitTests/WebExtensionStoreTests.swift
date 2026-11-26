@@ -6,7 +6,6 @@ import Testing
 struct WebExtensionStoreTests {
   private let root = FileManager.default.temporaryDirectory.appending(path: "WebExtensionStoreTests-\(UUID().uuidString)", directoryHint: .isDirectory)
 
-  /// An extension folder with `manifest` and, optionally, its English messages.
   private func extensionFolder(_ manifest: [String: Any], messages: [String: Any]? = nil) throws -> URL {
     let folder = root.appending(path: "source-\(UUID().uuidString)", directoryHint: .isDirectory)
     try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
@@ -28,7 +27,6 @@ struct WebExtensionStoreTests {
     #expect(ext.version == "1.2")
     #expect(ext.isEnabled)
     #expect(store.changedSinceLaunch)
-    // A copy: the original can go.
     try FileManager.default.removeItem(at: source)
     #expect(store.enabledFolders.map(\.id) == [ext.id])
 
@@ -55,7 +53,6 @@ struct WebExtensionStoreTests {
 
     try store.remove(ext)
     #expect(store.extensions.isEmpty)
-    // Its files stay while it may be running, until the next launch.
     #expect(FileManager.default.fileExists(atPath: store.folder(of: ext).path))
     _ = WebExtensionStore(directory: store.directory)
     #expect(!FileManager.default.fileExists(atPath: store.folder(of: ext).path))
@@ -64,7 +61,6 @@ struct WebExtensionStoreTests {
   @Test func aChangeThatCantBeSavedIsntMade() throws {
     let store = WebExtensionStore(directory: root.appending(path: "store"))
     let ext = try store.add(from: extensionFolder(["name": "Blocker"]))
-    // The list can't be written where a folder stands in for it.
     let list = store.directory.appending(path: "extensions.json")
     try FileManager.default.removeItem(at: list)
     try FileManager.default.createDirectory(at: list, withIntermediateDirectories: true)
@@ -80,7 +76,6 @@ struct WebExtensionStoreTests {
   @Test func aLocalizedNameComesFromTheDefaultLocale() throws {
     let folder = try extensionFolder(["name": "__MSG_extName__", "default_locale": "en"], messages: ["extName": ["message": "uBlock Origin Lite"]])
     #expect(WebExtensionStore.displayName(manifest: ["name": "__MSG_extName__", "default_locale": "en"], folder: folder) == "uBlock Origin Lite")
-    // A message it can't find: the folder's name.
     #expect(WebExtensionStore.displayName(manifest: ["name": "__MSG_missing__"], folder: folder) == folder.lastPathComponent)
   }
 }

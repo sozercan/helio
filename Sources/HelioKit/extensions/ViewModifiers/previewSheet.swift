@@ -1,10 +1,3 @@
-//
-//  previewSheet.swift
-//  Helio
-//
-//  Created by Igor Marcossi on 14/09/23.
-//
-
 import SwiftUI
 
 private let handlerWidth: CGFloat = 108
@@ -50,7 +43,6 @@ struct PreviewSheetModifier<T: View>: ViewModifier {
         }
         if let initialDragOffset {
           trans.isContinuous = true
-          //          trans.animation = .interpolatingSpring(stiffness: 1000, damping: 100) 2349
           trans.animation = .interactiveSpring()
           withTransaction(trans) {
             state = y - initialDragOffset
@@ -72,13 +64,7 @@ struct PreviewSheetModifier<T: View>: ViewModifier {
         VStack {
           sheetContent(handlerHeight)
             .measure($sheetContentSize)
-//            .background(GeometryReader { g in Color.clear.onAppear { sheetContentSize = CGSize(width: g.size.width, height: g.size.height - handlerHeight) }.onChange(of: g.size) { sheetContentSize = CGSize(width: $0.width, height: $0.height - handlerHeight) } })
-          //            .measure($sheetContentSize)
         }
-        //          .onChange(of: sheetContentSize, perform: { newValue in
-        //            print(newValue) 103 / 69
-        //          })
-        //          .padding(.top, handlerHeight)
         .frame(.screenSize, .top)
         .mask(SheetShape(width: .screenW, height: .screenH).fill(.black))
         .overlay(
@@ -96,8 +82,6 @@ struct PreviewSheetModifier<T: View>: ViewModifier {
             .shadow(radius: 16)
             .allowsHitTesting(!disabled),
         )
-//          .contentShape(.contextMenuPreview, SheetShape(width: .screenW, height: .screenH))
-//          .contentShape()
         .scaleEffect(1)
         .compositingGroup()
         .offset(y: max(stepPoints[stepPoints.count - 1], stepPoints[currentStepIndex] + dragOffset + dragOffsetPersist))
@@ -134,53 +118,36 @@ struct SheetShape: InsettableShape {
   }
 
   func path(in rect: CGRect) -> Path {
-    //    let bodyHeight = height - handlerHeight
-
     var path = Path()
 
-    // start from the top left corner of the handler
     path.move(to: CGPoint(x: ((width - handlerWidth) / 2 + handlerRadius) + insetAmount, y: 0 + insetAmount))
 
-    // top edge of the handler
     path.addLine(to: CGPoint(x: ((width + handlerWidth) / 2 - handlerRadius) - insetAmount, y: 0 + insetAmount))
 
-    // top right corner of the handler
     path.addArc(center: CGPoint(x: ((width + handlerWidth) / 2 - handlerRadius) - insetAmount, y: handlerRadius + insetAmount), radius: handlerRadius - insetAmount, startAngle: .radians(-1.5 * CGFloat.pi), endAngle: .radians(0), clockwise: false)
 
-    // right edge of the handler
     path.addLine(to: CGPoint(x: ((width + handlerWidth) / 2) - insetAmount, y: (handlerHeight - handlerRadius) + insetAmount))
 
-    // bottom right corner of the handler
     path.addArc(center: CGPoint(x: ((width + handlerWidth) / 2 + handlerRadius) + insetAmount, y: handlerHeight - handlerRadius + insetAmount), radius: handlerRadius + insetAmount, startAngle: .radians(CGFloat.pi), endAngle: .radians(0.5 * CGFloat.pi), clockwise: true)
 
-    // connection between the handler and the body on the right side
     path.addLine(to: CGPoint(x: width - bodyRadius - insetAmount, y: handlerHeight + insetAmount))
 
-    // top right corner of the body
     path.addArc(center: CGPoint(x: width - bodyRadius - insetAmount, y: handlerHeight + bodyRadius + insetAmount), radius: bodyRadius - insetAmount, startAngle: .radians(-0.5 * CGFloat.pi), endAngle: .radians(0), clockwise: false)
 
-    // right edge of the body
     path.addLine(to: CGPoint(x: width - insetAmount, y: height - insetAmount))
 
-    // bottom edge of the body
     path.addLine(to: CGPoint(x: 0, y: height - insetAmount))
 
-    // left edge of the body
     path.addLine(to: CGPoint(x: 0, y: handlerHeight + bodyRadius + insetAmount))
 
-    // top left corner of the body
     path.addArc(center: CGPoint(x: bodyRadius + insetAmount, y: handlerHeight + bodyRadius + insetAmount), radius: bodyRadius - insetAmount, startAngle: .radians(CGFloat.pi), endAngle: .radians(1.5 * CGFloat.pi), clockwise: false)
 
-    // connection between the handler and the body on the left side
     path.addLine(to: CGPoint(x: ((width - handlerWidth) / 2) + insetAmount, y: handlerHeight + insetAmount))
 
-    // bottom left corner of the handler
     path.addArc(center: CGPoint(x: ((width - handlerWidth) / 2 - handlerRadius) + insetAmount, y: (handlerHeight - handlerRadius) + insetAmount), radius: handlerRadius + insetAmount, startAngle: .radians(0.5 * CGFloat.pi), endAngle: .radians(0), clockwise: true)
 
-    // left edge of the handler
     path.addLine(to: CGPoint(x: ((width - handlerWidth) / 2) + insetAmount, y: handlerRadius + insetAmount))
 
-    // top left corner of the handler
     path.addArc(center: CGPoint(x: ((width - handlerWidth) / 2 + handlerRadius) + insetAmount, y: handlerRadius + insetAmount), radius: handlerRadius - insetAmount, startAngle: .radians(CGFloat.pi), endAngle: .radians(-0.5 * CGFloat.pi), clockwise: false)
 
     return path

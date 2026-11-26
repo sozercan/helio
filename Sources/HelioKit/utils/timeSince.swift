@@ -1,10 +1,3 @@
-//
-//  timeSince.swift
-//  Helio
-//
-//  Created by Igor Marcossi on 25/07/23.
-//
-
 import Foundation
 
 func timeSince(_ timestamp: Int) -> String {
@@ -28,7 +21,6 @@ func timeSince(_ timestamp: Int) -> String {
   }
 }
 
-/// `timeSince` as VoiceOver should read it: "2 hours ago" instead of "2h".
 func spokenTimeSince(_ timestamp: Int) -> String {
   let timeInterval = Int(Date().timeIntervalSince1970) - timestamp
   let minute = 60

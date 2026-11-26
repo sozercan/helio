@@ -1,10 +1,3 @@
-//
-//  Wave.metal
-//  NewScroll
-//
-//  Created by Astemir Eleev on 09/06/2023.
-//
-
 #include <metal_stdlib>
 using namespace metal;
 

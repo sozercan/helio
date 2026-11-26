@@ -1,16 +1,8 @@
-//
-//  LightboxButton.swift
-//  Helio
-//
-//  Created by Igor Marcossi on 07/08/23.
-//
-
 import SwiftUI
 
 struct LightBoxButton: View {
   @State private var pressed = false
   var icon: String
-  /// What VoiceOver calls it.
   var label: String
   var action: (() -> Void)?
   var disabled = false

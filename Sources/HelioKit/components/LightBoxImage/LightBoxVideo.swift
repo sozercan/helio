@@ -1,43 +1,28 @@
-//
-//  LightBoxVideo.swift
-//  Helio
-//
-
 import AVFoundation
 import AVKit
 import Combine
 import Defaults
 import SwiftUI
 
-/// A video's playback on a lightbox page: playing while its page shows, with sound unless
-/// "Default mute fullscreen videos" is on, scrubbed by a held drag or its progress bar, and
-/// Picture in Picture.
 @MainActor @Observable
 final class LightBoxVideo: MediaScrubbable {
   let holder: VideoPlayerHolder
-  /// The feed row's player, which that row takes back when the lightbox closes.
   @ObservationIgnored private let borrowed: Bool
-  /// The layer the video draws in, kept here so Picture in Picture outlives the page's view.
   @ObservationIgnored let layerView = PlayerLayerHostView()
   @ObservationIgnored private let scrubber = VideoScrubber()
   @ObservationIgnored private var timeObserver: Any?
   @ObservationIgnored private var statusObservation: NSKeyValueObservation?
-  /// Loop and failure observers, for whichever item the player has: a reload replaces it.
   @ObservationIgnored private var itemObservers: [NSObjectProtocol] = []
   @ObservationIgnored private var failureObservation: AnyCancellable?
   @ObservationIgnored private var active = false
-  /// Whether playback should resume once an async reload finishes; false when the user paused it.
   @ObservationIgnored private var wantsPlayback = false
-  /// Released while in Picture in Picture: the observers go when it stops instead.
   @ObservationIgnored private var released = false
   @ObservationIgnored private var pictureInPicture: AVPictureInPictureController?
   @ObservationIgnored private var pictureInPictureDelegate: PictureInPictureDelegate?
-  /// Closes the lightbox, so the feed is usable while the video floats.
   @ObservationIgnored var onPictureInPictureStart: (() -> Void)?
 
   private(set) var position: ScrubPosition?
   private(set) var isPlaying = false
-  /// It didn't load, and retrying on its own didn't help: the page offers to try again.
   private(set) var failed = false
   var isMuted: Bool {
     didSet { player?.isMuted = isMuted }
@@ -67,7 +52,6 @@ final class LightBoxVideo: MediaScrubbable {
     }
     let loop = Defaults[.VideoDefSettings].loop
     player.actionAtItemEnd = loop ? .none : .pause
-    // Kept until it's released, Picture in Picture included, so it loops there too.
     let center = NotificationCenter.default
     itemObservers = [
       center.addObserver(forName: .AVPlayerItemDidPlayToEndTime, object: nil, queue: .main) { [weak player] note in
@@ -78,7 +62,6 @@ final class LightBoxVideo: MediaScrubbable {
         guard let player, note.object as? AVPlayerItem === player.currentItem else { return }
         MainActor.assumeIsolated { self?.recover(failedToEnd: true) }
       },
-      // Stalls usually recover once the buffer refills: only one still stuck is reloaded.
       center.addObserver(forName: .AVPlayerItemPlaybackStalled, object: nil, queue: .main) { [weak self, weak player] note in
         guard let player, let item = note.object as? AVPlayerItem, item === player.currentItem else { return }
         Task { @MainActor [weak self, weak player] in
@@ -108,9 +91,6 @@ final class LightBoxVideo: MediaScrubbable {
     }
   }
 
-  /// A failed item: loads it again while the holder's retries last, then offers to try again.
-  /// A borrowed player's feed row reloads it too, so only an item still failed is reloaded here,
-  /// and one that stopped short of its end or stalled is left to the row.
   private func recover(failedToEnd: Bool = false) {
     guard failedToEnd ? !borrowed : holder.hasFailed else { return }
     let started = holder.reload { [weak self] in
@@ -122,7 +102,6 @@ final class LightBoxVideo: MediaScrubbable {
     }
   }
 
-  /// Tries again after it failed, when asked.
   func retry() {
     failed = false
     wantsPlayback = true
@@ -132,7 +111,6 @@ final class LightBoxVideo: MediaScrubbable {
     }
   }
 
-  /// Plays from the start a video that played to its end without looping.
   private func play(_ player: AVPlayer) {
     if let duration = player.currentItem?.duration.seconds, duration.isFinite, duration - player.currentTime().seconds < 0.1 {
       player.seek(to: .zero)
@@ -140,7 +118,6 @@ final class LightBoxVideo: MediaScrubbable {
     player.play()
   }
 
-  /// Its page is showing: play it.
   func activate() {
     guard !active, let player else { return }
     active = true
@@ -148,7 +125,6 @@ final class LightBoxVideo: MediaScrubbable {
     let settings = Defaults[.VideoDefSettings]
     player.isMuted = isMuted
     player.volume = 1
-    // Coming back to a page whose video failed loads it again rather than replaying the failure.
     if holder.hasFailed {
       recover()
     }
@@ -159,7 +135,6 @@ final class LightBoxVideo: MediaScrubbable {
     }
   }
 
-  /// Back in the app, its page still showing: play on, as the system paused it.
   func resume() {
     guard active, let player else { return }
     wantsPlayback = true
@@ -169,7 +144,6 @@ final class LightBoxVideo: MediaScrubbable {
     play(player)
   }
 
-  /// Its page went away, or the lightbox closed: stop it, unless it went on in Picture in Picture.
   func deactivate() {
     guard active, let player else { return }
     active = false
@@ -185,8 +159,6 @@ final class LightBoxVideo: MediaScrubbable {
     }
   }
 
-  /// Done with it. A borrowed player stays with its feed row, so its observers go now, or once
-  /// Picture in Picture stops.
   func release() {
     deactivate()
     guard !PictureInPicture.shared.isPlaying(player) else {
@@ -231,8 +203,6 @@ final class LightBoxVideo: MediaScrubbable {
     }
   }
 
-  // MARK: MediaScrubbable
-
   func begin() -> Bool {
     guard let player else { return false }
     return scrubber.begin(player)
@@ -251,7 +221,6 @@ final class LightBoxVideo: MediaScrubbable {
   }
 }
 
-/// The controller holds its delegate weakly, so the video keeps it.
 private final class PictureInPictureDelegate: NSObject, AVPictureInPictureControllerDelegate {
   weak var video: LightBoxVideo?
 
@@ -267,21 +236,17 @@ private final class PictureInPictureDelegate: NSObject, AVPictureInPictureContro
     Task { @MainActor in video?.pictureInPictureStopped() }
   }
 
-  /// The lightbox closed when Picture in Picture started, so there's nothing to go back to.
   func pictureInPictureController(_ controller: AVPictureInPictureController, restoreUserInterfaceForPictureInPictureStopWithCompletionHandler completionHandler: @escaping (Bool) -> Void) {
     completionHandler(false)
   }
 }
 
-/// A video page of the lightbox, its poster showing until the video can play.
 struct LightBoxVideoPage: View {
   let video: LightBoxVideo
   @ObservedObject var holder: VideoPlayerHolder
-  /// The page's width, the lightbox's.
   var width: CGFloat
   var posterURL: URL?
   var label: String?
-  /// The page showing. The pages beside it keep their failure to themselves until they show.
   var selected: Bool
   var onTap: () -> Void
   var onSwipe: ((Int) -> Void)?
@@ -316,8 +281,6 @@ struct LightBoxVideoPage: View {
         }
       }
       .accessibilityIgnoresInvertColors()
-      // One element, which the lightbox gives the page's place and paging. A failure is read in
-      // its label, and Try Again is one of its actions.
       .accessibilityElement(children: .ignore)
       .accessibilityLabel(video.failed && selected ? "\(label ?? "Video"), couldn't play this video" : label ?? "Video")
       .accessibilityActions {
@@ -332,7 +295,6 @@ struct LightBoxVideoPage: View {
   }
 }
 
-/// Shows the video's layer, with the page's taps, held drags and trackpad swipes.
 private struct LightBoxPlayerView: UIViewRepresentable {
   let video: LightBoxVideo
   var onTap: () -> Void

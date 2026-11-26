@@ -1,10 +1,3 @@
-//
-//  MessageLink.swift
-//  Helio
-//
-//  Created by Igor Marcossi on 10/07/23.
-//
-
 import Defaults
 import SwiftUI
 
@@ -22,13 +15,11 @@ struct MessageLink: View {
           if destination != nil, let subreddit = data.subreddit {
             Text("**u/\(data.author ?? "[deleted]")** \(action(data)) in **r/\(subreddit)**")
           } else {
-            // A private message, or one from a subreddit's moderators.
             Text(data.subject ?? "Message").fontWeight(.semibold)
             if let sender = sender(data) {
               Text("from **\(sender)**").fontSize(14).opacity(0.75)
             }
           }
-          // Messages that open nothing show their whole body: there's nowhere else to read it.
           Text((data.body ?? "").md()).lineLimit(destination == nil ? nil : 2).fontSize(15).opacity(0.75)
         }
       }
@@ -41,7 +32,6 @@ struct MessageLink: View {
       .opacity(!(data.new ?? false) ? 0.65 : 1)
       .contentShape(Rectangle())
       .swipyUI(
-        // Helio has no message thread screen, so private messages don't open anything.
         onTap: destination.map { dest in { Nav.to(dest) } },
         actionsSet: SwipeActionsSet(
           id: "message-link-actions",
@@ -52,7 +42,6 @@ struct MessageLink: View {
         ),
         entity: message,
       )
-      // The swipe is otherwise the only way to mark one message read or unread.
       .contextMenu {
         Button(readToggleTitle(data), systemImage: (data.new ?? false) ? "envelope.open" : "envelope.badge") {
           Task { _ = await message.toggleRead() }
@@ -93,9 +82,3 @@ struct MessageLink: View {
     return data.type == "post_reply" ? Color.accentColor : Color.green
   }
 }
-
-// struct InboxNotification_Previews: PreviewProvider {
-//    static var previews: some View {
-//        InboxNotification()
-//    }
-// }

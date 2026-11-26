@@ -1,9 +1,3 @@
-//
-//  FilteredSubredditsSettings.swift
-//  Helio
-//
-//  Created by Ethan Bills on 9/12/23.
-//
 import Defaults
 import SwiftUI
 
@@ -61,9 +55,7 @@ struct FilteredSubredditsSettings: View {
           newSubreddit = ""
         }
       })
-      Button("Cancel", action: {
-        // Do nothing! :D
-      })
+      Button("Cancel", action: {})
     } message: {
       Text("Enter a subreddit you wish to filter (case-sensitive).")
     }

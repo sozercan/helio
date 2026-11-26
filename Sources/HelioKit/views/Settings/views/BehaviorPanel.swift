@@ -1,10 +1,3 @@
-//
-//  BehaviorPanel.swift
-//  Helio
-//
-//  Created by Igor Marcossi on 05/07/23.
-//
-
 import Defaults
 import SwiftUI
 import VisionKit
@@ -64,7 +57,6 @@ struct BehaviorPanel: View {
 
         Section {
           LabeledSlider(label: "Loading limit", value: Binding(get: { CGFloat(subredditFeedDefSettings.chunkLoadSize) }, set: { val in subredditFeedDefSettings.chunkLoadSize = Int(val) }), range: 15 ... 100, disablePadding: true)
-          //            .themedListRowLikeBG(enablePadding: true, disableBG: true)
         } footer: {
           Text("Sets how many posts to load per chunk (loads more on scroll)")
         }
@@ -187,10 +179,3 @@ struct BehaviorPanel: View {
     .navigationBarTitleDisplayMode(.inline)
   }
 }
-
-//
-// struct Behavior_Previews: PreviewProvider {
-//    static var previews: some View {
-//        Behavior()
-//    }
-// }

@@ -1,10 +1,3 @@
-//
-//  CommentSample.swift
-//  Helio
-//
-//  Created by Igor Marcossi on 16/09/23.
-//
-
 import Foundation
 
 func getCommentSampleData(_ withChild: Bool = true) -> CommentData {

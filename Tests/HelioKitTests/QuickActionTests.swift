@@ -2,8 +2,6 @@ import Testing
 import UIKit
 @testable import HelioKit
 
-/// Serialized and on the main actor: the actions drive the shared `Nav`, which parallel tests
-/// would race on, and its tab switches finish on the main actor.
 @Suite(.serialized)
 @MainActor
 struct QuickActionTests {
@@ -31,7 +29,6 @@ struct QuickActionTests {
   @Test func readsItemsFromOlderVersions() {
     #expect(QuickAction(UIApplicationShortcutItem(type: "Search", localizedTitle: "Search")) == .search)
     #expect(QuickAction(UIApplicationShortcutItem(type: "Saved", localizedTitle: "Saved")) == .saved)
-    // Older favorites stored a placeholder name, but their title is the subreddit.
     #expect(QuickAction(UIApplicationShortcutItem(type: "subFav", localizedTitle: "apple", localizedSubtitle: nil, icon: nil, userInfo: ["name": "sub" as NSString])) == .subreddit("apple"))
   }
 

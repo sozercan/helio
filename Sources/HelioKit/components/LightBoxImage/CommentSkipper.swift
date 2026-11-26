@@ -1,13 +1,5 @@
-//
-//  CommentSkipper.swift
-//  OpenArtemis
-//
-//  Created by daniel on 12/8/23.
-//
-
 import SwiftUI
 
-/// The post page's "jump to the next comment" button, in its bottom bar.
 struct CommentSkipper: View {
   @Binding var topVisibleCommentId: String?
   @Binding var previousScrollTarget: String?
@@ -48,10 +40,6 @@ struct CommentSkipper: View {
         previousScrollTarget = nextIndex < comments.count - 1 ? comments[nextIndex + 1].id : nil
       } else {
         let nextIndex = min(topVisibleCommentIndex + 1, comments.count - 1)
-//        print(comments.count)
-//        print(comments)
-//        print("------------")
-//        print(nextIndex)
         reader.scrollTo(comments[nextIndex].id, anchor: .top)
         previousScrollTarget = topVisibleCommentId
       }

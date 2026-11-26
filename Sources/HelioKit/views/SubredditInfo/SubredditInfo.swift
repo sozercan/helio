@@ -1,10 +1,3 @@
-//
-//  SubredditInfo.swift
-//  Helio
-//
-//  Created by Igor Marcossi on 01/07/23.
-//
-
 import AlertToast
 import Defaults
 import SwiftDate
@@ -46,9 +39,6 @@ struct SubredditInfo: View {
                 SubscribeButton(subreddit: subreddit)
               }
             }
-            //            .toast(isPresenting: $addedToFavs){
-            //              AlertToast(displayMode: .hud, type: .systemImage("star.fill", Color.blue), title: "Added to Favorites")
-            //            }
 
             Picker("", selection: $selectedTab) {
               ForEach(SubInfoTabs.allCases) { tab in
@@ -100,10 +90,3 @@ struct SubredditInfo: View {
     .navigationBarTitleDisplayMode(.inline)
   }
 }
-
-//
-// struct SubredditInfo_Previews: PreviewProvider {
-//    static var previews: some View {
-//        SubredditInfo()
-//    }
-// }

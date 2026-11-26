@@ -1,10 +1,3 @@
-//
-//  replyModalPresenter.swift
-//  Helio
-//
-//  Created by Igor Marcossi on 09/08/23.
-//
-
 import SwiftUI
 
 struct ReplyModalPresenter: ViewModifier {

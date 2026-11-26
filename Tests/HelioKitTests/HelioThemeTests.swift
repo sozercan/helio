@@ -2,8 +2,6 @@ import Foundation
 import Testing
 @testable import HelioKit
 
-/// A theme keeps its parts in a box its copies share, so views that read it stay small. It still
-/// has to behave as a value.
 struct HelioThemeTests {
   @Test func aViewHoldsAThemeAsAPointer() {
     #expect(MemoryLayout<HelioTheme>.size == MemoryLayout<Int>.size)

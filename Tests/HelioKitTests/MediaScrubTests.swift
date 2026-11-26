@@ -69,13 +69,11 @@ struct MediaScrubTests {
     #expect(!ScrubbableGIFView(data: Data("not a gif".utf8)).beginScrub())
   }
 
-  /// A 4×2 GIF with one frame per delay.
   private static func gif(delays: [Double]) throws -> Data {
     let data = NSMutableData()
     let destination = try #require(CGImageDestinationCreateWithData(data, UTType.gif.identifier as CFString, delays.count, nil))
     let context = try #require(CGContext(data: nil, width: 4, height: 2, bitsPerComponent: 8, bytesPerRow: 0, space: CGColorSpaceCreateDeviceRGB(), bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue))
     for (index, delay) in delays.enumerated() {
-      // ImageIO merges identical frames, so each one gets its own shade.
       context.setFillColor(gray: CGFloat(index) / CGFloat(delays.count), alpha: 1)
       context.fill(CGRect(x: 0, y: 0, width: 4, height: 2))
       let image = try #require(context.makeImage())

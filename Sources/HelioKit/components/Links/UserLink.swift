@@ -1,10 +1,3 @@
-//
-//  UserLink.swift
-//  Helio
-//
-//  Created by Igor Marcossi on 11/07/23.
-//
-
 import SwiftUI
 
 struct UserLinkContainer: View {
@@ -41,7 +34,6 @@ struct UserLink: View {
       .padding(.vertical, 14)
       .frame(maxWidth: .infinity, alignment: .leading)
       .themedListRowLikeBG()
-      // A flat row in a list; a card where it's embedded in a post.
       .if(noHPad) { $0.mask(RR(20, .black)) }
       .if(!noHPad) { $0.hairlineRowSeparator() }
       .onTapGesture {

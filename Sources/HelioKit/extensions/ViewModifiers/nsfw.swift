@@ -1,10 +1,3 @@
-//
-//  nsfw.swift
-//  Helio
-//
-//  Created by Igor Marcossi on 02/08/23.
-//
-
 import SwiftUI
 
 struct NSFWMod: ViewModifier {

@@ -1,17 +1,6 @@
-//
-//  RedditInfoLoader.swift
-//  Helio
-//
-
 import Alamofire
 import Foundation
 
-/// Loads posts, comments and subreddits through `/api/info`, which takes up to 100 of them per
-/// request. Lookups made together (the reddit links in a feed page, the same link laid out twice)
-/// share one request, and results are kept for a few minutes.
-///
-/// Everything is per account: results carry the account's votes, saves and subscriptions, and
-/// only some accounts can see a private subreddit. Each request is made as the account that asked.
 actor RedditInfoLoader {
   static let shared = RedditInfoLoader()
 
@@ -25,7 +14,6 @@ actor RedditInfoLoader {
     case subreddit(SubredditData)
   }
 
-  /// A fullname (`t3_abc`) or a subreddit name (lowercased).
   enum Target: Hashable, Sendable {
     case fullname(String)
     case subredditName(String)
@@ -118,7 +106,7 @@ actor RedditInfoLoader {
   private func sendPending() async {
     let keys = Array(pending)
     let accounts = accounts
-    self.accounts = [:] // Retain credential snapshots only for pending/in-flight work, not the cache.
+    self.accounts = [:]
     pending = []
     flush = nil
     func batches(_ list: [String]) -> [[String]] {
@@ -176,7 +164,6 @@ actor RedditInfoLoader {
 }
 
 extension RedditAPI {
-  /// `/api/info` as the captured authorization; nil never means a later account selection.
   func fetchInfoThings(fullnames: [String], subredditNames: [String], account: RedditCredential) async -> [RedditInfoLoader.Thing]? {
     let params = subredditNames.isEmpty ? FetchInfoThingsPayload(id: fullnames.joined(separator: ",")) : FetchInfoThingsPayload(sr_name: subredditNames.joined(separator: ","))
     switch await self.doRequest("\(RedditAPI.redditApiURLBase)/api/info", method: .get, params: params, paramsLocation: .queryString, decodable: InfoListing.self, altCredential: account) {
@@ -198,7 +185,6 @@ extension RedditAPI {
       let children: [Child]?
     }
 
-    /// A child Helio can't decode is skipped rather than failing the whole listing.
     struct Child: Decodable {
       let thing: RedditInfoLoader.Thing?
 

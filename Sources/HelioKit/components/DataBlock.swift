@@ -1,10 +1,3 @@
-//
-//  DataBlock.swift
-//  Helio
-//
-//  Created by Igor Marcossi on 01/07/23.
-//
-
 import SwiftUI
 
 struct DataBlock: View {

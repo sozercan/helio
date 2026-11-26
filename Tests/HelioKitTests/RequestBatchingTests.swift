@@ -5,7 +5,6 @@ import Synchronization
 import Testing
 @testable import HelioKit
 
-/// Records the batches a loader sends.
 private final class Calls: Sendable {
   private let batches = Mutex<[[String]]>([])
 
@@ -107,7 +106,6 @@ struct RedditInfoLoaderTests {
     #expect(calls.all.sorted { $0.count > $1.count } == [["t3_a", "t3_b"], ["sr:apple"]])
   }
 
-  /// Results carry the account's votes and saves, and only some accounts see private subreddits.
   @Test func keepsEachAccountsResultsApart() async {
     let calls = Calls()
     let first = RedditCredential(apiAppID: "first", refreshToken: "placeholder-first-grant"), second = RedditCredential(apiAppID: "second", refreshToken: "placeholder-second-grant")
@@ -162,7 +160,6 @@ struct AccessTokenRefresherTests {
     async let a = refresher.refresh(for: authorization, forceRenew: false, refresh: refresh)
     async let b = refresher.refresh(for: authorization, forceRenew: false, refresh: refresh)
     let (first, second) = await (a, b)
-    // Asked again before the credential stored the new token.
     let third = await refresher.refresh(for: authorization, forceRenew: false, refresh: refresh)
 
     #expect(first.accessToken?.token == "new" && second.accessToken?.token == "new" && third.accessToken?.token == "new")
@@ -186,8 +183,6 @@ struct AccessTokenRefresherTests {
     #expect(calls.all.count == 2)
   }
 
-  /// A retry after a renewal (401, renewed, 503) gets the renewed token, not the rejected one a
-  /// credential snapshot still holds, and doesn't renew again.
   @Test func retryAfterRenewalReusesTheRenewedToken() async throws {
     let authorization = try #require(RedditCredential(apiAppID: "placeholder-client-id", refreshToken: "placeholder-refresh-token").authorizationID)
     let calls = Calls()

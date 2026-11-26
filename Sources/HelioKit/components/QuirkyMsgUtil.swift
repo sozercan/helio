@@ -1,10 +1,3 @@
-//
-//  Quirky Msg Util.swift
-//  Helio
-//
-//  Created by Ethan Bills on 1/11/24.
-//
-
 import Foundation
 
 class QuirkyMessageUtil {

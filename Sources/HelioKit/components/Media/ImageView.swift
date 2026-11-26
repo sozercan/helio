@@ -1,10 +1,3 @@
-//
-//  ImageView.swift
-//  Helio
-//
-//  Created by daniel (i think) on 1/10/24.
-//
-
 import NukeUI
 import SwiftUI
 

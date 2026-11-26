@@ -1,16 +1,8 @@
-//
-//  PostReplies.swift
-//  Helio
-//
-//  Created by Igor Marcossi on 31/07/23.
-//
-
 import Defaults
 import SwiftUI
 
 struct PostReplies: View {
   var commentsLoad: CommentsLoad
-  /// The comments seen before this visit, so the new ones stand out.
   var seenComments: String?
   var post: Post
   var subreddit: Subreddit
@@ -20,12 +12,9 @@ struct PostReplies: View {
   var proxy: ScrollViewProxy
   @Environment(\.useTheme) private var selectedTheme
 
-  // MARK: Properties related to comment skipper
-
   @Binding var topVisibleCommentId: String?
   @Binding var previousScrollTarget: String?
   @Binding var comments: [Comment]
-  /// Told which rows show, for where the page goes back to after the layout changes.
   var session: PostSession
 
   var body: some View {
@@ -52,7 +41,6 @@ struct PostReplies: View {
       }
 
       if !commentsLoad.loaded {
-        // `PostView` loads the comments.
         ProgressView()
           .progressViewStyle(.circular)
           .frame(maxWidth: .infinity, minHeight: 100)

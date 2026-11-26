@@ -1,10 +1,3 @@
-//
-//  PostLinkTitle.swift
-//  Helio
-//
-//  Created by Igor Marcossi on 25/09/23.
-//
-
 import SwiftUI
 
 struct PostLinkTitle: View, Equatable {
@@ -16,7 +9,6 @@ struct PostLinkTitle: View, Equatable {
   var label: String
   var theme: ThemeText
   var size: CGSize
-  /// Read posts get a muted title, like Apollo.
   var dimmed = false
   var dimmedColor: ColorSchemes<ThemeColor>?
 
@@ -26,20 +18,11 @@ struct PostLinkTitle: View, Equatable {
         .frame(width: size.width, height: size.height, alignment: .topLeading)
         .fixedSize(horizontal: false, vertical: true)
     }
-    //                  Text(label)
-    //                    .fontSize(theme.size, theme.weight.t)
-    //                    .fixedSize(horizontal: false, vertical: true)
-    //                    .frame(maxWidth: .infinity, alignment: .topLeading)
   }
 }
 
 extension View {
-  /// The feed title, drawn by a UIKit label VoiceOver can't read, as a button that opens the
-  /// post, with the post's actions (the ones in its context menu and swipe actions).
-  /// `secondary`: a crosspost's embedded card, which never reads as the open post.
   func postTitleAccessibility(post: Post, data: PostData, secondary: Bool, open: @escaping () -> Void) -> some View {
-    // The element is a clear view behind the title: the label itself runs taller than the
-    // title (it lays out blank lines below it), and VoiceOver would outline all of it.
     accessibilityHidden(true)
       .background {
         Color.clear
@@ -54,7 +37,6 @@ extension View {
   }
 }
 
-/// The post's context menu items: its swipe actions and Share. Also its VoiceOver actions.
 struct PostMenuItems: View {
   var post: Post
 
@@ -68,7 +50,6 @@ struct PostMenuItems: View {
   }
 }
 
-/// The title and the tags drawn after it: "Title, NSFW, Flair".
 func postTitleAccessibilityLabel(_ data: PostData) -> String {
   var parts = [data.title]
   if data.over_18 ?? false {
@@ -80,10 +61,8 @@ func postTitleAccessibilityLabel(_ data: PostData) -> String {
   return parts.joined(separator: ", ")
 }
 
-/// The post open beside the feed reads as selected, as the feed's highlight shows it.
 struct OpenPostSelectedTrait: ViewModifier {
   let postID: String
-  /// False for a row the highlight doesn't mark.
   let marks: Bool
   @Environment(\.navColumn) private var navColumn
 

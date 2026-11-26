@@ -1,16 +1,7 @@
-//
-//  WebExtensionStore.swift
-//  Helio
-//
-//  The web extensions the user added, for web pages opened in the app.
-//
-
 import Foundation
 import os
 
-/// A web extension the user added: a copy of its folder in the app's storage.
 struct ManagedWebExtension: Codable, Identifiable, Equatable {
-  /// Also the name of its folder in the store.
   let id: String
   var name: String
   var version: String?
@@ -29,18 +20,13 @@ enum WebExtensionStoreError: LocalizedError {
   }
 }
 
-/// The web extensions the user added (none by default). Each is a copy of the folder the user
-/// chose, so it doesn't depend on that folder staying where it is; the list is kept beside the
-/// copies. `WebExtensionRuntime` loads the enabled ones at launch, so changes apply on the next one.
 @MainActor
 @Observable
 final class WebExtensionStore {
   static let shared = WebExtensionStore()
 
   private(set) var extensions: [ManagedWebExtension]
-  /// Whether the list changed since launch, which only the next launch applies.
   private(set) var changedSinceLaunch = false
-  /// Holds the extension folders and the list.
   let directory: URL
 
   @ObservationIgnored private let logger = Logger(subsystem: "com.sertacozercan.helio", category: "WebExtensions")
@@ -50,14 +36,11 @@ final class WebExtensionStore {
     let listURL = directory.appending(path: "extensions.json")
     let saved = try? JSONDecoder().decode([ManagedWebExtension].self, from: Data(contentsOf: listURL))
     extensions = saved ?? []
-    // Only with a list read: without one, no folder can be told apart from a removed one.
     if saved != nil {
       deleteRemovedFolders()
     }
   }
 
-  /// Deletes the folders of extensions removed before this launch: WebKit kept the ones it had
-  /// loaded running until then, and they still needed their files.
   private func deleteRemovedFolders() {
     let kept = Set(extensions.map(\.id))
     let folders = (try? FileManager.default.contentsOfDirectory(at: directory, includingPropertiesForKeys: [.isDirectoryKey])) ?? []
@@ -66,7 +49,6 @@ final class WebExtensionStore {
     }
   }
 
-  /// Under the app's own folder: on Mac, Application Support is shared by every app.
   nonisolated static var defaultDirectory: URL {
     URL.applicationSupportDirectory.appending(path: "Helio/WebExtensions", directoryHint: .isDirectory)
   }
@@ -79,13 +61,10 @@ final class WebExtensionStore {
     directory.appending(path: ext.id, directoryHint: .isDirectory)
   }
 
-  /// Whether any extension is turned on. Links then open in the app's web pages, which run them,
-  /// instead of Safari's view, which doesn't.
   var hasEnabledExtensions: Bool {
     extensions.contains(where: \.isEnabled)
   }
 
-  /// The enabled extensions whose folders are still there, in the order they were added.
   var enabledFolders: [(id: String, url: URL)] {
     extensions.filter(\.isEnabled).compactMap { ext in
       let url = folder(of: ext)
@@ -97,8 +76,6 @@ final class WebExtensionStore {
     }
   }
 
-  /// Copies the extension in `source`, the folder that holds its manifest.json, into the store,
-  /// enabled.
   @discardableResult
   func add(from source: URL) throws -> ManagedWebExtension {
     let accessing = source.startAccessingSecurityScopedResource()
@@ -127,7 +104,6 @@ final class WebExtensionStore {
     return ext
   }
 
-  /// Drops it from the list. Its files go at the next launch, as it may be running until then.
   func remove(_ ext: ManagedWebExtension) throws {
     try save(extensions.filter { $0.id != ext.id })
   }
@@ -139,8 +115,6 @@ final class WebExtensionStore {
     try save(updated)
   }
 
-  /// Writes `list` and makes it the list, or, when it can't be written, leaves the list as it
-  /// was: a change the next launch wouldn't see isn't made.
   private func save(_ list: [ManagedWebExtension]) throws {
     do {
       try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
@@ -153,8 +127,6 @@ final class WebExtensionStore {
     changedSinceLaunch = true
   }
 
-  /// The manifest's name, looked up in the extension's default locale when it's a message
-  /// (`__MSG_extName__`, as in uBlock Origin Lite); else the folder's name.
   static func displayName(manifest: [String: Any], folder: URL) -> String {
     guard let name = manifest["name"] as? String, !name.isEmpty else { return folder.lastPathComponent }
     guard name.hasPrefix("__MSG_"), name.hasSuffix("__") else { return name }

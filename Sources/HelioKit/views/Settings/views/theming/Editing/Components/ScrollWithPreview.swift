@@ -1,10 +1,3 @@
-//
-//  ScrollWithPreview.swift
-//  Helio
-//
-//  Created by Igor Marcossi on 16/09/23.
-//
-
 import SwiftUI
 
 private enum PreviewBG: String, CaseIterable {
@@ -68,15 +61,3 @@ struct ScrollWithPreview<Content: View, Preview: View>: View {
     }
   }
 }
-
-// scrollOffset 979 contentSize 1672 previewContentSize 525 containerSize 783 safeAreaTop 59 safeAreaBot 34 tabHeight 49 ScreenH 852.0 sheetHeight 749.0
-
-// scrollOffset 979
-// contentSize 1521
-// previewContentSize 525
-// containerSize 783
-// safeAreaTop 59
-// safeAreaBot 34
-// tabHeight 49
-// ScreenH 852.0
-// sheetHeight 749.0

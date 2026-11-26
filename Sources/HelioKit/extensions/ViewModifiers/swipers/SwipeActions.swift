@@ -1,10 +1,3 @@
-////
-////  SwipeActions.swift
-////  Helio
-////
-////  Created by Igor Marcossi on 29/06/23.
-////
-//
 import Defaults
 import Foundation
 import SwiftUI
@@ -82,14 +75,12 @@ struct SwipeUI<T: GenericRedditEntityDataType, B: Hashable>: ViewModifier {
     let actualOffset = controlledDragAmount != nil ? 0 : dragAmount
 
     content
-      //      .scaleEffect(pressed ? 0.975 : 1)
       .overlay { Color.primary.opacity(pressed ? 0.1 : 0) }
       .offset(x: actualOffset)
       .background {
         if !enableSwipeAnywhere, controlledIsSource, enableBG {
           HStack {
             SwipeUIBtn(info: infoRight(), secondActiveFunc: actionsSet.rightSecond.active, firstActiveFunc: actionsSet.rightFirst.active, entity: entity!)
-              //            .equatable()
               .scaleEffect(triggeredAction == .rightSecond ? 1.1 : triggeredAction == .rightFirst ? 1 : max(0.001, offsetXInterpolate([-0.9, 0.85], false)))
               .opacity(max(0, offsetXInterpolate([-0.9, 1], false)))
               .frame(width: actualOffsetX < 0 ? 10 : abs(actualOffsetX))
@@ -98,7 +89,6 @@ struct SwipeUI<T: GenericRedditEntityDataType, B: Hashable>: ViewModifier {
             Spacer()
 
             SwipeUIBtn(info: infoLeft(), secondActiveFunc: actionsSet.leftSecond.active, firstActiveFunc: actionsSet.leftFirst.active, entity: entity!)
-              //            .equatable()
               .scaleEffect(triggeredAction == .leftSecond ? 1.1 : triggeredAction == .leftFirst ? 1 : max(0.001, offsetXNegativeInterpolate([-0.9, 0.85], false)))
               .opacity(max(0, offsetXNegativeInterpolate([-0.9, 1], false)))
               .frame(width: actualOffsetX > 0 ? 10 : abs(actualOffsetX))
@@ -121,14 +111,6 @@ struct SwipeUI<T: GenericRedditEntityDataType, B: Hashable>: ViewModifier {
           }
         }
       }
-      // commenting this out since it is interfering with the on tap. i moved the animation of pressed to that.
-      //      .onLongPressGesture(minimumDuration: 0.3, maximumDistance: 5, perform: { }, onPressingChanged: { val in
-      //        if !skipAnimation {
-      //          if val { timer.fireIn(0.025) { withAnimation(.smooth(duration: 0.325, extraBounce: 0.25)) { pressed = val } } }
-      //          else if pressed { timer.fireIn(0.1) { withAnimation(.bouncy(duration: 0.325, extraBounce: 0.25)) { pressed = val } } }
-      //          else { timer.invalidate() }
-      //        }
-      //      })
       .gesture(
         enableSwipeAnywhere
           ? nil
@@ -214,7 +196,6 @@ struct SwipeUI<T: GenericRedditEntityDataType, B: Hashable>: ViewModifier {
           let impact = UIImpactFeedbackGenerator(style: increasing ? .rigid : .soft)
           impact.prepare()
           impact.impactOccurred()
-          //          try? haptics.fire(intensity: increasing ? 0.5 : 0.35, sharpness: increasing ? 0.25 : 0.5)
           withAnimation(motionAware(isSecond ? .default.speed(2) : .interpolatingSpring(stiffness: 200, damping: 15, initialVelocity: increasing ? 35 : 0))) {
             triggeredAction = triggering
           }
@@ -224,7 +205,6 @@ struct SwipeUI<T: GenericRedditEntityDataType, B: Hashable>: ViewModifier {
 }
 
 struct SwipeUIBtn<T: GenericRedditEntityDataType, B: Hashable>: View, Equatable {
-  /// struct SwipeUIBtn: View {
   static func == (lhs: SwipeUIBtn<T, B>, rhs: SwipeUIBtn<T, B>) -> Bool {
     lhs.entity == rhs.entity && lhs.info?.0 == rhs.info?.0 && lhs.info?.1 == rhs.info?.1 && lhs.info?.2 == rhs.info?.2 && lhs.info?.3 == rhs.info?.3
   }
@@ -238,7 +218,6 @@ struct SwipeUIBtn<T: GenericRedditEntityDataType, B: Hashable>: View, Equatable 
     if let info {
       let active = info.3 ? secondActiveFunc(entity!) : firstActiveFunc(entity!)
       Image(systemName: active ? info.0.active : info.0.normal)
-        //      Image(systemName: "square.and.arrow.up.circle.fill")
         .contentTransition(.symbolEffect)
         .frame(36)
         .background(Circle().fill(Color.hex(active ? info.2.active : info.2.normal)))

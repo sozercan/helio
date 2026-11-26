@@ -1,10 +1,3 @@
-//
-//  SubscribeButton.swift
-//  Helio
-//
-//  Created by Igor Marcossi on 19/07/23.
-//
-
 import Defaults
 import SwiftUI
 
@@ -58,7 +51,6 @@ struct SubscribeButton: View {
       .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).stroke(isSmall ? Color.accentColor.opacity(subscribed ? 0 : 1.5) : .secondary.opacity(subscribed ? 0 : 0.2), lineWidth: 2))
       .brightness(pressing ? -0.1 : 0)
       .contentShape(Rectangle())
-      //        .animation(spring, value: subs)
       .onTapGesture {
         guard !loading, let authorization else { return }
         withAnimation(spring) {

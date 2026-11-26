@@ -1,10 +1,3 @@
-//
-//  BigCredBtn.swift
-//  Helio
-//
-//  Created by Igor Marcossi on 02/01/24.
-//
-
 import SwiftUI
 
 struct BigCredBtn<C: View>: View {

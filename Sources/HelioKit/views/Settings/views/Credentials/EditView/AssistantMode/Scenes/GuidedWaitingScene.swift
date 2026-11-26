@@ -1,10 +1,3 @@
-//
-//  GuidedWaitingScene.swift
-//  Helio
-//
-//  Created by Igor Marcossi on 06/01/24.
-//
-
 import SwiftUI
 
 struct GuidedWaitingScene: View {
@@ -93,8 +86,5 @@ struct GuidedWaitingScene: View {
     .multilineTextAlignment(.center)
     .padding(EdgeInsets(top: 48, leading: 32, bottom: 0, trailing: 32))
     .frame(maxHeight: .infinity, alignment: .top)
-    //      .onReceive(NotificationCenter.default.publisher(for: UIScene.willEnterForegroundNotification)) { _ in
-    //        print("foreground")
-    //      }
   }
 }

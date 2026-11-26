@@ -1,10 +1,3 @@
-//
-//  YTMediaPost.swift
-//  Helio
-//
-//  Created by Igor Marcossi on 30/07/23.
-//
-
 import Combine
 import Defaults
 import Foundation

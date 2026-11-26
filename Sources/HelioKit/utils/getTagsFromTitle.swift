@@ -1,10 +1,3 @@
-//
-//  getTagsFromTitle.swift
-//  Helio
-//
-//  Created by Igor Marcossi on 23/10/23.
-//
-
 import Foundation
 import SwiftUI
 import UIKit

@@ -1,10 +1,3 @@
-//
-//  edit.swift
-//  Helio
-//
-//  Created by Igor Marcossi on 15/08/23.
-//
-
 import Alamofire
 import Foundation
 

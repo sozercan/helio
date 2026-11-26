@@ -1,7 +1,5 @@
 import Foundation
 
-/// Time Profiler traces recorded by `perf bench --profile`: main-thread samples on the run log's
-/// clock, the stalls in a window and what ran in them.
 enum Profile {
   struct Frame: Hashable {
     let name: String
@@ -13,11 +11,9 @@ enum Profile {
     let frames: [Frame]
   }
 
-  /// Frames every sample shares, left out of the breakdowns.
   static let rootFrames = ["start", "main", "UIApplicationMain", "GSEventRunModal", "CFRunLoopRun", "__CFRunLoop", "runApp",
                            "App.main", "KitRendererCommon", "HelioApp.$main", "start_sim"]
 
-  /// Writes the trace's time-profile table as XML.
   static func export(_ trace: URL, to file: URL) -> Bool {
     let process = Process()
     process.executableURL = URL(fileURLWithPath: "/usr/bin/xcrun")
@@ -32,7 +28,6 @@ enum Profile {
     return process.terminationStatus == 0
   }
 
-  /// Main-thread samples of a profiled run, on the run log's clock.
   static func load(label: String, run: Int) -> (samples: [Sample], log: RunLog) {
     let dir = Paths.label(label)
     let xml = dir.appendingPathComponent("run\(run).tp.xml"), trace = dir.appendingPathComponent("run\(run).trace")
@@ -62,7 +57,6 @@ enum Profile {
     return samples.filter { $0.time >= lo && $0.time <= hi }
   }
 
-  /// Runs of main-thread samples with no gap, which is how a busy main thread looks at ~1 ms per sample.
   static func busyRuns(_ samples: [Sample]) -> [[Sample]] {
     var runs: [[Sample]] = [], current: [Sample] = []
     for sample in samples {
@@ -119,8 +113,6 @@ enum Profile {
   }
 }
 
-/// Reads the time-profile table: each `row` is a sample whose fields are elements, or `ref`s to
-/// elements with that `id` seen earlier.
 private final class TimeProfileParser: NSObject, XMLParserDelegate {
   final class Node {
     let tag: String

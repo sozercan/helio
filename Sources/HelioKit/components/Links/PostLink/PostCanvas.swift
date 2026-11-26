@@ -1,29 +1,13 @@
-//
-//  PostCanvas.swift
-//  Helio
-//
-//  The canvas post layout (`PostLayout.canvas`), after Alien Blue's: a grid of large
-//  thumbnails. Posts without a picture (text posts, links without a preview) are tiles with
-//  their title, so the grid keeps the feed's order and every post stays a tap away.
-//
-
 import Nuke
 import SwiftUI
 
-/// How the canvas fits its square tiles into a feed `width` wide.
 struct CanvasGrid: Equatable {
-  /// The narrowest a tile gets: two tiles across an iPhone, three to four in a wider column.
   static let minTileWidth: CGFloat = 150
-  /// Between tiles, across and down.
   static let spacing: CGFloat = 2
 
-  /// A vertical hinge across the grid (an open iPhone Duo): tiles go on either side of it.
   struct Hinge: Equatable {
-    /// The columns before it, as many as after it.
     let columnsBefore: Int
-    /// The width the grid has before it.
     let leadingWidth: CGFloat
-    /// Its own width, which no tile spans.
     let width: CGFloat
   }
 
@@ -31,7 +15,6 @@ struct CanvasGrid: Equatable {
   let tileSize: CGFloat
   let hinge: Hinge?
 
-  /// `division` is the hinge's horizontal span in the grid's coordinates, if the window has one.
   init(width: CGFloat, division: ClosedRange<CGFloat>? = nil) {
     let spacing = Self.spacing
     func fitting(_ width: CGFloat) -> Int {
@@ -41,7 +24,6 @@ struct CanvasGrid: Equatable {
       max(0, ((width - spacing * CGFloat(columns - 1)) / CGFloat(columns)).rounded(.down))
     }
     if let division, division.lowerBound > 0, division.upperBound < width {
-      // An even number of columns, half on each side, so no tile is cut by the hinge.
       let leading = division.lowerBound
       let trailing = width - division.upperBound
       let perSide = min(fitting(leading), fitting(trailing))
@@ -55,24 +37,17 @@ struct CanvasGrid: Equatable {
     }
   }
 
-  /// `items` in rows of `columns`.
   func rows<T>(_ items: [T]) -> [ArraySlice<T>] {
     stride(from: 0, to: items.count, by: columns).map { items[$0 ..< min($0 + columns, items.count)] }
   }
 }
 
-/// The picture a post shows in the canvas.
 enum CanvasThumbnail {
-  /// What the post is, for the glyph on its tile.
   enum Kind: Equatable {
     case image, gallery(Int), video, link
   }
 
-  /// The smallest of Reddit's renditions that covers a square tile `pixelWidth` wide, else the
-  /// largest; a link straight to an image when Reddit has none. Nil for posts without a
-  /// picture: text posts, and links without a preview.
   static func url(for data: PostData, pixelWidth: CGFloat) -> URL? {
-    // A crosspost shows the original's picture.
     let data = data.crosspost_parent_list?.first ?? data
     guard !data.is_self else { return nil }
     if data.is_gallery == true, let first = data.gallery_data?.items?.first, case let item?? = data.media_metadata?[first.media_id] {
@@ -93,30 +68,22 @@ enum CanvasThumbnail {
     if let direct = directImageURL(data) {
       return direct
     }
-    // Reddit's own small thumbnail, as for a native video without a preview. Not its stand-ins
-    // ("self", "default", "nsfw", "spoiler"), which aren't addresses.
     if let thumbnail = data.thumbnail, let url = URL(string: thumbnail.escape), ["http", "https"].contains(url.scheme?.lowercased() ?? ""), url.host?.isEmpty == false {
       return url
     }
     return nil
   }
 
-  /// The smallest of `sizes` whose shorter side is at least `pixelWidth`, since the tile crops
-  /// a square from its middle; else the largest.
   static func smallest(_ sizes: [(shorterSide: Int, url: String?)], covering pixelWidth: CGFloat) -> URL? {
     let usable = sizes.compactMap { size in size.url.flatMap { URL(string: $0.escape) }.map { (size.shorterSide, $0) } }
       .sorted { $0.0 < $1.0 }
     return (usable.first { CGFloat($0.0) >= pixelWidth } ?? usable.last)?.1
   }
 
-  /// Why the picture is hidden when blurring is on. A crosspost shows the original's picture,
-  /// so either post being NSFW or a spoiler hides it.
   enum Veil: Equatable {
     case nsfw, spoiler
   }
 
-  /// The tile's VoiceOver label: the title with the warnings its picture shows, a crosspost's
-  /// original's too, and the flair.
   static func accessibilityLabel(for data: PostData) -> String {
     let posts = [data] + (data.crosspost_parent_list?.prefix(1) ?? [])
     var parts = [data.title]
@@ -158,10 +125,8 @@ enum CanvasThumbnail {
   }
 }
 
-/// One post in the canvas: its picture, or its title when it has none. Opens the post.
 struct CanvasTile: View, Equatable {
   static func == (lhs: CanvasTile, rhs: CanvasTile) -> Bool {
-    // By identity: a refresh brings new models for the same posts, with new scores and votes.
     lhs.post === rhs.post && lhs.sub === rhs.sub && lhs.size == rhs.size && lhs.showSub == rhs.showSub && lhs.blurNSFW == rhs.blurNSFW && lhs.readOnScroll == rhs.readOnScroll && lhs.theme == rhs.theme
   }
 
@@ -205,7 +170,6 @@ struct CanvasTile: View, Equatable {
       .accessibilityValue(accessibilityValue(data))
       .accessibilityHint("Opens the post")
       .accessibilityActions { PostMenuItems(post: post) }
-      // Selected while open beside the feed, as its outline shows.
       .modifier(OpenPostSelectedTrait(postID: post.id, marks: true))
       .modifier(ReadOnScrollModifier(post: post, enabled: readOnScroll))
     }
@@ -235,7 +199,6 @@ struct CanvasTile: View, Equatable {
           .foregroundStyle(.white)
           .padding(.horizontal, 8)
           .padding(.vertical, 3)
-          // Opaque, so the label reads on any picture.
           .background(Capsule().fill(.black))
       }
     }
@@ -246,7 +209,6 @@ struct CanvasTile: View, Equatable {
           .foregroundStyle(.white)
           .padding(.horizontal, 6)
           .padding(.vertical, 4)
-          // Opaque, so the label reads on any picture.
           .background(Capsule().fill(.black))
           .padding(6)
       }
@@ -262,7 +224,6 @@ struct CanvasTile: View, Equatable {
     }
   }
 
-  /// Posts without a picture: the title, and the subreddit or the score and comments under it.
   private func text(_ data: PostData) -> some View {
     VStack(alignment: .leading, spacing: 6) {
       Text(data.title)
@@ -281,7 +242,6 @@ struct CanvasTile: View, Equatable {
       .lineLimit(1)
     }
     .padding(10)
-    // A tint over the cell's color sets it apart from the cell-colored feed around it.
     .background(Color.primary.opacity(0.07))
     .background(theme.bg.color())
   }
@@ -297,7 +257,6 @@ struct CanvasTile: View, Equatable {
   }
 }
 
-/// A row of canvas tiles, either side of the hinge when there's one across the grid.
 struct CanvasRow<Tile: View>: View {
   let posts: ArraySlice<Post>
   let grid: CanvasGrid
@@ -319,7 +278,6 @@ struct CanvasRow<Tile: View>: View {
     }
   }
 
-  /// Leading-aligned, so a last row that isn't full starts at the edge.
   private func tiles(_ posts: ArraySlice<Post>) -> some View {
     let count = grid.hinge?.columnsBefore ?? grid.columns
     let width = grid.tileSize * CGFloat(count) + CanvasGrid.spacing * CGFloat(count - 1)

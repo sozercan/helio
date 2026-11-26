@@ -1,11 +1,3 @@
-//
-//  CachedFilter+CoreDataProperties.swift
-//  Helio
-//
-//  Created by Igor Marcossi on 25/01/24.
-//
-//
-
 import CoreData
 import Foundation
 

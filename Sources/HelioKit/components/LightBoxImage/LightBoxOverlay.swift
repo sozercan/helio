@@ -1,10 +1,3 @@
-//
-//  LightBoxOverlay.swift
-//  Helio
-//
-//  Created by Igor Marcossi on 07/08/23.
-//
-
 import Defaults
 import NukeUI
 import SwiftUI
@@ -14,16 +7,11 @@ struct LightBoxOverlay: View {
   let badgeKit: BadgeKit
   let avatarImageRequest: ImageRequest?
   var opacity: CGFloat
-  /// The safe area the media runs under. The title and buttons keep clear of its sides.
   var safeArea = EdgeInsets()
-  /// The image showing, to save or share. Nil for a video.
   var img: ImgExtracted?
-  /// The video showing, for its playback buttons.
   var video: LightBoxVideo?
-  /// The page's place among its post's images.
   var index: Int
   var count: Int
-  /// A GIF's or video's progress bar, above the buttons.
   var scrubber: (any MediaScrubbable)?
   @Binding var loading: Bool
   @Environment(\.dismiss) var dismiss
@@ -39,7 +27,6 @@ struct LightBoxOverlay: View {
           .allowsHitTesting(false)
         BadgeView(avatarRequest: avatarImageRequest, saved: false, usernameColor: nil, author: badgeKit.author, userFlair: badgeKit.userFlair, created: badgeKit.created, avatarURL: nil, theme: selectedTheme.postLinks.theme.badge)
       }
-      // Clear of the Close button at the top trailing corner.
       .padding(.trailing, 56)
 
       Spacer()
@@ -62,18 +49,7 @@ struct LightBoxOverlay: View {
       }
 
       HStack(spacing: 12) {
-        // MANDRAKE
-//           if let post {
-//               LightBoxButton(icon: "bubble.right") {
-//             if let data = post.data {
-//                   Nav.to(.reddit(.post(Post(id: post.id, subID: data.subreddit))))
-//                   dismiss()
-//                 }
-//               }
-//           }
-
         if let video {
-          // A video that failed offers to try again instead.
           if !video.failed {
             LightBoxVideoButtons(video: video)
           }
@@ -147,7 +123,6 @@ struct LightBoxOverlay: View {
   }
 }
 
-/// A video's play, sound and Picture in Picture buttons.
 private struct LightBoxVideoButtons: View {
   let video: LightBoxVideo
 

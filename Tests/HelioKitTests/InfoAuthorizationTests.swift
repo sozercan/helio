@@ -111,7 +111,6 @@ struct InfoAuthorizationTests {
     await fetch.complete(0, with: [.post(data)])
     let removed = await first.value
     #expect(removed == nil)
-    // Restoring the same grant must fetch again: the removed grant's late result wasn't cached.
     selected.withLock { $0 = credential }
     let second = Task { await loader.post("t3_a") }
     await fetch.waitForCalls(2)

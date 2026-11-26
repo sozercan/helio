@@ -1,10 +1,3 @@
-//
-//  Onboarding6Auth.swift
-//  Helio
-//
-//  Created by Igor Marcossi on 01/08/23.
-//
-
 import AuthenticationServices
 import SwiftUI
 

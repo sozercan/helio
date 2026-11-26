@@ -1,10 +1,3 @@
-//
-//  PostLinkNormal.swift
-//  Helio
-//
-//  Created by Igor Marcossi on 25/09/23.
-//
-
 import Defaults
 import NukeUI
 import SwiftUI
@@ -20,7 +13,6 @@ struct PostLinkNormalSelftext: View, Equatable {
         .fixedSize(horizontal: false, vertical: true)
         .frame(maxWidth: .infinity, alignment: .topLeading)
     }
-    //      .id("body")
   }
 }
 
@@ -95,7 +87,6 @@ struct PostLinkNormal: View, Equatable, Identifiable {
 
   var body: some View {
     if let data = post.data {
-//      let over18 = data.over_18 ?? false
       VStack(alignment: .leading, spacing: theme.theme.verticalElementsSpacing) {
         if theme.theme.showDivider, defSettings.dividerPosition == .top {
           SubsNStuffLine()
@@ -129,7 +120,6 @@ struct PostLinkNormal: View, Equatable, Identifiable {
 
           Spacer(minLength: 8)
 
-          // A crosspost's embedded card leaves actions to the post around it.
           if !secondary {
             HStack(spacing: 0) {
               PostLinkMoreMenu(post: post)
@@ -146,10 +136,6 @@ struct PostLinkNormal: View, Equatable, Identifiable {
   }
 }
 
-// let atr = NSTextAttachment()
-// atr.
-
-/// Apollo's "•••" button: the post's actions, the same ones as its context menu.
 struct PostLinkMoreMenu: View {
   var post: Post
 

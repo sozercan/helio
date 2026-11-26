@@ -1,32 +1,24 @@
 import AVFoundation
 import SwiftUI
 
-/// Holding a fullscreen video or GIF and then dragging sideways scrubs through it, as swiping did
-/// in Apollo. A plain swipe goes to the next or previous media instead.
 enum MediaScrub {
-  /// The most time a swipe across the whole window covers. Shorter clips span the whole width,
-  /// so a GIF can be scrubbed end to end in one swipe while a long video still moves finely.
   static let maxSecondsPerWidth: Double = 60
 
-  /// Where a swipe of `translation` points, started at `start`, puts the playhead.
   static func time(from start: Double, translation: CGFloat, width: CGFloat, duration: Double) -> Double {
     guard duration > 0, width > 0 else { return start }
     let span = min(duration, maxSecondsPerWidth)
     return min(max(start + Double(translation / width) * span, 0), duration)
   }
 
-  /// "0:03", whole seconds as the video player shows them.
   static func timestamp(_ seconds: Double) -> String {
     Duration.seconds(max(0, seconds)).formatted(.time(pattern: .minuteSecond))
   }
 
-  /// Elapsed time rounds down and the time left rounds up, so the two add up to the length.
   static func timestamps(_ time: Double, of duration: Double) -> (elapsed: String, remaining: String) {
     (timestamp(time.rounded(.down)), "-" + timestamp((duration - time).rounded(.up)))
   }
 }
 
-/// Where a scrub has moved the playhead.
 struct ScrubPosition: Equatable {
   var time: Double
   var duration: Double
@@ -36,26 +28,18 @@ struct ScrubPosition: Equatable {
   }
 }
 
-/// A GIF or video the lightbox can scrub, by a held drag or along its progress bar.
 @MainActor
 protocol MediaScrubbable: AnyObject {
-  /// The playhead, or nil while there's nothing to scrub yet.
   var position: ScrubPosition? { get }
-  /// False when there's nothing to scrub.
   func begin() -> Bool
-  /// A drag across the media, relative to where it began.
   func update(translation: CGFloat, width: CGFloat)
-  /// A drag along the progress bar, to a fraction of the media's length.
   func scrub(toFraction fraction: Double)
   func end()
 }
 
-/// A GIF's or video's progress: the track, with the elapsed time under its leading end and the
-/// time left under its trailing end. Dragging along it scrubs.
 struct MediaProgressBar: View {
   let scrubber: any MediaScrubbable
   @State private var dragging = false
-  /// Resets when the drag ends or is cancelled; a cancelled drag skips `onEnded`.
   @GestureState private var touching = false
 
   var body: some View {
@@ -120,29 +104,18 @@ struct MediaProgressBar: View {
   }
 }
 
-/// Pauses a player while a swipe scrubs it, and plays it again after if it was playing.
-///
-/// An exact seek on a stream takes about a fifth of a second, so seeking exactly to each finger
-/// position shows only a few frames a second. While the finger moves, a seek may land anywhere
-/// within how far the finger went since the last one, which takes a few hundredths of a second
-/// and is no less accurate than the finger. When the finger rests or lifts, an exact seek settles
-/// it. Only the latest position is kept while a seek runs, so seeks never queue up.
 @MainActor
 final class VideoScrubber {
-  /// The most a seek may miss by, however fast the finger moves.
   static let maxTolerance = 0.5
 
   private weak var player: AVPlayer?
   private var start: Double = 0
   private var duration: Double = 0
   private var resumes = false
-  /// Where the finger points.
   private var target: Double?
-  /// The last seek's time, and whether it was exact.
   private var sought: (time: Double, exact: Bool)?
   private var seeking = false
 
-  /// False when the video's length isn't known yet, so there's nothing to scrub.
   func begin(_ player: AVPlayer) -> Bool {
     guard let duration = player.currentItem?.duration.seconds, duration.isFinite, duration > 0 else { return false }
     self.player = player
@@ -161,7 +134,6 @@ final class VideoScrubber {
     seekToTarget()
   }
 
-  /// Moves the playhead to a fraction of the video's length, as dragging its progress bar does.
   func scrub(toFraction fraction: Double) {
     guard player != nil else { return }
     target = min(max(fraction, 0), 1) * duration
@@ -170,7 +142,6 @@ final class VideoScrubber {
 
   func end() {
     guard let player else { return }
-    // Settle exactly where the finger lifted, replacing any seek still running.
     if let target, sought?.time != target || sought?.exact != true {
       player.seek(to: CMTime(seconds: target, preferredTimescale: 600), toleranceBefore: .zero, toleranceAfter: .zero)
     }
