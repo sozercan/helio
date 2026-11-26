@@ -27,6 +27,7 @@ struct PostReplies: View {
   @Binding var comments: [Comment]
   /// Told which rows show, for where the page goes back to after the layout changes.
   var session: PostSession
+  var retry: () -> Void = {}
 
   var body: some View {
     let theme = selectedTheme.comments
@@ -58,6 +59,22 @@ struct PostReplies: View {
           .frame(maxWidth: .infinity, minHeight: 100)
           .listRowBackground(Color.clear)
           .id("loading-comments")
+      } else if commentsLoad.failed, comments.isEmpty {
+        VStack(spacing: 12) {
+          if let limitedUntil = RedditRateLimit.shared.limitedUntil(account: RedditAPI.accountID(nil), authorization: RedditAPI.accountAuthorization(nil)) {
+            Text(RedditRateLimit.retryText(until: limitedUntil))
+              .multilineTextAlignment(.center)
+          } else {
+            Text("Couldn't load comments")
+          }
+          Button("Try again", systemImage: "arrow.clockwise", action: retry)
+            .buttonStyle(.actionSecondary)
+        }
+        .frame(maxWidth: .infinity, minHeight: 200)
+        .compositingGroup()
+        .opacity(0.6)
+        .listRowBackground(Color.clear)
+        .id("comments-load-error")
       } else if comments.isEmpty {
         Text(QuirkyMessageUtil.noCommentsFoundMessage())
           .frame(maxWidth: .infinity, minHeight: 300)

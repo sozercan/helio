@@ -179,7 +179,15 @@ extension RedditAPI {
   /// `/api/info` as the captured authorization; nil never means a later account selection.
   func fetchInfoThings(fullnames: [String], subredditNames: [String], account: RedditCredential) async -> [RedditInfoLoader.Thing]? {
     let params = subredditNames.isEmpty ? FetchInfoThingsPayload(id: fullnames.joined(separator: ",")) : FetchInfoThingsPayload(sr_name: subredditNames.joined(separator: ","))
-    switch await self.doRequest("\(RedditAPI.redditApiURLBase)/api/info", method: .get, params: params, paramsLocation: .queryString, decodable: InfoListing.self, altCredential: account) {
+    switch await self.doRequest(
+      "\(RedditAPI.redditApiURLBase)/api/info",
+      method: .get,
+      params: params,
+      paramsLocation: .queryString,
+      decodable: InfoListing.self,
+      altCredential: account,
+      webSessionAuth: .cookie(),
+    ) {
     case let .success(listing):
       return listing.data?.children?.compactMap(\.thing)
     case .failure:

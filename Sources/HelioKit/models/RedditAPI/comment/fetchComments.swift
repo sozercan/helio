@@ -15,7 +15,14 @@ extension RedditAPI {
     if let commentID {
       specificComment = "/comment/\(commentID.hasPrefix("t1_") ? String(commentID.dropFirst(3)) : commentID)"
     }
-    switch await self.doRequest("\(RedditAPI.redditApiURLBase)/r/\(subreddit)/comments/\(postID.hasPrefix("t3_") ? String(postID.dropFirst(3)) : postID)\(specificComment).json", method: .get, params: params, paramsLocation: .queryString, decodable: FetchPostCommentsResponse.self) {
+    switch await self.doRequest(
+      "\(RedditAPI.redditApiURLBase)/r/\(subreddit)/comments/\(postID.hasPrefix("t3_") ? String(postID.dropFirst(3)) : postID)\(specificComment).json",
+      method: .get,
+      params: params,
+      paramsLocation: .queryString,
+      decodable: FetchPostCommentsResponse.self,
+      webSessionAuth: .cookie(host: "www.reddit.com"),
+    ) {
     case let .success(data):
       return data
     case let .failure(error):
