@@ -236,6 +236,17 @@ struct RedditCredential: Identifiable, Equatable, Hashable, Codable, Sendable {
     RedditCredentialsManager.shared.saveCred(self, forceCreate: forceCreate)
   }
 
+  private func reusableAccessToken(forceRenew: Bool, rejectedToken: String?) -> AccessToken? {
+    guard
+      let accessToken,
+      accessToken.isFresh,
+      accessToken.token != rejectedToken,
+      !forceRenew || rejectedToken != nil,
+      !isWebSession || RedditWebSession.isCurrentClientToken(accessToken.token)
+    else { return nil }
+    return accessToken
+  }
+
   /// A waiter owns its persistence policy. Refresh results merge only into the
   /// captured installed grant, including web-session cookie rotation/sign-out.
   func getUpToDateToken(forceRenew: Bool = false, saveToken: Bool = true, rejectedToken: String? = nil) async -> AccessToken? {
@@ -248,7 +259,7 @@ struct RedditCredential: Identifiable, Equatable, Hashable, Codable, Sendable {
       self
     }
     guard let refreshToken = current.renewalKey else { return nil }
-    if let accessToken = current.accessToken, accessToken.isFresh, accessToken.token != rejectedToken, !forceRenew || rejectedToken != nil {
+    if let accessToken = current.reusableAccessToken(forceRenew: forceRenew, rejectedToken: rejectedToken) {
       return accessToken
     }
     let outcome = await AccessTokenRefresher.shared.refresh(for: authorization, forceRenew: forceRenew, rejected: rejectedToken) {

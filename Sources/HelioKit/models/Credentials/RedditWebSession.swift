@@ -10,12 +10,12 @@ import Synchronization
 
 /// Signing in without an API key. The user signs in on reddit.com (`RedditWebLoginView`), Helio
 /// keeps the session's cookies, and it trades them for ~24 h OAuth bearer tokens at the token
-/// service Reddit's mobile site uses. Those tokens work on the same `oauth.reddit.com` REST API
+/// service Reddit's web site uses. Those tokens work on the same `oauth.reddit.com` REST API
 /// an API key's do.
 enum RedditWebSession {
-  /// The client id of Reddit's mobile web site. It has no secret and is sent with every
-  /// signed-out reddit.com page load.
-  static let clientID = "ohXpoqrZYub1kg"
+  /// The client id of Reddit's desktop web site (the one `token_v2` belongs to). It has no secret
+  /// and is sent with every signed-out reddit.com page load.
+  static let clientID = "0R-WAMhuoo-MyQ"
   static let loginURL = URL(string: "https://www.reddit.com/login")!
   static let tokenURL = "https://accounts.reddit.com/api/access_token"
   /// The cookie that carries a reddit.com sign-in. Reddit sets it for signed-out visitors too, so
@@ -114,16 +114,25 @@ enum RedditWebSession {
   /// Whom a bearer acts for, from its JWT subject: a signed-out visitor's is a logged-out id
   /// (`loid`) instead of an account.
   static func tokenSubject(_ token: String) -> TokenSubject {
+    guard let subject = jwtClaims(token)?["sub"] as? String else { return .unknown }
+    return subject.hasPrefix("loid") ? .signedOut : .account
+  }
+
+  /// Whether a cached web-session token was minted for `clientID` (or isn't a readable JWT with a
+  /// `cid` claim). Forces a fresh mint when Reddit blocks an older client id, since `oauth.reddit.com`
+  /// answers those with a 403 block page instead of a 401.
+  static func isCurrentClientToken(_ token: String) -> Bool {
+    guard let cid = jwtClaims(token)?["cid"] as? String else { return true }
+    return cid == clientID
+  }
+
+  private static func jwtClaims(_ token: String) -> [String: Any]? {
     let parts = token.split(separator: ".")
-    guard parts.count >= 2 else { return .unknown }
+    guard parts.count >= 2 else { return nil }
     var payload = parts[1].replacingOccurrences(of: "-", with: "+").replacingOccurrences(of: "_", with: "/")
     payload += String(repeating: "=", count: (4 - payload.count % 4) % 4)
-    guard
-      let data = Data(base64Encoded: payload),
-      let claims = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
-      let subject = claims["sub"] as? String
-    else { return .unknown }
-    return subject.hasPrefix("loid") ? .signedOut : .account
+    guard let data = Data(base64Encoded: payload) else { return nil }
+    return try? JSONSerialization.jsonObject(with: data) as? [String: Any]
   }
 
   /// `header` with the cookies a response set: new values replace old ones, and cookies the
