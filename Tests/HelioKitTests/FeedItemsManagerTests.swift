@@ -658,4 +658,110 @@ extension FeedItemsManagerTests {
     #expect(ids(manager.entities) == (fails ? ["visible"] : ["replacement"]))
     #expect(manager.displayMode == (fails ? .error : .endOfFeed))
   }
+
+  @Test func deduplicatesRepeatedPostsWithinTheFirstPage() async {
+    await withHideOnRead(false) {
+      let (manager, _) = makeManager(hideReadPosts: false, pages: [
+        "first": ([post("a", read: false), post("b", read: false), post("a", read: false), post("c", read: false), post("b", read: false)], "p2"),
+      ])
+      await manager.reload()
+
+      #expect(ids(manager.entities) == ["a", "b", "c"])
+      #expect(manager.displayMode == .items)
+    }
+  }
+
+  @Test func holdsNextPageWhileRateLimitedAndAutoReloadsAtReset() async {
+    await withHideOnRead(false) {
+      var limitedUntil: Date?
+      var requested: [String?] = []
+      var sleepContinuation: CheckedContinuation<Void, Never>?
+      let manager = FeedItemsManager<SubListingSortOption>(
+        sorting: nil,
+        hideReadPosts: false,
+        currentCredential: { Self.testCredential },
+        rateLimitedUntil: { _ in limitedUntil },
+        sleepUntil: { _ in
+          await withCheckedContinuation { continuation in
+            sleepContinuation = continuation
+          }
+        },
+        fetchFn: { after, _, _, _, _ in
+          requested.append(after)
+          if after == nil {
+            return ([post("p1", read: false)], "c2")
+          }
+          return ([post("p2", read: false)], nil)
+        },
+      )
+
+      await manager.reload()
+      #expect(ids(manager.entities) == ["p1"])
+      #expect(requested == [nil])
+
+      // Simulate an active rate limit: paging is held without calling fetchFn.
+      limitedUntil = Date().addingTimeInterval(60)
+      await manager.loadMore()
+      #expect(requested == [nil])
+      #expect(manager.displayMode == .error)
+
+      // Lifting the limit and waking the reset timer automatically resumes paging.
+      limitedUntil = nil
+      for _ in 0 ..< 50 where sleepContinuation == nil {
+        try? await Task.sleep(for: .milliseconds(10))
+      }
+      sleepContinuation?.resume()
+      for _ in 0 ..< 50 where manager.displayMode == .error || requested.count < 2 {
+        try? await Task.sleep(for: .milliseconds(10))
+      }
+
+      #expect(requested == [nil, "c2"])
+      #expect(ids(manager.entities) == ["p1", "p2"])
+      #expect(manager.displayMode == .endOfFeed)
+    }
+  }
+
+  @Test func autoReloadsFailedFirstPageWhenRateLimitResets() async {
+    await withHideOnRead(false) {
+      var limitedUntil: Date?
+      var attempts = 0
+      var sleepContinuation: CheckedContinuation<Void, Never>?
+      let manager = FeedItemsManager<SubListingSortOption>(
+        sorting: nil,
+        hideReadPosts: false,
+        currentCredential: { Self.testCredential },
+        rateLimitedUntil: { _ in limitedUntil },
+        sleepUntil: { _ in
+          await withCheckedContinuation { continuation in
+            sleepContinuation = continuation
+          }
+        },
+        fetchFn: { _, _, _, _, _ in
+          attempts += 1
+          if attempts == 1 {
+            limitedUntil = Date().addingTimeInterval(60)
+            return nil
+          }
+          return ([post("recovered", read: false)], nil)
+        },
+      )
+
+      await manager.reload()
+      #expect(attempts == 1)
+      #expect(manager.displayMode == .error)
+
+      limitedUntil = nil
+      for _ in 0 ..< 50 where sleepContinuation == nil {
+        try? await Task.sleep(for: .milliseconds(10))
+      }
+      sleepContinuation?.resume()
+      for _ in 0 ..< 50 where manager.displayMode == .error || attempts < 2 {
+        try? await Task.sleep(for: .milliseconds(10))
+      }
+
+      #expect(attempts == 2)
+      #expect(ids(manager.entities) == ["recovered"])
+      #expect(manager.displayMode == .endOfFeed)
+    }
+  }
 }

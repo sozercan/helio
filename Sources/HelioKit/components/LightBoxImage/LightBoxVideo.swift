@@ -50,7 +50,7 @@ final class LightBoxVideo: MediaScrubbable {
   }
 
   init(video: SharedVideo, holder: VideoPlayerHolder?) {
-    self.holder = holder ?? VideoPlayerHolder(url: video.url)
+    self.holder = holder ?? VideoPlayerHolder(url: video.url, dashURL: video.dashURL, fallbackURL: video.fallbackURL)
     borrowed = holder != nil
     isMuted = Defaults[.VideoDefSettings].mute
     layerView.playerLayer.videoGravity = .resizeAspect
@@ -111,11 +111,11 @@ final class LightBoxVideo: MediaScrubbable {
   /// and one that stopped short of its end or stalled is left to the row.
   private func recover(failedToEnd: Bool = false) {
     guard failedToEnd ? !borrowed : holder.hasFailed else { return }
-    if holder.reload() {
-      if active {
-        player?.play()
-      }
-    } else {
+    let started = holder.reload { [weak self] in
+      guard let self, self.active else { return }
+      self.player?.play()
+    }
+    if !started {
       failed = true
     }
   }
@@ -123,9 +123,9 @@ final class LightBoxVideo: MediaScrubbable {
   /// Tries again after it failed, when asked.
   func retry() {
     failed = false
-    holder.retry()
-    if active {
-      player?.play()
+    holder.retry { [weak self] in
+      guard let self, self.active else { return }
+      self.player?.play()
     }
   }
 

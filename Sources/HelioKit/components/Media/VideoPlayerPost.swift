@@ -21,12 +21,29 @@ final class VideoPlayerHolder: ObservableObject {
   /// the view watches this to retry.
   @Published private(set) var itemFailed = false
   private let url: URL?
+  private let dashURL: URL?
+  private let fallbackURL: URL?
+  private let recoverPlaylist: @Sendable (URL, URL?, URL?) async -> RedditVideoPlaylistRecovery.RecoveredSource?
+  private var recoveredSource: RedditVideoPlaylistRecovery.RecoveredSource?
+  private var resourceLoaderDelegate: AVAssetResourceLoaderDelegate?
+  private var attemptedRecovery = false
+  private var recoveryTask: Task<Void, Never>?
   private var statusObservation: NSKeyValueObservation?
   private var reloads = 0
   private let maxReloads = 2
 
-  init(url: URL?) {
+  init(
+    url: URL?,
+    dashURL: URL? = nil,
+    fallbackURL: URL? = nil,
+    recoverPlaylist: @escaping @Sendable (URL, URL?, URL?) async -> RedditVideoPlaylistRecovery.RecoveredSource? = { hls, dash, fallback in
+      await RedditVideoPlaylistRecovery.recover(hlsURL: hls, dashURL: dash, fallbackURL: fallback)
+    },
+  ) {
     self.url = url
+    self.dashURL = dashURL
+    self.fallbackURL = fallbackURL
+    self.recoverPlaylist = recoverPlaylist
     if let url {
       let p = AVPlayer(playerItem: AVPlayerItem(url: url))
       p.volume = 0.0
@@ -38,21 +55,70 @@ final class VideoPlayerHolder: ObservableObject {
   }
 
   /// Swaps in a fresh item for a failed or stuck one. Returns false once retries are used up.
+  @MainActor
   @discardableResult
-  func reload() -> Bool {
+  func reload(onItemReplaced: (@MainActor () -> Void)? = nil) -> Bool {
     guard let player, let url, reloads < maxReloads else { return false }
     reloads += 1
     isReadyToPlay = false
     itemFailed = false
-    player.replaceCurrentItem(with: AVPlayerItem(url: url))
+
+    // When a v.redd.it HLS playlist fails, rebuild it from DASHPlaylist.mpd (or fall back
+    // to the MP4) instead of hitting the same cached CDN 403 again.
+    if !attemptedRecovery, RedditVideoPlaylistRecovery.isRedditHLSPlaylist(url) {
+      attemptedRecovery = true
+      recoveryTask?.cancel()
+      let dashURL = dashURL
+      let fallbackURL = fallbackURL
+      let recover = recoverPlaylist
+      recoveryTask = Task { @MainActor [weak self] in
+        let replacement = await recover(url, dashURL, fallbackURL)
+        guard let self, !Task.isCancelled, let player = self.player else { return }
+        self.recoveredSource = replacement
+        let shouldPlay = player.timeControlStatus != .paused || player.rate > 0
+        if let replacement {
+          let (item, delegate) = RedditVideoPlaylistRecovery.makePlayerItem(for: replacement)
+          self.resourceLoaderDelegate = delegate
+          player.replaceCurrentItem(with: item)
+        } else {
+          self.resourceLoaderDelegate = nil
+          player.replaceCurrentItem(with: AVPlayerItem(url: url))
+        }
+        self.observeCurrentItem()
+        onItemReplaced?()
+        if shouldPlay {
+          player.play()
+        }
+      }
+      return true
+    }
+
+    // If a rebuilt HLS manifest also fails, step down to the direct MP4 fallback when available.
+    if case .manifest = recoveredSource, let fallbackURL {
+      recoveredSource = .directURL(fallbackURL)
+      resourceLoaderDelegate = nil
+      player.replaceCurrentItem(with: AVPlayerItem(url: fallbackURL))
+    } else if let recoveredSource {
+      let (item, delegate) = RedditVideoPlaylistRecovery.makePlayerItem(for: recoveredSource)
+      resourceLoaderDelegate = delegate
+      player.replaceCurrentItem(with: item)
+    } else {
+      resourceLoaderDelegate = nil
+      player.replaceCurrentItem(with: AVPlayerItem(url: url))
+    }
     observeCurrentItem()
+    onItemReplaced?()
     return true
   }
 
   /// Tries again once retries ran out, when the user asks.
-  func retry() {
+  @MainActor
+  func retry(onItemReplaced: (@MainActor () -> Void)? = nil) {
     reloads = 0
-    reload()
+    attemptedRecovery = false
+    recoveredSource = nil
+    resourceLoaderDelegate = nil
+    reload(onItemReplaced: onItemReplaced)
   }
 
   var hasFailed: Bool {
@@ -63,7 +129,7 @@ final class VideoPlayerHolder: ObservableObject {
     statusObservation = player?.currentItem?.observe(\.status, options: [.initial, .new]) { [weak self] item, _ in
       let ready = item.status == .readyToPlay
       let failed = item.status == .failed
-      DispatchQueue.main.async {
+      Task { @MainActor [weak self] in
         self?.isReadyToPlay = ready
         self?.itemFailed = failed
       }
@@ -71,6 +137,7 @@ final class VideoPlayerHolder: ObservableObject {
   }
 
   deinit {
+    recoveryTask?.cancel()
     statusObservation?.invalidate()
     player?.pause()
     player?.replaceCurrentItem(with: nil)
@@ -79,21 +146,25 @@ final class VideoPlayerHolder: ObservableObject {
 
 struct SharedVideo: Equatable {
   static func == (lhs: SharedVideo, rhs: SharedVideo) -> Bool {
-    lhs.url == rhs.url && lhs.size == rhs.size
+    lhs.url == rhs.url && lhs.size == rhs.size && lhs.dashURL == rhs.dashURL && lhs.fallbackURL == rhs.fallbackURL
   }
 
   var url: URL
   var size: CGSize
   var posterURL: URL?
+  var dashURL: URL?
+  var fallbackURL: URL?
 
-  static func get(url: URL, size: CGSize, posterURL: URL? = nil) -> SharedVideo {
-    SharedVideo(url: url, size: size, posterURL: posterURL)
+  static func get(url: URL, size: CGSize, posterURL: URL? = nil, dashURL: URL? = nil, fallbackURL: URL? = nil) -> SharedVideo {
+    SharedVideo(url: url, size: size, posterURL: posterURL, dashURL: dashURL, fallbackURL: fallbackURL)
   }
 
-  init(url: URL, size: CGSize, posterURL: URL? = nil) {
+  init(url: URL, size: CGSize, posterURL: URL? = nil, dashURL: URL? = nil, fallbackURL: URL? = nil) {
     self.url = url
     self.size = size
     self.posterURL = posterURL
+    self.dashURL = dashURL
+    self.fallbackURL = fallbackURL
   }
 }
 
@@ -192,7 +263,7 @@ struct VideoPlayerPost: View, Equatable {
     self.cornerRadius = cornerRadius
     self.lightboxPost = lightboxPost ?? LightBoxPost(key: "opened", markAsSeen: markAsSeen)
     self.feedPost = feedPost
-    _holder = StateObject(wrappedValue: VideoPlayerHolder(url: cachedVideo != nil ? url : nil))
+    _holder = StateObject(wrappedValue: VideoPlayerHolder(url: cachedVideo != nil ? url : nil, dashURL: cachedVideo?.dashURL, fallbackURL: cachedVideo?.fallbackURL))
   }
 
   var body: some View {
@@ -336,10 +407,11 @@ struct VideoPlayerPost: View, Equatable {
 
   /// Swaps in a fresh item and re-attaches the observers, which are tied to the old one.
   func reload(_ player: AVPlayer) {
-    guard holder.reload() else { return }
-    observePlayback(player)
-    if autoPlayVideos, isVisible {
-      player.play()
+    _ = holder.reload {
+      observePlayback(player)
+      if autoPlayVideos, isVisible, !inLightbox {
+        player.play()
+      }
     }
   }
 
