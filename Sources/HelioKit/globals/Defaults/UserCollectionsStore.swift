@@ -24,8 +24,8 @@ final class UserCollectionsStore: @unchecked Sendable {
   }
 
   private struct PendingWrites {
-    var filteredDirty = false
-    var likedDirty = false
+    var filteredData: Data?
+    var likedData: Data?
     var runningTask: Task<Void, Never>?
   }
 
@@ -142,7 +142,7 @@ final class UserCollectionsStore: @unchecked Sendable {
     }
     guard let updated else { return }
     publishFilteredSubreddits(updated)
-    schedulePersist(filtered: true)
+    schedulePersist(filtered: updated)
   }
 
   func removeFilteredSubreddit(at index: Int) {
@@ -154,7 +154,7 @@ final class UserCollectionsStore: @unchecked Sendable {
     }
     guard let updated else { return }
     publishFilteredSubreddits(updated)
-    schedulePersist(filtered: true)
+    schedulePersist(filtered: updated)
   }
 
   @discardableResult
@@ -172,7 +172,7 @@ final class UserCollectionsStore: @unchecked Sendable {
     }
     guard let result else { return false }
     publishFilteredSubreddits(result.updated)
-    schedulePersist(filtered: true)
+    schedulePersist(filtered: result.updated)
     return result.isFiltered
   }
 
@@ -188,7 +188,7 @@ final class UserCollectionsStore: @unchecked Sendable {
     }
     guard let updated else { return }
     publishFilteredSubreddits(updated)
-    schedulePersist(filtered: true)
+    schedulePersist(filtered: updated)
   }
 
   @discardableResult
@@ -205,7 +205,7 @@ final class UserCollectionsStore: @unchecked Sendable {
     }
     guard let result else { return false }
     publishLikedButNotSubbed(result.updated)
-    schedulePersist(liked: true)
+    schedulePersist(liked: result.updated)
     return result.isLiked
   }
 
@@ -220,7 +220,7 @@ final class UserCollectionsStore: @unchecked Sendable {
     }
     guard let updated else { return }
     publishLikedButNotSubbed(updated)
-    schedulePersist(liked: true)
+    schedulePersist(liked: updated)
   }
 
   func clearLikedButNotSubbed() {
@@ -246,31 +246,58 @@ final class UserCollectionsStore: @unchecked Sendable {
   }
 
   func exportEntries() -> [String: Any] {
-    let snapshot = state.withLock { ($0.filteredSubreddits, $0.likedButNotSubbed) }
-    var entries: [String: Any] = ["filteredSubreddits": snapshot.0]
-    let encoder = JSONEncoder()
-    let encodedLiked = snapshot.1.compactMap { sub -> String? in
-      guard let data = try? encoder.encode(sub) else { return nil }
-      return String(bytes: data, encoding: .utf8)
+    let snapshot = state.withLock {
+      (
+        filtered: $0.filteredSubreddits,
+        filteredFailed: $0.filteredLoadFailed,
+        liked: $0.likedButNotSubbed,
+        likedFailed: $0.likedLoadFailed,
+      )
     }
-    entries["likedButNotSubbed"] = encodedLiked
+    var entries: [String: Any] = [:]
+    let hasLegacyFiltered = Self.legacyFilteredKeys.contains { userDefaults.object(forKey: $0) != nil }
+    if !snapshot.filteredFailed, !hasLegacyFiltered {
+      entries["filteredSubreddits"] = snapshot.filtered
+    }
+    let hasLegacyLiked = Self.legacyLikedKeys.contains { userDefaults.object(forKey: $0) != nil }
+    if !snapshot.likedFailed, !hasLegacyLiked {
+      let encoder = JSONEncoder()
+      let encodedLiked = snapshot.liked.compactMap { sub -> String? in
+        guard let data = try? encoder.encode(sub) else { return nil }
+        return String(bytes: data, encoding: .utf8)
+      }
+      entries["likedButNotSubbed"] = encodedLiked
+    }
     return entries
   }
 
   func importEntries(from jsonObject: [String: Any]) {
+    var importedFiltered = false
     for key in Self.legacyFilteredKeys {
       if let raw = jsonObject[key], let decoded = Self.decodeLegacyArray(String.self, from: raw) {
         setFilteredSubreddits(decoded, allowOverwriteAfterLoadError: true)
+        importedFiltered = true
         break
       }
     }
+    var importedLiked = false
     for key in Self.legacyLikedKeys {
       if let raw = jsonObject[key], let decoded = Self.decodeLegacyArray(Subreddit.self, from: raw) {
         setLikedButNotSubbed(decoded, allowOverwriteAfterLoadError: true)
+        importedLiked = true
         break
       }
     }
-    userDefaults.set(true, forKey: Self.legacyMigrationMarkerKey)
+    if importedFiltered {
+      for key in Self.legacyFilteredKeys {
+        userDefaults.removeObject(forKey: key)
+      }
+    }
+    if importedLiked {
+      for key in Self.legacyLikedKeys {
+        userDefaults.removeObject(forKey: key)
+      }
+    }
   }
 
   func flushPendingWrites() async {
@@ -279,13 +306,30 @@ final class UserCollectionsStore: @unchecked Sendable {
     }
   }
 
-  private func schedulePersist(filtered: Bool = false, liked: Bool = false) {
-    pendingWrites.withLock { pending in
-      if filtered {
-        pending.filteredDirty = true
+  private func schedulePersist(filtered: [String]? = nil, liked: [Subreddit]? = nil) {
+    let filteredData: Data? = filtered.flatMap { value in
+      do {
+        return try JSONEncoder().encode(value)
+      } catch {
+        Self.logger.error("Failed to encode \(Self.filteredSubredditsFileName, privacy: .public): \(error.localizedDescription, privacy: .public)")
+        return nil
       }
-      if liked {
-        pending.likedDirty = true
+    }
+    let likedData: Data? = liked.flatMap { value in
+      do {
+        return try JSONEncoder().encode(value)
+      } catch {
+        Self.logger.error("Failed to encode \(Self.likedButNotSubbedFileName, privacy: .public): \(error.localizedDescription, privacy: .public)")
+        return nil
+      }
+    }
+    guard filteredData != nil || likedData != nil else { return }
+    pendingWrites.withLock { pending in
+      if let filteredData {
+        pending.filteredData = filteredData
+      }
+      if let likedData {
+        pending.likedData = likedData
       }
       guard pending.runningTask == nil else { return }
       pending.runningTask = Task(priority: .utility) { [weak self] in
@@ -296,23 +340,23 @@ final class UserCollectionsStore: @unchecked Sendable {
 
   private func drainPendingWrites() {
     while true {
-      let batch: (filtered: Bool, liked: Bool) = pendingWrites.withLock { pending in
-        let result = (pending.filteredDirty, pending.likedDirty)
-        pending.filteredDirty = false
-        pending.likedDirty = false
-        if !result.0, !result.1 {
+      let batch: (filtered: Data?, liked: Data?) = pendingWrites.withLock { pending in
+        let result = (pending.filteredData, pending.likedData)
+        pending.filteredData = nil
+        pending.likedData = nil
+        if result.0 == nil, result.1 == nil {
           pending.runningTask = nil
         }
         return result
       }
-      if !batch.filtered, !batch.liked {
+      if batch.filtered == nil, batch.liked == nil {
         return
       }
-      if batch.filtered {
-        _ = persistLatestFilteredSubreddits()
+      if let filtered = batch.filtered {
+        _ = writeData(filtered, to: Self.filteredSubredditsFileName)
       }
-      if batch.liked {
-        _ = persistLatestLikedButNotSubbed()
+      if let liked = batch.liked {
+        _ = writeData(liked, to: Self.likedButNotSubbedFileName)
       }
     }
   }
@@ -393,18 +437,27 @@ final class UserCollectionsStore: @unchecked Sendable {
   }
 
   @discardableResult
-  private func persist(to fileName: String, latestValue: () -> some Encodable) -> Bool {
+  private func writeData(_ data: Data, to fileName: String) -> Bool {
     writeLock.withLock { _ in
       do {
-        let value = latestValue()
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
-        let data = try JSONEncoder().encode(value)
         try data.write(to: directory.appending(path: fileName), options: .atomic)
         return true
       } catch {
         Self.logger.error("Failed to persist \(fileName, privacy: .public): \(error.localizedDescription, privacy: .public)")
         return false
       }
+    }
+  }
+
+  @discardableResult
+  private func persist(to fileName: String, latestValue: () -> some Encodable) -> Bool {
+    do {
+      let data = try JSONEncoder().encode(latestValue())
+      return writeData(data, to: fileName)
+    } catch {
+      Self.logger.error("Failed to persist \(fileName, privacy: .public): \(error.localizedDescription, privacy: .public)")
+      return false
     }
   }
 
