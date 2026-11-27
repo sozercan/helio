@@ -107,30 +107,36 @@ extension Comment {
       data?.collapsed = newState
     }
 
+    let commentID = id
     let context = PersistenceController.shared.primaryBGContext
-
-    context.performAndWait {
+    let persist = {
       let fetchRequest = NSFetchRequest<CollapsedComment>(entityName: "CollapsedComment")
-      fetchRequest.predicate = NSPredicate(format: "commentID == %@", id as CVarArg)
+      fetchRequest.predicate = NSPredicate(format: "commentID == %@", commentID as CVarArg)
 
       do {
         let results = try context.fetch(fetchRequest)
 
         if newState, results.isEmpty {
           let newCollapsedComment = CollapsedComment(context: context)
-          newCollapsedComment.commentID = id
+          newCollapsedComment.commentID = commentID
           try context.save()
         } else if !newState, !results.isEmpty {
           results.forEach(context.delete)
           try context.save()
         }
-
-        if !optimistic {
-          data?.collapsed = newState
-        }
       } catch {
         context.rollback()
         print("Error fetching or updating data in Core Data: \(error)")
+      }
+    }
+
+    if optimistic {
+      // Keep Core Data I/O off the main thread so the collapse animation starts on the first frame.
+      context.perform(persist)
+    } else {
+      context.performAndWait {
+        persist()
+        data?.collapsed = newState
       }
     }
   }

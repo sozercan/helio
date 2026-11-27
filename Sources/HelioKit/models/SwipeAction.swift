@@ -469,8 +469,11 @@ struct CollapseCommentAction: SwipeAction {
   var icon = SwipeActionItem(normal: "eye.slash.fill")
   var color = SwipeActionItem(normal: "FFFFFF")
   var bgColor = SwipeActionItem(normal: "FEA00A", active: "FF463B")
+  @MainActor
   func action(_ entity: Comment) async {
-    entity.toggleCollapsed(optimistic: true)
+    withAnimation(.snappy(duration: 0.25)) {
+      entity.toggleCollapsed(optimistic: true)
+    }
   }
 
   func active(_ entity: Comment) -> Bool {

@@ -88,7 +88,7 @@ struct CommentLinkContent: View {
       let statsSize = ContentTextScale.size(theme.theme.badge.statsText.size, relativeTo: .meta, dynamicTypeSize: dynamicTypeSize)
       let headerLineHeight = max(authorSize * 1.25, theme.theme.badge.avatar.visible ? theme.theme.badge.avatar.size : 0)
       let headerTopPad = max(0, theme.theme.innerPadding.vertical + (data.depth == 0 ? -theme.theme.cornerRadius : theme.theme.repliesSpacing))
-      Group {
+      VStack(alignment: .leading, spacing: 0) {
         HStack(spacing: CommentLinkContent.indentLineContentSpacing) {
           if !bars, data.depth != 0, indentLines != 0 {
             HStack(alignment: .bottom, spacing: CommentLinkContent.indentLinesSpacing) {
@@ -208,7 +208,7 @@ struct CommentLinkContent: View {
           .accessibilityElement(children: .combine)
           .accessibilityAddTraits(.isButton)
           .accessibilityValue(collapsed ? "Collapsed" : "Expanded")
-          .accessibilityAction(.default) { withAnimation(spring) { comment.toggleCollapsed(optimistic: true) } }
+          .accessibilityAction(.default) { withAnimation(.snappy(duration: 0.25)) { comment.toggleCollapsed(optimistic: true) } }
           // Its author button becomes one of its actions.
           .accessibilityActions { CommentLinkActions(comment: comment, data: data) }
           .padding(.top, headerTopPad)
@@ -220,7 +220,7 @@ struct CommentLinkContent: View {
           .swipyUI(
             controlledDragAmount: $offsetX,
             controlledIsSource: false,
-            onTap: { withAnimation(spring) { comment.toggleCollapsed(optimistic: true) } },
+            onTap: { withAnimation(.snappy(duration: 0.25)) { comment.toggleCollapsed(optimistic: true) } },
             actionsSet: commentSwipeActions,
             entity: comment,
             skipAnimation: true,
@@ -287,7 +287,7 @@ struct CommentLinkContent: View {
                 controlledDragAmount: $offsetX,
                 onTap: {
                   if !selectable {
-                    withAnimation(spring) { comment.toggleCollapsed(optimistic: true) }
+                    withAnimation(.snappy(duration: 0.25)) { comment.toggleCollapsed(optimistic: true) }
                   }
                 },
                 actionsSet: commentSwipeActions,
@@ -307,9 +307,11 @@ struct CommentLinkContent: View {
           .padding(.horizontal, bars ? 0 : horPad)
           .commentDepthBar(barDepth, theme: theme.theme, bottom: 8)
           .mask(Color.black.padding(.top, -(data.depth != 0 ? 42 : 30)).padding(.bottom, -8))
+          .transition(.opacity)
           .id("\(data.id)-body\(forcedBodySize == nil ? "" : "-preview")")
         }
       }
+      .clipped()
       .background(Color.accentColor.opacity(highlight ? 0.2 : 0))
       .background(showReplies ? theme.theme.bg() : .clear)
       .onAppear {
