@@ -212,4 +212,27 @@ struct RelayoutTests {
     await manager.loadMore()
     #expect(capturedWidths == [400, 700])
   }
+
+  @Test func crosspostInitialLayoutUsesColumnWidthWithoutDoubleSubtractingPadding() throws {
+    var embeddedJSON = try #require(try JSONSerialization.jsonObject(with: JSONEncoder().encode(postSampleData)) as? [String: Any])
+    embeddedJSON["id"] = "embedded"
+    embeddedJSON["url"] = "https://i.redd.it/abc.jpg"
+    embeddedJSON["preview"] = ["images": [["source": ["url": "https://preview.redd.it/abc.jpg?s=sig", "width": 1000, "height": 500]]]]
+    var outerJSON = try #require(try JSONSerialization.jsonObject(with: JSONEncoder().encode(postSampleData)) as? [String: Any])
+    outerJSON["id"] = "outer"
+    outerJSON["crosspost_parent_list"] = [embeddedJSON]
+    let crosspostData = try JSONDecoder().decode(PostData.self, from: JSONSerialization.data(withJSONObject: outerJSON))
+    let crosspost = Post(data: crosspostData, contentWidth: 500, theme: theme, fetchAvatar: false)
+
+    guard case let .repost(embedded) = crosspost.helioData?.extractedMedia else {
+      Issue.record("expected crosspost to extract as .repost")
+      return
+    }
+    #expect(embedded.helioData?.layoutWidth == 500)
+    let initialWidth = embedded.helioData?.postDimensions.mediaSize?.width
+
+    crosspost.relayout(contentWidth: 500, theme: theme)
+    #expect(embedded.helioData?.layoutWidth == 500)
+    #expect(embedded.helioData?.postDimensions.mediaSize?.width == initialWidth)
+  }
 }
