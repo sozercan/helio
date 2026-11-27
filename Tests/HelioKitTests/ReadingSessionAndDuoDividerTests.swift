@@ -72,6 +72,19 @@ struct ReadingSessionAndDuoDividerTests {
     }
   }
 
+  @Test func splitColumnNavigationReportsFeedColumnDestinationOverPreservedPostColumn() {
+    let router = Router(id: "split-feed-visit-test")
+    var visited: [String] = []
+    router.onFeedVisit = { visited.append($0) }
+
+    router.firstSelected = .reddit(.subFeed(Subreddit(id: "home")))
+    router.navigateTo(.reddit(.post(Post(id: "p1", subID: "home"))), from: .feed)
+    router.navigateTo(.reddit(.subFeed(Subreddit(id: "apple"))), from: .post)
+    router.navigateTo(.reddit(.subFeed(Subreddit(id: "swift"))), from: .feed)
+
+    #expect(visited.last == "swift")
+  }
+
   @Test func behaviorSettingsDecodesLegacyPayloadWithRestoreOffByDefault() throws {
     let legacy = Data(#"{"openYoutubeApp":true,"preferenceDefaultFeed":"home"}"#.utf8)
     let decoded = try JSONDecoder().decode(BehaviorDefSettings.self, from: legacy)

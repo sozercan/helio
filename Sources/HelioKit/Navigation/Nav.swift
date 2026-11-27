@@ -129,9 +129,8 @@ class Nav: Identifiable, Equatable {
   }
 
   private func observeFeedNavigation(on router: Router) {
-    router.onPathChange = { [weak self] path in
-      guard let self, let feedName = ReadingSessionStore.latestFeedName(in: path) else { return }
-      recordVisitedFeed(feedName)
+    router.onFeedVisit = { [weak self] feedName in
+      self?.recordVisitedFeed(feedName)
     }
   }
 
