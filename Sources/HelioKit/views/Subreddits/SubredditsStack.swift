@@ -197,9 +197,10 @@ struct SubredditsStack: View {
     let layout = SplitLayout(sizeClass: horizontalSizeClass, frame: frame, division: WindowMetrics.shared.divisionFrame)
     guard !loaded, layout.measured else { return }
     let restoredDestination: Router.NavDest? = if behaviorDefSettings.restoreReadingSession,
-                                                  let saved = ReadingSessionStore.load(accountID: generalDefSettings.redditCredentialSelectedID)
+                                                  let accountID = generalDefSettings.redditCredentialSelectedID,
+                                                  let saved = ReadingSessionStore.load(accountID: accountID)
     {
-      ReadingSessionStore.destination(forSavedFeedName: saved.feedName)
+      ReadingSessionStore.destination(forSavedFeedName: saved.feedName, accountID: accountID)
     } else {
       nil
     }

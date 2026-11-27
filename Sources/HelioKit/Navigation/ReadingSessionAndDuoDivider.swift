@@ -1,3 +1,5 @@
+import CoreData
+import Defaults
 import Foundation
 
 struct ReadingSessionSnapshot: Equatable, Codable, Sendable {
@@ -8,6 +10,8 @@ struct ReadingSessionSnapshot: Equatable, Codable, Sendable {
 
 enum ReadingSessionStore {
   private static let storageKey = "Helio.ReadingSessionSnapshots.v1"
+  private static let builtInPrefix = "feed:"
+  private static let multiPrefix = "multi:"
 
   static func save(
     feedName: String,
@@ -33,22 +37,76 @@ enum ReadingSessionStore {
     defaults.removeObject(forKey: storageKey)
   }
 
+  static func feedIdentifier(for dest: Router.NavDest) -> String? {
+    switch dest {
+    case .reddit(.subFeed):
+      return dest.subredditFeedName
+    case let .reddit(.multiFeed(multi)):
+      let path = (multi.data?.path ?? multi.id).trimmingCharacters(in: .whitespacesAndNewlines)
+      guard !path.isEmpty else { return nil }
+      return "\(multiPrefix)\(path)"
+    default:
+      return nil
+    }
+  }
+
   static func latestFeedName(in path: [Router.NavDest]) -> String? {
-    path.last(where: { $0.subredditFeedName != nil })?.subredditFeedName
+    path.last(where: { feedIdentifier(for: $0) != nil }).flatMap(feedIdentifier(for:))
+  }
+
+  static func saveCurrentFeed(
+    in path: [Router.NavDest],
+    accountID: UUID?,
+    defaults: UserDefaults = .standard,
+    now: Date = Date(),
+  ) {
+    guard let accountID, let feedName = latestFeedName(in: path) else { return }
+    save(feedName: feedName, accountID: accountID, defaults: defaults, now: now)
   }
 
   static func destination(
     forSavedFeedName savedName: String,
-    resolveSubreddit: (String) -> Subreddit = QuickAction.cachedSubreddit(named:),
+    accountID: UUID? = Defaults[.GeneralDefSettings].redditCredentialSelectedID,
+    resolveSubreddit: (String) -> Subreddit = { resolveOrdinarySubreddit(named: $0) },
+    resolveMulti: (String, UUID?) -> Multi? = { cachedMulti(path: $0, accountID: $1) },
   ) -> Router.NavDest? {
     let trimmed = savedName.trimmingCharacters(in: .whitespacesAndNewlines)
     guard !trimmed.isEmpty else { return nil }
-    if trimmed.hasPrefix("feed:") {
-      let builtInID = String(trimmed.dropFirst("feed:".count))
+    if trimmed.hasPrefix(builtInPrefix) {
+      let builtInID = String(trimmed.dropFirst(builtInPrefix.count))
       guard !builtInID.isEmpty else { return nil }
       return .reddit(.subFeed(Subreddit(id: builtInID)))
     }
+    if trimmed.hasPrefix(multiPrefix) {
+      let multiPath = String(trimmed.dropFirst(multiPrefix.count))
+      guard !multiPath.isEmpty, let multi = resolveMulti(multiPath, accountID) else { return nil }
+      return .reddit(.multiFeed(multi))
+    }
     return .reddit(.subFeed(resolveSubreddit(trimmed)))
+  }
+
+  static func resolveOrdinarySubreddit(
+    named name: String,
+    lookupCached: (String) -> Subreddit = QuickAction.cachedSubreddit(named:),
+  ) -> Subreddit {
+    let sub = lookupCached(name)
+    if sub.data == nil, builtInFeedIDs.contains(sub.id) {
+      return Subreddit(id: "/r/\(name)/")
+    }
+    return sub
+  }
+
+  static func cachedMulti(
+    path: String,
+    accountID: UUID?,
+    context: NSManagedObjectContext = PersistenceController.shared.container.viewContext,
+  ) -> Multi? {
+    guard let accountID else { return nil }
+    let request = CachedMulti.fetchRequest()
+    request.predicate = NSPredicate(format: "helioCredentialID == %@ AND path =[c] %@", accountID as CVarArg, path)
+    request.fetchLimit = 1
+    guard let cached = context.performAndWait({ try? context.fetch(request).first }) else { return nil }
+    return Multi(data: MultiData(entity: cached))
   }
 
   private static func loadAll(defaults: UserDefaults) -> [String: ReadingSessionSnapshot] {
@@ -106,8 +164,11 @@ enum DuoSplitDividerGeometry {
     totalWidth: CGFloat,
     defaultWidth: CGFloat?,
   ) -> CGFloat? {
-    guard canResize(totalWidth: totalWidth), let savedShare, savedShare.isFinite, savedShare > 0, savedShare < 1 else {
+    guard canResize(totalWidth: totalWidth) else {
       return defaultWidth
+    }
+    guard let savedShare, savedShare.isFinite, savedShare > 0, savedShare < 1 else {
+      return defaultWidth.map { clampedWidth($0, totalWidth: totalWidth) }
     }
     let available = availablePaneWidth(totalWidth: totalWidth)
     return clampedWidth(available * savedShare, totalWidth: totalWidth)

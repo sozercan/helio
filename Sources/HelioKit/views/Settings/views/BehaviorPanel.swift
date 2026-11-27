@@ -54,7 +54,12 @@ struct BehaviorPanel: View {
 
           Toggle("Restore reading session", isOn: $behaviorDefSettings.restoreReadingSession)
             .onChange(of: behaviorDefSettings.restoreReadingSession) { _, enabled in
-              if !enabled {
+              if enabled {
+                ReadingSessionStore.saveCurrentFeed(
+                  in: Nav.shared[.posts].fullPath,
+                  accountID: generalDefSettings.redditCredentialSelectedID,
+                )
+              } else {
                 ReadingSessionStore.clearAll()
               }
             }

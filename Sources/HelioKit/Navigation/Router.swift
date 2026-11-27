@@ -236,7 +236,7 @@ extension Router.NavDest {
     if sub.data == nil, builtInFeedIDs.contains(sub.id) {
       return "feed:\(sub.id)"
     }
-    return (sub.data?.display_name ?? sub.id).lowercased()
+    return sub.rawSubredditName.lowercased()
   }
 
   var isFeed: Bool {
