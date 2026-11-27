@@ -17,7 +17,6 @@ struct SubredditsStack: View {
   @State private var loaded = false
   @State private var layoutSwitch = LayoutSwitch()
   @AppStorage(DuoSplitDividerGeometry.defaultShareKey) private var savedDuoFeedShare: Double = 0
-  @GestureState private var dragFeedWidth: CGFloat?
 
   var body: some View {
     let layout = SplitLayout(sizeClass: horizontalSizeClass, frame: frame, division: WindowMetrics.shared.divisionFrame)
@@ -77,6 +76,8 @@ struct SubredditsStack: View {
     .environment(\.horizontalSizeClass, layout.showsColumns ? .regular : .compact)
   }
 
+  private static let panesCoordinateSpace = "duo-split-panes"
+
   private func panes(_ layout: SplitLayout) -> some View {
     let totalWidth = frame.width
     let share: CGFloat? = savedDuoFeedShare > 0 ? CGFloat(savedDuoFeedShare) : nil
@@ -85,15 +86,21 @@ struct SubredditsStack: View {
       totalWidth: totalWidth,
       defaultWidth: layout.feedPaneWidth,
     )
-    let activeFeedWidth = dragFeedWidth ?? settledFeedWidth
     let canResize = DuoSplitDividerGeometry.canResize(totalWidth: totalWidth)
     let fallbackBase = DuoSplitDividerGeometry.availablePaneWidth(totalWidth: totalWidth) / 2
+    let baseWidth = settledFeedWidth ?? fallbackBase
     return HStack(spacing: 0) {
       feedPane
         .environment(\.paneHingeEdges, .trailing)
-        .frame(width: activeFeedWidth)
+        .frame(width: settledFeedWidth)
       if canResize {
-        paneDivider(baseWidth: settledFeedWidth ?? fallbackBase, totalWidth: totalWidth)
+        DuoSplitPaneDivider(
+          baseWidth: baseWidth,
+          totalWidth: totalWidth,
+          coordinateSpaceName: Self.panesCoordinateSpace,
+          savedShare: $savedDuoFeedShare,
+        )
+        .zIndex(1)
       } else {
         Divider()
       }
@@ -101,43 +108,7 @@ struct SubredditsStack: View {
         .environment(\.paneHingeEdges, .leading)
         .environment(\.horizontalSizeClass, .compact)
     }
-  }
-
-  private func paneDivider(baseWidth: CGFloat, totalWidth: CGFloat) -> some View {
-    ZStack {
-      Divider()
-      Capsule()
-        .fill(Color.secondary.opacity(dragFeedWidth != nil ? 0.85 : 0.4))
-        .frame(width: 4, height: 36)
-    }
-    .frame(width: DuoSplitDividerGeometry.dividerWidth)
-    .contentShape(Rectangle())
-    .gesture(
-      DragGesture(minimumDistance: 4)
-        .updating($dragFeedWidth) { value, state, _ in
-          state = DuoSplitDividerGeometry.clampedWidth(baseWidth + value.translation.width, totalWidth: totalWidth)
-        }
-        .onEnded { value in
-          let finalWidth = DuoSplitDividerGeometry.clampedWidth(baseWidth + value.translation.width, totalWidth: totalWidth)
-          savedDuoFeedShare = Double(DuoSplitDividerGeometry.snappedShare(forWidth: finalWidth, totalWidth: totalWidth))
-        },
-    )
-    .onTapGesture(count: 2) {
-      savedDuoFeedShare = 0.5
-    }
-    .accessibilityElement(children: .ignore)
-    .accessibilityLabel("Resize feed and post panes")
-    .accessibilityValue("\(Int((DuoSplitDividerGeometry.share(forWidth: baseWidth, totalWidth: totalWidth) * 100).rounded())) percent")
-    .accessibilityAdjustableAction { direction in
-      let step: CGFloat = direction == .increment ? 0.05 : -0.05
-      let current = DuoSplitDividerGeometry.share(forWidth: baseWidth, totalWidth: totalWidth)
-      let available = DuoSplitDividerGeometry.availablePaneWidth(totalWidth: totalWidth)
-      let nextWidth = DuoSplitDividerGeometry.clampedWidth((current + step) * available, totalWidth: totalWidth)
-      savedDuoFeedShare = Double(DuoSplitDividerGeometry.share(forWidth: nextWidth, totalWidth: totalWidth))
-    }
-    .accessibilityAction(named: "Equal Widths") {
-      savedDuoFeedShare = 0.5
-    }
+    .coordinateSpace(name: Self.panesCoordinateSpace)
   }
 
   private var feedPane: some View {
@@ -309,6 +280,76 @@ struct SplitLayout: Equatable {
     } else {
       hingeFeedWidth = nil
       hingeWidth = 0
+    }
+  }
+}
+
+private struct DuoSplitPaneDivider: View {
+  let baseWidth: CGFloat
+  let totalWidth: CGFloat
+  let coordinateSpaceName: String
+  @Binding var savedShare: Double
+  @GestureState private var dragOffset: CGFloat?
+
+  var body: some View {
+    let isDragging = dragOffset != nil
+    ZStack {
+      Divider()
+      Capsule()
+        .fill(Color.secondary.opacity(isDragging ? 0.15 : 0.4))
+        .frame(width: 4, height: 36)
+    }
+    .overlay {
+      if let dragOffset {
+        ZStack {
+          Rectangle()
+            .fill(Color.accentColor.opacity(0.6))
+            .frame(width: 2)
+          Capsule()
+            .fill(Color.accentColor)
+            .frame(width: 5, height: 42)
+        }
+        .frame(width: DuoSplitDividerGeometry.dividerWidth)
+        .offset(x: dragOffset)
+        .allowsHitTesting(false)
+      }
+    }
+    .frame(width: DuoSplitDividerGeometry.dividerWidth)
+    .contentShape(Rectangle())
+    .gesture(
+      DragGesture(minimumDistance: 4, coordinateSpace: .named(coordinateSpaceName))
+        .updating($dragOffset) { value, state, _ in
+          state = DuoSplitDividerGeometry.dragOffset(
+            forBaseWidth: baseWidth,
+            translation: value.translation.width,
+            totalWidth: totalWidth,
+          )
+        }
+        .onEnded { value in
+          let offset = DuoSplitDividerGeometry.dragOffset(
+            forBaseWidth: baseWidth,
+            translation: value.translation.width,
+            totalWidth: totalWidth,
+          )
+          let finalWidth = DuoSplitDividerGeometry.clampedWidth(baseWidth + offset, totalWidth: totalWidth)
+          savedShare = Double(DuoSplitDividerGeometry.snappedShare(forWidth: finalWidth, totalWidth: totalWidth))
+        },
+    )
+    .onTapGesture(count: 2) {
+      savedShare = 0.5
+    }
+    .accessibilityElement(children: .ignore)
+    .accessibilityLabel("Resize feed and post panes")
+    .accessibilityValue("\(Int((DuoSplitDividerGeometry.share(forWidth: baseWidth, totalWidth: totalWidth) * 100).rounded())) percent")
+    .accessibilityAdjustableAction { direction in
+      let step: CGFloat = direction == .increment ? 0.05 : -0.05
+      let current = DuoSplitDividerGeometry.share(forWidth: baseWidth, totalWidth: totalWidth)
+      let available = DuoSplitDividerGeometry.availablePaneWidth(totalWidth: totalWidth)
+      let nextWidth = DuoSplitDividerGeometry.clampedWidth((current + step) * available, totalWidth: totalWidth)
+      savedShare = Double(DuoSplitDividerGeometry.share(forWidth: nextWidth, totalWidth: totalWidth))
+    }
+    .accessibilityAction(named: "Equal Widths") {
+      savedShare = 0.5
     }
   }
 }
