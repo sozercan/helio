@@ -54,19 +54,50 @@ struct LightBoxZoomTests {
     #expect(state.isZoomed(at: 1))
   }
 
+  private final class FakeTransitioningController: UIViewController {
+    var dismissing = false
+
+    override var isBeingDismissed: Bool {
+      dismissing
+    }
+  }
+
   @MainActor
   @Test func shareUtilsWaitsUntilTopControllerStopsTransitioning() async {
-    let controller = UIViewController()
+    let controller = FakeTransitioningController()
+    controller.dismissing = true
     var yields = 0
+    var sleeps = 0
     let ready = await ShareUtils.waitForPresentationReady(
       resolveTop: { controller },
       maxAttempts: 5,
       yield: { yields += 1 },
-      sleep: {},
+      sleep: {
+        sleeps += 1
+        if sleeps == 2 {
+          controller.dismissing = false
+        }
+      },
     )
     #expect(ready)
     #expect(yields == 1)
+    #expect(sleeps == 2)
     #expect(!ShareUtils.isTransitioning(controller))
+  }
+
+  @MainActor
+  @Test func shareUtilsReturnsFalseWhenTransitionNeverFinishes() async {
+    let controller = FakeTransitioningController()
+    controller.dismissing = true
+    var sleeps = 0
+    let ready = await ShareUtils.waitForPresentationReady(
+      resolveTop: { controller },
+      maxAttempts: 3,
+      yield: {},
+      sleep: { sleeps += 1 },
+    )
+    #expect(!ready)
+    #expect(sleeps == 3)
   }
 
   @MainActor
