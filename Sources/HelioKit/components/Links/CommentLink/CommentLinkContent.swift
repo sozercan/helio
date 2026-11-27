@@ -208,7 +208,7 @@ struct CommentLinkContent: View {
           .accessibilityElement(children: .combine)
           .accessibilityAddTraits(.isButton)
           .accessibilityValue(collapsed ? "Collapsed" : "Expanded")
-          .accessibilityAction(.default) { withAnimation(.snappy(duration: 0.25)) { comment.toggleCollapsed(optimistic: true) } }
+          .accessibilityAction(.default) { comment.toggleCollapsed(optimistic: true) }
           // Its author button becomes one of its actions.
           .accessibilityActions { CommentLinkActions(comment: comment, data: data) }
           .padding(.top, headerTopPad)
@@ -220,7 +220,7 @@ struct CommentLinkContent: View {
           .swipyUI(
             controlledDragAmount: $offsetX,
             controlledIsSource: false,
-            onTap: { withAnimation(.snappy(duration: 0.25)) { comment.toggleCollapsed(optimistic: true) } },
+            onTap: { comment.toggleCollapsed(optimistic: true) },
             actionsSet: commentSwipeActions,
             entity: comment,
             skipAnimation: true,
@@ -287,7 +287,7 @@ struct CommentLinkContent: View {
                 controlledDragAmount: $offsetX,
                 onTap: {
                   if !selectable {
-                    withAnimation(.snappy(duration: 0.25)) { comment.toggleCollapsed(optimistic: true) }
+                    comment.toggleCollapsed(optimistic: true)
                   }
                 },
                 actionsSet: commentSwipeActions,
@@ -307,7 +307,7 @@ struct CommentLinkContent: View {
           .padding(.horizontal, bars ? 0 : horPad)
           .commentDepthBar(barDepth, theme: theme.theme, bottom: 8)
           .mask(Color.black.padding(.top, -(data.depth != 0 ? 42 : 30)).padding(.bottom, -8))
-          .transition(.opacity)
+          .transition(.identity)
           .id("\(data.id)-body\(forcedBodySize == nil ? "" : "-preview")")
         }
       }

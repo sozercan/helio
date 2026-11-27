@@ -42,6 +42,11 @@ struct PostReplies: View {
             .onAppear { session.rowShown(row.id) }
             .onDisappear { session.rowHidden(row.id) }
         }
+        .transaction { transaction in
+          // SwiftUI `List` animates simultaneous row height changes and multi-row deletions with
+          // a noticeable scroll jump; keep comment collapse/expand crisp without List row jitter.
+          transaction.animation = nil
+        }
         Section {
           Spacer()
             .frame(height: 1)
