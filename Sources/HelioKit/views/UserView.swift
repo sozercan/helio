@@ -14,6 +14,7 @@ struct UserView: View {
   @State private var forceRefresh = false
   @State private var updatingFriend = false
   @State private var refreshingUser = false
+  @State private var profileRefreshFailed = false
   @State private var userFetchID = UUID()
 
   private var selectedAuthorization: RedditCredential.AuthorizationID? {
@@ -82,6 +83,7 @@ struct UserView: View {
     let account = RedditCredentialsManager.shared.selectedCredential(id: generalDefSettings.redditCredentialSelectedID)
     let authorization = account?.authorizationID
     refreshingUser = true
+    profileRefreshFailed = false
     user.data?.is_friend = nil
     let userName = user.data?.name ?? user.id
     let fetched = await RedditAPI.shared.fetchUser(userName, altCredential: account)
@@ -91,6 +93,9 @@ struct UserView: View {
     else { return }
     if let fetched {
       user.data = fetched
+      profileRefreshFailed = false
+    } else {
+      profileRefreshFailed = true
     }
     refreshingUser = false
   }
@@ -124,25 +129,43 @@ struct UserView: View {
                 .multilineTextAlignment(.center)
             }
 
-            if !isCurrentUser, !refreshingUser, let isFriend = data.is_friend {
-              Button(action: toggleFriend) {
-                HStack(spacing: 6) {
-                  if updatingFriend {
-                    ProgressView()
-                      .controlSize(.small)
-                  } else {
-                    Image(systemName: isFriend ? "person.badge.minus" : "person.badge.plus")
+            if !isCurrentUser {
+              if refreshingUser {
+                ProgressView()
+                  .controlSize(.small)
+                  .padding(.vertical, 8)
+              } else if let isFriend = data.is_friend {
+                Button(action: toggleFriend) {
+                  HStack(spacing: 6) {
+                    if updatingFriend {
+                      ProgressView()
+                        .controlSize(.small)
+                    } else {
+                      Image(systemName: isFriend ? "person.badge.minus" : "person.badge.plus")
+                    }
+                    Text(isFriend ? "Remove Friend" : "Add Friend")
                   }
-                  Text(isFriend ? "Remove Friend" : "Add Friend")
+                  .fontSize(15, .semibold)
+                  .padding(.horizontal, 16)
+                  .padding(.vertical, 8)
+                  .foregroundStyle(isFriend ? selectedTheme.postLinks.theme.titleText.color() : Color.white)
+                  .background(isFriend ? Color.secondary.opacity(0.2) : selectedTheme.general.accentColor(), in: Capsule())
                 }
-                .fontSize(15, .semibold)
-                .padding(.horizontal, 16)
-                .padding(.vertical, 8)
-                .foregroundStyle(isFriend ? selectedTheme.postLinks.theme.titleText.color() : Color.white)
-                .background(isFriend ? Color.secondary.opacity(0.2) : selectedTheme.general.accentColor(), in: Capsule())
+                .buttonStyle(.plain)
+                .disabled(updatingFriend)
+              } else if profileRefreshFailed {
+                Button {
+                  Task { await reloadUserForCurrentAccount() }
+                } label: {
+                  Label("Retry Friend Status", systemImage: "arrow.clockwise")
+                    .fontSize(15, .semibold)
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 8)
+                    .foregroundStyle(selectedTheme.postLinks.theme.titleText.color())
+                    .background(Color.secondary.opacity(0.2), in: Capsule())
+                }
+                .buttonStyle(.plain)
               }
-              .buttonStyle(.plain)
-              .disabled(updatingFriend)
             }
 
             VStack {
