@@ -11,6 +11,7 @@ final class ExpiringCache<Value>: @unchecked Sendable {
     }
   }
 
+  private let lock = NSLock()
   private let storage = NSCache<NSString, Entry>()
 
   init(countLimit: Int) {
@@ -18,21 +19,27 @@ final class ExpiringCache<Value>: @unchecked Sendable {
   }
 
   func get(key: String, now: Date = Date()) -> Value? {
-    let nsKey = key as NSString
-    guard let entry = storage.object(forKey: nsKey) else { return nil }
-    if let expiresAt = entry.expiresAt, now >= expiresAt {
-      storage.removeObject(forKey: nsKey)
-      return nil
+    lock.withLock {
+      let nsKey = key as NSString
+      guard let entry = storage.object(forKey: nsKey) else { return nil }
+      if let expiresAt = entry.expiresAt, now >= expiresAt {
+        storage.removeObject(forKey: nsKey)
+        return nil
+      }
+      return entry.value
     }
-    return entry.value
   }
 
   func set(key: String, value: Value, expiresAt: Date? = nil) {
-    storage.setObject(Entry(value: value, expiresAt: expiresAt), forKey: key as NSString)
+    lock.withLock {
+      storage.setObject(Entry(value: value, expiresAt: expiresAt), forKey: key as NSString)
+    }
   }
 
   func removeAll() {
-    storage.removeAllObjects()
+    lock.withLock {
+      storage.removeAllObjects()
+    }
   }
 }
 

@@ -76,7 +76,6 @@ struct Search: View {
           return nil
         }
         await MainActor.run {
-          actualNewPosts.forEach { $0.relayout(contentWidth: contentWidth, theme: theme) }
           withAnimation {
             resultPosts = actualNewPosts
             loading = false
@@ -235,6 +234,9 @@ struct Search: View {
       .navigationTitle("Search")
       .readableWidth()
       .relayoutPosts({ resultPosts }, contentWidth: contentWidth, theme: theme)
+      .onChange(of: resultPosts) { _, posts in
+        posts.forEach { $0.relayout(contentWidth: contentWidth, theme: theme) }
+      }
       .onChange(of: [searchType.rawValue, searchQuery.debounced]) {
         if searchQuery.debounced == "" {
           resultsSubs = []
