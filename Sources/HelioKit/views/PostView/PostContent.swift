@@ -1,10 +1,3 @@
-//
-//  PostContent.swift
-//  Helio
-//
-//  Created by Igor Marcossi on 31/07/23.
-//
-
 import AVFoundation
 import AVKit
 import Defaults
@@ -25,14 +18,12 @@ struct PostContent: View, Equatable {
   @Default(.PostPageDefSettings) private var defSettings
   @Environment(\.useTheme) private var selectedTheme
   @Environment(\.contentWidth) private var contentWidth
-  /// Markdown sets its own font size, so it's scaled here like `contentFont` scales text.
   @Environment(\.contentTypeSize) private var contentTypeSize
 
   @Environment(\.navColumn) private var navColumn
 
   func openSubreddit() {
     if let subName = post.data?.subreddit {
-      // From the column the post is in: a post at the feed column's root opens it there.
       Nav.to(.reddit(.subFeed(Subreddit(id: subName))), from: navColumn)
     }
   }
@@ -47,7 +38,6 @@ struct PostContent: View, Equatable {
         VStack {
           ProgressView()
             .progressViewStyle(.circular)
-            // Fills the post's list until the post loads.
             .containerRelativeFrame(.vertical) { height, _ in max(0, height - 200) }
             .frame(maxWidth: .infinity)
             .id("post-loading")
@@ -78,7 +68,6 @@ struct PostContent: View, Equatable {
               VStack(spacing: selectedTheme.posts.spacing) {
                 if let layout = post.pageLayout(contentWidth: contentWidth, theme: selectedTheme), let pageMedia = layout.media {
                   let extractedMedia = youTubePlayer.owning(pageMedia)
-                  // The feed's size runs full-bleed images edge to edge; the post page keeps them inset.
                   let feedTheme = selectedTheme.postLinks.theme
                   let fullBleedInset = isFullBleedMedia(extractedMedia, theme: feedTheme, secondary: false, compact: false) ? feedTheme.innerPadding.horizontal * 2 : 0
                   MediaPresenter(helioData: helioData, fullPage: true, pageMediaSize: layout.mediaSize, controller: nil, postTitle: data.title, badgeKit: data.badgeKit, avatarImageRequest: helioData.avatarImageRequest, markAsSeen: {}, cornerRadius: selectedTheme.postLinks.theme.mediaCornerRadius, blurPostLinkNSFW: defSettings.blurNSFW, media: extractedMedia, over18: over18, compact: false, contentWidth: (layout.mediaSize?.width ?? 0) - fullBleedInset, maxMediaHeightScreenPercentage: Defaults[.PostLinkDefSettings].maxMediaHeightScreenPercentage)
@@ -123,8 +112,6 @@ struct PostContent: View, Equatable {
 }
 
 private extension View {
-  /// Tapping the post's title or text collapses or expands its content. Not its media: a click
-  /// on a playing video's controls (a web view on Mac) reached the post too, and collapsed it.
   func collapsesOnTap(_ collapsed: Binding<Bool>) -> some View {
     contentShape(Rectangle())
       .onTapGesture { withAnimation(.smooth) { collapsed.wrappedValue.toggle() } }

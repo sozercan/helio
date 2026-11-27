@@ -1,10 +1,3 @@
-//
-//  ImageMediaPost.swift
-//  Helio
-//
-//  Created by Igor Marcossi on 04/07/23.
-//
-
 import Defaults
 import Nuke
 import NukeUI
@@ -38,15 +31,11 @@ struct ImageMediaPost: View, Equatable {
   var images: [ImgExtracted]
   var contentWidth: CGFloat
   var maxMediaHeightScreenPercentage: CGFloat
-  /// The post's data, by which the lightbox finds it among the feed's posts, to go on to the
-  /// images of the posts around it. Nil on a post's page.
   var feedPost: PostHelioData?
   @Environment(\.feedPostsSource) private var feed
   @Environment(\.lightBoxPresenter) private var presenter
-  /// The lightbox, when there's no window's to open it in.
   @State private var lightbox: LightBoxTimeline?
 
-  /// Opens the lightbox on image `index`.
   private func open(_ index: Int) {
     let own = LightBoxPost(key: "opened", title: postTitle, badgeKit: badgeKit, avatarImageRequest: avatarImageRequest, markAsSeen: markAsSeen).pages(images)
     let timeline = LightBoxTimeline.around(feedPost, in: feed, own: own, start: index)
@@ -58,13 +47,10 @@ struct ImageMediaPost: View, Equatable {
   }
 
   var body: some View {
-//    let maxMediaHeightScreenPercentage = 100.0
     let maxHeight: CGFloat = (maxMediaHeightScreenPercentage / 100) * .screenH
     VStack {
       if images.count == 1 || compact && !images.isEmpty {
         let img = images[0]
-        // Square until Reddit gives us real dimensions, matching getPostDimensions, so the
-        // row doesn't change height once the image loads.
         let knownSize = img.size.width > 0 && img.size.height > 0
         let sourceHeight = knownSize ? img.size.height : contentWidth
         let sourceWidth = knownSize ? img.size.width : contentWidth
@@ -72,8 +58,6 @@ struct ImageMediaPost: View, Equatable {
         let propHeight = (contentWidth * sourceHeight) / sourceWidth
         let finalHeight = maxMediaHeightScreenPercentage != 110 ? Double(min(maxHeight, propHeight)) : Double(propHeight)
 
-        // Taller than the cap (often in landscape, where the window is short): show all of it,
-        // narrower and centered on a band, instead of cropping its top and bottom.
         let capped = !compact && knownSize && finalHeight < propHeight - 1
         let thumbWidth = compact ? scaledCompactModeThumbSize() : capped ? (finalHeight * sourceWidth) / sourceHeight : contentWidth
         GalleryThumb(cornerRadius: capped ? 0 : cornerRadius, width: thumbWidth, height: compact ? scaledCompactModeThumbSize() : finalHeight, url: img.url, imgRequest: !images.isEmpty ? images[0].request : nil, posterURL: img.posterURL)
@@ -81,7 +65,6 @@ struct ImageMediaPost: View, Equatable {
           .frame(width: capped ? contentWidth : nil)
           .background(capped ? Color.primary.opacity(0.06) : .clear)
           .mask(RR(capped ? cornerRadius : 0, Color.black))
-//          .background(sourceHeight > 0 || compact ? nil : GeometryReader { geo in Color.clear.onAppear { helioData.postDimensions.mediaSize = geo.size }.onChange(of: geo.size) { helioData.postDimensions.mediaSize = $0 } })
           .onTapGesture { open(0) }
           .mediaImageAccessibility(postTitle, index: 0, count: images.count)
           .overlay(
@@ -128,19 +111,11 @@ struct ImageMediaPost: View, Equatable {
                   .accessibilityLabel("\(images.count - 3) more images")
               }
             }
-            //              .frame(width: contentWidth, height: height)
           }
         }
       }
     }
     .frame(maxWidth: compact ? nil : .infinity)
-//    .customPresenter(parentController: controller, isPresented: Binding(get: {
-//      fullscreenIndex != nil
-//    }, set: { val in
-//      if !val { fullscreenIndex = nil }
-//    }), content: {
-//      LightBoxImage(postTitle: postTitle, badgeKit: badgeKit, markAsSeen: markAsSeen, i: fullscreenIndex ?? 0, imagesArr: images)
-//    })
     .fullScreenCover(item: $lightbox) { lightbox in
       LightBoxImage(pages: lightbox.pages, i: lightbox.start, doLiveText: Defaults[.BehaviorDefSettings].doLiveText, reveal: lightbox.reveal)
     }
@@ -148,7 +123,6 @@ struct ImageMediaPost: View, Equatable {
 }
 
 extension View {
-  /// A post's image for VoiceOver: an image named by the post's title, and its place in a gallery.
   func mediaImageAccessibility(_ title: String, index: Int, count: Int) -> some View {
     accessibilityElement(children: .ignore)
       .accessibilityLabel(count > 1 ? "\(title), image \(index + 1) of \(count)" : title)
@@ -156,7 +130,6 @@ extension View {
   }
 }
 
-/// Either returns the content width or, if compact mode is enabled, the modified content width depending on what setting the user chose
 func scaledCompactModeThumbSize(compact: Bool = CachedDefaults[.PostLinkDefSettings].compactMode.enabled, thumbnailSize: ThumbnailSizeModifier = CachedDefaults[.PostLinkDefSettings].compactMode.thumbnailSize) -> CGFloat {
   if compact {
     compactModeThumbSize * thumbnailSize.rawVal

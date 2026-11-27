@@ -113,7 +113,6 @@ struct RelayoutTests {
     post.setupHelioData(contentWidth: 400, theme: theme, fetchAvatar: false)
     let fresh = try #require(post.helioData?.postDimensions.mediaSize)
 
-    // A layout capped by a short window isn't the image's shape.
     post.helioData?.postDimensions.mediaSize = CGSize(width: 1000, height: 100)
     post.relayout(contentWidth: 401, theme: theme)
     let relaid = try #require(post.helioData?.postDimensions.mediaSize)
@@ -123,7 +122,6 @@ struct RelayoutTests {
   @Test func settingUpAgainKeepsTheLastWidth() throws {
     let post = try post()
     post.setupHelioData(contentWidth: 400, theme: theme, fetchAvatar: false)
-    // Refreshing a post or changing theme sets it up again without a width.
     post.setupHelioData(theme: theme, fetchAvatar: false)
     let dimensions = try #require(post.helioData?.postDimensions)
     #expect(abs(dimensions.contentWidth - getPostContentWidth(contentWidth: 400, theme: theme)) < 0.5)
@@ -132,7 +130,6 @@ struct RelayoutTests {
   @Test func relayoutAtTheSameWidthKeepsTheExistingLayout() throws {
     let post = try post()
     post.setupHelioData(contentWidth: 400, theme: theme, fetchAvatar: false)
-    // A relayout would recompute the dimensions, so a cleared value shows it didn't run.
     post.helioData?.postDimensions = .zero
     post.relayout(contentWidth: 400, theme: theme)
     #expect(post.helioData?.postDimensions == .zero)
@@ -143,7 +140,6 @@ struct RelayoutTests {
     post.setupHelioData(contentWidth: 400, theme: theme, fetchAvatar: false)
     let row = try #require(post.helioData?.postDimensions)
 
-    // Open beside its feed, in a wider column.
     let page = try #require(post.pageLayout(contentWidth: 900, theme: theme))
     #expect(post.helioData?.postDimensions == row)
     #expect(post.helioData?.layoutWidth == 400)
@@ -152,7 +148,6 @@ struct RelayoutTests {
       Issue.record("expected images")
       return
     }
-    // Requested at the page's size, not the row's.
     #expect(pageImages.flatMap { $0.request.processors.map(\.identifier) } != rowImages.flatMap { $0.request.processors.map(\.identifier) })
   }
 
@@ -161,7 +156,6 @@ struct RelayoutTests {
     post.setupHelioData(contentWidth: 400, theme: theme, fetchAvatar: false)
     let first = try #require(post.pageLayout(contentWidth: 900, theme: theme))
 
-    // The feed column resized: the row lays out again, and the page keeps its own layout.
     post.relayout(contentWidth: 500, theme: theme)
     let second = try #require(post.pageLayout(contentWidth: 900, theme: theme))
     #expect(second.key == first.key)
@@ -175,8 +169,6 @@ struct RelayoutTests {
     let rowPlayer = YouTubePlayer(source: .video(id: "abc"))
     let thumbnail = try #require(URL(string: "https://i.ytimg.com/vi/abc/hqdefault.jpg"))
     post.helioData?.extractedMediaForcedNormal = .yt(YTMediaExtracted(videoID: "abc", size: CGSize(width: 16, height: 9), thumbnailURL: thumbnail, thumbnailRequest: ImageRequest(url: thumbnail), player: rowPlayer, author: "", authorURL: thumbnail))
-    // Two pages of the post showing at once, such as the post at the feed column's root and its
-    // thread beside it.
     let page = PageYouTubePlayer()
     let otherPage = PageYouTubePlayer()
     func player(_ owner: PageYouTubePlayer, width: Double) throws -> YouTubePlayer? {
@@ -187,10 +179,8 @@ struct RelayoutTests {
     let wide = try #require(try player(page, width: 900))
     let narrow = try #require(try player(page, width: 600))
     let other = try #require(try player(otherPage, width: 900))
-    // Not the row's, nor the other page's: they'd share one web view.
     #expect(wide !== rowPlayer)
     #expect(other !== wide)
-    // Kept across the page's relayouts, so a playing video doesn't restart.
     #expect(narrow === wide)
   }
 
@@ -200,5 +190,49 @@ struct RelayoutTests {
     let wide = try #require(post.pageLayout(contentWidth: 900, theme: theme))
     let narrow = try #require(post.pageLayout(contentWidth: 600, theme: theme))
     #expect((narrow.mediaSize?.width ?? 0) < (wide.mediaSize?.width ?? 0))
+  }
+
+  @Test func feedManagerPassesCurrentContentWidthAndRelayoutsIfWidthChangesInFlight() async throws {
+    let credential = RedditCredential(apiAppID: "placeholder-client-id", refreshToken: "placeholder-grant")
+    var capturedWidths: [Double] = []
+    let fetchedPost = try post()
+    var managerRef: FeedItemsManager<SubListingSortOption>?
+    let manager = FeedItemsManager<SubListingSortOption>(sorting: .best, contentWidth: 400, currentCredential: { credential }, fetchFn: { _, _, _, _, context in
+      capturedWidths.append(context.contentWidth)
+      fetchedPost.setupHelioData(contentWidth: context.contentWidth, theme: self.theme, fetchAvatar: false)
+      managerRef?.contentWidth = 700
+      return ([.post(fetchedPost)], "after-1")
+    })
+    managerRef = manager
+
+    await manager.reload()
+    #expect(capturedWidths == [400])
+    #expect(fetchedPost.helioData?.layoutWidth == 700)
+
+    await manager.loadMore()
+    #expect(capturedWidths == [400, 700])
+  }
+
+  @Test func crosspostInitialLayoutUsesColumnWidthWithoutDoubleSubtractingPadding() throws {
+    var embeddedJSON = try #require(try JSONSerialization.jsonObject(with: JSONEncoder().encode(postSampleData)) as? [String: Any])
+    embeddedJSON["id"] = "embedded"
+    embeddedJSON["url"] = "https://i.redd.it/abc.jpg"
+    embeddedJSON["preview"] = ["images": [["source": ["url": "https://preview.redd.it/abc.jpg?s=sig", "width": 1000, "height": 500]]]]
+    var outerJSON = try #require(try JSONSerialization.jsonObject(with: JSONEncoder().encode(postSampleData)) as? [String: Any])
+    outerJSON["id"] = "outer"
+    outerJSON["crosspost_parent_list"] = [embeddedJSON]
+    let crosspostData = try JSONDecoder().decode(PostData.self, from: JSONSerialization.data(withJSONObject: outerJSON))
+    let crosspost = Post(data: crosspostData, contentWidth: 500, theme: theme, fetchAvatar: false)
+
+    guard case let .repost(embedded) = crosspost.helioData?.extractedMedia else {
+      Issue.record("expected crosspost to extract as .repost")
+      return
+    }
+    #expect(embedded.helioData?.layoutWidth == 500)
+    let initialWidth = embedded.helioData?.postDimensions.mediaSize?.width
+
+    crosspost.relayout(contentWidth: 500, theme: theme)
+    #expect(embedded.helioData?.layoutWidth == 500)
+    #expect(embedded.helioData?.postDimensions.mediaSize?.width == initialWidth)
   }
 }

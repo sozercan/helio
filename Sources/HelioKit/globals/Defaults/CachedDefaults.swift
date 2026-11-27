@@ -1,15 +1,7 @@
-//
-//  CachedDefaults.swift
-//  Helio
-//
-
 import Defaults
 import Foundation
 import Synchronization
 
-/// Decoded settings, kept until any user default changes. `Defaults[key]` decodes the stored
-/// JSON on every read, and laying a post out reads settings several times, often on the main
-/// queue while the feed scrolls.
 enum CachedDefaults {
   private struct State {
     var values: [String: Any] = [:]
@@ -32,7 +24,6 @@ enum CachedDefaults {
     }
     let value = Defaults[key]
     state.withLock {
-      // A change while decoding would otherwise leave the old value cached.
       if $0.generation == readGeneration {
         $0.values[key.name] = value
       }

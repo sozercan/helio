@@ -1,10 +1,3 @@
-//
-//  SubMetaFormatter.swift
-//  Helio
-//
-//  Created by Igor Marcossi on 06/02/24.
-//
-
 import Foundation
 
 struct SubMetaFormatter {

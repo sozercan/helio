@@ -1,10 +1,3 @@
-//
-//  MathCGSize.swift
-//  Helio
-//
-//  Created by Igor Marcossi on 06/08/23.
-//
-
 import Foundation
 
 extension CGSize {

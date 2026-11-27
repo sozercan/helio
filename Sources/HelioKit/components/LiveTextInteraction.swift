@@ -1,10 +1,3 @@
-//
-//  LiveTextInteraction.swift
-//  Helio
-//
-//  Created by Daniel Inama on 25/08/23.
-//
-
 import SwiftUI
 import UIKit
 import VisionKit
@@ -30,7 +23,7 @@ struct LiveTextInteraction: UIViewRepresentable {
 
     Task {
       if ImageAnalyzer.isSupported {
-        let configsArray: ImageAnalyzer.AnalysisTypes = [.text, .machineReadableCode] // .visualLookup crashes iOS 16.X devices even if you check for it in an if
+        let configsArray: ImageAnalyzer.AnalysisTypes = [.text, .machineReadableCode]
         let configuration = ImageAnalyzer.Configuration(configsArray)
         do {
           let analysis = try await analyzer.analyze(image, configuration: configuration)
@@ -57,8 +50,6 @@ struct LiveTextInteraction: UIViewRepresentable {
 }
 
 class LiveTextImageView: UIImageView {
-  /// The window's size rather than the image's, so SwiftUI sizes the view by its frame. Not the
-  /// screen's: the window can be smaller (iPad multitasking, a Mac window, the folded iPhone Duo).
   override var intrinsicContentSize: CGSize {
     window?.bounds.size ?? CGSize(width: UIView.noIntrinsicMetric, height: UIView.noIntrinsicMetric)
   }

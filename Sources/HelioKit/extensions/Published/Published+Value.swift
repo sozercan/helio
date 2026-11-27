@@ -1,10 +1,3 @@
-//
-//  Published+Value.swift
-//  Helio
-//
-//  Created by Igor Marcossi on 08/12/23.
-//
-
 import Combine
 import Foundation
 

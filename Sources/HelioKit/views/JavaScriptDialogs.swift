@@ -1,16 +1,6 @@
-//
-//  JavaScriptDialogs.swift
-//  Helio
-//
-//  A web page's alert, confirm and prompt dialogs.
-//
-
 import UIKit
 import WebKit
 
-/// Shows a web page's JavaScript dialogs, for a web view's `WKUIDelegate`. Without them WebKit
-/// answers on its own: `confirm()` as Cancel and `prompt()` with nothing, so a page's actions
-/// that ask first can never go ahead.
 @MainActor
 enum JavaScriptDialogs {
   static func alert(_ message: String, by frame: WKFrameInfo, from webView: WKWebView) async {
@@ -42,9 +32,6 @@ enum JavaScriptDialogs {
     }
   }
 
-  /// Shows `message` over whatever the web view's window shows on top, and returns the value of
-  /// the button picked. Nil when there's nothing to show it from. Titled with the site of the
-  /// frame that asked, not the page's: a frame from another site mustn't pass for the page.
   private static func present<Value>(_ message: String, by frame: WKFrameInfo, from webView: WKWebView, buttons: [Button<Value>], configure: (UIAlertController) -> Void = { _ in }) async -> Value? {
     var presenter = webView.window?.rootViewController
     while let presented = presenter?.presentedViewController {

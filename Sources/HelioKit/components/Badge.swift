@@ -1,28 +1,73 @@
-//
-//  Badge.swift
-//  Helio
-//
-//  Created by Igor Marcossi on 01/07/23.
-//
-
 import Defaults
 import Foundation
 import NukeUI
 import SwiftUI
 
 struct UserFlair: View, Equatable {
+  static func == (lhs: UserFlair, rhs: UserFlair) -> Bool {
+    lhs.flair == rhs.flair && lhs.subName == rhs.subName && lhs.flairText == rhs.flairText && lhs.flairBackground == rhs.flairBackground
+  }
+
   let flair: String
+  var subName: String?
   let flairText: ThemeText
   let flairBackground: ColorSchemes<ThemeColor>
 
+  @State private var emojiURLs: [String: URL] = [:]
+
   var body: some View {
-    Text(flair).contentFont(flairText.size, flairText.weight.t, relativeTo: .meta)
-      .lineLimit(1)
-      .foregroundColor(flairText.color())
-      .padding(EdgeInsets(top: 0, leading: 4, bottom: 0, trailing: 4))
-      .background(flairBackground())
-      .cornerRadius(4.0)
-      .allowsHitTesting(false)
+    let segments = FlairParser.parse(flair)
+    let hasEmojis = segments.contains {
+      if case .emoji = $0 {
+        return true
+      }
+      return false
+    }
+    let visible = segments.filter { segment in
+      switch segment {
+      case .text:
+        true
+      case let .emoji(name):
+        emojiURLs[name] != nil || emojiURLs[name.lowercased()] != nil
+      }
+    }
+    ZStack {
+      if !visible.isEmpty {
+        HStack(alignment: .center, spacing: 3) {
+          ForEach(Array(visible.enumerated()), id: \.offset) { _, segment in
+            switch segment {
+            case let .text(text):
+              Text(text).contentFont(flairText.size, flairText.weight.t, relativeTo: .meta)
+                .lineLimit(1)
+                .foregroundStyle(flairText.color())
+            case let .emoji(name):
+              if let url = emojiURLs[name] ?? emojiURLs[name.lowercased()] {
+                LazyImage(url: url) { state in
+                  if let image = state.image {
+                    image.resizable().scaledToFit()
+                      .accessibilityLabel(name.replacingOccurrences(of: "_", with: " "))
+                  }
+                }
+                .frame(width: max(12, flairText.size + 2), height: max(12, flairText.size + 2))
+                .accessibilityElement(children: .ignore)
+                .accessibilityLabel(name.replacingOccurrences(of: "_", with: " "))
+              }
+            }
+          }
+        }
+        .padding(EdgeInsets(top: 0, leading: 4, bottom: 0, trailing: 4))
+        .background(flairBackground())
+        .cornerRadius(4.0)
+        .allowsHitTesting(false)
+      }
+    }
+    .task(id: hasEmojis ? subName : nil) {
+      emojiURLs = [:]
+      guard hasEmojis, let subName, !subName.isEmpty else { return }
+      let loaded = await SubredditEmojiLoader.shared.emojiURLs(for: subName)
+      guard !Task.isCancelled else { return }
+      emojiURLs = loaded
+    }
   }
 }
 
@@ -53,7 +98,7 @@ struct BadgeView: View, Equatable {
   @Environment(\.navColumn) private var navColumn
   static let authorStatsSpacing: Double = 6
   static func == (lhs: BadgeView, rhs: BadgeView) -> Bool {
-    lhs.avatarURL == rhs.avatarURL && lhs.saved == rhs.saved && lhs.avatarRequest?.url == rhs.avatarRequest?.url && lhs.theme == rhs.theme && lhs.commentsCount == rhs.commentsCount && lhs.newCommentsCount == rhs.newCommentsCount && lhs.votesCount == rhs.votesCount && lhs.likes == rhs.likes
+    lhs.avatarURL == rhs.avatarURL && lhs.saved == rhs.saved && lhs.avatarRequest?.url == rhs.avatarRequest?.url && lhs.theme == rhs.theme && lhs.commentsCount == rhs.commentsCount && lhs.newCommentsCount == rhs.newCommentsCount && lhs.votesCount == rhs.votesCount && lhs.likes == rhs.likes && lhs.userFlair == rhs.userFlair && lhs.subName == rhs.subName
   }
 
   var avatarRequest: ImageRequest?
@@ -73,10 +118,7 @@ struct BadgeView: View, Equatable {
   var likes: Bool?
   var openSub: (() -> Void)?
   var subName: String?
-  /// Makes the numbers line its own tap target. Without one, a tap on it goes to the nearest
-  /// tappable view, the author's name, instead of the row.
   var onTapStats: (() -> Void)?
-  /// Shown next to the score when set, for the "Show upvote ratio" setting.
   var upvoteRatio: Double?
 
   nonisolated func openUser() {
@@ -94,7 +136,6 @@ struct BadgeView: View, Equatable {
           .highPriorityGesture(TapGesture().onEnded(openUser))
       }
 
-      // Apollo's two lines: who and where, then the numbers.
       VStack(alignment: .leading, spacing: BadgeView.authorStatsSpacing) {
         if showsFirstLine {
           HStack(alignment: .center, spacing: 4) {
@@ -129,11 +170,8 @@ struct BadgeView: View, Equatable {
                 PostLinkGlowDot(unseenType: .dot(commentTheme?.unseenDot ?? ColorSchemes<ThemeColor>(light: .init(hex: "FF0000"), dark: .init(hex: "FF0000"))), seen: false, badge: true).equatable()
               }
 
-              if let flairs = flairWithoutEmojis(str: userFlair) {
-                // TODO: Load flair emojis via GET /api/v1/{subreddit}/emojis/{emoji_name}
-                ForEach(flairs, id: \.self) {
-                  UserFlair(flair: $0, flairText: theme.flairText, flairBackground: theme.flairBackground).equatable()
-                }
+              if let userFlair, !FlairParser.parse(userFlair).isEmpty {
+                UserFlair(flair: userFlair, subName: subName, flairText: theme.flairText, flairBackground: theme.flairBackground).equatable()
               }
             }
 
@@ -155,7 +193,6 @@ struct BadgeView: View, Equatable {
             .buttonStyle(.plain)
           }
 
-          // The numbers read as one element, "4.8K points, 1.3K comments, 2 hours ago".
           HStack(alignment: .center, spacing: theme.statsText.size * 0.62) {
             if let votesCount {
               BadgeStat(icon: likes == false ? "arrow.down" : "arrow.up", text: votesCount, label: likes == nil ? "\(votesCount) points" : "\(votesCount) points, \(likes == true ? "upvoted" : "downvoted")")
@@ -178,7 +215,6 @@ struct BadgeView: View, Equatable {
 
             BadgeStat(icon: "clock", text: timeSince(Int(created)), label: spokenTimeSince(Int(created)))
 
-            // The first line holds the saved mark; without it, show it here.
             if saved, !showAvatar, !showsFirstLine {
               Image(systemName: "bookmark.fill").foregroundStyle(.green)
                 .accessibilityLabel("Saved")
@@ -198,11 +234,9 @@ struct BadgeView: View, Equatable {
   }
 }
 
-/// An outline SF Symbol and its number, like Apollo's meta line.
 struct BadgeStat: View {
   var icon: String
   var text: String
-  /// What VoiceOver reads instead of the symbol's name and the number, like "1.3K comments".
   var label: String
 
   var body: some View {
@@ -221,11 +255,10 @@ struct Badge: View {
   var usernameColor: Color?
   var avatarURL: String?
   var theme: BadgeTheme
-  //  var extraInfo: [BadgeExtraInfo] = []
 
   var body: some View {
     if let data = post.data {
-      BadgeView(saved: data.saved, usernameColor: usernameColor, author: data.author, userFlair: data.author_flair_text, created: data.created, avatarURL: avatarURL, theme: theme, commentsCount: formatBigNumber(data.num_comments), votesCount: !showVotes ? nil : formatBigNumber(data.ups))
+      BadgeView(saved: data.saved, usernameColor: usernameColor, author: data.author, userFlair: data.author_flair_text, created: data.created, avatarURL: avatarURL, theme: theme, commentsCount: formatBigNumber(data.num_comments), votesCount: !showVotes ? nil : formatBigNumber(data.ups), subName: data.subreddit)
     }
   }
 }

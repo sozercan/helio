@@ -1,10 +1,3 @@
-//
-//  RedditListingFeed.swift
-//  Helio
-//
-//  Created by Igor Marcossi on 23/01/24.
-//
-
 import Defaults
 import SwiftData
 import SwiftUI
@@ -13,13 +6,10 @@ struct RedditListingFeed<Header: View, Footer: View, S: Sorting>: View {
   private var showSubInPosts: Bool
   private var title: String
   private var theme: ThemeBG
-  //  private var fetch: (_ force: Bool, _ lastElementId: String?, _ searchQuery: String?) async -> [RedditEntityType]?
   private var header: () -> Header
   private var footer: () -> Footer
   private var subreddit: Subreddit?
   private var disableSearch: Bool
-  /// Kept to hand to a manager taken over from the screen this one replaced, whose own fetches
-  /// read that screen's state.
   private let fetch: FeedItemsManager<S>.ItemsFetchFn
   var forceRefresh: Binding<Bool>?
   @Default(.SubredditFeedDefSettings) private var subredditFeedDefSettings
@@ -37,11 +27,9 @@ struct RedditListingFeed<Header: View, Footer: View, S: Sorting>: View {
     self.footer = footer
     self.subreddit = subreddit
     self.disableSearch = disableSearch
-    self.forceRefresh = forceRefresh // Assign the optional forceRefresh Binding
+    self.forceRefresh = forceRefresh
     self.fetch = fetch
     let make = { FeedItemsManager(sorting: initialSorting, hideReadPosts: hideReadPosts, fetchFn: fetch) }
-    // With an owner, taken over from the screen this one replaces when the layout changes
-    // (`ScreenStates`).
     self._lease = .init(initialValue: stateOwner.map { ScreenStates.shared.lease("feed", owner: $0, make: make) } ?? ScreenStateLease(unshared: make()))
     self._filters = FetchRequest<CachedFilter>(sortDescriptors: [NSSortDescriptor(key: "text", ascending: true)], predicate: NSPredicate(format: "subID == %@", (subreddit?.data?.display_name ?? feedId) as CVarArg), animation: .default)
   }
@@ -55,9 +43,7 @@ struct RedditListingFeed<Header: View, Footer: View, S: Sorting>: View {
     lease.model
   }
 
-  /// The search field's state, which the menu bar's Find sets.
   @State private var searchPresented = false
-  /// Find focuses the field even while it's presented, after its keyboard was dismissed.
   @FocusState private var searchFocused: Bool
 
   @Environment(\.useTheme) private var selectedTheme
@@ -70,16 +56,6 @@ struct RedditListingFeed<Header: View, Footer: View, S: Sorting>: View {
   @Default(.canvasSubreddits) private var canvasSubreddits
 
   func refetch(clearItems: Bool = false) async {
-    //    if let subreddit, !feedsAndSuch.contains(subreddit.id) {
-    //      Task {
-    //        withAnimation { itemsManager.loadingPinned = true }
-    //        if let pinnedPosts = await subreddit.fetchPinnedPosts() {
-    //          itemsManager.pinnedPosts = pinnedPosts
-    //        }
-    //        withAnimation { itemsManager.loadingPinned = false }
-    //      }
-    //    }
-
     await itemsManager.reload(clearItems: clearItems)
     await fetchFiltersIfNeeded()
   }
@@ -91,8 +67,8 @@ struct RedditListingFeed<Header: View, Footer: View, S: Sorting>: View {
   }
 
   var body: some View {
+    let _ = itemsManager.contentWidth = contentWidth
     let shallowCachedFilters = filters.map { $0.getShallow() }
-    // Read once per update: each read of a setting decodes it, and rows are built as they scroll in.
     let compactPerSubreddit = feedDefSettings.compactPerSubreddit
     let postLinkSettings = postLinkDefSettings
     let isThereDivider = selectedTheme.postLinks.divider.style != .no
@@ -103,8 +79,6 @@ struct RedditListingFeed<Header: View, Footer: View, S: Sorting>: View {
       ScrollViewReader { proxy in
         List {
           header()
-
-          //        getPinnedSection()
 
           Group {
             switch itemsManager.displayMode {
@@ -125,7 +99,6 @@ struct RedditListingFeed<Header: View, Footer: View, S: Sorting>: View {
                 }
               }
               Section {
-                // In a canvas, the posts are its tiles instead.
                 ForEach(canvas ? [] : itemsManager.entities) { el in
                   Group {
                     switch el {
@@ -138,7 +111,6 @@ struct RedditListingFeed<Header: View, Footer: View, S: Sorting>: View {
                           .listRowInsets(EdgeInsets(top: paddingV, leading: paddingH, bottom: paddingV, trailing: paddingH))
 
                         if isThereDivider {
-                          // Compact rows get Apollo's inset hairline instead of the thick band.
                           let compact = compactPerSubreddit[sub.settingsKey] ?? postLinkSettings.compactMode.enabled
                           Group {
                             if compact, paddingH == 0 {
@@ -173,8 +145,6 @@ struct RedditListingFeed<Header: View, Footer: View, S: Sorting>: View {
                       .contentShape(Rectangle())
                       .onTapGesture {
                         if let data = comment.data, let link_id = data.link_id, let subID = data.subreddit {
-                          // `link_id` is the post's fullname (t3_…); posts are made from the bare id, as
-                          // the feed's are, so the open post matches its row there.
                           let postID = link_id.hasPrefix("t3_") ? String(link_id.dropFirst(3)) : link_id
                           Nav.to(.reddit(.postHighlighted(Post(id: postID, subID: subID), comment.id)), from: navColumn)
                         }
@@ -184,7 +154,6 @@ struct RedditListingFeed<Header: View, Footer: View, S: Sorting>: View {
                       UserLink(user: user)
                         .listRowInsets(EdgeInsets())
                     case let .message(message):
-                      // Flat, full-width rows with hairlines between them, like comments.
                       MessageLink(message: message)
                         .listRowInsets(EdgeInsets())
                     }
@@ -244,7 +213,6 @@ struct RedditListingFeed<Header: View, Footer: View, S: Sorting>: View {
                   .id("error-load-more-manual")
                 }
               }
-              //          default: EmptyView()
             }
 
             if itemsManager.isLoadingMore {
@@ -261,8 +229,6 @@ struct RedditListingFeed<Header: View, Footer: View, S: Sorting>: View {
           footer()
         }
         .themedListBG(theme)
-        // In the toolbar (the default in a split view's detail on iOS 26+), closing search
-        // re-focuses it as soon as the dismiss animation ends.
         .if(!disableSearch) { $0.searchable(text: Bindable(itemsManager).searchQuery.value, isPresented: $searchPresented, placement: .navigationBarDrawer(displayMode: .automatic)).searchFocused($searchFocused) }
         .touchScrollIndicators(.never)
         .listStyle(.plain)
@@ -271,8 +237,6 @@ struct RedditListingFeed<Header: View, Footer: View, S: Sorting>: View {
         .environment(\.defaultMinListRowHeight, 1)
         .environment(\.feedPostsSource, itemsManager)
         .toolbar {
-          // Sort and the feed's options share a glass group; the subreddit's icon is its own.
-          // On Mac they're in the window toolbar (`actions`).
           if ScreenAction.showsInNavigationBar, itemsManager.sorting != nil {
             ToolbarItem(placement: .topBarTrailing) {
               FeedSortMenu(sorting: Bindable(itemsManager).sorting)
@@ -302,8 +266,6 @@ struct RedditListingFeed<Header: View, Footer: View, S: Sorting>: View {
             nil
           }
         } }, contentWidth: contentWidth, theme: selectedTheme)
-        // A feed opened by name gains its fullname with its details, and with it the compact
-        // setting kept under it: lay its posts out again for it.
         .onChange(of: subreddit?.settingsKey) {
           withAnimation {
             for case let .post(post) in itemsManager.entities {
@@ -311,7 +273,6 @@ struct RedditListingFeed<Header: View, Footer: View, S: Sorting>: View {
             }
           }
         }
-        //    .onChange(of: itemsManager.selectedFilter) { searchEnabled = $1?.type != .custom }
         .refreshable { await refetch() }
         .feedCommandTarget(CommandTargets.Target(
           kind: .feed,
@@ -340,13 +301,10 @@ struct RedditListingFeed<Header: View, Footer: View, S: Sorting>: View {
           if newValue == true {
             Task {
               await refetch()
-              forceRefresh?.wrappedValue = false // Reset
+              forceRefresh?.wrappedValue = false
             }
           }
         }
-        // Where it's back to after the layout changes: the row at the top when it stopped scrolling.
-        // Not as a list first shows, idle at its top: the list built for the new layout would
-        // replace the place it was handed over before scrolling back to it.
         .onScrollPhaseChange { oldPhase, phase in
           if phase == .idle, oldPhase != .idle {
             itemsManager.saveScrollAnchor()
@@ -354,13 +312,10 @@ struct RedditListingFeed<Header: View, Footer: View, S: Sorting>: View {
         }
         .onAppear {
           lease.adopt(in: screenStateScope)
-          // Taken over from the screen this one replaced: fetches through this one, and back to
-          // where that one was.
           if lease.takeHandedOver() {
             itemsManager.replaceFetch(fetch)
             if let anchor = itemsManager.scrollAnchorID {
               if canvas {
-                // The row of tiles holding that post, by the row's id, as the grid is laid out again.
                 let rowID: String?? = canvasGrid(geo).rows(canvasPosts).first { $0.contains { $0.id == anchor } }.map(\.first?.id)
                 if let rowID {
                   doThisAfter(0.1) { proxy.scrollTo(rowID, anchor: .top) }
@@ -370,14 +325,11 @@ struct RedditListingFeed<Header: View, Footer: View, S: Sorting>: View {
               }
             }
           }
-          // The manager owns the initial request, independent of navigation task cancellation.
           Task {
             await itemsManager.loadIfNeeded()
             await fetchFiltersIfNeeded()
           }
         }
-        // Follows the lightbox as it pages through the feed's media, so closing it comes back to
-        // the post it showed last. A canvas's rows are rows of tiles, which the lightbox doesn't open.
         .onChange(of: itemsManager.revealRequest) { _, request in
           if let request, !canvas {
             proxy.scrollTo(request.postID, anchor: .top)
@@ -392,8 +344,6 @@ struct RedditListingFeed<Header: View, Footer: View, S: Sorting>: View {
 }
 
 extension RedditListingFeed {
-  /// The canvas's grid for the feed's width, around the iPhone Duo's hinge when it crosses the
-  /// feed (the feed column of the posts tab ends at it; other screens span it).
   private func canvasGrid(_ geo: GeometryProxy) -> CanvasGrid {
     var division: ClosedRange<CGFloat>?
     if let frame = WindowMetrics.shared.divisionFrame, frame.height > frame.width {
@@ -413,8 +363,6 @@ extension RedditListingFeed {
     }
   }
 
-  /// The feed's posts as rows of canvas tiles. Tiles load their thumbnails as they show, without
-  /// prefetching the media of the posts around them.
   private func canvasRows(grid: CanvasGrid, settings: PostLinkDefSettings) -> some View {
     ForEach(grid.rows(canvasPosts), id: \.first?.id) { row in
       CanvasRow(posts: row, grid: grid) { post in
@@ -432,7 +380,6 @@ extension RedditListingFeed {
     }
   }
 
-  /// The sort, the subreddit's options and its info, as in the navigation bar.
   private func actions(filters: [ShallowCachedFilter], compactPerSubreddit: [String: Bool], compactByDefault: Bool, canvasSubreddits: Set<String>) -> [ScreenAction] {
     var actions: [ScreenAction] = []
     let manager = itemsManager
@@ -456,7 +403,6 @@ extension RedditListingFeed {
   }
 }
 
-/// The feed's sort, with a checkmark on the current one. Top's time ranges are a submenu.
 private struct FeedSortMenu<S: Sorting>: View {
   @Binding var sorting: S?
 
@@ -487,11 +433,9 @@ private struct FeedSortMenu<S: Sorting>: View {
   }
 }
 
-/// The feed's flair filter and its post layout. The icon fills while a filter is on.
 private struct FeedOptionsMenu: View {
   var subId: String
   var filters: [ShallowCachedFilter]
-  /// A filter's identity in the picker: its kind and text.
   static func key(_ filter: ShallowCachedFilter) -> String {
     filter.pickerKey
   }
@@ -521,11 +465,7 @@ private struct FeedOptionsMenu: View {
         }
       }
       .pickerStyle(.inline)
-      // Also while a filter is on, so it can be cleared even after a refresh dropped its flair.
       if !flairs.isEmpty || !custom.isEmpty || selectedFilter != nil {
-        // Tagged by the filter's kind and text, not the whole filter: a background refresh can
-        // change a flair's colors, which would leave the active one unchecked. Flairs with the
-        // same text in different colors show once.
         var seen = Set<String>()
         let options = (flairs + custom).filter { seen.insert(Self.key($0)).inserted }
         Picker("Flair", selection: Binding(
@@ -550,16 +490,12 @@ private struct FeedOptionsMenu: View {
 }
 
 extension ShallowCachedFilter {
-  /// The filter's identity in menus: its kind and text, not its colors, which a refresh can
-  /// change while it's selected.
   var pickerKey: String {
     "\(type.rawValue)|\(text)"
   }
 }
 
 private extension View {
-  /// A large title's bar drew a band of its own under the Mac window toolbar, which the screens
-  /// run up under (`hidesTabBarOnMac`); a small one, like a Mac window's title (and Settings').
   func smallTitleOnMac() -> some View {
     #if targetEnvironment(macCatalyst)
       navigationBarTitleDisplayMode(.inline)

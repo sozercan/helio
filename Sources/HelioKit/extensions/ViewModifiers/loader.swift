@@ -1,10 +1,3 @@
-//
-//  loader.swift
-//  Helio
-//
-//  Created by Igor Marcossi on 07/08/23.
-//
-
 import SwiftUI
 
 extension View {

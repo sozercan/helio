@@ -1,10 +1,3 @@
-//
-//  ThemePadding.swift
-//  Helio
-//
-//  Created by Igor Marcossi on 21/11/23.
-//
-
 import Foundation
 
 struct ThemePadding: Codable, Hashable, Equatable {

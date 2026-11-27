@@ -1,10 +1,3 @@
-//
-//  PostLinkDefSettings.swift
-//  Helio
-//
-//  Created by Igor Marcossi on 15/12/23.
-//
-
 import Defaults
 import Foundation
 import SwiftUI
@@ -59,8 +52,3 @@ struct PostLinkDefSettings: Equatable, Hashable, Codable, Defaults.Serializable 
   var titlePosition: VSide = .top
   var hideOnRead: Bool = false
 }
-
-// struct ModalsDefSettings: Hashable, Codable, Defaults.Serializable {
-//  let showTestersCelebrationModal: Bool
-//  let showTipJarModal: Bool
-// }

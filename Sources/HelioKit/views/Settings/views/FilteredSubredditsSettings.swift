@@ -1,25 +1,17 @@
-//
-//  FilteredSubredditsSettings.swift
-//  Helio
-//
-//  Created by Ethan Bills on 9/12/23.
-//
-import Defaults
 import SwiftUI
 
 struct FilteredSubredditsSettings: View {
-  @Default(.filteredSubreddits) private var filteredSubreddits
+  private let userCollections = UserCollectionsStore.shared
   @State private var newSubreddit = ""
   @State private var addSubredditAlert = false
   @Environment(\.useTheme) private var theme
 
   private func removeSubreddit(at index: Int) {
-    var tempSubreddits = filteredSubreddits
-    tempSubreddits.remove(at: index)
-    filteredSubreddits = tempSubreddits
+    userCollections.removeFilteredSubreddit(at: index)
   }
 
   var body: some View {
+    let filteredSubreddits = userCollections.filteredSubreddits
     List {
       Section {
         ForEach(Array(filteredSubreddits.enumerated()), id: \.element) { index, subreddit in
@@ -55,15 +47,13 @@ struct FilteredSubredditsSettings: View {
       Button("OK", action: {
         if !newSubreddit.isEmpty, !filteredSubreddits.contains(newSubreddit) {
           withAnimation {
-            filteredSubreddits.append(newSubreddit)
+            userCollections.addFilteredSubreddit(newSubreddit)
           }
 
           newSubreddit = ""
         }
       })
-      Button("Cancel", action: {
-        // Do nothing! :D
-      })
+      Button("Cancel", action: {})
     } message: {
       Text("Enter a subreddit you wish to filter (case-sensitive).")
     }

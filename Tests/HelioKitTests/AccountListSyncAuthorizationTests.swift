@@ -25,9 +25,6 @@ struct AccountListSyncAuthorizationTests {
     }
   }
 
-  /// Package tests do not have the app bundle's Core Data model. Model just the two
-  /// list entities, with the same attributes and relationship as the app model.
-  /// The account-list entities, for in-memory stores in tests.
   static let model: NSManagedObjectModel = {
     func entity(_ name: String, type: NSManagedObject.Type, strings: [String], booleans: [String]) -> NSEntityDescription {
       let entity = NSEntityDescription()
@@ -108,8 +105,6 @@ struct AccountListSyncAuthorizationTests {
     #expect(seeded)
     let before = try savedLists(in: context, account: replacement).subs
 
-    // A completed old request arrives after the replacement sync: it would overwrite
-    // shared metadata, insert old entries, and delete the replacement-only entry.
     let stale = try subscriptions(emptyResponse ? [] : [("shared", "Stale title"), ("old", "Stale only")])
     let accepted = await api.updateSubsInCoreData(with: stale, account: old, credentialsManager: manager, context: context)
     #expect(!accepted)
@@ -192,8 +187,6 @@ struct AccountListSyncAuthorizationTests {
     var replacement = captured
     replacement.refreshToken = "placeholder-replacement-grant"
     let manager = RedditCredentialsManager(credentials: [replacement])
-    // Both requests may have saved successfully before replacement; their later
-    // completion must still not mark the replacement grant as freshly synced.
     let staleAccepted = manager.markSubscriptionsSynced(for: captured, at: Date(timeIntervalSince1970: 2))
     #expect(!staleAccepted)
     #expect(Defaults[.subsSyncedAt][key] == previous)
@@ -365,8 +358,6 @@ struct AccountListSyncAuthorizationTests {
     staleSnapshot.user_has_favorited = false
     let accepted20 = await lists.setSubscription(true, subreddit: staleSnapshot)
     #expect(accepted20)
-    // A later local update already restored true; a stale failure expecting false
-    // must not write false over it.
     let accepted21 = await lists.setFavorite(false, fullname: data.name, expecting: false)
     #expect(!accepted21)
     #expect(try savedSubscription(in: context, account: captured, fullname: data.name)?.user_has_favorited == true)
@@ -403,20 +394,18 @@ struct AccountListSyncAuthorizationTests {
   }
 
   @Test func deviceLocalFavoritesPersistRemoval() throws {
-    let previous = Defaults[.likedButNotSubbed]
-    defer { Defaults[.likedButNotSubbed] = previous }
+    let previous = UserCollectionsStore.shared.likedButNotSubbed
+    defer { UserCollectionsStore.shared.setLikedButNotSubbed(previous) }
     let sub = try Subreddit(data: subreddit("placeholder-local-favorite", subscribed: false))
-    Defaults[.likedButNotSubbed] = []
+    UserCollectionsStore.shared.clearLikedButNotSubbed()
     #expect(sub.localFavoriteToggle())
-    #expect(Defaults[.likedButNotSubbed].contains { $0.id == sub.id })
+    #expect(UserCollectionsStore.shared.likedButNotSubbed.contains { $0.id == sub.id })
     #expect(!sub.localFavoriteToggle())
-    #expect(Defaults[.likedButNotSubbed].isEmpty)
+    #expect(UserCollectionsStore.shared.likedButNotSubbed.isEmpty)
   }
 }
 
 extension AccountListSyncAuthorizationTests {
-  /// Pauses only the private context queue, never the UI actor. The deadline is
-  /// a deadlock guard, not a performance assertion.
   private final class CommitGate: @unchecked Sendable {
     private struct State {
       var started = false
@@ -437,8 +426,6 @@ extension AccountListSyncAuthorizationTests {
       }
       waiters.forEach { $0.resume() }
       condition.lock()
-      // Other suites can initialize keychain/Core Data on the UI actor on CI.
-      // Allow that unrelated startup work; this remains a deadlock guard only.
       let deadline = Date().addingTimeInterval(60)
       while !released {
         if !condition.wait(until: deadline) {
@@ -491,7 +478,6 @@ extension AccountListSyncAuthorizationTests {
     let task = Task { await lists.replaceSubscriptions(with: [data]) }
     await gate.waitUntilPaused()
     defer { gate.release() }
-    // This main-actor turn must be able to execute while reconciliation is paused.
     #expect(Thread.isMainThread)
     #expect(!gate.timedOut)
     var updated = captured
@@ -549,7 +535,6 @@ extension AccountListSyncAuthorizationTests {
     #expect(await lists.setSubscription(true, subreddit: data))
     let first = try #require(lists.beginMutation(fullname: data.name))
     #expect(await lists.setFavorite(true, fullname: data.name))
-    // A second false intent cannot begin from the unconfirmed true value.
     #expect(lists.beginMutation(fullname: data.name) == nil)
     #expect(lists.isCurrent(first))
     #expect(await lists.setFavorite(false, fullname: data.name, expecting: true))
@@ -572,14 +557,12 @@ extension AccountListSyncAuthorizationTests {
     #expect(await lists.setSubscription(true, subreddit: data))
     let first = try #require(lists.beginMutation(fullname: data.name))
     #expect(await lists.setSubscription(false, subreddit: data))
-    // This includes the favorite surface: every action on this row is reserved.
     #expect(lists.beginMutation(fullname: data.name) == nil)
     #expect(await lists.setSubscription(true, subreddit: data, expecting: false))
     lists.finish(first)
     let next = try #require(lists.beginMutation(fullname: data.name))
     defer { lists.finish(next) }
     #expect(await lists.isSubscribed(fullname: data.name) == true)
-    // A failed nonoptimistic unsubscribe makes no local write.
     #expect(try savedSubscription(in: context, account: captured, fullname: data.name)?.user_is_subscriber == true)
   }
 
@@ -687,7 +670,6 @@ extension AccountListSyncAuthorizationTests {
   @Test(arguments: [false, true]) func overlappingSubscriptionAndMultiSnapshotsShareOneRow(multiFirst: Bool) async throws {
     let account = credential()
     let manager = RedditCredentialsManager(credentials: [account])
-    // Both snapshot owners use the same private writer, as production does.
     let writer = try context()
     let gate = CommitGate()
     let first = try #require(AccountListPersistence(account: account, credentialsManager: manager, context: writer, beforeBulkCommit: { gate.pause() }))
@@ -709,8 +691,6 @@ extension AccountListSyncAuthorizationTests {
       }
       return await second.replaceMultis(with: [multi])
     }
-    // The second task starts while the first snapshot's transaction is in flight.
-    // The writer queues it behind the first complete read/update/save operation.
     await Task.yield()
     gate.release()
     let firstSaved = await firstTask.value
@@ -779,7 +759,6 @@ extension AccountListSyncAuthorizationTests {
     let original = try subreddit("shared", subscribed: favorite, favorited: false)
     let seeded = await owner.replaceSubscriptions(with: favorite ? [original] : [])
     #expect(seeded)
-    // The UI captured false, then an authoritative sync confirmed true.
     let previous = false
     let confirmed = try subreddit("shared", subscribed: true, favorited: favorite)
     let synced = await owner.replaceSubscriptions(with: [confirmed])

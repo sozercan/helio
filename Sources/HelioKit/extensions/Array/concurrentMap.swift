@@ -1,10 +1,3 @@
-//
-//  concurrentMap.swift
-//  Helio
-//
-//  Created by Igor Marcossi on 14/12/23.
-//
-
 import Dispatch
 import Foundation
 

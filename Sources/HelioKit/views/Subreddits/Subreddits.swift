@@ -1,17 +1,8 @@
-//
-//  Subreddits.swift
-//  Helio
-//
-//  Created by Igor Marcossi on 24/06/23.
-//
-
 import Combine
 import Defaults
 import SwiftDate
 import SwiftUI
 
-// On Mac, the subs list is on the theme's background like the feed and the post beside it,
-// rather than the sidebar's material, so the window below the title bar is one shade.
 #if targetEnvironment(macCatalyst)
   private let usesThemeBackgroundInSidebar = true
 #else
@@ -23,11 +14,9 @@ struct Subreddits: View, Equatable {
     lhs.loaded == rhs.loaded && lhs.currentCredentialID == rhs.currentCredentialID && lhs.inSidebar == rhs.inSidebar
   }
 
-  /// The feed shown beside the list, which the list shows as its selection.
   @Binding var firstDestination: Router.NavDest?
   var loaded: Bool
   var currentCredentialID: UUID
-  /// Shown as the split view's sidebar, beside the feed, rather than as the first screen of a stack.
   var inSidebar: Bool
   init(firstDestination: Binding<Router.NavDest?>, loaded: Bool, currentCredentialID: UUID, inSidebar: Bool) {
     self.currentCredentialID = currentCredentialID
@@ -41,19 +30,10 @@ struct Subreddits: View, Equatable {
   @FetchRequest private var subreddits: FetchedResults<CachedSub>
   @FetchRequest private var multis: FetchedResults<CachedMulti>
 
-//    @FetchRequest(sortDescriptors: [NSSortDescriptor(key: "display_name", ascending: true)])
-//    private var subreddits: FetchedResults<CachedSub>
-//
-//    @FetchRequest(sortDescriptors: [NSSortDescriptor(key: "display_name", ascending: true)])
-//    private var multis: FetchedResults<CachedMulti>
-
   @State private var searchText: String = ""
-  /// The search field's state, which the menu bar's Find sets.
   @State private var searchPresented = false
-  /// Find focuses the field even while it's presented, after its keyboard was dismissed.
   @FocusState private var searchFocused: Bool
 
-  //  @Default(.likedButNotSubbed) private var likedButNotSubbed // subreddits that a user likes but is not subscribed to so they wont be in subsDict
   @Default(.AppearanceDefSettings) private var appearanceDefSettings
   @Environment(\.useTheme) private var selectedTheme
 
@@ -63,14 +43,10 @@ struct Subreddits: View, Equatable {
     }
   }
 
-  /// A row the list can select: its feed, and whether it's the row in Favorites, as a favorite
-  /// shows twice. Selecting either opens the same feed.
   struct RowSelection: Hashable {
     var dest: Router.NavDest
     var inFavorites = false
 
-    /// Rows match by feed, as `isSameFeed` does: a subreddit opened by name (a quick action, the
-    /// launch feed) selects its cached row, which has Reddit's id.
     static func == (lhs: RowSelection, rhs: RowSelection) -> Bool {
       lhs.inFavorites == rhs.inFavorites && lhs.dest.isSameFeed(as: rhs.dest)
     }
@@ -84,9 +60,6 @@ struct Subreddits: View, Equatable {
       }
     }
 
-    /// The row that shows `dest` as selected: the one chosen last if it shows `dest` and still
-    /// shows (a favorite's row goes when its star does, or when search hides it), else its row
-    /// outside Favorites, as when the feed was opened from elsewhere.
     static func row(for dest: Router.NavDest?, chosen: RowSelection?, favoriteShows: (Router.NavDest) -> Bool = { _ in true }) -> RowSelection? {
       guard let dest else { return nil }
       let inFavorites = chosen.map { $0.inFavorites && $0.dest.isSameFeed(as: dest) } == true && favoriteShows(dest)
@@ -94,7 +67,6 @@ struct Subreddits: View, Equatable {
     }
   }
 
-  /// The row chosen last, which tells a favorite's two rows apart.
   @State private var chosenRow: RowSelection?
 
   private var selection: Binding<RowSelection?> {
@@ -108,13 +80,11 @@ struct Subreddits: View, Equatable {
     }
   }
 
-  /// Whether Favorites shows a row for `dest`: not while searching, nor once its star is removed.
   private func favoriteRowShows(_ dest: Router.NavDest) -> Bool {
     guard searchText.isEmpty, let name = dest.subredditFeedName else { return false }
     return subreddits.contains { $0.user_has_favorited && $0.user_is_subscriber && $0.display_name?.lowercased() == name }
   }
 
-  /// A subreddit's row, tagged with its feed so the list's selection opens it.
   private func subItem(_ cachedSub: CachedSub, inFavorites: Bool = false, selected: RowSelection?) -> some View {
     let sub = Subreddit(data: SubredditData(entity: cachedSub))
     let row = RowSelection(dest: .reddit(.subFeed(sub)), inFavorites: inFavorites)
@@ -124,7 +94,6 @@ struct Subreddits: View, Equatable {
     .tag(row)
   }
 
-  /// A feed's tile, selected while its feed shows.
   private func feedTile(_ label: String, icon: String, color: Color, id: String) -> some View {
     let dest = Router.NavDest.reddit(.subFeed(Subreddit(id: id)))
     return ListBigBtn(icon: icon, iconColor: color, label: label, selected: dest == firstDestination) {
@@ -133,7 +102,6 @@ struct Subreddits: View, Equatable {
   }
 
   var body: some View {
-    // Worked out once rather than per row: it looks through the subs for a favorite.
     let selectedRow = selection.wrappedValue
     ScrollViewReader { proxy in
       List(selection: selection) {
@@ -154,19 +122,6 @@ struct Subreddits: View, Equatable {
           .listRowSeparator(.hidden)
           .listRowBackground(Color.clear)
           .listRowInsets(EdgeInsets(top: 0, leading: 0, bottom: 0, trailing: 0))
-
-          //          Section{
-          //            UpsellCard(upsellName: "themesUpsell_01", {
-          //                Text("Tired of Helios current look? Try the theme editor in settings now!")
-          //                .helioShiny()
-          //              .fontWeight(.semibold)
-          //              .font(.system(size: 15))
-          //            })
-          //            .padding()
-          //          }
-          //          .listRowSeparator(.hidden)
-          ////            .listRowBackground(Color.clear)
-          //          .listRowInsets(EdgeInsets(top: 0, leading: 0, bottom: 0, trailing: 0))
 
           if !multis.isEmpty {
             Section("Multis") {
@@ -234,11 +189,9 @@ struct Subreddits: View, Equatable {
             }
           }
         }
-        // A sidebar's rows are the system's, which draw its selection.
         .themedListSection(disable: usesThemeBackgroundInSidebar || inSidebar)
       }
       .environment(\.isInSidebar, true)
-      // On iPad, the sidebar's own material instead of the theme's background.
       .themedListBG(selectedTheme.lists.bg, disable: inSidebar && !usesThemeBackgroundInSidebar, keepSystemBackground: inSidebar && !usesThemeBackgroundInSidebar)
       .touchScrollIndicators(.hidden)
       .listStyle(.sidebar)
@@ -250,14 +203,11 @@ struct Subreddits: View, Equatable {
         searchFocused = true
       }))
       .overlay(alignment: .trailing) {
-        // Without the sidebar's own shade, a hairline marks where the posts start.
         if usesThemeBackgroundInSidebar {
           Color(uiColor: .separator).frame(width: 1).ignoresSafeArea()
         }
       }
       #if !targetEnvironment(macCatalyst)
-      // A touch control: on Mac, the pointer scrolls. Only while the list shows its letter
-      // sections: filtered or without them, there's nothing for a letter to scroll to.
       .overlay(alignment: .trailing) {
         AlphabetJumper(letters: searchText.isEmpty && !appearanceDefSettings.disableAlphabetLettersSectionsInSubsList ? sections.keys.sorted() : [], proxy: proxy)
       }
@@ -295,17 +245,7 @@ struct Subreddits: View, Equatable {
   }
 }
 
-// struct Posts_Previews: PreviewProvider {
-//  static var previews: some View {
-//    Posts()
-//  }
-// }
-
 private extension View {
-  /// The subs list's search field and Edit button. iOS keeps them in the navigation bar. On Mac
-  /// that bar floats over the rows, which show through behind it, so the list gets its own bar
-  /// instead, which the rows scroll under and fade beneath, like the feed's under its title.
-  @ViewBuilder
   func subsSearchAndEdit(_ searchText: Binding<String>, isPresented: Binding<Bool>, focused: FocusState<Bool>.Binding) -> some View {
     #if targetEnvironment(macCatalyst)
       safeAreaBar(edge: .top, spacing: 0) { MacSubsHeader(searchText: searchText, focusRequested: isPresented) }
@@ -326,7 +266,6 @@ private extension View {
 #if targetEnvironment(macCatalyst)
   private struct MacSubsHeader: View {
     @Binding var searchText: String
-    /// Set by the menu bar's Find: focuses the field.
     @Binding var focusRequested: Bool
     @FocusState private var focused: Bool
 
@@ -344,7 +283,6 @@ private extension View {
               }
             }
             .textFieldStyle(.plain)
-            // The capsule is the field; a focus ring inside it would be a second outline.
             .focusEffectDisabled()
           if !searchText.isEmpty {
             Button("Clear search", systemImage: "xmark.circle.fill") { searchText = "" }

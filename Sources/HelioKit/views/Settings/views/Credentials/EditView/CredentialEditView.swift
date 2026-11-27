@@ -1,10 +1,3 @@
-//
-//  CredentialEditView.swift
-//  Helio
-//
-//  Created by Igor Marcossi on 22/11/23.
-//
-
 import NukeUI
 import SwiftUI
 

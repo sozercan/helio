@@ -1,10 +1,3 @@
-//
-//  ShrinkOnTap.swift
-//  Helio
-//
-//  Created by Igor Marcossi on 30/06/23.
-//
-
 import SwiftUI
 
 struct ShrinkOnTap: ViewModifier {

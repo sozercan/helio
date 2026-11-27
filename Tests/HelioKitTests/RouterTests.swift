@@ -31,7 +31,6 @@ struct RouterTests {
   }
 
   @Test func aSubredditKnownByNameIsTheSameFeedAsItsCachedCopy() throws {
-    // The sidebar's cached subreddit has Reddit's id; a quick action knows only the name.
     let json = #"{"name": "t5_2qh1f", "id": "2qh1f", "display_name": "Apple", "url": "/r/Apple/", "public_description": ""}"#
     let cached = try Subreddit(data: JSONDecoder().decode(SubredditData.self, from: Data(json.utf8)))
     let router = Router(id: "test")
@@ -58,14 +57,11 @@ struct RouterTests {
     router.navigateTo(post)
     router.firstSelected = cached
     #expect(router.fullPath == [cached, post])
-    // Choosing the name-only feed again doesn't drop the details.
     router.firstSelected = feed("apple")
     #expect(router.fullPath == [cached, post])
   }
 
   @Test func aFeedOpenedByNameTakesTheDetailsInPlace() throws {
-    // Its feed view and loaded posts hold this subreddit; replacing it would split them from the
-    // per-subreddit settings, which are kept by Reddit's id.
     let json = #"{"name": "t5_2qh1f", "id": "2qh1f", "display_name": "Apple", "url": "/r/Apple/", "public_description": ""}"#
     let cached = try Subreddit(data: JSONDecoder().decode(SubredditData.self, from: Data(json.utf8)))
     let byName = Subreddit(id: "apple")
@@ -79,9 +75,7 @@ struct RouterTests {
     }
     #expect(sub === byName)
     #expect(sub.id == cached.id)
-    // The sidebar's selection matches the cached row.
     #expect(router.firstSelected == .reddit(.subFeed(cached)))
-    // The feed view is keyed by this, so it isn't rebuilt.
     #expect(router.fullPath.first?.subredditFeedName == nameBefore)
   }
 
@@ -103,8 +97,6 @@ struct RouterTests {
   }
 
   @Test func aFeedKeepsItsSettingsKeyWhicheverDetailsItHolds() throws {
-    // The sidebar's copy comes from the cache, which keys a subreddit by its fullname; Reddit's
-    // own details carry the bare id; a link knows only the name.
     let coordinator = NSPersistentStoreCoordinator(managedObjectModel: AccountListSyncAuthorizationTests.model)
     try coordinator.addPersistentStore(ofType: NSInMemoryStoreType, configurationName: nil, at: nil)
     let context = NSManagedObjectContext(concurrencyType: .privateQueueConcurrencyType)
@@ -117,7 +109,6 @@ struct RouterTests {
     #expect(Subreddit(data: full).settingsKey == "t5_2qh1f")
     #expect(Subreddit(id: "apple").settingsKey == "apple")
 
-    // Reselected from the sidebar, then Reddit's details landing late: the key stays.
     let feed = Subreddit(data: full)
     let router = Router(id: "test")
     router.firstSelected = .reddit(.subFeed(feed))
@@ -131,21 +122,15 @@ struct RouterTests {
     func key(_ saved: [String: Bool]) -> String {
       Subreddit.settingsKey(fullname: "t5_2qh1f", bareID: "2qh1f", name: "Apple", id: "2qh1f", saved: saved)
     }
-    // Nothing saved yet: the fullname.
     #expect(key([:]) == "t5_2qh1f")
-    // Saved from a feed with Reddit's own details, or one opened by name, before.
     #expect(key(["2qh1f": true]) == "2qh1f")
     #expect(key(["Apple": true]) == "Apple")
     #expect(key(["apple": true]) == "apple")
-    // The fullname wins once it's there.
     #expect(key(["t5_2qh1f": false, "2qh1f": true]) == "t5_2qh1f")
-    // Known only by name.
     #expect(Subreddit.settingsKey(fullname: nil, bareID: nil, name: nil, id: "apple", saved: [:]) == "apple")
   }
 
   @Test func reselectingAFeedKeepsDetailsTheSidebarsCopyLacks() throws {
-    // The feed's subreddit has Reddit's full response; the sidebar's copy fills what it doesn't
-    // keep with placeholders (no description, a public type).
     let full = #"{"name": "t5_2qh1f", "id": "2qh1f", "display_name": "Apple", "url": "/r/Apple/", "public_description": "Apple news", "description": "All things Apple", "subreddit_type": "restricted", "user_has_favorited": false}"#
     let partial = #"{"name": "t5_2qh1f", "id": "2qh1f", "display_name": "Apple", "url": "/r/Apple/", "public_description": "", "subreddit_type": "public", "user_has_favorited": true}"#
     let feed = try Subreddit(data: JSONDecoder().decode(SubredditData.self, from: Data(full.utf8)))
@@ -157,7 +142,6 @@ struct RouterTests {
     #expect(feed.data?.description == "All things Apple")
     #expect(feed.data?.public_description == "Apple news")
     #expect(feed.data?.subreddit_type == "restricted")
-    // The account's state is the sidebar's, the fresher.
     #expect(feed.data?.user_has_favorited == true)
     #expect(router.fullPath.count == 2)
   }
@@ -201,7 +185,6 @@ struct RouterTests {
   }
 
   @Test func backPopsTheFeedWhenCollapsed() {
-    // Compact width: the feed is a pushed screen, and Back returns to the subs list.
     let router = Router(id: "test")
     router.firstSelected = feed("apple")
     #expect(router.canGoBack)
@@ -211,7 +194,6 @@ struct RouterTests {
   }
 
   @Test func backPopsEveryScreenOfAPlainStack() {
-    // Inbox, Me, Search and Settings use the whole path as their stack.
     let router = Router(id: "test")
     router.navigateTo(.setting(.appearance))
     router.navigateTo(.setting(.themes))
@@ -219,8 +201,6 @@ struct RouterTests {
     router.goBack()
     #expect(router.fullPath.isEmpty)
   }
-
-  // MARK: The posts split view's feed and post columns
 
   private let otherPost = Router.NavDest.reddit(.post(Post(id: "def", subID: "apple")))
   private let sub = Router.NavDest.reddit(.subFeed(Subreddit(id: "pics")))
@@ -276,7 +256,6 @@ struct RouterTests {
     router.navigateTo(sub, from: .feed)
     #expect(router.feedPath == [sub])
     #expect(router.postColumn == [post])
-    // Collapsed into one stack, the order is the same.
     #expect(router.fullPath == [feed("apple"), sub, post])
   }
 
@@ -332,7 +311,6 @@ struct RouterTests {
   }
 
   @Test func aPostChosenAsTheFeedIsNotThePostColumn() {
-    // A post can be the sidebar's selection itself (a link opened from another tab).
     let router = Router(id: "test")
     router.firstSelected = post
     #expect(router.postColumnStart == nil)
@@ -340,15 +318,12 @@ struct RouterTests {
     #expect(router.postColumn == [otherPost])
   }
 
-  // MARK: The open Duo's panes
-
   @Test func theFeedPaneHoldsTheFeedAndItsScreensButNotThePost() {
     let router = Router(id: "test")
     router.firstSelected = feed("apple")
     router.navigateTo(sub, from: .feed)
     router.navigateTo(post, from: .feed)
     #expect(router.feedPanePath == [feed("apple"), sub])
-    // Popping a screen stacked on the feed keeps the open post.
     router.feedPanePath = [feed("apple")]
     #expect(router.fullPath == [feed("apple"), post])
   }
@@ -362,7 +337,6 @@ struct RouterTests {
   }
 
   @Test func backInTheDuoPanesClosesThePostThenTheFeed() {
-    // The feed is pushed on the subs list there, so Back can leave it.
     let router = Router(id: "test")
     router.showsPostBesideFeed = true
     router.firstSelected = feed("apple")
@@ -414,23 +388,19 @@ struct SplitLayoutTests {
       #expect(layout.showsColumns)
       #expect(layout.hingeFeedWidth == 330)
       #expect(layout.hingeWidth == 8)
-      // A hinge nearer than a feed column's width: the panes meet in its middle.
       #expect(layout.feedPaneWidth == 334)
     }
   }
 
   @Test func theOpenDuoKeepsTheFeedPaneToAFeedColumnsWidth() {
-    // The Duo's measured inner screen: the hinge's middle is 475 pt in, the post pane gets the rest.
     let layout = SplitLayout(sizeClass: .regular, frame: frame(867), division: CGRect(x: 455.5, y: 0, width: 40, height: 669))
     #expect(layout.feedPaneWidth == SplitLayout.idealFeedWidth)
   }
 
   @Test func theOpenDuoUsesTwoPanesInsteadOfTheSplitView() {
-    // Each half is narrower than the split view tiles a feed and a post, so it would overlay them.
     let layout = SplitLayout(sizeClass: .regular, frame: frame(668), division: CGRect(x: 330, y: 0, width: 8, height: 900))
     #expect(layout.usesPanes)
     #expect(!layout.fitsSidebar)
-    // The subs list is the feed pane's first screen, not a sidebar beside the feed.
     #expect(!layout.sidebarBesideFeed)
   }
 
@@ -448,14 +418,12 @@ struct SplitLayoutTests {
     let hinge = CGRect(x: 0, y: 440, width: 668, height: 8)
     let layout = SplitLayout(sizeClass: .regular, frame: frame(668), division: hinge)
     #expect(layout.hingeFeedWidth == nil)
-    // It doesn't separate a left and a right column, so the width rule still collapses them.
     #expect(!layout.showsColumns)
   }
 
   @Test func beforeMeasuringTheSizeClassDecides() {
     #expect(SplitLayout(sizeClass: .regular, frame: .zero, division: nil).showsColumns)
     #expect(!SplitLayout(sizeClass: .compact, frame: .zero, division: nil).showsColumns)
-    // The launch feed waits for a measurement: a narrow regular window is one stack.
     #expect(!SplitLayout(sizeClass: .regular, frame: .zero, division: nil).measured)
     #expect(SplitLayout(sizeClass: .regular, frame: frame(700), division: nil).measured)
   }
@@ -477,15 +445,11 @@ struct ReadableWidthTests {
   }
 
   @Test func theOpenDuosPanesGetTheirOwnWidth() {
-    // The open Duo flat on its back: the side tab bar takes the window's right 84 pt, and the
-    // hinge is 40 pt wide in the middle of the window.
     let hinge = CGRect(x: 455.5, y: 0, width: 40, height: 669)
     let feedPane = column(0, 455.5)
     let postPane = CGRect(x: 495.5, y: 0, width: 455.5, height: 669)
     #expect(ReadableWidth.contentWidth(column: feedPane, visibleWidth: 455.5, division: hinge) == 455.5)
-    // The post pane runs under the tab bar; its content stops at the window's safe area.
     #expect(ReadableWidth.contentWidth(column: postPane, visibleWidth: 371.5, division: hinge) == 371.5)
-    // A pane on one side of the hinge is capped like any column.
     let farHinge = CGRect(x: 1000, y: 0, width: 40, height: 900)
     #expect(ReadableWidth.contentWidth(column: column(0, 1000), visibleWidth: 1000, division: farHinge) == ReadableWidth.max)
   }
@@ -511,7 +475,6 @@ struct RedditLinkTests {
     #expect(highlight == "def456")
     let wiki = try #require(URL(string: "https://www.reddit.com/r/apple/wiki/index"))
     #expect(Nav.linkDestination(for: wiki) == nil)
-    // A subreddit's comments listing has no post id: opened as the page, not a crash.
     let listing = try #require(URL(string: "https://www.reddit.com/r/apple/comments/"))
     #expect(Nav.linkDestination(for: listing) == nil)
   }

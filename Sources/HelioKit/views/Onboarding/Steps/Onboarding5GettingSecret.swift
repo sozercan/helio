@@ -1,10 +1,3 @@
-//
-//  Onboarding5GettingSecret.swift
-//  Helio
-//
-//  Created by Igor Marcossi on 01/08/23.
-//
-
 import SwiftUI
 
 struct Onboarding5GettingSecret: View {
@@ -51,8 +44,6 @@ struct Onboarding5GettingSecret: View {
       .padding(.top, 64)
       .padding(.horizontal, 16)
       .multilineTextAlignment(.center)
-//      .contentShape(Rectangle())
-//      .onTapGesture { withAnimation { UIApplication.shared.dismissKeyboard() } }
     }
     .modifier(AdaptsToSoftwareKeyboard())
     .scrollDismissesKeyboard(.immediately)

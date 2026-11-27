@@ -1,10 +1,3 @@
-//
-//  fetchMoreReplies.swift
-//  Helio
-//
-//  Created by Igor Marcossi on 05/07/23.
-//
-
 import Alamofire
 import Foundation
 

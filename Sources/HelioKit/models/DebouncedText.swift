@@ -1,10 +1,3 @@
-//
-//  DebouncedText.swift
-//  Helio
-//
-//  Created by Igor Marcossi on 27/07/23.
-//
-
 import Foundation
 
 @Observable
@@ -23,7 +16,6 @@ class Debouncer<V> {
 
   private(set) var debounced: V
 
-  /// Sets `value` and `debounced` at once, without waiting.
   func setNow(_ newValue: V) {
     settingNow = true
     value = newValue

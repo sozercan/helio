@@ -1,10 +1,3 @@
-//
-//  GenericRedditEntity.swift
-//  Helio
-//
-//  Created by Igor Marcossi on 30/06/23.
-//
-
 import Combine
 import Defaults
 import Foundation
@@ -17,11 +10,8 @@ protocol GenericRedditEntityDataType: Codable, Hashable, Identifiable {
 @Observable
 class GenericRedditEntity<T: GenericRedditEntityDataType, B: Hashable>: Identifiable, Hashable, ObservableObject, Observable, Codable, Defaults.Serializable {
   func hash(into hasher: inout Hasher) {
-//    hasher.combine(data)
-//    hasher.combine(childrenHelio)
     hasher.combine(id)
     hasher.combine(typePrefix)
-//    hasher.combine(data)
   }
 
   static func placeholder() -> GenericRedditEntity<T, B> {
@@ -45,14 +35,10 @@ class GenericRedditEntity<T: GenericRedditEntityDataType, B: Hashable>: Identifi
   }
 
   var helioData: B? = nil
-  /// Identity isn't observed: views don't follow it, and each read of an observed property of
-  /// this generic class builds a key path at runtime, which rows, `ForEach` and `==` paid for
-  /// on every `id`.
   @ObservationIgnored var _id: String {
     didSet { joinedID = _id + kind }
   }
 
-  /// `_id` and `kind` joined, kept current instead of concatenated on every read.
   @ObservationIgnored private var joinedID = ""
 
   var id: String {

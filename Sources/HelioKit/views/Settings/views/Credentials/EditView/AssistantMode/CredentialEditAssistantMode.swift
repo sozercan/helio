@@ -1,10 +1,3 @@
-//
-//  CredentialEditAssistantMode.swift
-//  Helio
-//
-//  Created by Igor Marcossi on 01/01/24.
-//
-
 import AuthenticationServices
 import SwiftUI
 
@@ -80,8 +73,6 @@ struct CredentialEditAssistantMode: View {
       .transition(.scaleAndBlur)
     }
     .interactiveDismissDisabled()
-//    .padding(.top, scene != .tutorial || commonScene != nil ? 40 : 0)
-//    .navigationBarBackButtonHidden(scene != .tutorial || commonScene != nil)
     .frame(maxWidth: .infinity, maxHeight: .infinity)
     .overlay(alignment: .bottom) {
       GeometryReader { _ in

@@ -1,10 +1,3 @@
-//
-//  AppDelegate.swift
-//  Helio
-//
-//  Created by Igor Marcossi on 31/07/23.
-//
-
 import AVFoundation
 import AVKit
 import CoreHaptics
@@ -13,14 +6,13 @@ import Nuke
 import SwiftUI
 import UIKit
 
-/// Installed by the app target's `@main` App via `@UIApplicationDelegateAdaptor`.
 public class AppDelegate: UIResponder, UIApplicationDelegate {
   private(set) static var instance: AppDelegate!
   var supportsHaptics: Bool = false
 
   public func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil) -> Bool {
     AppDelegate.instance = self
-    _ = WindowMetrics.shared // first read touches UIApplication, so do it on the main thread
+    _ = WindowMetrics.shared
     setAudioToMixWithOthers()
 
     let hapticCapability = CHHapticEngine.capabilitiesForHardware()
@@ -42,7 +34,6 @@ public class AppDelegate: UIResponder, UIApplicationDelegate {
 }
 
 class CustomSceneDelegate: UIResponder, UIWindowSceneDelegate {
-  /// A quick action chosen while the app is running in the background.
   func windowScene(_ windowScene: UIWindowScene, performActionFor shortcutItem: UIApplicationShortcutItem, completionHandler: @escaping (Bool) -> Void) {
     guard let action = QuickAction(shortcutItem) else {
       completionHandler(false)
@@ -55,14 +46,10 @@ class CustomSceneDelegate: UIResponder, UIWindowSceneDelegate {
 
 private let audioSessionQueue = DispatchQueue(label: "audio-session", qos: .userInitiated)
 
-/// Runs `setAudioToMixWithOthers` off the main thread, where its session calls can block while
-/// audio plays, one at a time and in the order requested, so the last request wins.
 func scheduleAudioMixing(_ mix: Bool) {
   audioSessionQueue.async { setAudioToMixWithOthers(mix) }
 }
 
-/// - Parameter mix: when false, our audio interrupts other apps' audio (e.g. pauses music);
-///   switching back lets the interrupted audio resume.
 public func setAudioToMixWithOthers(_ mix: Bool = true) {
   let session = AVAudioSession.sharedInstance()
   do {

@@ -1,10 +1,3 @@
-//
-//  BadgeTheme.swift
-//  Helio
-//
-//  Created by Igor Marcossi on 07/09/23.
-//
-
 import Foundation
 import SwiftUI
 
@@ -21,20 +14,15 @@ struct BadgeTheme: Codable, Hashable, Equatable {
   @Boxed var statsText: ThemeText
   var spacing: CGFloat
   var forceSubsAsTags: Bool
-  /// Voted scores' text; `nil` keeps the app's fixed upvote and downvote colors.
   @Boxed var upvoteText: ColorSchemes<ThemeColor>?
   @Boxed var downvoteText: ColorSchemes<ThemeColor>?
-  /// The new-comment count (`+3`); `nil` keeps the app's accent color.
   @Boxed var newCommentsText: ColorSchemes<ThemeColor>?
-  /// The post page's unvoted score and upvote ratio; `nil` keeps grey.
   @Boxed var scoreText: ColorSchemes<ThemeColor>?
 
-  /// The post page's unvoted score and upvote ratio.
   var neutralScoreColor: Color {
     scoreText?.color() ?? .gray
   }
 
-  /// The score's color for a vote (`nil`: none, which keeps `neutral`).
   func voteColor(_ likes: Bool?, neutral: Color) -> Color {
     switch likes {
     case true: upvoteText?.color() ?? .upvoteText
@@ -85,7 +73,6 @@ struct BadgeTheme: Codable, Hashable, Equatable {
     self.statsText = try container.decodeIfPresent(ThemeText.self, forKey: .statsText) ?? t.statsText
     self.spacing = try container.decodeIfPresent(CGFloat.self, forKey: .spacing) ?? t.spacing
     self.forceSubsAsTags = try container.decodeIfPresent(Bool.self, forKey: .forceSubsAsTags) ?? t.forceSubsAsTags
-    // Optional: themes saved without them keep the app's vote and accent colors.
     self.upvoteText = try container.decodeIfPresent(ColorSchemes<ThemeColor>.self, forKey: .upvoteText)
     self.downvoteText = try container.decodeIfPresent(ColorSchemes<ThemeColor>.self, forKey: .downvoteText)
     self.newCommentsText = try container.decodeIfPresent(ColorSchemes<ThemeColor>.self, forKey: .newCommentsText)

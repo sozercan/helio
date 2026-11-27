@@ -1,13 +1,3 @@
-//
-//  WindowMetrics.swift
-//  Helio
-//
-//  The window's current size and width class. The window can change size while the app
-//  runs: folding or unfolding iPhone Duo, iPad multitasking, resizing a Mac window. So
-//  layout reads these instead of UIScreen.main or the device idiom. Views that read them
-//  in `body` are re-rendered when they change.
-//
-
 import SwiftUI
 import UIKit
 
@@ -15,8 +5,6 @@ import UIKit
 final class WindowMetrics: @unchecked Sendable {
   static let shared = WindowMetrics()
 
-  // Background work reads these (post setup, image processing) while the main thread updates
-  // them, so they live behind a lock and report access and changes to Observation by hand.
   @ObservationIgnored private let lock = NSLock()
   @ObservationIgnored private var _size: CGSize
   @ObservationIgnored private var _contentWidth: CGFloat
@@ -25,28 +13,21 @@ final class WindowMetrics: @unchecked Sendable {
   @ObservationIgnored private var _displayScale: CGFloat
   @ObservationIgnored private var _divisionFrame: CGRect?
 
-  /// The window's full size, including the safe area.
   var size: CGSize {
     access(keyPath: \.size)
     return lock.withLock { _size }
   }
 
-  /// The width inside the safe area, which full-width content gets: left of the folded
-  /// iPhone Duo's side tab bar, for example.
   var contentWidth: CGFloat {
     access(keyPath: \.contentWidth)
     return lock.withLock { _contentWidth }
   }
 
-  /// Where that safe-area content sits, in global coordinates. Columns that run under the
-  /// Duo's side tab bar intersect with it to get the width their content actually gets.
   var contentFrame: CGRect {
     access(keyPath: \.contentFrame)
     return lock.withLock { _contentFrame }
   }
 
-  /// Regular width: unfolded iPhone Duo, full-screen iPad, Mac. Compact: iPhone, folded Duo,
-  /// narrow iPad split.
   var isWide: Bool {
     access(keyPath: \.isWide)
     return lock.withLock { _isWide }
@@ -57,9 +38,6 @@ final class WindowMetrics: @unchecked Sendable {
     return lock.withLock { _displayScale }
   }
 
-  /// The open iPhone Duo's hinge, in global coordinates: content and controls shouldn't span it.
-  /// Nil on displays without one. Kept in every posture, so layout doesn't change when the
-  /// device goes flat.
   var divisionFrame: CGRect? {
     access(keyPath: \.divisionFrame)
     return lock.withLock { _divisionFrame }
@@ -70,7 +48,6 @@ final class WindowMetrics: @unchecked Sendable {
     _size = screen?.bounds.size ?? CGSize(width: 390, height: 844)
     _contentWidth = _size.width
     _contentFrame = CGRect(origin: .zero, size: _size)
-    // The size class arrives with the first layout; until then, guess from the size.
     _isWide = _size.width >= 700
     _displayScale = screen?.scale ?? 3
   }
@@ -100,8 +77,6 @@ final class WindowMetrics: @unchecked Sendable {
   }
 }
 
-/// Wide (regular width) window layout. Replaces device-idiom checks, which can't tell an
-/// unfolded iPhone Duo or a narrow iPad window apart.
 var isWideLayout: Bool {
   WindowMetrics.shared.isWide
 }
@@ -117,8 +92,6 @@ private struct WindowMetricsReader: ViewModifier {
     var divisionFrame: CGRect?
   }
 
-  /// The hinge, in the proxy's coordinates (iOS 27.1 and later). The API is in the iOS 27.1 SDK:
-  /// Xcode 26 can't see it (hence the compiler check), and the workflows pin Xcode 27.2.
   private static func divisionFrame(_ proxy: GeometryProxy) -> CGRect? {
     #if compiler(>=6.4)
       if #available(iOS 27.1, *) {
@@ -131,8 +104,6 @@ private struct WindowMetricsReader: ViewModifier {
   func body(content: Content) -> some View {
     content
       .background {
-        // The root view is laid out inside the safe area, and `ignoresSafeArea` doesn't reach
-        // every inset (folded iPhone Duo's status column), so add the insets back.
         Color.clear
           .onGeometryChange(for: Geometry.self) { proxy in
             let insets = proxy.safeAreaInsets
@@ -151,7 +122,6 @@ private struct WindowMetricsReader: ViewModifier {
 }
 
 extension View {
-  /// Keeps `WindowMetrics` in sync with the window this view fills. Apply once, at the root.
   func readsWindowMetrics() -> some View {
     modifier(WindowMetricsReader())
   }

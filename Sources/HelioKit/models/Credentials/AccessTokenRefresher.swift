@@ -1,7 +1,5 @@
 import Foundation
 
-/// Single-flight refresh per OAuth client/grant, including duplicate saved credential records.
-/// A waiter owns its persistence policy; cancelling one waiter does not cancel the shared refresh.
 actor AccessTokenRefresher {
   static let shared = AccessTokenRefresher()
 
@@ -22,7 +20,6 @@ actor AccessTokenRefresher {
   private var inFlight: [Data: Task<Outcome, Never>] = [:]
   private var latest: [Data: Outcome] = [:]
 
-  /// A known rejected token is never reused. A forced renewal can share a newer token.
   func refresh(for authorization: RedditCredential.AuthorizationID, forceRenew: Bool, rejected: String? = nil,
                refresh: @escaping @Sendable () async -> Outcome) async -> Outcome
   {

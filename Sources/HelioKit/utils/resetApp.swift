@@ -1,10 +1,3 @@
-//
-//  resetApp.swift
-//  Helio
-//
-//  Created by Igor Marcossi on 04/09/23.
-//
-
 import CoreData
 import Defaults
 import Foundation
@@ -12,36 +5,52 @@ import KeychainAccess
 
 func resetPreferences() {
   UserDefaults.standard.removeAll()
+  UserCollectionsStore.shared.resetAll()
 }
 
 func resetCaches() {
-  Caches.postsAttrStr.cache.removeAll()
-  Caches.videos.cache.removeAll()
+  Caches.streamable.removeAll()
 }
 
-/// - Parameter keeping: entity names to leave untouched.
-func resetCoreData(keeping: Set<String> = []) {
-  let container = PersistenceController.shared.container
+func resetCoreData(keeping: Set<String> = [], container: NSPersistentContainer = PersistenceController.shared.container) {
   let entities = container.managedObjectModel.entities
+  let usesSQLite = container.persistentStoreCoordinator.persistentStores.allSatisfy { $0.type == NSSQLiteStoreType }
   for entity in entities where !keeping.contains(entity.name ?? "") {
-    delete(entityName: entity.name!)
+    if let name = entity.name {
+      delete(entityName: name)
+    }
   }
 
   func delete(entityName: String) {
     let fetchRequest = NSFetchRequest<NSFetchRequestResult>(entityName: entityName)
-    let deleteRequest = NSBatchDeleteRequest(fetchRequest: fetchRequest)
-    do {
-      _ = try container.viewContext.performAndWait {
-        try container.viewContext.executeAndMergeChanges(deleteRequest)
-//        try container.viewContext.save()
+    if usesSQLite {
+      let deleteRequest = NSBatchDeleteRequest(fetchRequest: fetchRequest)
+      do {
+        _ = try container.viewContext.performAndWait {
+          try container.viewContext.executeAndMergeChanges(deleteRequest)
+        }
+      } catch let error as NSError {
+        debugPrint(error)
       }
-    } catch let error as NSError {
-      debugPrint(error)
+    } else {
+      container.viewContext.performAndWait {
+        do {
+          if let objects = try container.viewContext.fetch(fetchRequest) as? [NSManagedObject] {
+            for object in objects {
+              container.viewContext.delete(object)
+            }
+            if container.viewContext.hasChanges {
+              try container.viewContext.save()
+            }
+          }
+        } catch let error as NSError {
+          debugPrint(error)
+        }
+      }
     }
   }
 }
 
-/// Forgets which posts have been read.
 func clearReadHistory() {
   resetCoreData(keeping: Set(PersistenceController.shared.container.managedObjectModel.entities.compactMap(\.name)).subtracting(["SeenPost"]))
 }

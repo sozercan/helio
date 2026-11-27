@@ -1,27 +1,12 @@
-//
-//  ListBigBtn.swift
-//  Helio
-//
-//  Created by Igor Marcossi on 30/07/23.
-//
-
 import Defaults
 import SwiftUI
 
-/// A button with an icon, label, and optional shiny gradient, used in a list.
 struct ListBigBtn: View {
-  /// The binding for the selected subreddit.
-  /// The icon name.
   var icon: String
-  /// The color of the icon.
   var iconColor: Color
-  /// The label text.
   var label: String
-  /// The shiny gradient applied to the button.
   var shiny: Gradient?
-  /// Its feed shows: the subs list's selection.
   var selected = false
-  /// The action the button will perform.
   var action: () -> Void
 
   @State private var pressed = false
@@ -49,7 +34,6 @@ struct ListBigBtn: View {
         }
       }
       .contentShape(RoundedRectangle(cornerRadius: 13))
-      //    .onChange(of: reset) { _ in active = false }
     }
     .buttonStyle(ButtonPressingProviderStyle(pressed: $pressed))
     .accessibilityAddTraits(selected ? .isSelected : [])

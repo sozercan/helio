@@ -1,9 +1,3 @@
-/// Keeps a large value in a box that copies share until one of them changes it, as an array does,
-/// so the struct holding it stays small. Theme parts and swipe actions are hundreds of bytes each,
-/// and the views that hold them were as big: unoptimized code copies views on the stack many
-/// times as SwiftUI updates them, which deep in a layout, as after rotating, ran Debug builds out
-/// of main-thread stack. Encodes as the value itself, but synthesized coding writes a boxed nil as
-/// null and needs its key, so box an optional only in a type that codes itself.
 @propertyWrapper
 struct Boxed<Value> {
   private final class Box {

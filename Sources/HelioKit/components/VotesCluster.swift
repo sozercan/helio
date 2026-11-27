@@ -1,10 +1,3 @@
-//
-//  VotesCluster.swift
-//  Helio
-//
-//  Created by Daniel Inama on 10/08/23.
-//
-
 import Defaults
 import Pow
 import SwiftUI
@@ -16,19 +9,15 @@ struct VotesKit: Equatable, Identifiable {
   let id: String
 }
 
-/// A cluster consisting of the upvote, downvote button and the amount of upvotes with an optional upvote ratio
 struct VotesCluster: View, Equatable {
   static let verticalWidth: Double = VoteButton.hitSize
   static func == (lhs: VotesCluster, rhs: VotesCluster) -> Bool {
     lhs.votesKit == rhs.votesKit
   }
 
-  ///  var likeRatio: CGFloat? //if the upvote ratio is nil it will be hidden
   var votesKit: VotesKit
-  //  @ObservedObject var post: Post
   var voteAction: (RedditAPI.VoteAction) async -> Bool?
   var vertical = false
-  /// Without the score, it's just the two buttons side by side, like Apollo's post cells.
   var showScore = true
   var showUpVoteRatio: Bool
 
@@ -55,7 +44,6 @@ struct VotesCluster: View, Equatable {
   }
 
   var body: some View {
-    //    let votes = calculateUpAndDownVotes(upvoteRatio: votesKit.ratio, score: votesKit.ups)
     if vertical {
       VotesClusterVertical(id: votesKit.id, likes: votesKit.likes, upvote: upvote, downvote: downvote)
     } else if !showScore {
@@ -90,7 +78,6 @@ struct VotesClusterHorizontal: View, Equatable {
       VoteButton(active: !(likes ?? true), color: .downvote, image: "arrow.down", label: "Downvote", action: downvote)
     }
     .scaleEffect(1)
-    //    .drawingGroup()
   }
 }
 
@@ -127,7 +114,6 @@ struct VotesClusterInfo: View {
 
   @State var flyingNumber: FlyingNumberInfo
   @Environment(\.accessibilityReduceMotion) private var reduceMotion
-  /// The post page's vote colors, which the theme can set (High Contrast does).
   @Environment(\.useTheme) private var theme
 
   init(ups: Int, likes: Bool? = nil, likeRatio: CGFloat? = nil, showUpVoteRatio: Bool) {
@@ -145,7 +131,6 @@ struct VotesClusterInfo: View {
         .foregroundStyle(theme.posts.badge.voteColor(likes, neutral: theme.posts.badge.neutralScoreColor))
         .fontSize(16, .semibold)
         .accessibilityLabel("\(formatBigNumber(ups)) points")
-        // The change floats up from the score; with Reduce Motion the score just updates.
         .changeEffect(
           .rise(origin: UnitPoint(x: 0.75, y: 0.25)) {
             Text(flyingNumber.value > 0 ? "+\(flyingNumber.value)" : "\(flyingNumber.value)")

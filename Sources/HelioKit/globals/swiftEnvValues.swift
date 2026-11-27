@@ -1,10 +1,3 @@
-//
-//  swiftEnvValues.swift
-//  Helio
-//
-//  Created by Igor Marcossi on 08/12/23.
-//
-
 import CoreData
 import Foundation
 import SwiftUI
@@ -96,7 +89,6 @@ extension EnvironmentValues {
     set { self[TabBarHeightKey.self] = newValue }
   }
 
-  /// BehaviorDefSettings.enableSwipeAnywhere, read once at the root instead of per swipeable row.
   var enableSwipeAnywhere: Bool {
     get { self[EnableSwipeAnywhereKey.self] }
     set { self[EnableSwipeAnywhereKey.self] = newValue }
@@ -117,7 +109,6 @@ extension EnvironmentValues {
     set { self[PrimaryBGContextKey.self] = newValue }
   }
 
-  /// The posts split view column this view is in, nil outside it. Pass it to `Nav.to`.
   var navColumn: Router.Column? {
     get { self[NavColumnKey.self] }
     set { self[NavColumnKey.self] = newValue }

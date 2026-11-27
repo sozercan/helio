@@ -1,10 +1,3 @@
-//
-//  defaults.swift
-//  Helio
-//
-//  Created by Igor Marcossi on 26/06/23.
-//
-
 import Defaults
 import Foundation
 import SwiftUI
@@ -38,19 +31,9 @@ extension Defaults.Keys {
   static let PostPageDefSettings = Key<PostPageDefSettings>("PostPageDefSettings", default: .init())
   static let ThemesDefSettings = Key<ThemesDefSettings>("ThemesDefSettings", default: .init())
 
-  /* <Heavy Defaults are kept separated, these should be in CoreData or something> */
-  static let filteredSubreddits = Key<[String]>("filteredSubreddits", default: [])
-  static let likedButNotSubbed = Key<[Subreddit]>("likedButNotSubbed", default: [])
-  /* </Heavy Defaults are kept separated, these should be in CoreData or something> */
-
-  /// Steps content text is moved from the system text size (Settings > Appearance > Text Size).
-  /// Its own key: a new field in an existing settings struct would fail to decode stored values.
   static let contentTextSizeAdjustment = Key<Int>("contentTextSizeAdjustment", default: 0)
 
-  /// Subreddits whose feed is a canvas of thumbnails (`PostLayout.canvas`), by subreddit id.
   static let canvasSubreddits = Key<Set<String>>("canvasSubreddits", default: [])
 
-  /// When each account's subscriptions and multis were last synced at launch, by credential id
-  /// and user name.
   static let subsSyncedAt = Key<[String: Date]>("subsSyncedAt", default: [:])
 }

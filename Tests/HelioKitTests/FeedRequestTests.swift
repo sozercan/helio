@@ -4,7 +4,6 @@ import Synchronization
 import Testing
 @testable import HelioKit
 
-/// Only the injected session uses this protocol; no fixture request reaches the network.
 private class FeedRequestProtocol: URLProtocol, @unchecked Sendable {
   static let requests = Mutex<[URLRequest]>([])
 
@@ -126,8 +125,6 @@ extension FeedRequestTests {
     })
     let manager = FeedItemsManager<SubListingSortOption>(sorting: .best, currentCredential: { selected }, fetchFn: { after, sorting, _, _, context in
       selected = second
-      // Endpoint dispatch crosses an actor boundary while B is selected. Restoring
-      // A before publishing is not enough: the HTTP request itself must use A.
       let result = await api.fetchSubPosts(savedKeyword, limit: context.limit, sort: sorting ?? .best, after: after, altCredential: context.credential)
       selected = first
       guard let result else { return nil }
@@ -165,7 +162,6 @@ extension FeedRequestTests {
   }
 }
 
-/// A multi sort and the listing it should request.
 struct MultiSortCase: Sendable {
   let sort: SubListingSortOption
   let path: String

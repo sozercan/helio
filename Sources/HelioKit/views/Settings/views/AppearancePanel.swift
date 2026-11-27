@@ -1,10 +1,3 @@
-//
-//  AppearancePanel.swift
-//  Helio
-//
-//  Created by Igor Marcossi on 05/07/23.
-//
-
 import Defaults
 import SwiftUI
 
@@ -34,7 +27,6 @@ struct AppearancePanel: View {
           }
         }
 
-        // Themes imported from a file, which the theme engine still loads.
         let saved = themesDefSettings.themesPresets.filter { $0.id != defaultTheme.id }
         if !saved.isEmpty {
           Section("My Themes") {
@@ -59,8 +51,6 @@ struct AppearancePanel: View {
     .navigationBarTitleDisplayMode(.inline)
   }
 
-  /// The applied theme's secondary text, so High Contrast's descriptions reach 7:1 on its rows.
-  /// Apollo's is `Color.secondaryText`.
   private var secondaryText: Color {
     theme.postLinks.theme.badge.statsText.color()
   }
@@ -70,13 +60,10 @@ struct AppearancePanel: View {
   }
 }
 
-/// A theme in the gallery: a preview of its feed in light and dark mode, its name, what it's
-/// for and the modes it changes. Selecting it applies it.
 private struct ThemeRow: View {
   let theme: HelioTheme
   let tag: String
   let selected: Bool
-  /// In the applied theme, not this row's.
   let secondaryText: Color
   let select: () -> Void
 
@@ -119,8 +106,6 @@ private struct ThemeRow: View {
   }
 }
 
-/// A small feed drawn in a theme's colors for one color scheme: two posts, their titles and meta
-/// lines, and the divider between them.
 private struct ThemeSwatch: View {
   let theme: HelioTheme
   let scheme: ColorScheme
@@ -162,7 +147,6 @@ private struct ThemeSwatch: View {
   }
 }
 
-/// Moves content text (posts, comments, link previews) a few steps from the system text size.
 private struct TextSizeControl: View {
   @Binding var adjustment: Int
   let titleSize: CGFloat

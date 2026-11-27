@@ -1,10 +1,3 @@
-//
-//  redditURLParser.swift
-//  Helio
-//
-//  Created by Igor Marcossi on 29/07/23.
-//
-
 import Foundation
 
 enum RedditURLType: Equatable, Hashable {
@@ -16,7 +9,6 @@ enum RedditURLType: Equatable, Hashable {
   case other(link: String)
 }
 
-/// Placeholder host that `helioapp://` links are rewritten to so they parse like web links.
 private let appLinkHost = "app.helio.local"
 
 func parseRedditURL(_ rawUrlString: String) -> RedditURLType {
@@ -34,7 +26,6 @@ func parseRedditURL(_ rawUrlString: String) -> RedditURLType {
     case "r":
       let subredditName = pathComponents[1]
       if pathComponents.count > 2, pathComponents[2] == "comments" {
-        // A subreddit's comments listing (`/r/<sub>/comments`) has no post to open.
         guard pathComponents.count > 3 else { return .other(link: urlString) }
         let postId = pathComponents[3]
         if pathComponents.count >= 6 {

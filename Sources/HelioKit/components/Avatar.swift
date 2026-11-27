@@ -1,10 +1,3 @@
-//
-//  Avatar.swift
-//  Helio
-//
-//  Created by Igor Marcossi on 28/06/23.
-//
-
 import Nuke
 import NukeUI
 import SwiftUI

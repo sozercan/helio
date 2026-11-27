@@ -1,10 +1,3 @@
-//
-//  LoadingStateProvider.swift
-//  Helio
-//
-//  Created by Igor Marcossi on 14/02/24.
-//
-
 import SwiftUI
 
 struct LoadingStateProvider<C: View>: View {

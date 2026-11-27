@@ -1,10 +1,3 @@
-//
-//  ButtonPressingProviderStyle.swift
-//  Helio
-//
-//  Created by Igor Marcossi on 01/01/24.
-//
-
 import SwiftUI
 
 struct ButtonPressingProviderStyle: ButtonStyle {

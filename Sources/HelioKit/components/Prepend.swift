@@ -1,10 +1,3 @@
-//
-//  Prepend.swift
-//  Helio
-//
-//  Created by Igor Marcossi on 08/10/23.
-//
-
 import Foundation
 import SwiftUI
 import SwiftyUI
@@ -16,8 +9,6 @@ struct PrependTag: Hashable, Equatable {
   let textColor: UIColor
 }
 
-/// The feed title with its tags, in fonts scaled for `dynamicTypeSize` like `getPostDimensions` measures them.
-/// Uncolored flair is drawn in `uncoloredFlair`'s colors when the theme sets them.
 func createTitleTagsAttrString(titleTheme: ThemeText, postData: PostData, textColor: UIColor, uncoloredFlair: PostLinkTheme.TitleFlair? = nil, dynamicTypeSize: DynamicTypeSize = ContentTextScale.dynamicTypeSize) -> NSAttributedString {
   let tagFont = ContentTextScale.font(ofSize: Double(((titleTheme.size - 2) * 100) / 120), weight: .semibold, relativeTo: .title, dynamicTypeSize: dynamicTypeSize)
   let titleFont = ContentTextScale.font(ofSize: titleTheme.size, weight: titleTheme.weight.ut, relativeTo: .title, dynamicTypeSize: dynamicTypeSize)
@@ -77,12 +68,9 @@ func createTitleTagsAttrString(titleTheme: ThemeText, postData: PostData, textCo
 }
 
 func buildTitleWithTags(attrString: NSAttributedString, title: String, color: UIColor, size: CGSize) -> SwiftyLabel {
-//  let text = UITextView(usingTextLayoutManager: false)
   let text = SwiftyLabel()
   text.frame = .init(x: 0, y: 0, width: size.width, height: size.height)
 
-//  text.layer.shouldRasterize = true
-//  text.layer.rasterizationScale = UIScreen.main.scale
   text.textColor = color
   text.textAlignment = .topLeft
   text.backgroundColor = .clear
@@ -92,11 +80,9 @@ func buildTitleWithTags(attrString: NSAttributedString, title: String, color: UI
   text.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
   text.translatesAutoresizingMaskIntoConstraints = false
   text.attributedText = titleColored(attrString, title: title, color: color)
-//  text.sizeToFit()
   return text
 }
 
-/// The title with `color`, leaving the tags after it as they are.
 private func titleColored(_ attrString: NSAttributedString, title: String, color: UIColor) -> NSAttributedString {
   let colored = NSMutableAttributedString(attributedString: attrString)
   let range = NSRange(location: 0, length: min((title as NSString).length, colored.length))
@@ -110,7 +96,6 @@ struct Prepend: UIViewRepresentable, Equatable {
   }
 
   final class Coordinator {
-    /// The string the label shows, before coloring: a new one (another text size) replaces it.
     var attrString: NSAttributedString?
   }
 
@@ -135,7 +120,5 @@ struct Prepend: UIViewRepresentable, Equatable {
       context.coordinator.attrString = attrString
       uiLabel.attributedText = titleColored(attrString, title: title, color: color)
     }
-//    if size != uiLabel.frame.size { uiLabel.frame.size = size }
-//    if !(uiLabel.attributedText?.isEqual(to: attrString) ?? false) { uiLabel.attributedText = attrString }
   }
 }

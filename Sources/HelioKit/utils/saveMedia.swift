@@ -1,10 +1,3 @@
-//
-//  saveMedia.swift
-//  Helio
-//
-//  Created by Igor Marcossi on 12/07/23.
-//
-
 import Foundation
 import Nuke
 import Photos

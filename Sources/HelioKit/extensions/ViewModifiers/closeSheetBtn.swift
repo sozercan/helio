@@ -1,10 +1,3 @@
-//
-//  closeSheetBtn.swift
-//  Helio
-//
-//  Created by Igor Marcossi on 31/08/23.
-//
-
 import SwiftUI
 
 extension View {
@@ -15,8 +8,6 @@ extension View {
           Image(systemName: "xmark.circle.fill")
             .fontSize(24)
             .opacity(0.5)
-            // A 44pt target, extending below the top edge of iPad form sheets, where taps
-            // on the bare 24pt icon never reached the button.
             .frame(width: 44, height: 44)
             .contentShape(Rectangle())
         }

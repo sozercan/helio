@@ -1,10 +1,3 @@
-//
-//  fetchComments.swift
-//  Helio
-//
-//  Created by Igor Marcossi on 28/06/23.
-//
-
 import Alamofire
 import Foundation
 
@@ -31,7 +24,16 @@ extension RedditAPI {
     }
   }
 
-  typealias FetchPostCommentsResponse = [Either<Listing<PostData>, Listing<CommentData>>?]
+  struct FetchPostCommentsResponse: Decodable {
+    let post: Listing<PostData>?
+    let comments: Listing<CommentData>?
+
+    init(from decoder: Decoder) throws {
+      var container = try decoder.unkeyedContainer()
+      post = container.isAtEnd ? nil : try container.decode(Listing<PostData>?.self)
+      comments = container.isAtEnd ? nil : try container.decode(Listing<CommentData>?.self)
+    }
+  }
 
   struct FetchPostCommentsPayload: Codable {
     var sort: String

@@ -1,10 +1,3 @@
-//
-//  getPostContentWidth.swift
-//  Helio
-//
-//  Created by Igor Marcossi on 24/09/23.
-//
-
 import Defaults
 import Foundation
 import SwiftUI
@@ -15,7 +8,6 @@ func getPostContentWidth(contentWidth: Double = .screenW, secondary: Bool = fals
   return contentWidth - (((theme.innerPadding.horizontal * (secondary ? 2 : 1)) + theme.outerHPadding) * 2)
 }
 
-/// Flat, edge-to-edge cells run images and videos to the cell edges, like Apollo. Cards keep them inset.
 func isFullBleedMedia(_ media: MediaExtractedType?, theme: PostLinkTheme, secondary: Bool, compact: Bool) -> Bool {
   guard !compact, !secondary, theme.outerHPadding == 0 else { return false }
   switch media {
@@ -98,9 +90,6 @@ func getPostDimensions(post: Post, helioData: PostHelioData? = nil, columnWidth:
     } else {
       if let extractedMedia {
         func defaultMediaSize(_ size: CGSize, width: CGFloat) -> CGSize {
-          // Square when Reddit gives no dimensions, like the media views, so the row doesn't
-          // start empty and jump once the media loads. Not the cached layout's size: it was
-          // capped to the window height, so it isn't the media's shape.
           let knownSize = size.width > 0 && size.height > 0 ? size : CGSize(width: width, height: width)
           let sourceHeight = knownSize.height
           let sourceWidth = knownSize.width
@@ -152,12 +141,10 @@ func getPostDimensions(post: Post, helioData: PostHelioData? = nil, columnWidth:
       }
     }
 
-    // Text posts without a placeholder thumbnail get no thumbnail column.
     let compactTitleWidth = postGeneralSpacing + VotesCluster.verticalWidth + (ACC_mediaSize.width > 0 ? postGeneralSpacing + ACC_mediaSize.width : 0)
 
     let titleContentWidth = contentWidth - (compact ? compactTitleWidth : 0)
 
-    // Scaled like `createTitleTagsAttrString` draws them.
     func scaledFont(_ size: CGFloat, _ weight: UIFont.Weight, _ role: ContentTextScale.Role) -> UIFont {
       ContentTextScale.font(ofSize: size, weight: weight, relativeTo: role, dynamicTypeSize: dynamicTypeSize)
     }
@@ -180,7 +167,7 @@ func getPostDimensions(post: Post, helioData: PostHelioData? = nil, columnWidth:
     }
     ACC_titleHeight = round(titleAttr.boundingRect(with: CGSize(width: titleContentWidth, height: .infinity), options: [.usesLineFragmentOrigin], context: nil).height)
 
-    if !body.isEmpty && !compact {
+    if !body.isEmpty, !compact {
       let bodyFont = scaledFont(theme.bodyText.size, theme.bodyText.weight.ut, .body)
       ACC_bodyHeight = round(NSString(string: body).boundingRect(with: CGSize(width: contentWidth, height: (bodyFont.pointSize * 1.2) * 3), options: [.usesLineFragmentOrigin, .truncatesLastVisibleLine], attributes: [.font: bodyFont], context: nil).height)
     }
@@ -204,10 +191,6 @@ func getPostDimensions(post: Post, helioData: PostHelioData? = nil, columnWidth:
     let theresBadge = true
     let elements = [theresTitle, theresSelftext, !compact && theresMedia, theresSubDivider, theresBadge]
     let ACC_allSpacingsHeight = Double(elements.filter(\.self).count - 1) * postGeneralSpacing
-
-    //    let ACC_verticalPadding = theme.innerPadding.vertical * 2
-
-    //    let totalHeight = ACC_titleHeight + ACC_bodyHeight + ACC_mediaSize.height + ACC_SubDividerHeight + ACC_badgeHeight + ACC_verticalPadding + ACC_allSpacingsHeight
 
     return PostDimensions(
       contentWidth: contentWidth,

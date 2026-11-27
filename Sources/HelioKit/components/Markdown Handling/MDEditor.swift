@@ -1,10 +1,3 @@
-//
-//  MDEditor.swift
-//  Helio
-//
-//  Created by Igor Marcossi on 27/07/23.
-//
-
 import HighlightedTextEditor
 import SwiftUI
 
@@ -39,11 +32,6 @@ struct MDEditor: View {
       TextEditor(text: $text)
         .scrollContentBackground(.hidden)
         .background(.clear)
-      // The HighlightedTextEditor package currently does not integrate well with iOS 17's predictive text. It will be disabled until that issue is remedied.
-      // HighlightedTextEditor(text: $text, highlightRules: helioMDEditorPreset)
-//          .introspect { editor in
-//            editor.textView.backgroundColor = .clear
-//          }
     }
     .animation(nil, value: text.isEmpty)
   }

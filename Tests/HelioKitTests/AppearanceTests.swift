@@ -4,7 +4,6 @@ import Testing
 @testable import HelioKit
 
 struct ThemePresetTests {
-  /// WCAG contrast ratio between two opaque colors.
   private func contrast(_ a: ThemeColor, _ b: ThemeColor) -> Double {
     func luminance(_ color: ThemeColor) -> Double {
       let value = Int(color.hex, radix: 16) ?? 0
@@ -25,7 +24,6 @@ struct ThemePresetTests {
     #expect(ThemePreset.all.allSatisfy { !$0.theme.metadata.name.isEmpty && !$0.theme.metadata.description.isEmpty })
   }
 
-  /// A different `general` asks for a restart (`AppContent`), so presets never change it.
   @Test func presetsSwitchWithoutARestart() {
     #expect(ThemePreset.all.allSatisfy { $0.theme.general == defaultTheme.general })
   }
@@ -37,7 +35,6 @@ struct ThemePresetTests {
       #expect(colors.dark.hex == "000000")
     }
     #expect(theme.lists.bg == .color(.init(light: .init(hex: "F2F3F7"), dark: .init(hex: "000000"))))
-    // Light mode is untouched.
     #expect(theme.postLinks.theme.bg.color.light == defaultTheme.postLinks.theme.bg.color.light)
     #expect(theme.postLinks.divider.color.light == defaultTheme.postLinks.divider.color.light)
     #expect(theme.lists.foreground.color.light == defaultTheme.lists.foreground.color.light)
@@ -48,50 +45,41 @@ struct ThemePresetTests {
     let theme = ThemePreset.highContrast.theme
     let cell = theme.postLinks.theme.bg.color
     let badge = theme.postLinks.theme.badge
-    // Comments draw OP names in their badge's `subColor`.
     let texts = [theme.postLinks.theme.titleText.color, theme.postLinks.theme.bodyText.color, badge.authorText.color, badge.statsText.color, theme.comments.theme.bodyText.color, theme.comments.theme.badge.statsText.color, theme.comments.theme.badge.subColor]
     for text in texts {
       #expect(contrast(text.light, cell.light) >= 7)
       #expect(contrast(text.dark, cell.dark) >= 7)
     }
-    // Flair text on its own background.
     #expect(contrast(badge.flairText.color.light, badge.flairBackground.light) >= 7)
     #expect(contrast(badge.flairText.color.dark, badge.flairBackground.dark) >= 7)
-    // Separators on the cells, and list separators on Settings' rows too.
     for divider in [theme.lists.dividersColors, theme.comments.theme.indentColor] {
       #expect(contrast(divider.light, cell.light) >= 3)
       #expect(contrast(divider.dark, cell.dark) >= 3)
     }
     let row = theme.lists.foreground.color
-    // Settings > Appearance's descriptions, in the applied theme's secondary text.
     #expect(contrast(badge.statsText.color.light, row.light) >= 7)
     #expect(contrast(badge.statsText.color.dark, row.dark) >= 7)
     #expect(contrast(theme.lists.dividersColors.light, row.light) >= 3)
     #expect(contrast(theme.lists.dividersColors.dark, row.dark) >= 3)
-    // The feed's divider between posts.
     let feedDivider = theme.postLinks.divider
     #expect(feedDivider.style != .no)
     #expect(contrast(feedDivider.color.light, cell.light) >= 3)
     #expect(contrast(feedDivider.color.dark, cell.dark) >= 3)
-    // Comments' depth bars, which comments draw instead of `indentColor` while there are any.
     let comment = theme.comments.theme.bg
     #expect(!theme.comments.theme.indentColors.isEmpty)
     for bar in theme.comments.theme.indentColors {
       #expect(contrast(bar.light, comment.light) >= 3)
       #expect(contrast(bar.dark, comment.dark) >= 3)
     }
-    // Quoted text in posts and comments.
     for (quote, bg) in [(theme.posts.quoteText, cell), (theme.comments.theme.quoteText, comment)] {
       #expect(contrast(quote.light, bg.light) >= 7)
       #expect(contrast(quote.dark, bg.dark) >= 7)
     }
-    // Links in posts and comments, which the app's shared accent color would draw at 4:1.
     for (link, bg) in [(theme.posts.linkText, cell), (theme.comments.theme.linkText, comment)] {
       let link = try #require(link)
       #expect(contrast(link.light, bg.light) >= 7)
       #expect(contrast(link.dark, bg.dark) >= 7)
     }
-    // Voted scores under posts and over comments, which Apollo's fixed colors draw at about 4.9:1.
     for (badge, bg) in [(theme.postLinks.theme.badge, cell), (theme.comments.theme.badge, comment)] {
       for vote in [badge.upvoteText, badge.downvoteText] {
         let vote = try #require(vote)
@@ -99,47 +87,36 @@ struct ThemePresetTests {
         #expect(contrast(vote.dark, bg.dark) >= 7)
       }
     }
-    // The post page's unvoted score and upvote ratio, grey (about 3.5:1) elsewhere.
     let score = try #require(theme.posts.badge.scoreText)
     #expect(contrast(score.light, cell.light) >= 7)
     #expect(contrast(score.dark, cell.dark) >= 7)
-    // New-comment counts under posts and over comments, which the app's shared accent color would draw at 4:1.
     for (badge, bg) in [(theme.postLinks.theme.badge, cell), (theme.comments.theme.badge, comment)] {
       let count = try #require(badge.newCommentsText)
       #expect(contrast(count.light, bg.light) >= 7)
       #expect(contrast(count.dark, bg.dark) >= 7)
     }
-    // Uncolored flair in feed titles on its pill, the same in both modes: the translucent grey is about 3.3:1.
     let titleFlair = try #require(theme.postLinks.theme.titleFlair)
     #expect(titleFlair.text.alpha == 1 && titleFlair.background.alpha == 1)
     #expect(contrast(titleFlair.text, titleFlair.background) >= 7)
-    // The NSFW tag, white on a translucent red (about 3.5:1) elsewhere.
     let nsfw = try #require(titleFlair.nsfwBackground)
     #expect(nsfw.alpha == 1)
     #expect(contrast(titleFlair.text, nsfw) >= 7)
-    // Comments' "load more" on its grey.
     let loadMore = theme.comments.theme
     #expect(contrast(loadMore.loadMoreText.color.light, loadMore.loadMoreBackground.light) >= 7)
     #expect(contrast(loadMore.loadMoreText.color.dark, loadMore.loadMoreBackground.dark) >= 7)
-    // Stronger than Apollo's.
     #expect(contrast(theme.postLinks.theme.bodyText.color.light, cell.light) > contrast(defaultTheme.postLinks.theme.bodyText.color.light, cell.light))
   }
 
-  /// Quotes, links and "load more" stay Apollo's in Apollo and True Black.
   @Test func apolloAndTrueBlackKeepApollosQuotesAndAccent() {
     for theme in [ThemePreset.apollo.theme, ThemePreset.trueBlack.theme] {
       #expect(theme.posts.quoteText == apolloQuote)
       #expect(theme.comments.theme.quoteText == apolloQuote)
-      // No link color: links keep the app's accent color.
       #expect(theme.posts.linkText == nil)
       #expect(theme.comments.theme.linkText == nil)
-      // No vote colors: scores keep the app's upvote and downvote colors.
       #expect(theme.postLinks.theme.badge.upvoteText == nil)
       #expect(theme.comments.theme.badge.downvoteText == nil)
-      // No new-comment color or title flair colors: the app's accent and the translucent grey pill.
       #expect(theme.postLinks.theme.badge.newCommentsText == nil)
       #expect(theme.comments.theme.badge.newCommentsText == nil)
-      // Unvoted scores on the post page stay grey.
       #expect(theme.posts.badge.scoreText == nil)
       #expect(theme.postLinks.theme.titleFlair == nil)
       #expect(theme.comments.theme.loadMoreText.color == themeAccentColor)
@@ -166,7 +143,6 @@ struct ThemePresetTests {
 }
 
 struct TextSizeAdjustmentTests {
-  /// Mac Catalyst has no Dynamic Type, so it starts from the default size whatever it's given.
   @Test func noAdjustmentKeepsTheSystemSize() {
     for size in DynamicTypeSize.allCases {
       #if targetEnvironment(macCatalyst)
@@ -191,17 +167,14 @@ struct TextSizeAdjustmentTests {
   @Test func adjustmentStaysWithinDynamicTypeAndItsRange() {
     #expect(ContentTextScale.adjusted(.small, by: -3) == .xSmall)
     #if targetEnvironment(macCatalyst)
-      // From the default size, the slider's largest step stops short of the largest size.
       #expect(ContentTextScale.adjusted(.accessibility4, by: 5) == .accessibility2)
     #else
       #expect(ContentTextScale.adjusted(.accessibility4, by: 5) == .accessibility5)
     #endif
-    // Out-of-range stored values are clamped to the slider's range.
     #expect(ContentTextScale.adjusted(.large, by: 40) == ContentTextScale.adjusted(.large, by: ContentTextScale.adjustmentRange.upperBound))
     #expect(ContentTextScale.adjusted(.large, by: -40) == .xSmall)
   }
 
-  /// Mac Catalyst scales by iOS's body sizes, since `UIFontMetrics` doesn't scale there.
   @Test func macScaleFollowsTheBodySizes() {
     #expect(ContentTextScale.macScale(.large) == 1)
     let scales = DynamicTypeSize.allCases.map(ContentTextScale.macScale)
@@ -255,11 +228,9 @@ struct TextSizeAndThemeRelayoutTests {
     #expect(after !== before)
     #expect(post.helioData?.layoutTitleStyle == highContrast.postLinks.theme.titleStyle)
 
-    // The same theme again keeps it.
     post.relayout(contentWidth: 400, theme: highContrast)
     #expect(post.helioData?.titleAttr === after)
 
-    // Another flair color alone draws it again too.
     var noFlairColor = highContrast
     noFlairColor.postLinks.theme.titleFlair = nil
     post.relayout(contentWidth: 400, theme: noFlairColor)

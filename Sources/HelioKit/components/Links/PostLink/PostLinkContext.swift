@@ -1,10 +1,3 @@
-//
-//  PostLinkContext.swift
-//  Helio
-//
-//  Created by Igor Marcossi on 24/09/23.
-//
-
 import SwiftUI
 
 struct PostLinkContextPreview: View {
@@ -20,9 +13,6 @@ struct PostLinkContextPreview: View {
 struct PostLinkContext: View {
   var post: Post
   var body: some View {
-    //        if let perma = post.helioData?.permaURL {
-    //          ShareLink(item: perma) { Label("Share", systemImage: "square.and.arrow.up") }
-    //        }
     ForEach(allPostSwipeActions) { action in
       let active = action.active(post)
       if action.enabled(post) {

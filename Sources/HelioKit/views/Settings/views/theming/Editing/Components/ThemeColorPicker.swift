@@ -1,10 +1,3 @@
-//
-//  ThemeColorPicker.swift
-//  Helio
-//
-//  Created by Igor Marcossi on 09/09/23.
-//
-
 import SwiftUI
 
 struct ThemeColorPicker: View {

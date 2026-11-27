@@ -1,10 +1,3 @@
-//
-//  Pixelate.metal
-//  Helio
-//
-//  Created by daniel on 22/11/23.
-//
-
 #include <metal_stdlib>
 #include "SwiftUI/SwiftUI_Metal.h"
 using namespace metal;

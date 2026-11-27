@@ -1,10 +1,3 @@
-//
-//  newReply.swift
-//  Helio
-//
-//  Created by Igor Marcossi on 04/07/23.
-//
-
 import Alamofire
 import Foundation
 
@@ -15,7 +8,6 @@ extension RedditAPI {
     case .success:
       return true
     case .failure:
-      //        print(error)
       return nil
     }
   }

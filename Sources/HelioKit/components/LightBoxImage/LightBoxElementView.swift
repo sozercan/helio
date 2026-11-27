@@ -1,27 +1,15 @@
-//
-//  LightBoxElementView.swift
-//  Helio
-//
-//  Created by Igor Marcossi on 07/08/23.
-//
-
 import NukeUI
 import SwiftUI
 
 struct LightBoxElementView: View {
   var el: ImgExtracted
-  /// The page's width, the lightbox's.
   var width: CGFloat
-  /// The post's title, VoiceOver's label for the image.
   var label: String?
   var onTap: (() -> Void)?
-  /// A two-finger trackpad swipe sideways, by -1 (back) or 1 (on).
   var onSwipe: ((Int) -> Void)?
-  /// A held drag on a GIF, which scrubs it.
   var onHold: ((LightBoxScrub) -> Void)?
   var doLiveText: Bool
   var showOverlay: Bool
-  /// Set when a sideways swipe scrubs this GIF.
   var gifScrubber: GIFScrubber?
   @Binding var isPinching: Bool
   @State private var altSize: CGSize = .zero
@@ -40,8 +28,6 @@ struct LightBoxElementView: View {
   }
 }
 
-/// One labeled image for VoiceOver. With Live Text on, the image's recognized text and codes stay
-/// reachable inside it instead of being folded into the label.
 private struct LightBoxImageAccessibility: ViewModifier {
   var label: String
   var keepsLiveText: Bool

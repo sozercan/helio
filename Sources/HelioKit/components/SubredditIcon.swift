@@ -1,33 +1,7 @@
-//
-//  SubredditIcon.swift
-//  Helio
-//
-//  Created by Igor Marcossi on 13/07/23.
-//
-
 import Foundation
 import Nuke
 import NukeUI
 import SwiftUI
-
-// struct SubredditBaseIcon: View {
-//  let name: String
-//  let iconURLStr: String?
-//  var size: CGFloat = 30
-//  let color: String?
-//
-////  private static let pipeline = ImagePipeline {
-////    $0.dataLoader = DataLoader(configuration: {
-////      DataLoader.defaultConfiguration
-////    }())
-////
-////    $0.imageCache = ImageCache()
-////    $0.dataCache = try? DataCache(name: "com.sertacozercan.helio-cache")
-////  }
-//
-//  var body: some View {
-//  }
-// }
 
 struct SubredditIconKit {
   var url: String?
@@ -40,7 +14,6 @@ struct SubredditIcon: View {
   var size: CGFloat = 30
   var body: some View {
     if let icon = subredditIconKit.url, !icon.isEmpty, let iconURL = URL(string: icon) {
-//      LazyImage(url: iconURL, transaction: Transaction(animation: .default)) { state in
       LazyImage(url: iconURL) { state in
         if let image = state.image {
           image.resizable()
@@ -56,7 +29,6 @@ struct SubredditIcon: View {
         }
       }
       .processors([.resize(width: size)])
-//      .pipeline(SubredditBaseIcon.pipeline)
       .scaledToFill()
       .frame(width: size, height: size)
       .mask(Circle())

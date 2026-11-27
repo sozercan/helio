@@ -1,10 +1,3 @@
-//
-//  CommentLink.swift
-//  Helio
-//
-//  Created by Igor Marcossi on 28/06/23.
-//
-
 import Defaults
 import SwiftUI
 
@@ -86,7 +79,6 @@ struct CommentLink: View, Equatable {
             let childrenCount = children.count
             if let childCommentHelioData = commentChild.helioData {
               CommentLink(post: post, arrowKinds: arrowKinds.map(\.child) + [childrenCount - 1 == index ? ArrowKind.curve : ArrowKind.straightCurve], postFullname: postFullname, seenComments: seenComments, parentElement: .comment(comment), comment: commentChild, commentHelioData: childCommentHelioData, children: commentChild.childrenHelio)
-              //                .equatable()
             }
           }
         }

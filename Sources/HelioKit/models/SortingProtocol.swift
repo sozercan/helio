@@ -1,10 +1,3 @@
-//
-//  SortingProtocol.swift
-//  Helio
-//
-//  Created by Igor Marcossi on 24/01/24.
-//
-
 import Defaults
 import Foundation
 

@@ -1,10 +1,3 @@
-//
-//  PostThemingPanel.swift
-//  Helio
-//
-//  Created by Igor Marcossi on 07/09/23.
-//
-
 import Defaults
 import SwiftUI
 

@@ -1,10 +1,3 @@
-//
-//  ReplyModal.swift
-//  Helio
-//
-//  Created by Igor Marcossi on 02/07/23.
-//
-
 import Defaults
 import HighlightedTextEditor
 import NukeUI
@@ -130,10 +123,17 @@ struct ReplyModal<Content: View>: View {
     NavigationStack {
       ScrollView {
         VStack(spacing: 12) {
+          if PersistenceController.shared.storeLoadStatus == .inMemoryFallback {
+            Label("Local storage is temporarily unavailable; drafts will not be saved after relaunch.", systemImage: "exclamationmark.triangle.fill")
+              .font(.footnote)
+              .foregroundStyle(.orange)
+              .frame(maxWidth: .infinity, alignment: .leading)
+              .padding(10)
+              .background(Color.orange.opacity(0.12), in: RoundedRectangle(cornerRadius: 12))
+          }
           VStack(alignment: .leading) {
-            if let me = RedditAPI.shared.me?.data, let avatarLink = me.icon_img ?? me.snoovatar_img, let rootURL = rootURLString(avatarLink), let avatarURL = URL(string: rootURL) {
+            if let me = RedditCredentialsManager.profile.user?.data, let avatarLink = me.icon_img ?? me.snoovatar_img, let rootURL = rootURLString(avatarLink), let avatarURL = URL(string: rootURL) {
               BadgeView(avatarRequest: ImageRequest(url: avatarURL), saved: false, author: me.name, userFlair: "", created: Date().timeIntervalSince1970, avatarURL: me.icon_img ?? me.snoovatar_img, theme: selectedTheme.comments.theme.badge, commentsCount: "0", votesCount: "0")
-//              BadgeOpt(avatarRequest: ImageRequest(url: avatarURL), badgeKit: .init(numComments: 0, ups: 0, saved: false, author: me.name, authorFullname: "t2_\(me.id)", userFlair: "", created: Date().timeIntervalSince1970), avatarURL: me.icon_img ?? me.snoovatar_img, theme: selectedTheme.comments.theme.badge)
             }
             MDEditor(text: $textWrapper.replyText)
           }
@@ -202,7 +202,7 @@ struct ReplyModal<Content: View>: View {
       }
       .onAppear {
         Task(priority: .utility) {
-          if RedditAPI.shared.me == nil {
+          if RedditCredentialsManager.profile.user == nil {
             await RedditCredentialsManager.profile.refresh()
           }
         }
@@ -219,7 +219,6 @@ struct ReplyModal<Content: View>: View {
         }
       }
       .toolbar {
-        // Closing keeps the draft; discarding deletes it.
         ToolbarItem(placement: .cancellationAction) {
           Button(role: .close) {
             withAnimation(spring) {
@@ -253,9 +252,7 @@ struct ReplyModal<Content: View>: View {
       .navigationBarTitleDisplayMode(.inline)
       .navigationTitle(title)
     }
-    // Keeps the menu bar's Post commands from moving off the post, which would close the reply.
     .commandTarget(CommandTargets.Target(kind: .modal))
-    // A blurry theme gets the system's glass sheet; only an opaque theme color replaces it.
     .if(!selectedTheme.general.modalsBG.blurry) { $0.presentationBackground(selectedTheme.general.modalsBG.color()) }
     .presentationDetents([.large, .fraction(0.75), .medium, collapsedPresentation], selection: $selection)
     .presentationBackgroundInteraction(.enabled)

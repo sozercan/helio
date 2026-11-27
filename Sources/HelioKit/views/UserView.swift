@@ -1,10 +1,3 @@
-//
-//  UserView.swift
-//  Helio
-//
-//  Created by Igor Marcossi on 01/07/23.
-//
-
 import Defaults
 import NukeUI
 import SwiftUI
@@ -14,11 +7,11 @@ struct UserView: View {
   @Default(.SubredditFeedDefSettings) private var subFeedSettings
   @Environment(\.useTheme) private var selectedTheme
 
-  @State private var dataTypeFilter: String = "" // Handles filtering for only posts or only comments.
+  @State private var dataTypeFilter: String = ""
   @State private var forceRefresh = false
 
   func fetcher(_ after: String?, _ sorting: SubListingSortOption?, _ searchQuery: String?, _ flair: String?, _ context: FeedItemsManager<SubListingSortOption>.FetchContext) async -> ([RedditEntityType]?, String?)? {
-    if let overviewDataResult = await user.refetchOverview(dataTypeFilter, after, limit: context.limit, altCredential: context.credential), let overviewData = overviewDataResult.0 {
+    if let overviewDataResult = await user.refetchOverview(dataTypeFilter, after, contentWidth: context.contentWidth, limit: context.limit, altCredential: context.credential), let overviewData = overviewDataResult.0 {
       Task { await user.redditAPI.updateOverviewSubjectsWithAvatar(subjects: overviewData, avatarSize: selectedTheme.postLinks.theme.badge.avatar.size) }
 
       let newData: [RedditEntityType]? = overviewData.compactMap {
@@ -44,7 +37,6 @@ struct UserView: View {
               if let bannerImgFull = data.subreddit?.banner_img, !bannerImgFull.isEmpty, let bannerImg = URL(string: String(bannerImgFull.split(separator: "?")[0])) {
                 URLImage(url: bannerImg)
                   .scaledToFill()
-                  // As wide as the header, which follows the column as it resizes.
                   .frame(maxWidth: .infinity, minHeight: 160, maxHeight: 160)
                   .mask(RR(16, Color.black))
               }
@@ -66,49 +58,70 @@ struct UserView: View {
             }
 
             VStack {
+              let accentColor = selectedTheme.general.accentColor()
               HStack {
                 if let postKarma = data.link_karma {
-                  DataBlock(icon: "highlighter", label: "Post karma",
-                            value: "\(formatBigNumber(postKarma))") // maybe switch this to use the theme colors?
-                    .transition(.opacity)
-                    .onTapGesture {
-                      withAnimation(.easeInOut(duration: 0.2)) {
-                        if dataTypeFilter == "posts" {
-                          dataTypeFilter = ""
-                        } else {
-                          dataTypeFilter = "posts"
-                        }
+                  DataBlock(
+                    icon: "highlighter",
+                    label: "Post karma",
+                    value: "\(formatBigNumber(postKarma))",
+                    iconColor: accentColor,
+                    labelColor: selectedTheme.postLinks.theme.badge.statsText.color(),
+                    valueColor: selectedTheme.postLinks.theme.titleText.color(),
+                  )
+                  .transition(.opacity)
+                  .onTapGesture {
+                    withAnimation(.easeInOut(duration: 0.2)) {
+                      if dataTypeFilter == "posts" {
+                        dataTypeFilter = ""
+                      } else {
+                        dataTypeFilter = "posts"
                       }
                     }
-                    .overlay(dataTypeFilter == "posts" ?
-                      Color.accentColor.opacity(0.2)
-                      .clipShape(RoundedRectangle(cornerRadius: 20))
-                      .allowsHitTesting(false)
-                      : nil)
+                  }
+                  .overlay(dataTypeFilter == "posts" ?
+                    accentColor.opacity(0.2)
+                    .clipShape(RoundedRectangle(cornerRadius: 20))
+                    .allowsHitTesting(false)
+                    : nil)
                 }
 
                 if let commentKarma = data.comment_karma {
-                  DataBlock(icon: "checkmark.message.fill", label: "Comment karma", value: "\(formatBigNumber(commentKarma))")
-                    .transition(.opacity)
-                    .onTapGesture {
-                      withAnimation(.easeInOut(duration: 0.2)) {
-                        if dataTypeFilter == "comments" {
-                          dataTypeFilter = ""
-                        } else {
-                          dataTypeFilter = "comments"
-                        }
+                  DataBlock(
+                    icon: "checkmark.message.fill",
+                    label: "Comment karma",
+                    value: "\(formatBigNumber(commentKarma))",
+                    iconColor: accentColor,
+                    labelColor: selectedTheme.postLinks.theme.badge.statsText.color(),
+                    valueColor: selectedTheme.postLinks.theme.titleText.color(),
+                  )
+                  .transition(.opacity)
+                  .onTapGesture {
+                    withAnimation(.easeInOut(duration: 0.2)) {
+                      if dataTypeFilter == "comments" {
+                        dataTypeFilter = ""
+                      } else {
+                        dataTypeFilter = "comments"
                       }
                     }
-                    .overlay(dataTypeFilter == "comments" ?
-                      Color.accentColor.opacity(0.2)
-                      .clipShape(RoundedRectangle(cornerRadius: 20))
-                      .allowsHitTesting(false)
-                      : nil)
+                  }
+                  .overlay(dataTypeFilter == "comments" ?
+                    accentColor.opacity(0.2)
+                    .clipShape(RoundedRectangle(cornerRadius: 20))
+                    .allowsHitTesting(false)
+                    : nil)
                 }
               }
               if let created = data.created {
-                DataBlock(icon: "star.fill", label: "User since", value: "\(Date(timeIntervalSince1970: TimeInterval(created)).toFormat("MMM dd, yyyy"))")
-                  .transition(.opacity)
+                DataBlock(
+                  icon: "star.fill",
+                  label: "User since",
+                  value: "\(Date(timeIntervalSince1970: TimeInterval(created)).toFormat("MMM dd, yyyy"))",
+                  iconColor: accentColor,
+                  labelColor: selectedTheme.postLinks.theme.badge.statsText.color(),
+                  valueColor: selectedTheme.postLinks.theme.titleText.color(),
+                )
+                .transition(.opacity)
               }
             }
             .fixedSize(horizontal: false, vertical: true)

@@ -1,10 +1,3 @@
-//
-//  ClosestNumber.swift
-//  Helio
-//
-//  Created by Igor Marcossi on 14/09/23.
-//
-
 import Foundation
 
 extension [CGFloat] {

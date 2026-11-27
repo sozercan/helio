@@ -1,19 +1,7 @@
-//
-//  ScreenAction.swift
-//  Helio
-//
-//  A screen's own actions, described once for the Mac window toolbar and the menu bar.
-//
-
 import Defaults
 import SwiftUI
 
-/// One of a screen's own actions, such as a feed's sort or its subreddit's info. The screen
-/// registers it with `CommandTargets`; the menu bar (`NavCommands`) lists it, and on Mac the
-/// window toolbar (`MacTabToolbar`) shows it above the screen's column. On iPhone and iPad the
-/// screen's navigation bar keeps its own SwiftUI menus instead.
 struct ScreenAction: Identifiable, Equatable {
-  /// The navigation bar shows the screen's actions where the window toolbar doesn't.
   static let showsInNavigationBar: Bool = {
     #if targetEnvironment(macCatalyst)
       false
@@ -22,15 +10,11 @@ struct ScreenAction: Identifiable, Equatable {
     #endif
   }()
 
-  /// A menu item. Equal when it looks the same, whatever its closure.
   indirect enum Entry: Equatable {
-    /// An item with a checkmark while `isOn`.
     case choice(_ title: String, systemImage: String? = nil, isOn: Bool, select: () -> Void)
     case submenu(_ title: String, systemImage: String?, [Entry])
-    /// Items set apart in their menu, under an optional heading.
     case section(_ title: String?, [Entry])
 
-    /// The entry at `path`, an index at each level, in `entries`.
     static func at(_ path: [Int], in entries: [Entry]) -> Entry? {
       guard let index = path.first, entries.indices.contains(index) else { return nil }
       let entry = entries[index]
@@ -73,14 +57,12 @@ struct ScreenAction: Identifiable, Equatable {
   var systemImage: String
   var content: Content
 
-  /// Runs a button action. Menus run their entries instead.
   func perform() {
     if case let .button(run) = content {
       run()
     }
   }
 
-  /// The same action, doing nothing unless `allowed()` when it runs.
   func guarded(_ allowed: @escaping () -> Bool) -> ScreenAction {
     func guarded(_ entry: Entry) -> Entry {
       switch entry {
@@ -107,8 +89,6 @@ struct ScreenAction: Identifiable, Equatable {
 }
 
 extension ScreenAction {
-  /// A feed's sort, with a checkmark on the current one; options with children (Top's time
-  /// ranges) are submenus.
   static func sortPosts<S: Sorting>(_ sorting: S?, set: @escaping (S) -> Void) -> ScreenAction {
     let cases = Array(S.allCases)
     let flat: [Entry] = cases.filter { $0.meta.children == nil }.map { opt in
@@ -123,19 +103,15 @@ extension ScreenAction {
     return ScreenAction(id: .sortPosts, title: "Sort Posts", systemImage: sorting?.meta.icon ?? "arrow.up.arrow.down", content: .menu(flat + nested))
   }
 
-  /// A subreddit feed's post layout and its flair filter.
   static func feedOptions(layout: PostLayout, layouts: [PostLayout] = PostLayout.allCases, setLayout: @escaping (PostLayout) -> Void, filters: [ShallowCachedFilter], selected: ShallowCachedFilter?, select: @escaping (ShallowCachedFilter?) -> Void) -> ScreenAction {
     var entries: [Entry] = [.section(nil, layouts.map { option in
       .choice(option.title, systemImage: option.systemImage, isOn: layout == option) { setLayout(option) }
     })]
-    // Each flair once: the cache can hold the same text in different colors.
     var seen = Set<String>()
     let shown = (filters.filter { $0.type == .flair } + filters.filter { $0.type == .custom })
       .filter { seen.insert($0.pickerKey).inserted }
-    // Also while a filter is on, so All Posts can clear one a refresh dropped from the list.
     if !shown.isEmpty || selected != nil {
       entries.append(.section("Flair", [.choice("All Posts", systemImage: "square.stack", isOn: selected == nil) { select(nil) }]
-          // By kind and text, not colors, which a refresh can change while it's selected.
           + shown.map { filter in .choice(filter.text, isOn: selected?.pickerKey == filter.pickerKey) { select(filter) } }))
     }
     return ScreenAction(id: .feedOptions, title: "Feed Options", systemImage: selected == nil ? "line.3.horizontal.decrease" : "line.3.horizontal.decrease.circle.fill", content: .menu(entries))
@@ -147,31 +123,23 @@ extension ScreenAction {
     }))
   }
 
-  /// Opens a subreddit's info, from the column the screen is in.
   static func subredditInfo(_ sub: Subreddit, column: Router.Column?) -> ScreenAction {
     ScreenAction(id: .subredditInfo, title: "About r/\(sub.data?.display_name ?? sub.id)", systemImage: "info.circle", content: .button {
       Nav.to(.reddit(.subInfo(sub)), from: column)
     })
   }
 
-  /// Opens a web page shown in the app in the default browser.
   static func openInBrowser(_ url: URL) -> ScreenAction {
     ScreenAction(id: .openInBrowser, title: "Open in Browser", systemImage: "safari", content: .button {
       UIApplication.shared.open(url)
     })
   }
 
-  /// Switches between the signed-in accounts, when there's another, and logs out of the
-  /// selected one. Nil without an account.
-  /// Pass the observed selection where the caller watches it (the menu bar), so the check mark
-  /// follows a switch made elsewhere.
   @MainActor
   static func switchAccount(manager: RedditCredentialsManager = .shared, selectedID: UUID? = nil, logOut: @escaping @MainActor (RedditCredential) -> Void = { LogOutConfirmation.shared.ask($0) }) -> ScreenAction? {
-    // The manager falls back to the first account when the stored one is gone (deleted).
     guard let selected = selectedID.map({ manager.selectedCredential(id: $0) }) ?? manager.selectedCredential else { return nil }
     let credentials = manager.validCredentials
     var entries: [Entry] = []
-    // Also with one other account while the selected one is signed out.
     if credentials.contains(where: { $0.id != selected.id }) {
       entries.append(.section(nil, credentials.map { cred in
         .choice(cred.userName ?? "Account", isOn: cred.id == selected.id) {
@@ -179,7 +147,6 @@ extension ScreenAction {
         }
       }))
     }
-    // Never checked, so it reads as a plain item.
     entries.append(.section(nil, [.choice(LogOutConfirmation.title(selected), systemImage: "rectangle.portrait.and.arrow.right", isOn: false) {
       logOut(selected)
     }]))
@@ -187,7 +154,6 @@ extension ScreenAction {
   }
 }
 
-/// A screen action's entries as menu items, for the menu bar.
 struct ScreenActionMenuItems: View {
   var entries: [ScreenAction.Entry]
 
@@ -203,7 +169,6 @@ struct ScreenActionMenuItems: View {
     var body: some View {
       switch entry {
       case let .choice(title, _, isOn, select):
-        // Text only: on Mac, a menu bar toggle with an icon never runs its action.
         Toggle(title, isOn: Binding(get: { isOn }, set: { _ in select() }))
       case let .submenu(title, systemImage, entries):
         Menu {
@@ -228,9 +193,6 @@ struct ScreenActionMenuItems: View {
   }
 }
 
-/// How to turn one ordered list of toolbar items into another while keeping the items the two
-/// share at either end, so the tabs and the sidebar button aren't rebuilt as screen actions come
-/// and go: remove `current[range]`, then insert `insert` at `range.lowerBound`.
 func toolbarEdit<T: Equatable>(from current: [T], to desired: [T]) -> (range: Range<Int>, insert: [T])? {
   guard current != desired else { return nil }
   var prefix = 0

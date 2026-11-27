@@ -1,7 +1,5 @@
 import Foundation
 
-/// The simulator runs use: $HELIO_PERF_SIMULATOR, or a dedicated "Helio Perf" iPhone on the newest
-/// iOS 26+ runtime, created when missing so runs don't disturb other simulators.
 enum Simulator {
   static let name = "Helio Perf"
 
@@ -21,7 +19,6 @@ enum Simulator {
     if let udid = createOnNewestRuntime() {
       return udid
     }
-    // Some CI runner images ship without an iOS runtime.
     print("no iOS 26+ simulator runtime installed; downloading it")
     shell(["xcodebuild", "-downloadPlatform", "iOS"])
     guard let udid = createOnNewestRuntime() else { fail("no iOS 26+ simulator runtime available") }
@@ -33,8 +30,6 @@ enum Simulator {
     func version(_ runtime: [String: Any]) -> [Int] {
       ((runtime["version"] as? String) ?? "0").split(separator: ".").compactMap { Int($0) }
     }
-    // Device-specific runtimes (such as iOS-27-1-iPhone19-4, which only runs iPhone Duo) lose to
-    // general ones even when newer, so the benchmark runs on a regular iPhone.
     func isGeneral(_ runtime: [String: Any]) -> Bool {
       ((runtime["identifier"] as? String) ?? "").range(of: #"SimRuntime\.iOS-[0-9-]+$"#, options: .regularExpression) != nil
     }
@@ -43,8 +38,6 @@ enum Simulator {
       .sorted { a, b in
         isGeneral(a) == isGeneral(b) ? version(a).lexicographicallyPrecedes(version(b)) : !isGeneral(a)
       }
-    // Best first, and the first that runs a regular iPhone: the benchmark measures that layout,
-    // and a runtime can support only iPhone Duo (iOS 27.1 on the xcode-27 image).
     for runtime in ios.reversed() {
       guard let runtimeID = runtime["identifier"] as? String else { continue }
       let iPhones = (runtime["supportedDeviceTypes"] as? [[String: Any]] ?? [])

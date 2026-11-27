@@ -1,10 +1,3 @@
-//
-//  SimpleInit.swift
-//  Helio
-//
-//  Created by Igor Marcossi on 26/01/24.
-//
-
 import Foundation
 
 extension CGSize {

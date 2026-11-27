@@ -1,10 +1,3 @@
-//
-//  Arrows.swift
-//  Helio
-//
-//  Created by Igor Marcossi on 08/07/23.
-//
-
 import SwiftUI
 
 enum ArrowKind: Equatable {
@@ -101,7 +94,6 @@ struct CurveShape: Shape {
   }
 }
 
-/// Apollo's reply indent: one straight bar in the depth's color, with the content after it.
 struct CommentDepthBar: ViewModifier {
   static let width: CGFloat = 2
   static let contentSpacing: CGFloat = 15
@@ -142,7 +134,6 @@ struct CommentDepthBar: ViewModifier {
 }
 
 extension View {
-  /// Applies `CommentDepthBar` when `depth` is set, otherwise leaves the view alone.
   @ViewBuilder
   func commentDepthBar(_ depth: Int?, theme: CommentTheme, top: CGFloat = 0, bottom: CGFloat = 0, separator: Bool = false) -> some View {
     if let depth {

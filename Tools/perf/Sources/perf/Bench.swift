@@ -2,8 +2,6 @@ import Foundation
 
 enum Bench {
   static let bundleID = "com.sertacozercan.helio"
-  /// The Mac build's own bundle id, so its preferences and saved state never mix with an installed
-  /// Helio's, and links to helioapp:// don't open it.
   static let macBundleID = "com.sertacozercan.helio.perf"
 
   enum Step {
@@ -15,9 +13,6 @@ enum Bench {
     case resize(seconds: Double, narrow: Int, wide: Int)
   }
 
-  /// Open Home, scroll it through its four pages, open a post, scroll its comments. Navigation and
-  /// scrolling run inside the app (see the shim), so no XCUITest accessibility snapshots, which
-  /// take a fifth of the main thread, run while measuring.
   static let scenario: [Step] = {
     let feed: [Step] = [.wait(6), .mark("home_open"), .open("helioapp://r/home"), .wait(5), .mark("scroll_start")]
     let feedScrolls: [Step] = (0 ..< 10).flatMap { _ -> [Step] in [.scroll(seconds: 1.2, speed: 3000), .wait(2.2)] }
@@ -28,23 +23,17 @@ enum Bench {
     return feed + feedScrolls + post + commentScrolls + end
   }()
 
-  /// The Mac window the benchmark sizes: wide enough for the subs sidebar, feed and post columns.
   static let macWindow = (width: 1440, height: 900)
 
-  /// The iPhone scenario in a fixed Mac window, then dragging the window narrower and back, which
-  /// lays every column out again each frame, and opening posts one after another with the post
-  /// column showing (as links, so each stacks on the last; last, as the stack stays).
   static let macScenario: [Step] = {
     let start: [Step] = [.wait(1), .window(width: macWindow.width, height: macWindow.height)]
     let resize: [Step] = [.wait(1), .mark("resize_start"), .resize(seconds: 4, narrow: 820, wide: macWindow.width), .wait(4.5),
                           .resize(seconds: 4, narrow: 820, wide: macWindow.width), .wait(4.5), .mark("resize_end")]
     let posts: [Step] = (2 ..< 8).flatMap { i -> [Step] in [.open("helioapp://r/pics/comments/pf\(String(format: "%04d", i))"), .wait(1.5)] }
     let more: [Step] = resize + [.wait(2), .mark("switch_start")] + posts + [.mark("switch_end")]
-    let base = scenario.dropLast(3) // through cscroll_end
+    let base = scenario.dropLast(3)
     return start + base + more + [.wait(2), .mark("end"), .wait(1)]
   }()
-
-  // MARK: Build
 
   static func build(label: String, repo: URL, spm: String?, mac: Bool) {
     if mac {
@@ -54,20 +43,9 @@ enum Bench {
     let dir = Paths.label(label)
     try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
     try? FileManager.default.removeItem(at: macMarker(label))
-    // Checkouts from before the perf tool lack the setup test: append it to the smoke tests for
-    // the build.
-    let tests = repo.appendingPathComponent("App/HelioUITests")
-    let smoke = tests.appendingPathComponent("SmokeUITests.swift")
-    let original = FileManager.default.fileExists(atPath: tests.appendingPathComponent("PerfSetupUITests.swift").path)
-      ? nil : try? String(contentsOf: smoke, encoding: .utf8)
-    if let original {
-      let setup = (try? String(contentsOf: Paths.repo.appendingPathComponent("App/HelioUITests/PerfSetupUITests.swift"), encoding: .utf8)) ?? ""
-      try? (original + "\n" + setup.replacingOccurrences(of: "import XCTest\n", with: "")).write(to: smoke, atomically: true, encoding: .utf8)
-    }
-    defer {
-      if let original {
-        try? original.write(to: smoke, atomically: true, encoding: .utf8)
-      }
+    let setupTest = repo.appendingPathComponent("App/HelioUITests/PerfSetupUITests.swift")
+    guard FileManager.default.fileExists(atPath: setupTest.path) else {
+      fail("checkout at \(repo.path) is missing App/HelioUITests/PerfSetupUITests.swift")
     }
     var command = ["xcodebuild", "-project", repo.appendingPathComponent("App/Helio.xcodeproj").path, "-scheme", "Helio",
                    "-configuration", "Release", "-destination", "id=\(udid)", "-derivedDataPath", dir.appendingPathComponent("build").path,
@@ -76,18 +54,12 @@ enum Bench {
       command += ["-clonedSourcePackagesDirPath", URL(fileURLWithPath: spm).path]
     }
     print("building \(repo.path) as \(label) (log: \(dir.path)/build.log)")
-    // Not `check`: failing exits without running `defer`, which restores the smoke tests.
     if shell(command, log: dir.appendingPathComponent("build.log"), check: false).status != 0 {
-      if let original {
-        try? original.write(to: smoke, atomically: true, encoding: .utf8)
-      }
       fail("build failed, see \(dir.path)/build.log")
     }
     print("built")
   }
 
-  /// A Release Mac Catalyst build, unsigned (the linker signs it ad hoc), under its own bundle id
-  /// and without its URL schemes. Unprovisioned, it can't use the keychain; the shim stands in.
   static func buildMac(label: String, repo: URL, spm: String?) {
     let dir = Paths.label(label)
     try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
@@ -115,8 +87,6 @@ enum Bench {
     Paths.label(label).appendingPathComponent("build/Build/Products/Release-maccatalyst/Helio.app")
   }
 
-  /// Written by the label's last build when it was for Mac. Not the Catalyst app's presence: a
-  /// label built for Mac and then for the simulator still has it.
   static func macMarker(_ label: String) -> URL {
     Paths.label(label).appendingPathComponent("platform-mac")
   }
@@ -131,9 +101,6 @@ enum Bench {
     return withUnsafeBytes(of: system.machine) { String(decoding: $0.prefix { $0 != 0 }, as: UTF8.self) }
   }()
 
-  // MARK: Shim
-
-  /// The shim, built for the simulator or Mac Catalyst when missing or older than its source.
   static func shim(mac: Bool = false) -> URL {
     let source = Paths.tool.appendingPathComponent("Shim/HelioPerfShim.swift")
     let out = Paths.work.appendingPathComponent(mac ? "HelioPerfShim-mac.dylib" : "HelioPerfShim.dylib")
@@ -143,7 +110,6 @@ enum Bench {
     try? FileManager.default.createDirectory(at: Paths.work, withIntermediateDirectories: true)
     let sdkName = mac ? "macosx" : "iphonesimulator"
     let sdk = shell(["xcrun", "--sdk", sdkName, "--show-sdk-path"]).output.trimmingCharacters(in: .whitespacesAndNewlines)
-    // Mac Catalyst's UIKit lives in the macOS SDK's iOSSupport tree.
     let catalyst = mac ? ["-Fsystem", "\(sdk)/System/iOSSupport/System/Library/Frameworks", "-I", "\(sdk)/System/iOSSupport/usr/lib/swift",
                           "-L", "\(sdk)/System/iOSSupport/usr/lib/swift"] : []
     shell(["xcrun", "--sdk", sdkName, "swiftc", "-target", mac ? "\(arch)-apple-ios26.0-macabi" : "\(arch)-apple-ios26.0-simulator",
@@ -151,8 +117,6 @@ enum Bench {
                                       "-Xlinker", "-init", "-Xlinker", "_helio_perf_init", source.path, "-o", out.path])
     return out
   }
-
-  // MARK: Runs
 
   static func run(label: String, runs: Int, profile: Bool) {
     if isMac(label) {
@@ -164,7 +128,6 @@ enum Bench {
       fail("no build for \(label); run: perf build \(label)")
     }
     let udid = Simulator.boot(), shim = shim().path, fixtures = Fixtures.ensure().path
-    // Results of an earlier batch with more runs would otherwise count in this one's medians.
     for stale in (try? FileManager.default.contentsOfDirectory(atPath: dir.path)) ?? [] where stale.hasPrefix("run") {
       try? FileManager.default.removeItem(at: dir.appendingPathComponent(stale))
     }
@@ -177,7 +140,6 @@ enum Bench {
       shell(["xcrun", "simctl", "uninstall", udid, bundleID], check: false)
       shell(["xcrun", "simctl", "keychain", udid, "reset"], check: false)
 
-      // Install, onboarding and What's New, so the measured launch is a returning user's.
       let setup = shell(["xcodebuild", "test-without-building", "-xctestrun", products.appendingPathComponent(xctestrun).path,
                          "-destination", "id=\(udid)", "-only-testing", "HelioUITests/PerfSetupUITests/testSetup"],
                         env: ["TEST_RUNNER_HELIO_PERF_SHIM": shim, "TEST_RUNNER_HELIO_PERF_FIXTURES": fixtures,
@@ -209,7 +171,6 @@ enum Bench {
     Metrics.printSummary(label)
   }
 
-  /// Time Profiler attached to a process, in the simulator or, without a device, on this Mac.
   static func record(pid: String, device: String?, to trace: URL) -> Process {
     let process = Process()
     process.executableURL = URL(fileURLWithPath: "/usr/bin/xcrun")
@@ -221,7 +182,6 @@ enum Bench {
     return process
   }
 
-  /// Whether a run went through the whole scenario, saying why not when it didn't.
   static func finished(run i: Int, log: URL, trace: URL?, dir: URL) -> Bool {
     let text = (try? String(contentsOf: log, encoding: .utf8)) ?? ""
     guard RunLog(text: text).marks["end"] != nil else {
@@ -246,12 +206,6 @@ enum Bench {
     return true
   }
 
-  // MARK: Mac runs
-
-  /// Each run starts from an empty home folder (`CFFIXED_USER_HOME`: caches, Core Data, saved
-  /// state) and empty preferences, launches once to sign in and load the account like a first
-  /// launch, then again as a returning user for the measured scenario. The window comes to the
-  /// front for the run; leave the Mac alone while it runs, as other work skews the timings.
   static func runMac(label: String, runs: Int, profile: Bool) {
     let dir = Paths.label(label), app = macApp(label)
     let executable = app.appendingPathComponent("Contents/MacOS/Helio")
@@ -269,27 +223,18 @@ enum Bench {
       let env = ["DYLD_INSERT_LIBRARIES": shim, "PERF_FIXTURES": fixtures, "PERF_SEED_CREDENTIAL": "1", "PERF_MEMORY_KEYCHAIN": "1",
                  "PERF_SKIP_WHATS_NEW": "1", "CFFIXED_USER_HOME": home.path]
 
-      // First launch: sign in, account, subscriptions. The keychain is in memory, so the
-      // measured launch signs in again, like a launch after the hour-long token expired.
-      // A launch now and then never draws its window; try again before giving up on the run.
       let setupLog = URL(fileURLWithPath: log.path + ".setup")
-      var signedIn = false
-      for _ in 1 ... 2 where !signedIn {
-        let setupCommands = dir.appendingPathComponent("run\(i).setup.cmd")
-        FileManager.default.createFile(atPath: setupCommands.path, contents: nil)
-        try? FileManager.default.removeItem(at: setupLog)
-        let setup = launchMac(executable, env: env.merging(["PERF_LOG": setupLog.path, "PERF_CMD": setupCommands.path]) { $1 })
-        play([.wait(1), .window(width: macWindow.width, height: macWindow.height), .wait(9)], commands: setupCommands)
-        quitMac(executable, setup)
-        signedIn = (try? String(contentsOf: setupLog, encoding: .utf8))?.contains("/api/v1/me") == true
-      }
+      let setupCommands = dir.appendingPathComponent("run\(i).setup.cmd")
+      FileManager.default.createFile(atPath: setupCommands.path, contents: nil)
+      try? FileManager.default.removeItem(at: setupLog)
+      let setup = launchMac(executable, env: env.merging(["PERF_LOG": setupLog.path, "PERF_CMD": setupCommands.path]) { $1 })
+      let signedIn = waitForMacSetup(log: setupLog, commands: setupCommands, timeout: 15)
+      quitMac(executable, setup)
       guard signedIn else {
         print("run \(i): the setup launch didn't load the account, see \(setupLog.path)")
         continue
       }
 
-      // The measured launch opens a new window rather than restoring the setup launch's: a
-      // restored session can come back without one.
       try? FileManager.default.removeItem(at: home.appendingPathComponent("Library/Saved Application State"))
       FileManager.default.createFile(atPath: commands.path, contents: nil)
       let process = launchMac(executable, env: env.merging(["PERF_LOG": log.path, "PERF_CMD": commands.path]) { $1 })
@@ -323,7 +268,32 @@ enum Bench {
     return process
   }
 
-  /// Ends a perf launch, and any left over from an interrupted run.
+  static func waitForMacSetup(log: URL, commands: URL, timeout: TimeInterval) -> Bool {
+    let deadline = Date().addingTimeInterval(timeout)
+    var seq = 0
+    var windowReady = false
+    while Date() < deadline {
+      let text = (try? String(contentsOf: log, encoding: .utf8)) ?? ""
+      if !windowReady {
+        if text.contains(" window_ready \(macWindow.width)x\(macWindow.height)") {
+          windowReady = true
+        } else {
+          seq += 1
+          if let handle = try? FileHandle(forWritingTo: commands) {
+            handle.seekToEndOfFile()
+            handle.write(Data("\(seq) window \(macWindow.width) \(macWindow.height)\n".utf8))
+            try? handle.close()
+          }
+        }
+      }
+      if windowReady, text.contains(" setup_complete") {
+        return true
+      }
+      Thread.sleep(forTimeInterval: 0.25)
+    }
+    return false
+  }
+
   static func quitMac(_ executable: URL, _ process: Process? = nil) {
     if let process, process.isRunning {
       process.terminate()

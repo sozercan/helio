@@ -1,10 +1,3 @@
-//
-//  rootURL.swift
-//  Helio
-//
-//  Created by Igor Marcossi on 28/07/23.
-//
-
 import Foundation
 
 func rootURL(_ str: String) -> URL? {

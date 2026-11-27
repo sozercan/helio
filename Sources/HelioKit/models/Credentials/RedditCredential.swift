@@ -1,10 +1,3 @@
-//
-//  RedditCredential.swift
-//  Helio
-//
-//  Created by Igor Marcossi on 05/12/23.
-//
-
 import Alamofire
 import Combine
 import CryptoKit
@@ -19,8 +12,6 @@ struct RedditCredential: Identifiable, Equatable, Hashable, Codable, Sendable {
     "ios:com.sertacozercan.helio:v1.6.0 (by /u/\(userName ?? "UnknownUser"))"
   }
 
-  /// Stable across access-token renewal, different after replacing the OAuth grant or client.
-  /// Cache/request identity must not retain the raw client secret or refresh token.
   struct AuthorizationID: Hashable, Sendable {
     let credentialID: UUID
     let grantID: Data
@@ -41,12 +32,10 @@ struct RedditCredential: Identifiable, Equatable, Hashable, Codable, Sendable {
     return AuthorizationID(self, refreshToken: isWebSession ? webSessionID.uuidString : renewalKey)
   }
 
-  /// Merge only the token field into the current record, never a captured credential snapshot.
   @discardableResult
   mutating func updateAccessToken(_ token: AccessToken?, for authorization: AuthorizationID) -> Bool {
     guard !isWebSession, authorizationID == authorization else { return false }
     if let token {
-      // A delayed shared-refresh waiter must not restore an older rejected token.
       if let current = accessToken, current.lastRefresh > token.lastRefresh {
         return false
       }
@@ -57,7 +46,6 @@ struct RedditCredential: Identifiable, Equatable, Hashable, Codable, Sendable {
     return true
   }
 
-  /// Legacy imports can lack a username. Never overwrite an edit or another grant.
   @discardableResult
   mutating func backfillUserName(_ name: String, for authorization: AuthorizationID) -> Bool {
     guard authorizationID == authorization, userName?.isEmpty ?? true, !name.isEmpty else { return false }
@@ -65,7 +53,6 @@ struct RedditCredential: Identifiable, Equatable, Hashable, Codable, Sendable {
     return true
   }
 
-  /// Cookie rotation belongs to the same web grant; a new sign-in does not.
   @discardableResult
   mutating func updateWebAccessToken(_ token: AccessToken?, cookies: String?, renewedFrom: String, for authorization: AuthorizationID) -> Bool {
     guard isWebSession, authorizationID == authorization, webSessionCookies == renewedFrom else { return false }
@@ -81,19 +68,13 @@ struct RedditCredential: Identifiable, Equatable, Hashable, Codable, Sendable {
 
   enum CodingKeys: String, CodingKey { case id, apiAppID, apiAppSecret, accessToken, refreshToken, userName, profilePicture, _userAgent, signInMethod, webSessionCookies, webSessionID }
 
-  /// How the credential gets its access tokens: from the user's own API key (`apiAppID`,
-  /// `refreshToken`), or from a Reddit web session signed in with `RedditWebLoginView`.
   enum SignInMethod: String, Codable, Sendable { case apiKey, webSession }
 
   var id: UUID
   var signInMethod: SignInMethod = .apiKey
-  /// The reddit.com cookies of a web session, as a `Cookie` header. `nil` once Reddit signs the
-  /// session out, which leaves the credential waiting for the user to sign in again.
   var webSessionID = UUID()
   var webSessionCookies: String? = nil {
     willSet {
-      // Direct cookie replacement is a new sign-in. Token renewal restores this
-      // identity in updateWebAccessToken after atomically merging rotated cookies.
       if webSessionCookies != newValue {
         webSessionID = UUID()
       }
@@ -104,7 +85,6 @@ struct RedditCredential: Identifiable, Equatable, Hashable, Codable, Sendable {
     signInMethod == .webSession
   }
 
-  /// The key access tokens are renewed with, or `nil` when the credential can't renew them.
   var renewalKey: String? {
     switch signInMethod {
     case .apiKey: apiAppID.isEmpty ? nil : refreshToken
@@ -154,8 +134,6 @@ struct RedditCredential: Identifiable, Equatable, Hashable, Codable, Sendable {
 
     var newRedditAPIPairState: CredentialValidationState = .empty
 
-    // Installed-app credentials have only a client id (no secret), so validity keys off the
-    // 22-char app id alone. Existing web-app creds (also a 22-char id) remain valid too.
     if self.apiAppID.count == 22 {
       newRedditAPIPairState = .valid
     } else if self.apiAppID.count > 10 {
@@ -223,7 +201,6 @@ struct RedditCredential: Identifiable, Equatable, Hashable, Codable, Sendable {
     webSessionID = UUID()
   }
 
-  /// Fills the account name and avatar from `/api/v1/me`.
   mutating func setProfile(from me: UserData) {
     userName = me.name
     if let avatar = me.subreddit?.icon_img ?? me.icon_img ?? me.snoovatar_img, let rootAvatar = rootURL(avatar)?.absoluteString {
@@ -247,11 +224,8 @@ struct RedditCredential: Identifiable, Equatable, Hashable, Codable, Sendable {
     return accessToken
   }
 
-  /// A waiter owns its persistence policy. Refresh results merge only into the
-  /// captured installed grant, including web-session cookie rotation/sign-out.
   func getUpToDateToken(forceRenew: Bool = false, saveToken: Bool = true, rejectedToken: String? = nil) async -> AccessToken? {
     guard let authorization = authorizationID else { return nil }
-    // Adopt newer tokens/cookies only from this installed grant, never selection.
     let installed = await MainActor.run { RedditCredentialsManager.getById(id) }
     let current = if let installed, installed.authorizationID == authorization {
       installed
@@ -272,8 +246,6 @@ struct RedditCredential: Identifiable, Equatable, Hashable, Codable, Sendable {
       }
       return await fetchNewToken()
     }
-    // Each waiter owns its persistence policy and record, even when sharing a refresh with a
-    // draft or another saved record for the same OAuth grant.
     if saveToken {
       switch outcome {
       case let .token(token): await RedditCredentialsManager.shared.updateAccessToken(token, for: authorization)
@@ -281,7 +253,6 @@ struct RedditCredential: Identifiable, Equatable, Hashable, Codable, Sendable {
         await RedditCredentialsManager.shared.updateWebAccessToken(token, cookies: cookies, renewedFrom: refreshToken, for: authorization)
       case .rejected:
         await MainActor.run {
-          // A delayed rejected waiter must not clear a newer successful renewal.
           guard let saved = RedditCredentialsManager.getById(id),
                 saved.authorizationID == authorization, saved.accessToken == current.accessToken
           else { return }
@@ -328,7 +299,6 @@ struct RedditCredential: Identifiable, Equatable, Hashable, Codable, Sendable {
     let expiration: Int
     let lastRefresh: Date
 
-    /// Still usable, with a 100 s margin for requests in flight.
     var isFresh: Bool {
       Date().timeIntervalSince(lastRefresh) < Double(max(0, expiration - 100))
     }

@@ -1,10 +1,3 @@
-//
-//  nestComments.swift
-//  Helio
-//
-//  Created by Igor Marcossi on 05/07/23.
-//
-
 import Foundation
 
 func nestComments(_ inputComments: [ListingChild<CommentData>], parentID: String) -> [Comment] {

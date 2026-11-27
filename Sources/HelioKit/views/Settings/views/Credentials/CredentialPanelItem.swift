@@ -1,10 +1,3 @@
-//
-//  CredentialPanelItem.swift
-//  Helio
-//
-//  Created by Igor Marcossi on 07/12/23.
-//
-
 import SwiftUI
 
 struct CredentialPanelItem: View {

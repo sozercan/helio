@@ -1,10 +1,3 @@
-//
-//  importTheme.swift
-//  Helio
-//
-//  Created by Igor Marcossi on 02/10/23.
-//
-
 import Defaults
 import Foundation
 import Zip

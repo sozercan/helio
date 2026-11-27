@@ -1,10 +1,3 @@
-//
-//  PostTheme.swift
-//  Helio
-//
-//  Created by Igor Marcossi on 07/09/23.
-//
-
 import Foundation
 
 struct PostTheme: Codable, Hashable, Equatable {
@@ -19,9 +12,7 @@ struct PostTheme: Codable, Hashable, Equatable {
   var commentsDistance: CGFloat
   @Boxed var titleText: ThemeText
   @Boxed var bodyText: ThemeText
-  /// Quoted text in the body's Markdown.
   @Boxed var quoteText: ColorSchemes<ThemeColor>
-  /// Links in the body's Markdown; `nil` draws them in the app's accent color.
   @Boxed var linkText: ColorSchemes<ThemeColor>?
   var linespacing: CGFloat
   var inlineFloatingPill: Bool

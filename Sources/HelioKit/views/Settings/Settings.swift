@@ -1,20 +1,10 @@
-//
-//  Settings.swift
-//  Helio
-//
-//  Created by Igor Marcossi on 24/06/23.
-//
-
 import Defaults
 import SwiftUI
 import WhatsNewKit
 
-// import SceneKit
-
 struct Settings: View {
   @State var router: Router
   @Environment(\.openURL) private var openURL
-  //  @Default(.likedButNotSubbed) private var likedButNotSubbed
   @Environment(\.useTheme) private var selectedTheme
   @State private var presentingWhatsNew: Bool = false
 
@@ -61,16 +51,8 @@ struct Settings: View {
       .attachViewControllerToRouter(tabID: .settings)
       .injectInTabDestinations()
       #if targetEnvironment(macCatalyst)
-        // Like a Mac settings window's title: small, over the centered panes, not a large
-        // title at the window's leading edge.
         .navigationBarTitleDisplayMode(.inline)
       #endif
     }
   }
 }
-
-// struct Settings_Previews: PreviewProvider {
-//  static var previews: some View {
-//    Settings()
-//  }
-// }

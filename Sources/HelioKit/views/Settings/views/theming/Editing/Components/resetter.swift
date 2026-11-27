@@ -1,10 +1,3 @@
-//
-//  resetter.swift
-//  Helio
-//
-//  Created by Igor Marcossi on 14/09/23.
-//
-
 import SwiftUI
 
 struct ResetterModifier<T>: ViewModifier {

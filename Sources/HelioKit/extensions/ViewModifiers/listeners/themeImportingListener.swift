@@ -1,10 +1,3 @@
-//
-//  themeImportingListener.swift
-//  Helio
-//
-//  Created by Igor Marcossi on 10/12/23.
-//
-
 import Defaults
 import Foundation
 import SwiftUI

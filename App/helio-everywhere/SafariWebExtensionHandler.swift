@@ -1,10 +1,3 @@
-//
-//  SafariWebExtensionHandler.swift
-//  helio-everywhere
-//
-//  Created by Igor Marcossi on 29/07/23.
-//
-
 import os.log
 import SafariServices
 

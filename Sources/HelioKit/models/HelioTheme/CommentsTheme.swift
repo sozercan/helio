@@ -1,10 +1,3 @@
-//
-//  CommentsTheme.swift
-//  Helio
-//
-//  Created by Igor Marcossi on 07/09/23.
-//
-
 import Foundation
 
 struct CommentsSectionTheme: Codable, Hashable, Equatable {
@@ -48,15 +41,11 @@ struct CommentTheme: Codable, Hashable, Equatable {
   var repliesSpacing: CGFloat
   var indentCurve: CGFloat
   @Boxed var indentColor: ColorSchemes<ThemeColor>
-  /// One color per reply depth, cycled. When set, replies get a straight colored bar per
-  /// depth instead of the curved `indentColor` guides. `indentCurve` is then the indent step.
   var indentColors: [ColorSchemes<ThemeColor>]
   var cornerRadius: CGFloat
   @Boxed var badge: BadgeTheme
   @Boxed var bodyText: ThemeText
-  /// Quoted text in the body's Markdown.
   @Boxed var quoteText: ColorSchemes<ThemeColor>
-  /// Links in the body's Markdown; `nil` draws them in the app's accent color.
   @Boxed var linkText: ColorSchemes<ThemeColor>?
   var bodyAuthorSpacing: CGFloat
   var linespacing: CGFloat

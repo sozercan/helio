@@ -1,10 +1,3 @@
-//
-//  Search.swift
-//  Helio
-//
-//  Created by Igor Marcossi on 24/06/23.
-//
-
 import Defaults
 import NukeUI
 import SwiftUI
@@ -28,6 +21,7 @@ struct Search: View {
   @State private var dummyAllSub: Subreddit? = nil
   @State private var searchViewLoaded: Bool = false
   @State private var searchPresented = false
+  @FocusState private var searchFocused: Bool
 
   @Default(.PostLinkDefSettings) private var postLinkDefSettings
   @Default(.searchHistory) private var searchHistory
@@ -101,7 +95,6 @@ struct Search: View {
   func search(_ item: SearchHistoryItem) {
     let unchanged = searchType == item.type && searchQuery.debounced == item.query
     searchType = item.type
-    // Skips the debounce, so the change below fetches once, now.
     searchQuery.setNow(item.query)
     rememberSearch()
     if unchanged {
@@ -139,11 +132,9 @@ struct Search: View {
     }
   }
 
-  /// Shows and focuses the search field. It can still count as presented after its keyboard was
-  /// dismissed, so setting it again would do nothing: dismiss it and present it on the next turn.
   private func presentSearchField() {
-    searchPresented = false
-    Task { @MainActor in searchPresented = true }
+    searchPresented = true
+    searchFocused = true
   }
 
   var body: some View {
@@ -210,10 +201,7 @@ struct Search: View {
               if let dummyAllSub {
                 ForEach(resultPosts) { post in
                   if let helioData = post.helioData {
-                    //                      SwipeRevolution(size: helioData.postDimensions.size, actionsSet: postSwipeActions, entity: post) { controller in
                     PostLink(id: post.id, theme: theme.postLinks, showSub: true, compactPerSubreddit: nil, contentWidth: contentWidth, defSettings: postLinkDefSettings)
-//                    .swipyRev(size: helioData.postDimensions.size, actionsSet: postSwipeActions, entity: post)
-                      //                      }
                       .listRowInsets(EdgeInsets(top: 0, leading: 0, bottom: 0, trailing: 0))
                       .simultaneousGesture(TapGesture().onEnded { rememberSearch() })
                       .animation(.default, value: resultPosts)
@@ -236,8 +224,8 @@ struct Search: View {
       .attachViewControllerToRouter(tabID: .search)
       .injectInTabDestinations()
       .scrollDismissesKeyboard(.automatic)
-      // Always shown: inside the tab view, the toolbar placement left iPhone without a field.
       .searchable(text: $searchQuery.value, isPresented: $searchPresented, placement: .navigationBarDrawer(displayMode: .always), prompt: "Search Reddit")
+      .searchFocused($searchFocused)
       .autocorrectionDisabled(true)
       .textInputAutocapitalization(.none)
       .refreshable { fetch() }
@@ -248,7 +236,9 @@ struct Search: View {
       .navigationTitle("Search")
       .readableWidth()
       .relayoutPosts({ resultPosts }, contentWidth: contentWidth, theme: theme)
-      // One handler, so changing the type and the query together fetches once.
+      .onChange(of: resultPosts) { _, posts in
+        posts.forEach { $0.relayout(contentWidth: contentWidth, theme: theme) }
+      }
       .onChange(of: [searchType.rawValue, searchQuery.debounced]) {
         if searchQuery.debounced == "" {
           resultsSubs = []
@@ -261,17 +251,13 @@ struct Search: View {
         if !searchViewLoaded {
           dummyAllSub = Subreddit(id: "all")
           searchViewLoaded = true
-          searchPresented = true
+          presentSearchField()
         }
-        // Find, chosen where no search field showed.
         if CommandTargets.shared.takeSearchFocusRequest() {
           presentSearchField()
         }
       }
-      // Refresh repeats the search, as pulling to refresh does, once there's one to repeat.
       .commandTarget(CommandTargets.Target(kind: .search, refresh: searchQuery.value.isEmpty ? nil : { fetch() }, focusSearch: { presentSearchField() }), updatingWith: searchQuery.value.isEmpty)
-      // Opening the tab starts a search, like the system's search tabs, unless one is showing.
-      // The Search quick action asks for the field even when Search shows or keeps a query.
       .onChange(of: Nav.shared.searchFocusRequest) {
         presentSearchField()
       }
@@ -281,7 +267,6 @@ struct Search: View {
         }
       }
     }
-//    .swipeAnywhere()
   }
 }
 

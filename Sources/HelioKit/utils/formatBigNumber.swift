@@ -1,10 +1,3 @@
-//
-//  formatBigNumber.swift
-//  Helio
-//
-//  Created by Igor Marcossi on 11/07/23.
-//
-
 import Foundation
 
 func formatBigNumber(_ number: Int) -> String {

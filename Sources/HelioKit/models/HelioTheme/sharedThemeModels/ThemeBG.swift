@@ -1,10 +1,3 @@
-//
-//  ThemeBG.swift
-//  Helio
-//
-//  Created by Igor Marcossi on 21/11/23.
-//
-
 import Foundation
 
 enum ThemeBG: Codable, Hashable, Equatable {

@@ -1,16 +1,7 @@
-//
-//  Helio MD.swift
-//  Helio
-//
-//  Created by Ethan Bills on 1/12/24.
-//
-
 import MarkdownUI
 import SwiftUI
 
 extension Theme {
-  /// Helio Markdown theme. `quoteText` colors quoted text and `linkText` links (else the app's
-  /// accent color), the selected theme's in posts and comments.
   static func helioMarkdown(fontSize: CGFloat, lineSpacing: CGFloat = 0.2, textSelection: Bool = false, quoteText: ColorSchemes<ThemeColor> = themeQuoteText, linkText: ColorSchemes<ThemeColor>? = nil) -> Theme {
     let quoteText = quoteText.color()
     let theme = Theme()
@@ -106,9 +97,6 @@ extension Theme {
 }
 
 private extension View {
-  /// `TextSelectability` is read from the type (`static var allowsSelection`), so a single
-  /// conformance can't switch selection on and off: the old one always allowed it. Branch on
-  /// the concrete types instead, so bodies are only selectable when asked.
   @ViewBuilder
   func helioTextSelection(_ enabled: Bool) -> some View {
     if enabled {

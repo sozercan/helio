@@ -1,10 +1,3 @@
-//
-//  SilentState.swift
-//  Helio
-//
-//  Created by Igor Marcossi on 22/01/24.
-//
-
 import SwiftUI
 
 @propertyWrapper

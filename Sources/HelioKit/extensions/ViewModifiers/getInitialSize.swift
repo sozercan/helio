@@ -1,10 +1,3 @@
-//
-//  getInitialSize.swift
-//  Helio
-//
-//  Created by Igor Marcossi on 29/06/23.
-//
-
 import SwiftUI
 
 struct GetInitialSizeModifier: ViewModifier {

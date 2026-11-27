@@ -1,15 +1,7 @@
-//
-//  MultiLink.swift
-//  Helio
-//
-//  Created by Igor Marcossi on 20/08/23.
-//
-
 import SwiftUI
 
 struct MultiLink: View {
   var multi: Multi
-  /// Its feed shows: the subs list's selection.
   var selected = false
   @State private var subs: [Subreddit] = []
 

@@ -1,12 +1,4 @@
-//
-//  SubredditInfo.swift
-//  Helio
-//
-//  Created by Igor Marcossi on 01/07/23.
-//
-
 import AlertToast
-import Defaults
 import SwiftDate
 import SwiftUI
 
@@ -26,10 +18,10 @@ struct SubredditInfo: View {
   @State private var selectedTab: SubInfoTabs = .info
 
   @State private var addedToFavs = false
-  @Default(.likedButNotSubbed) var likedButNotSubbed
+  private let userCollections = UserCollectionsStore.shared
   @Environment(\.useTheme) private var theme
   var body: some View {
-    let isliked = likedButNotSubbed.contains(subreddit)
+    let isliked = userCollections.isLocallyFavorited(subreddit)
     List {
       Group {
         if let data = subreddit.data {
@@ -46,9 +38,6 @@ struct SubredditInfo: View {
                 SubscribeButton(subreddit: subreddit)
               }
             }
-            //            .toast(isPresenting: $addedToFavs){
-            //              AlertToast(displayMode: .hud, type: .systemImage("star.fill", Color.blue), title: "Added to Favorites")
-            //            }
 
             Picker("", selection: $selectedTab) {
               ForEach(SubInfoTabs.allCases) { tab in
@@ -100,10 +89,3 @@ struct SubredditInfo: View {
     .navigationBarTitleDisplayMode(.inline)
   }
 }
-
-//
-// struct SubredditInfo_Previews: PreviewProvider {
-//    static var previews: some View {
-//        SubredditInfo()
-//    }
-// }

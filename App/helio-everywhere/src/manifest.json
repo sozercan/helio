@@ -13,7 +13,7 @@
     "512": "images/icon-512.png"
   },
   "background": {
-      "service_worker": "background.js"
+      "service_worker": "openHelioEverywhere.js"
   },
   "content_scripts": [
     {
@@ -24,11 +24,6 @@
       "js": [ "common.js", "OpenInHelioBanner/openInHelio.js" ],
       "css": [ "OpenInHelioBanner/openInHelioBannerStyles.css" ],
       "matches": [ "*://*.reddit.com/*" ],
-      "exclude_matches": [ "*://*.reddit.com/prefs/apps*", "*://*.reddit.com/api/v1/authorize" ]
-    },
-    {
-      "js": [ "common.js", "openHelioEverywhere.js" ],
-      "matches": [ "*://*/*" ],
       "exclude_matches": [ "*://*.reddit.com/prefs/apps*", "*://*.reddit.com/api/v1/authorize" ]
     }
   ],
@@ -43,5 +38,5 @@
       "72": "images/toolbar-icon-72.png"
     }
   },
-  "permissions": [""]
+  "permissions": ["webNavigation"]
 }

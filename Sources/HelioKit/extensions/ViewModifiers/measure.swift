@@ -1,10 +1,3 @@
-//
-//  measure.swift
-//  Helio
-//
-//  Created by Igor Marcossi on 17/07/23.
-//
-
 import Foundation
 import SwiftUI
 

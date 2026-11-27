@@ -1,10 +1,3 @@
-//
-//  Biometrics.swift
-//  Helio
-//
-//  Created by Nelson Dane on 19/09/23.
-//
-
 import Foundation
 import LocalAuthentication
 import SwiftUI
@@ -28,29 +21,26 @@ class Biometrics {
     if context.canEvaluatePolicy(.deviceOwnerAuthenticationWithBiometrics, error: &error) {
       switch context.biometryType {
       case .opticID:
-        return "Optic ID"
+        "Optic ID"
       case .faceID:
-        return "Face ID"
+        "Face ID"
       case .touchID:
-        return "Touch ID"
+        "Touch ID"
       case .none:
-        return "None"
+        "None"
       @unknown default:
-        return "Unknown"
+        "Unknown"
       }
     } else {
-      // Fallback to passcode
-      return "Passcode"
+      "Passcode"
     }
   }
 
   func authenticateUser(completion: @escaping (Bool) -> Void) {
-    // Check if biomtrics are available
     if !checkIfEnrolled() {
       completion(false)
       return
     }
-    // We're all good, let's authenticate
     context.evaluatePolicy(.deviceOwnerAuthentication, localizedReason: "Identify Yourself!") { success, error in
       if success {
         print("Auth Success")

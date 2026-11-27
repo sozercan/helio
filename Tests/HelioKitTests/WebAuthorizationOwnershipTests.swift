@@ -61,7 +61,6 @@ struct WebAuthorizationOwnershipTests {
   }
 
   @Test func oldStoredWebRecordUsesCredentialIDAsDeterministicSessionID() throws {
-    // A record saved before webSessionID existed, not a new record with the field removed.
     let json = """
     {"id":"00000000-0000-0000-0000-000000000001","apiAppID":"","apiAppSecret":"",\
     "signInMethod":"webSession","webSessionCookies":"reddit_session=placeholder-original-session",\
@@ -89,7 +88,6 @@ struct WebAuthorizationOwnershipTests {
     #expect(account.webSessionID != sessionID)
     #expect(try #require(account.authorizationID) != authorization)
 
-    // Even replacing A with B and then A again must not resurrect A's old grant.
     if restoreOriginalCookies {
       account.webSessionCookies = originalCookies
     }
@@ -162,7 +160,6 @@ struct WebAuthorizationOwnershipTests {
     #expect(updated4)
     #expect(account.authorizationID == authorization)
     let before = account
-    // A later timestamp cannot compensate for minting against obsolete cookies.
     let delayedToken = signedOut ? nil : token("placeholder-delayed-access-token", timestamp: 300)
     let updated5 = account.updateWebAccessToken(
       delayedToken, cookies: replacementCookies, renewedFrom: originalCookies, for: authorization,
@@ -200,7 +197,6 @@ struct WebAuthorizationOwnershipTests {
   @Test(arguments: [false, true])
   func webTokenUpdaterCannotMutateAPIAuthorization(signedOut: Bool) throws {
     var account = apiCredential()
-    // Residual web fields must not make an API-key record accept a web result.
     account.webSessionCookies = originalCookies
     let authorization = try #require(account.authorizationID)
     let before = account
@@ -269,7 +265,6 @@ struct WebAuthorizationOwnershipTests {
     let decoded = try JSONDecoder().decode(RedditCredential.self, from: JSONEncoder().encode(account))
     #expect(decoded.authorizationID == nil)
     #expect(decoded.userName == "placeholder-user")
-    // Signing in with the same cookie text still creates a distinct authorization.
     account.webSessionCookies = originalCookies
     #expect(try #require(account.authorizationID) != authorization)
   }

@@ -1,10 +1,3 @@
-//
-//  ShortPostLink.swift
-//  Helio
-//
-//  Created by Igor Marcossi on 29/07/23.
-//
-
 import Defaults
 import SwiftUI
 
@@ -22,10 +15,7 @@ struct ShortPostLink: View {
         Text((data.selftext ?? "").md()).lineLimit(2)
           .fontSize(15).opacity(0.75)
         HStack {
-//          if let fullname = data.author_fullname {
           Badge(showVotes: true, post: post, theme: selectedTheme.postLinks.theme.badge)
-//              .equatable()
-//          }
           Spacer()
           Tag(text: "r/\(data.subreddit)")
             .highPriorityGesture(TapGesture().onEnded {

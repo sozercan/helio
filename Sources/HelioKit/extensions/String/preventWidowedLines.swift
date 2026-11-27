@@ -1,10 +1,3 @@
-//
-//  preventWidowedLines.swift
-//  Helio
-//
-//  Created by Igor Marcossi on 02/01/24.
-//
-
 import Foundation
 
 extension String {

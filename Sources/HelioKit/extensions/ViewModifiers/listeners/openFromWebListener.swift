@@ -1,10 +1,3 @@
-//
-//  openFromWebListener.swift
-//  Helio
-//
-//  Created by Igor Marcossi on 10/12/23.
-//
-
 import SwiftUI
 
 extension View {
@@ -12,8 +5,6 @@ extension View {
     self
       .onOpenURL { url in
         let parsed = parseRedditURL(url.absoluteString)
-        // A link tapped in the posts tab, in a post or its comments, opens on top of it so Back
-        // returns there. From another tab it starts over on the posts tab's feed.
         let reset = Nav.shared.activeTab != .posts
         withAnimation {
           switch parsed {

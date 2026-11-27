@@ -1,10 +1,3 @@
-//
-//  refetchMeListener.swift
-//  Helio
-//
-//  Created by Igor Marcossi on 13/12/23.
-//
-
 import Defaults
 import SwiftUI
 

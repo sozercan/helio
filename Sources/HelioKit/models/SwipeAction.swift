@@ -1,10 +1,3 @@
-//
-//  SwipeAction.swift
-//  Helio
-//
-//  Created by Igor Marcossi on 09/08/23.
-//
-
 import Defaults
 import Foundation
 import SwiftUI
@@ -108,7 +101,6 @@ struct AnySwipeAction: Codable, Defaults.Serializable, Identifiable, Hashable, E
     let newBase = try values.decode(Base.self, forKey: .base)
     base = newBase
 
-    // restore the action and active closures using the SwipeActionProvider
     if let swipeAction = allSwipeActions.first(where: { $0.id == newBase.id }) {
       actionClosure = swipeAction.actionClosure
       activeClosure = swipeAction.activeClosure
@@ -289,7 +281,7 @@ struct FilterSubredditAction: SwipeAction {
 
   func active(_ entity: Post) -> Bool {
     if let subreddit = entity.data?.subreddit {
-      return Defaults[.filteredSubreddits].contains(subreddit)
+      return UserCollectionsStore.shared.isSubredditFiltered(subreddit)
     }
 
     return false
@@ -439,7 +431,7 @@ struct EditCommentAction: SwipeAction {
 
   @MainActor
   func enabled(_ entity: Comment) -> Bool {
-    entity.data?.author == entity.redditAPI.me?.data?.name
+    entity.data?.author == RedditCredentialsManager.profile.user?.data?.name
   }
 }
 
@@ -459,7 +451,7 @@ struct DeleteCommentAction: SwipeAction {
 
   @MainActor
   func enabled(_ entity: Comment) -> Bool {
-    entity.data?.author == entity.redditAPI.me?.data?.name
+    entity.data?.author == RedditCredentialsManager.profile.user?.data?.name
   }
 }
 
@@ -501,7 +493,6 @@ struct NoneAction: SwipeAction {
   }
 }
 
-/// MessageLink's fixed swipe action. Not user-configurable, so it isn't listed in `allSwipeActions`.
 struct ToggleReadMessageAction: SwipeAction {
   var id = "toggle-read-message-swipe-action"
   var label = "Read/Unread"

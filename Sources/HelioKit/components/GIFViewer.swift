@@ -1,16 +1,8 @@
-//
-//  GIFViewer.swift
-//  Helio
-//
-//  Created by Igor Marcossi on 29/10/23.
-//
-
 import Gifu
 import Nuke
 import NukeUI
 import SwiftUI
 
-/// An image view for displaying animated images.
 public struct GIFImage: UIViewRepresentable {
   private enum Source {
     case data(Data)
@@ -22,7 +14,6 @@ public struct GIFImage: UIViewRepresentable {
   private var loopCount = 0
   private var size: CGSize = .zero
 
-  /// Initializes the view with the given GIF image data.
   public init(data: Data, size: CGSize? = nil) {
     self.source = .data(data)
     if let size {

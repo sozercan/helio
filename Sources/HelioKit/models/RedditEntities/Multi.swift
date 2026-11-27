@@ -1,10 +1,3 @@
-//
-//  Multi.swift
-//  Helio
-//
-//  Created by Igor Marcossi on 20/08/23.
-//
-
 import Defaults
 import Foundation
 import UIKit
@@ -53,7 +46,6 @@ struct MultiData: GenericRedditEntityDataType, Defaults.Serializable, Sendable {
   }
 
   init(entity: CachedMulti) {
-//    self.can_edit = entity.can_edit
     self.display_name = entity.display_name ?? ""
     self.name = entity.name ?? ""
     self.description_html = nil
@@ -74,7 +66,6 @@ struct MultiData: GenericRedditEntityDataType, Defaults.Serializable, Sendable {
     self.is_favorited = nil
     self.owner_id = nil
     self.description_md = nil
-//    self.id = entity.uuid
   }
 }
 

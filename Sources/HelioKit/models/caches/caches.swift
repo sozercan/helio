@@ -1,25 +1,48 @@
-//
-//  caches.swift
-//  Helio
-//
-//  Created by Igor Marcossi on 20/09/23.
-//
-
 import Foundation
-import NukeUI
-import UIKit
-import YouTubePlayerKit
 
-// WE SHOULD AVOID USING THIS TYPE OF CACHE
-// Don't create any more caches in this format,
-// there's no reason for the cache to be managed by us manually this way.
+final class ExpiringCache<Value>: @unchecked Sendable {
+  private final class Entry {
+    let value: Value
+    let expiresAt: Date?
 
-class Caches {
-  static let postsAttrStr = BaseCache<AttributedString>(cacheLimit: 100)
-  // The decode-pipeline leak is per-AVPlayerLayer, not per-AVPlayer, so the inline player view
-  // (InlinePlayerLayer) owns layer teardown. We deliberately do NOT replaceCurrentItem(nil) on
-  // eviction: PostHelioData strongly retains the same SharedVideo, so niling its item left a
-  // dead/blank video on scroll-back. Just cap the dictionary.
-  static let videos = BaseCache<SharedVideo>(cacheLimit: 12)
-  static let streamable = BaseCache<StreamableCached>(cacheLimit: 100)
+    init(value: Value, expiresAt: Date?) {
+      self.value = value
+      self.expiresAt = expiresAt
+    }
+  }
+
+  private let lock = NSLock()
+  private let storage = NSCache<NSString, Entry>()
+
+  init(countLimit: Int) {
+    storage.countLimit = countLimit
+  }
+
+  func get(key: String, now: Date = Date()) -> Value? {
+    lock.withLock {
+      let nsKey = key as NSString
+      guard let entry = storage.object(forKey: nsKey) else { return nil }
+      if let expiresAt = entry.expiresAt, now >= expiresAt {
+        storage.removeObject(forKey: nsKey)
+        return nil
+      }
+      return entry.value
+    }
+  }
+
+  func set(key: String, value: Value, expiresAt: Date? = nil) {
+    lock.withLock {
+      storage.setObject(Entry(value: value, expiresAt: expiresAt), forKey: key as NSString)
+    }
+  }
+
+  func removeAll() {
+    lock.withLock {
+      storage.removeAllObjects()
+    }
+  }
+}
+
+enum Caches {
+  static let streamable = ExpiringCache<StreamableCached>(countLimit: 100)
 }

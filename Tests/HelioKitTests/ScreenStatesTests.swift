@@ -9,15 +9,7 @@ struct ScreenStatesTests {
 
   private let start = Date(timeIntervalSinceReferenceDate: 0)
   private let home = Owner()
-  /// The posts tab's layout.
   private let posts = Owner()
-
-  /// The lease lets go on the main actor after it's released.
-  private func letLeasesGo() async {
-    for _ in 0 ..< 5 {
-      await Task.yield()
-    }
-  }
 
   @Test func screensOfTheSameFeedKeepTheirOwnStateOutsideALayoutChange() {
     let states = ScreenStates()
@@ -37,7 +29,6 @@ struct ScreenStatesTests {
     new.adopt(in: posts)
     #expect(new.model === old.model)
     #expect(new.takeHandedOver())
-    // Once: the screen restores its scroll position on its first appearance only.
     #expect(!new.takeHandedOver())
   }
 
@@ -60,7 +51,6 @@ struct ScreenStatesTests {
     states.beginHandoff(in: posts, now: start, endsItself: false)
     let first = states.lease("feed", owner: home, now: start) { Model() }
     let second = states.lease("feed", owner: home, now: start) { Model() }
-    // Both start out with the old screen's, until they show.
     #expect(second.model === old.model && !second.settled)
     first.adopt(in: posts)
     second.adopt(in: posts)
@@ -91,7 +81,6 @@ struct ScreenStatesTests {
     let old = states.lease("feed", owner: home, now: start) { Model() }
     old.adopt(in: posts)
     states.beginHandoff(in: posts, now: start, endsItself: false)
-    // Made and dropped without showing.
     _ = states.lease("feed", owner: home, now: start) { Model() }
     let new = states.lease("feed", owner: home, now: start) { Model() }
     #expect(new.model === old.model)
@@ -141,8 +130,7 @@ struct ScreenStatesTests {
     old?.adopt(in: posts)
     let model = old?.model
     states.beginHandoff(in: posts, now: start, endsItself: false)
-    old = nil
-    await letLeasesGo()
+    await states.waitForNextRelease { old = nil }
     let new = states.lease("feed", owner: home, now: start.addingTimeInterval(1)) { Model() }
     #expect(new.model === model)
   }
@@ -152,9 +140,7 @@ struct ScreenStatesTests {
     var closed: ScreenStateLease<Model>? = states.lease("feed", owner: home, now: start) { Model() }
     closed?.adopt(in: posts)
     let closedModel = closed?.model
-    closed = nil
-    await letLeasesGo()
-    // Opened again, then the layout changes: the new screen gets the open one's, not the closed one's.
+    await states.waitForNextRelease { closed = nil }
     let reopened = states.lease("feed", owner: home, now: start) { Model() }
     reopened.adopt(in: posts)
     states.beginHandoff(in: posts, now: start, endsItself: false)
@@ -169,10 +155,7 @@ struct ScreenStatesTests {
     gone?.adopt(in: posts)
     let goneModel = gone?.model
     states.beginHandoff(in: posts, now: start, endsItself: false)
-    // Closed during the first change, before any screen took it over.
-    gone = nil
-    await letLeasesGo()
-    // Folded back before that handoff ended: a page opened at that address since gets a new one.
+    await states.waitForNextRelease { gone = nil }
     states.beginHandoff(in: posts, now: start, endsItself: false)
     let new = states.lease("web:https://example.com", owner: nil, now: start) { Model() }
     new.adopt(in: posts)
@@ -185,15 +168,12 @@ struct ScreenStatesTests {
     old?.adopt(in: posts)
     let oldModel = old?.model
     states.beginHandoff(in: posts, now: start, endsItself: false)
-    // Built under a web page, and not shown before the layout changes again.
     var covered: ScreenStateLease<Model>? = states.lease("post|", owner: home, now: start) { Model() }
-    old = nil
-    await letLeasesGo()
+    await states.waitForNextRelease { old = nil }
     states.endHandoff()
     states.beginHandoff(in: posts, now: start, endsItself: false)
     let next = states.lease("post|", owner: home, now: start) { Model() }
-    covered = nil
-    await letLeasesGo()
+    await states.waitForNextRelease { covered = nil }
     states.endHandoff()
     next.adopt(in: posts)
     #expect(covered == nil)
@@ -207,10 +187,8 @@ struct ScreenStatesTests {
     old?.adopt(in: posts)
     let oldModel = old?.model
     states.beginHandoff(in: posts, now: start, endsItself: false)
-    // Built under a web page, so it shows only once Back uncovers it.
     let covered = states.lease("post|", owner: home, now: start) { Model() }
-    old = nil
-    await letLeasesGo()
+    await states.waitForNextRelease { old = nil }
     states.endHandoff()
     covered.adopt(in: posts)
     #expect(covered.model === oldModel)
@@ -222,8 +200,7 @@ struct ScreenStatesTests {
     var old: ScreenStateLease<Model>? = states.lease("feed", owner: home) { Model() }
     old?.adopt(in: posts)
     #expect(states.count("feed") == 1)
-    old = nil
-    await letLeasesGo()
+    await states.waitForNextRelease { old = nil }
     #expect(states.count("feed") == 0)
   }
 
@@ -232,8 +209,7 @@ struct ScreenStatesTests {
     var old: ScreenStateLease<Model>? = states.lease("feed", owner: home, now: start) { Model() }
     old?.adopt(in: posts)
     states.beginHandoff(in: posts, now: start, endsItself: false)
-    old = nil
-    await letLeasesGo()
+    await states.waitForNextRelease { old = nil }
     #expect(states.count("feed") == 1)
     states.endHandoff()
     #expect(states.count("feed") == 0)
@@ -241,7 +217,6 @@ struct ScreenStatesTests {
 
   @Test func screensOutsideTheLayoutThatChangedKeepTheirState() {
     let states = ScreenStates()
-    // The same subreddit open in another tab.
     let elsewhere = states.lease("feed", owner: home, now: start) { Model() }
     elsewhere.adopt(in: Owner())
     let old = states.lease("feed", owner: home, now: start) { Model() }

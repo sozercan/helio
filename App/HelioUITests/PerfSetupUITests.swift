@@ -1,8 +1,5 @@
 import XCTest
 
-/// First launch for `Tools/perf/perf.py`: a fresh install on fixture data, taken through
-/// onboarding and What's New, so the benchmark then launches as a returning user. Skipped unless
-/// the perf tool passes its network shim.
 final class PerfSetupUITests: XCTestCase {
   func testSetup() throws {
     let env = ProcessInfo.processInfo.environment
@@ -17,10 +14,11 @@ final class PerfSetupUITests: XCTestCase {
     app.launch()
 
     let home = app.staticTexts["Home"].firstMatch
-    for _ in 0 ..< 10 {
-      if app.buttons["Continue"].exists {
+    let deadline = Date().addingTimeInterval(15)
+    while Date() < deadline {
+      if app.buttons["Continue"].exists, app.buttons["Continue"].isHittable {
         app.buttons["Continue"].tap()
-      } else if app.buttons["xmark.circle.fill"].firstMatch.exists {
+      } else if app.buttons["xmark.circle.fill"].firstMatch.exists, app.buttons["xmark.circle.fill"].firstMatch.isHittable {
         app.buttons["xmark.circle.fill"].firstMatch.tap()
         let confirm = app.alerts.buttons["Yes"]
         if confirm.waitForExistence(timeout: 2) {
@@ -29,11 +27,24 @@ final class PerfSetupUITests: XCTestCase {
       } else if home.exists, home.isHittable {
         break
       }
-      sleep(1)
+      RunLoop.current.run(until: Date().addingTimeInterval(0.25))
     }
     XCTAssertTrue(home.waitForExistence(timeout: 10))
-    // Let the launch requests (token, account, subscriptions) land before quitting.
-    sleep(5)
+    let firstSubreddit = app.staticTexts["apple"].firstMatch
+    XCTAssertTrue(firstSubreddit.waitForExistence(timeout: 15))
+    if let logPath = env["HELIO_PERF_LOG"] {
+      let setupDeadline = Date().addingTimeInterval(15)
+      var setupComplete = false
+      while Date() < setupDeadline {
+        let text = (try? String(contentsOfFile: logPath, encoding: .utf8)) ?? ""
+        if text.contains(" setup_complete") {
+          setupComplete = true
+          break
+        }
+        RunLoop.current.run(until: Date().addingTimeInterval(0.1))
+      }
+      XCTAssertTrue(setupComplete)
+    }
     app.terminate()
   }
 }

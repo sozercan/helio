@@ -1,10 +1,3 @@
-//
-//  vote.swift
-//  Helio
-//
-//  Created by Igor Marcossi on 30/06/23.
-//
-
 import Alamofire
 import Foundation
 
@@ -15,7 +8,6 @@ extension RedditAPI {
     case .success:
       return true
     case .failure:
-      //        print(error)
       return nil
     }
   }
@@ -23,7 +15,6 @@ extension RedditAPI {
   struct VotePayload: Codable {
     let dir: String
     let id: String
-    ///    var rank = 1
     var api_type = "json"
   }
 

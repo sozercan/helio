@@ -1,10 +1,3 @@
-//
-//  PostLinkTheme.swift
-//  Helio
-//
-//  Created by Igor Marcossi on 07/09/23.
-//
-
 import Foundation
 
 struct PostLinkTheme: Codable, Hashable, Equatable {
@@ -27,11 +20,8 @@ struct PostLinkTheme: Codable, Hashable, Equatable {
   var unseenFadeOpacity: CGFloat
   @Boxed var compactSelftextPostLinkPlaceholderImg: CompactSelftextPostLinkPlaceholderImg
   var showDivider: Bool
-  /// Uncolored flair in titles. It's drawn into the title once, so it looks the same in light
-  /// and dark mode; `nil` keeps a translucent grey that reads as a grey pill on either.
   @Boxed var titleFlair: TitleFlair?
 
-  /// What titles are drawn with (`createTitleTagsAttrString`): a new style draws them again.
   var titleStyle: TitleStyle {
     .init(text: titleText, flair: titleFlair)
   }
@@ -93,12 +83,9 @@ struct PostLinkTheme: Codable, Hashable, Equatable {
     self.unseenFadeOpacity = try container.decodeIfPresent(CGFloat.self, forKey: .unseenFadeOpacity) ?? t.unseenFadeOpacity
     self.compactSelftextPostLinkPlaceholderImg = try container.decodeIfPresent(CompactSelftextPostLinkPlaceholderImg.self, forKey: .compactSelftextPostLinkPlaceholderImg) ?? t.compactSelftextPostLinkPlaceholderImg
     self.showDivider = try container.decodeIfPresent(Bool.self, forKey: .showDivider) ?? t.showDivider
-    // Optional: themes saved without it keep the translucent grey.
     self.titleFlair = try container.decodeIfPresent(TitleFlair.self, forKey: .titleFlair)
   }
 
-  /// Title tags' colors, the same in both modes: `text` on `background` for uncolored flair, and
-  /// `text` on `nsfwBackground` for the NSFW tag (`nil` keeps its translucent red).
   struct TitleFlair: Codable, Hashable, Equatable {
     var text: ThemeColor
     var background: ThemeColor

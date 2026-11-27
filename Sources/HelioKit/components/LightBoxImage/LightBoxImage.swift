@@ -1,10 +1,3 @@
-//
-//  LightBoxImage.swift
-//  Helio
-//
-//  Created by Igor Marcossi on 28/06/23.
-//
-
 import Defaults
 import NukeUI
 import SwiftUI
@@ -15,9 +8,7 @@ struct LightBoxImage: View {
   var pages: [LightBoxPage]
   var i: Int
   var doLiveText: Bool
-  /// Scrolls the feed behind to the post showing.
   var reveal: ((String) -> Void)?
-  /// The feed post last scrolled to, the one opened to begin with.
   @State private var revealedFeedID: String?
   @Environment(\.dismiss) private var dismiss
   @State private var appearBlack = false
@@ -31,18 +22,12 @@ struct LightBoxImage: View {
   @State private var done = false
   @State private var showOverlay = true
   @State private var isPinching: Bool = false
-  @State private var isZoomed: Bool = false
+  @State private var zoomedPages = LightBoxZoomState()
   @State private var scale: CGFloat = 1.0
-  /// The pages' GIF scrubbers and video players.
   @State private var media: LightBoxMediaStore
-  /// The page a held drag is scrubbing.
   @State private var scrubIndex: Int?
-  /// The width the lightbox gets, which each page fills. Not the window's: on a folded iPhone Duo,
-  /// it stops short of the status column, which ignoring the safe area doesn't reach.
   @State private var pageWidth: CGFloat = .screenW
-  /// The posts already marked read since it opened.
   @State private var seenPosts: Set<String> = []
-  /// Resets when the drag ends or is cancelled; a cancelled drag skips `onEnded`.
   @GestureState private var dragging = false
 
   init(pages: [LightBoxPage], i: Int, doLiveText: Bool, reveal: ((String) -> Void)? = nil) {
@@ -55,7 +40,6 @@ struct LightBoxImage: View {
     _activeIndex = State(initialValue: i)
   }
 
-  /// One post's images.
   init(postTitle: String? = nil, badgeKit: BadgeKit? = nil, avatarImageRequest: ImageRequest? = nil, markAsSeen: (() async -> Void)? = nil, i: Int, imagesArr: [ImgExtracted], doLiveText: Bool) {
     let post = LightBoxPost(key: "", title: postTitle, badgeKit: badgeKit, avatarImageRequest: avatarImageRequest, markAsSeen: markAsSeen)
     self.init(pages: post.pages(imagesArr), i: i, doLiveText: doLiveText)
@@ -64,16 +48,12 @@ struct LightBoxImage: View {
   private enum Axis {
     case horizontal
     case vertical
-    /// A held drag on a GIF or video, which the hold scrubs: the drag stands aside.
     case scrub
   }
 
-  /// A finger held on a GIF or video scrubs it as it moves, with the progress bar showing.
   private func hold(_ event: LightBoxScrub) {
     switch event {
     case .began:
-      // The page's own zoom was checked where the hold began (`LightBoxGestures`): `isZoomed` is
-      // shared by the pages, and can be left set by one VoiceOver paged away from.
       guard let scrubber = media.scrubber(at: activeIndex), scrubber.begin() else { return }
       scrubIndex = activeIndex
       if !showOverlay {
@@ -88,7 +68,6 @@ struct LightBoxImage: View {
     }
   }
 
-  /// Marks the post of the page showing read, once.
   private func markSeen(_ index: Int) {
     guard pages.indices.contains(index) else { return }
     let page = pages[index]
@@ -120,7 +99,6 @@ struct LightBoxImage: View {
     dismiss()
   }
 
-  /// Shows image `index`, for VoiceOver, which can't drag between them, and trackpad swipes.
   func page(to index: Int) {
     let index = min(pages.count - 1, max(0, index))
     guard index != activeIndex else { return }
@@ -130,13 +108,19 @@ struct LightBoxImage: View {
     }
   }
 
-  /// The image or video of page `index`.
+  private func zoomBinding(for index: Int) -> Binding<Bool> {
+    Binding(
+      get: { zoomedPages.isZoomed(at: index) },
+      set: { zoomedPages.setZoomed($0, at: index) },
+    )
+  }
+
   @ViewBuilder
   private func pageContent(_ index: Int, _ page: LightBoxPage) -> some View {
     let onSwipe: ((Int) -> Void)? = pages.count > 1 ? { self.page(to: index + $0) } : nil
     switch page.media {
     case let .image(img):
-      LightBoxElementView(el: img, width: pageWidth, label: page.post.title, onTap: toggleOverlay, onSwipe: onSwipe, onHold: img.url.isGIF ? hold : nil, doLiveText: doLiveText, showOverlay: showOverlay, gifScrubber: img.url.isGIF ? media.gif(index) : nil, isPinching: $isPinching, isZoomed: $isZoomed)
+      LightBoxElementView(el: img, width: pageWidth, label: page.post.title, onTap: toggleOverlay, onSwipe: onSwipe, onHold: img.url.isGIF ? hold : nil, doLiveText: doLiveText, showOverlay: showOverlay, gifScrubber: img.url.isGIF ? media.gif(index) : nil, isPinching: $isPinching, isZoomed: zoomBinding(for: index))
     case let .video(video, _):
       if let player = media.video(index, onPictureInPictureStart: close) {
         LightBoxVideoPage(video: player, holder: player.holder, width: pageWidth, posterURL: video.posterURL, label: page.post.title, selected: index == activeIndex, onTap: toggleOverlay, onSwipe: onSwipe, onHold: hold)
@@ -144,7 +128,6 @@ struct LightBoxImage: View {
     }
   }
 
-  /// Page `index`. Only the pages beside the one showing load their media: a feed's can be hundreds.
   @ViewBuilder
   private func pageView(_ index: Int, selectedScale: CGFloat) -> some View {
     let selected = index == activeIndex
@@ -153,7 +136,6 @@ struct LightBoxImage: View {
       pageContent(index, page)
         .allowsHitTesting(selected)
         .accessibilityHidden(!selected)
-        // The page, which changes as VoiceOver users swipe through the gallery.
         .accessibilityValue(page.count > 1 ? "\(page.index + 1) of \(page.count)" : "")
         .modifier(LightBoxPaging(pages: pages.count, page: { self.page(to: activeIndex + $0) }))
         .scaleEffect(!selected ? 1 : selectedScale)
@@ -166,10 +148,6 @@ struct LightBoxImage: View {
     }
   }
 
-  /// The post's title and author, and the image's buttons.
-  /// The window's sides outside its safe area, which the title and buttons keep clear of: the
-  /// folded Duo's camera and status column. Inside the lightbox, which ignores the safe area,
-  /// the safe area reads as none.
   private var sideInsets: EdgeInsets {
     let window = WindowMetrics.shared
     return EdgeInsets(top: 0, leading: max(0, window.contentFrame.minX), bottom: 0, trailing: max(0, window.size.width - window.contentFrame.maxX))
@@ -185,8 +163,6 @@ struct LightBoxImage: View {
 
   private func closeButton(opacity: CGFloat) -> some View {
     Button(action: close) {
-      // The label fills the circle, so the whole of it takes the tap: with the plain style,
-      // only the label does.
       Label("Close", systemImage: "xmark")
         .labelStyle(.iconOnly)
         .fontSize(17, .semibold)
@@ -204,18 +180,17 @@ struct LightBoxImage: View {
   }
 
   var body: some View {
-    // Measured around it, as the pages' row is as wide as all of them together.
     GeometryReader { geometry in
       lightbox
         .onChange(of: geometry.size.width, initial: true) { _, width in pageWidth = width }
     }
     .ignoresSafeArea()
-    // Inside the safe area, unlike the media: clear of the Duo's camera.
     .overlay(alignment: .topTrailing) {
       let interpolate = interpolatorBuilder([0, 100], value: abs(drag.height))
       closeButton(opacity: !appearContent || !showOverlay || isPinching ? 0 : interpolate([1, 0], false))
     }
     .onChange(of: activeIndex) { _, index in
+      zoomedPages.activePageDidChange(to: index)
       markSeen(index)
       media.show(index)
       if let feedID = pages[index].post.feedID, feedID != revealedFeedID {
@@ -232,7 +207,6 @@ struct LightBoxImage: View {
     let interpolate = interpolatorBuilder([0, 100], value: abs(drag.height))
     let selectedScale = interpolate([1, 0.9], true)
     HStack(spacing: SPACING) {
-      // By position: a feed can hold the same image twice.
       ForEach(pages.indices, id: \.self) { index in
         pageView(index, selectedScale: selectedScale)
       }
@@ -241,7 +215,7 @@ struct LightBoxImage: View {
     .offset(x: xPos + (dragAxis == .horizontal ? drag.width : 0))
     .frame(maxWidth: pageWidth, maxHeight: .infinity, alignment: .leading)
     .highPriorityGesture(
-      scale > 1
+      scale > 1 || zoomedPages.isZoomed(at: activeIndex)
         ? nil
         : DragGesture(minimumDistance: 20)
         .updating($dragging) { _, dragging, _ in dragging = true }
@@ -282,7 +256,6 @@ struct LightBoxImage: View {
             drag = .zero
             xPos += val.translation.width - (dragOffset?.width ?? 0)
             dragOffset = nil
-            // Half a phone's width: half an iPad's or a Mac window's took a long drag.
             let threshold = min(pageWidth / 2, 200)
             let newActiveIndex = min(pages.count - 1, max(0, activeIndex + (predictedEnd < -threshold ? 1 : predictedEnd > threshold ? -1 : 0)))
             let finalXPos = -(CGFloat(newActiveIndex) * (pageWidth + SPACING))
@@ -312,14 +285,12 @@ struct LightBoxImage: View {
           }
         },
     )
-    // Stands the drag down when it ended without `onEnded`, a held drag having taken over.
     .onChange(of: dragging) { _, dragging in
       guard !dragging, dragAxis == .scrub else { return }
       dragOffset = nil
       dragAxis = nil
     }
     .overlay { infoOverlay(opacity: !showOverlay || isPinching ? 0 : interpolate([1, 0], false)) }
-    // Taps on the image show or hide the controls; Close, Escape or a swipe closes it.
     .background(
       !appearBlack
         ? nil
@@ -347,7 +318,6 @@ struct LightBoxImage: View {
     .ignoresSafeArea(edges: .all)
     .compositingGroup()
     .opacity(appearContent ? 1 : 0)
-    // VoiceOver's scrub gesture closes it, since it can't drag it away.
     .accessibilityAction(.escape) { close() }
     .onChange(of: done) { val in
       if val {
@@ -359,7 +329,6 @@ struct LightBoxImage: View {
         }
       }
     }
-    // Pages are a window wide, so a resize moves them: keep the current one in view.
     .onChange(of: pageWidth) {
       endScrub()
       drag = .zero
@@ -377,20 +346,36 @@ struct LightBoxImage: View {
         }
       }
     }
-    // It covers the post: the menu bar's Post commands mustn't move off it underneath.
     .commandTarget(CommandTargets.Target(kind: .modal))
     .transition(.opacity)
   }
 }
 
-/// The pages' GIF scrubbers and video players, made as their pages come near and dropped as they
-/// go, so a lightbox paging through a feed holds a few at most.
+struct LightBoxZoomState: Equatable {
+  private(set) var zoomedPages: Set<Int> = []
+
+  func isZoomed(at index: Int) -> Bool {
+    zoomedPages.contains(index)
+  }
+
+  mutating func setZoomed(_ zoomed: Bool, at index: Int) {
+    if zoomed {
+      zoomedPages.insert(index)
+    } else {
+      zoomedPages.remove(index)
+    }
+  }
+
+  mutating func activePageDidChange(to index: Int) {
+    zoomedPages = zoomedPages.intersection([index])
+  }
+}
+
 @MainActor
 final class LightBoxMediaStore {
   private let pages: [LightBoxPage]
   private var gifs: [Int: GIFScrubber] = [:]
   private var videos: [Int: LightBoxVideo] = [:]
-  /// The page showing, whose video plays.
   private var shown: Int?
 
   init(pages: [LightBoxPage]) {
@@ -406,7 +391,6 @@ final class LightBoxMediaStore {
     return gif
   }
 
-  /// The player of page `index`, when it's a video.
   func video(_ index: Int, onPictureInPictureStart: (() -> Void)? = nil) -> LightBoxVideo? {
     guard pages.indices.contains(index), case let .video(video, holder) = pages[index].media else { return nil }
     let player = videos[index] ?? LightBoxVideo(video: video, holder: holder)
@@ -417,7 +401,6 @@ final class LightBoxMediaStore {
     return player
   }
 
-  /// What a held drag on page `index` scrubs: its GIF or video.
   func scrubber(at index: Int) -> (any MediaScrubbable)? {
     guard pages.indices.contains(index) else { return nil }
     switch pages[index].media {
@@ -426,10 +409,8 @@ final class LightBoxMediaStore {
     }
   }
 
-  /// Page `index` shows: plays its video, stops the one before, and drops the far ones.
   func show(_ index: Int) {
     if shown != index {
-      // The new one first, so the audio session isn't let go of between two videos.
       video(index)?.activate()
       if let shown {
         videos[shown]?.deactivate()
@@ -445,7 +426,6 @@ final class LightBoxMediaStore {
     }
   }
 
-  /// The lightbox closed.
   func releaseAll() {
     videos.values.forEach { $0.release() }
     videos = [:]
@@ -453,10 +433,8 @@ final class LightBoxMediaStore {
   }
 }
 
-/// Swiping up or down with VoiceOver on a gallery's image shows the next or previous one.
 private struct LightBoxPaging: ViewModifier {
   var pages: Int
-  /// Moves by the given number of pages.
   var page: (Int) -> Void
 
   func body(content: Content) -> some View {

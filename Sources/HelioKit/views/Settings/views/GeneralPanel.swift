@@ -1,10 +1,3 @@
-//
-//  GeneralPanel.swift
-//  Helio
-//
-//  Created by Daniel Inama on 17/08/23.
-//
-
 import Defaults
 import Nuke
 import SwiftUI
@@ -12,7 +5,7 @@ import UniformTypeIdentifiers
 import WebKit
 
 struct GeneralPanel: View {
-  @Default(.likedButNotSubbed) var likedButNotSubbed
+  private let userCollections = UserCollectionsStore.shared
   @Default(.BehaviorDefSettings) var behaviorDefSettings
   @Default(.GeneralDefSettings) var generalDefSettings
   @State private var totalCacheSize: String = ""
@@ -46,23 +39,9 @@ struct GeneralPanel: View {
 
         Section {
           Toggle("Sync credentials", systemImage: "person.2.badge.key.fill", isOn: $behaviorDefSettings.iCloudSyncCredentials)
-          //          Toggle("Sync preferences", systemImage: "slider.horizontal.3", isOn: $generalDefSettings.iCloudSyncUserDefaults)
-          //            .onChange(of: generalDefSettings.iCloudSyncUserDefaults) { _, new in
-          //              Zephyr.syncUbiquitousKeyValueStoreOnChange = new
-          //            }
-          //          WListButton {
-          //            print(NSUbiquitousKeyValueStore.default.dictionaryRepresentation["ZephyrSyncKey"])
-          //            print(UserDefaults.standard.dictionaryRepresentation()["ZephyrSyncKey"])
-          ////            Zephyr.sync()
-          //          } label: {
-          //            Label("Force preferences sync", systemImage: "arrow.clockwise")
-          //          }
         } header: {
           Text("iCloud")
         }
-        //      footer: {
-        //          Text("Syncing will run on every app restart and on every preference change. Preferences also include themes.")
-        //        }
 
         Section("Backup") {
           WListButton {
@@ -76,7 +55,6 @@ struct GeneralPanel: View {
             Label("Export Settings", systemImage: "arrowshape.turn.up.left")
           }
           .fileMover(isPresented: $isMoving, file: URL(string: settingsFileURL), onCompletion: { _ in
-            //          print(completion)
           })
 
           WListButton {
@@ -100,7 +78,6 @@ struct GeneralPanel: View {
           }
           .disabled(importingApolloReadHistory)
         }
-        // One importer for both buttons: sibling .fileImporter modifiers can shadow each other.
         .fileImporter(isPresented: $doImport, allowedContentTypes: importKind == .apolloReadHistory ? [.zip, .propertyList] : [UTType.json], allowsMultipleSelection: false, onCompletion: { result in
           switch (importKind, result) {
           case let (.settings, .success(file)):
@@ -146,9 +123,9 @@ struct GeneralPanel: View {
           }
 
           WListButton {
-            likedButNotSubbed = []
+            userCollections.clearLikedButNotSubbed()
           } label: {
-            Label("Clear " + String(likedButNotSubbed.count) + " Local Favorites", systemImage: "heart.slash.fill")
+            Label("Clear " + String(userCollections.likedButNotSubbed.count) + " Local Favorites", systemImage: "heart.slash.fill")
               .foregroundColor(.red)
           }
         }
@@ -191,7 +168,6 @@ struct GeneralPanel: View {
     }
   }
 
-  /// Sizes the cache off the main thread: walking a large cache would otherwise hang the app.
   func calculateTotalCacheSize() async {
     let totalSize = await Task.detached(priority: .utility) {
       appCacheDirectories().reduce(0) { $0 + Self.calculateDirectorySize(directory: $1) }
@@ -225,7 +201,6 @@ struct GeneralPanel: View {
 
   func clearCache() {
     do {
-      // Attempt to flush the custom data cache
       let dataCache = try DataCache(name: imageDataCacheName)
       try dataCache.flush()
       print("Custom DataCache flushed successfully.")
@@ -233,19 +208,16 @@ struct GeneralPanel: View {
       print("Failed to flush DataCache with error: \(error)")
     }
 
-    // Clearing Nuke's image and data caches
     Nuke.ImageCache.shared.removeAll()
     print("Nuke ImageCache cleared.")
 
     Nuke.DataLoader.sharedUrlCache.removeAllCachedResponses()
     print("Nuke DataLoader cache cleared.")
 
-    // Try to clear URL session configuration cache
     URLCache.shared.removeAllCachedResponses()
 
     appCacheDirectories().forEach(flushFilesInDirectoryButNotFolders)
 
-    // Resetting Core Data, except read history
     resetCoreData(keeping: ["SeenPost"])
 
     totalCacheSize = "0 bytes"
@@ -253,10 +225,6 @@ struct GeneralPanel: View {
   }
 }
 
-/// The directories holding only this app's cache files. On iOS, and in a sandboxed Mac app, the
-/// caches and temporary directories belong to the app. An unsandboxed Mac app shares them with
-/// every other app, so only the folders named after it are its own: sizing all of them hung the
-/// app, and clearing them deleted other apps' caches.
 func appCacheDirectories() -> [URL] {
   let fileManager = FileManager.default
   guard let caches = fileManager.urls(for: .cachesDirectory, in: .userDomainMask).first else { return [] }
@@ -282,12 +250,10 @@ func flushFilesInDirectoryButNotFolders(_ at: URL?) {
 
   for case let fileURL as URL in enumerator {
     do {
-      // Check if the file or directory is part of the Nuke cache or related to SQLite (which crashes if related file is currently in use by the app)
       let path = fileURL.path
       if path.contains("com.github.kean.Nuke.Cache") || path.contains("sqlite") || path.hasSuffix(".db")
         || path.hasSuffix("-journal") || path.hasSuffix("-wal") || path.hasSuffix("-shm")
       {
-        // Skip this file or directory
         continue
       }
 

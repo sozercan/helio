@@ -1,29 +1,12 @@
-//
-//  WebExtensionRuntime.swift
-//  Helio
-//
-//  Runs the user's web extensions in the web pages the app shows.
-//
-
 import Foundation
 import os
 import WebKit
 
-/// Loads the enabled web extensions (`WebExtensionStore`) once, at launch, into a controller the
-/// app's web pages (`WebPageScreen`) share. WebKit can't unload an extension, so changes to the
-/// list wait for the next launch.
-///
-/// The controller alone doesn't run an extension's scripts in a page: WebKit asks the app for
-/// the browser's tabs and windows, and finds a page's web view through its tab. Helio has no
-/// tabs, so each page shown registers as a tab of one window.
 @MainActor
 @Observable
 final class WebExtensionRuntime: NSObject {
   static let shared = WebExtensionRuntime()
 
-  /// Its default data store, which extensions' cookie and data APIs reach, is the pages' own
-  /// (`WebPageStorage`), not the app's. Extensions' own pages (background, settings) keep their
-  /// data in a store of their own instead, which the launch's clearing of the pages' leaves alone.
   @ObservationIgnored let controller: WKWebExtensionController = {
     let configuration = WKWebExtensionController.Configuration.default()
     configuration.defaultWebsiteDataStore = WebPageStorage.store
@@ -33,7 +16,6 @@ final class WebExtensionRuntime: NSObject {
     return WKWebExtensionController(configuration: configuration)
   }()
 
-  /// Fixed, so extensions' pages find their data again each launch.
   private static let extensionPagesStoreID = UUID(uuidString: "8E3B1F64-2C7D-4A95-B0E8-6D4F2A9C1E73")!
 
   @ObservationIgnored private let window = HostWindow()
@@ -41,10 +23,7 @@ final class WebExtensionRuntime: NSObject {
   @ObservationIgnored private var startTask: Task<Void, Never>?
   @ObservationIgnored private let logger = Logger(subsystem: "com.sertacozercan.helio", category: "WebExtensions")
 
-  /// The loaded extensions, by their id in the store. Observed: the Extensions panel shows
-  /// what loaded, which can finish after it opens.
   private(set) var contexts: [String: WKWebExtensionContext] = [:]
-  /// Why an enabled extension didn't load, by its id in the store.
   private(set) var loadErrors: [String: String] = [:]
 
   override private init() {
@@ -52,14 +31,10 @@ final class WebExtensionRuntime: NSObject {
     controller.delegate = self
   }
 
-  /// Whether pages should run extensions: any loaded.
   var hasExtensions: Bool {
     !contexts.isEmpty
   }
 
-  /// Gets pages ready, once per launch: drops what sites stored last time (`WebPageStorage`),
-  /// then loads the enabled extensions. Each page waits for it, so none opens with the last
-  /// launch's site data or without the extensions, whenever it's opened.
   func start(store: WebExtensionStore = .shared) async {
     if startTask == nil {
       startTask = Task {
@@ -76,11 +51,7 @@ final class WebExtensionRuntime: NSObject {
     do {
       let webExtension = try await WKWebExtension(resourceBaseURL: url)
       let context = WKWebExtensionContext(for: webExtension)
-      // Its storage and its pages' origin stay the same across launches.
       context.uniqueIdentifier = id
-      // The user chose to add it, and Helio has no prompts to ask with: it gets what it asks for,
-      // including what it may ask for later (uBlock Origin Lite needs every site to hide page
-      // elements, not just block requests).
       for permission in webExtension.requestedPermissions.union(webExtension.optionalPermissions) {
         context.setPermissionStatus(.grantedExplicitly, for: permission)
       }
@@ -90,7 +61,6 @@ final class WebExtensionRuntime: NSObject {
       try controller.load(context)
       contexts[id] = context
       if webExtension.hasBackgroundContent {
-        // Loaded, but not working: the panel says so.
         try await context.loadBackgroundContent()
       }
       logger.info("Loaded extension \(webExtension.displayName ?? id, privacy: .public) \(webExtension.version ?? "", privacy: .public)")
@@ -100,9 +70,6 @@ final class WebExtensionRuntime: NSObject {
     }
   }
 
-  // MARK: Pages as tabs
-
-  /// Makes a page a tab extensions can reach, and the active one.
   func attach(_ webView: WKWebView) {
     guard webView.configuration.webExtensionController === controller, tabs[ObjectIdentifier(webView)] == nil else { return }
     let tab = HostTab(webView: webView, window: window)
@@ -116,7 +83,6 @@ final class WebExtensionRuntime: NSObject {
     activate(tab)
   }
 
-  /// The page is gone.
   func detach(_ webView: WKWebView) {
     guard let tab = tabs.removeValue(forKey: ObjectIdentifier(webView)) else { return }
     let wasActive = window.activeTab === tab
@@ -133,14 +99,12 @@ final class WebExtensionRuntime: NSObject {
     }
   }
 
-  /// The page showed again, over the others.
   func activate(_ webView: WKWebView) {
     if let tab = tabs[ObjectIdentifier(webView)] {
       activate(tab)
     }
   }
 
-  /// The page's address, title or loading state changed.
   func pageChanged(_ webView: WKWebView, _ properties: WKWebExtension.TabChangedProperties) {
     if let tab = tabs[ObjectIdentifier(webView)] {
       controller.didChangeTabProperties(properties, for: tab)
@@ -182,7 +146,6 @@ extension WebExtensionRuntime: WKWebExtensionControllerDelegate {
   }
 }
 
-/// A page shown in the app, as extensions see it: a browser tab.
 @MainActor
 private final class HostTab: NSObject, WKWebExtensionTab {
   weak var webView: WKWebView?
@@ -226,7 +189,6 @@ private final class HostTab: NSObject, WKWebExtensionTab {
   }
 }
 
-/// The app's window, as extensions see it: one window holding every page shown.
 @MainActor
 private final class HostWindow: NSObject, WKWebExtensionWindow {
   var tabs: [HostTab] = []
@@ -248,8 +210,6 @@ private final class HostWindow: NSObject, WKWebExtensionWindow {
     .normal
   }
 
-  /// Not private browsing: WebKit runs no extension in a page whose data store keeps nothing
-  /// on disk, so pages use one that's cleared at launch instead (`WebPageStorage`).
   func isPrivate(for _: WKWebExtensionContext) -> Bool {
     false
   }

@@ -1,10 +1,3 @@
-//
-//  AvatarTheme.swift
-//  Helio
-//
-//  Created by Igor Marcossi on 07/09/23.
-//
-
 import Foundation
 
 struct AvatarTheme: Codable, Hashable, Equatable {

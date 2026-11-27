@@ -1,10 +1,3 @@
-//
-//  searchInSubreddit.swift
-//  Helio
-//
-//  Created by Igor Marcossi on 11/07/23.
-//
-
 import Alamofire
 import Defaults
 import Foundation
@@ -73,15 +66,12 @@ extension RedditAPI {
     func encode(to encoder: Encoder) throws {
       var container = encoder.container(keyedBy: CodingKeys.self)
 
-      // Consolidating flairs and searchQuery into `q` parameter as a query string
       var queryItems: [String] = []
       if let flairs {
         let flairQueries = flairs.map { "flair:\"\($0)\"" }
         queryItems.append(contentsOf: flairQueries)
       }
-//      if let searchQuery = searchQuery {
       queryItems.append(searchQuery)
-//      }
       let queryString = queryItems.joined(separator: " OR ")
       try container.encode(queryString, forKey: .searchQuery)
 

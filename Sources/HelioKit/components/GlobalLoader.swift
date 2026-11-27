@@ -1,10 +1,3 @@
-//
-//  GlobalLoader.swift
-//  Helio
-//
-//  Created by Igor Marcossi on 08/08/23.
-//
-
 import Foundation
 import SwiftUI
 
@@ -49,11 +42,6 @@ struct GlobalLoaderProviderModifier: ViewModifier {
 
   func enable(_ str: String) {
     self.loader = GlobalLoader(loadingText: str, showing: true)
-    //    doThisAfter(0.0) {
-    //      withAnimation(spring) {
-    //        self.showing = true
-    //      }
-    //    }
   }
 
   func dismiss() {

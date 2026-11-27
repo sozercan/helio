@@ -1,10 +1,3 @@
-//
-//  CommentLinkContent.swift
-//  Helio
-//
-//  Created by Igor Marcossi on 08/07/23.
-//
-
 import Defaults
 import MarkdownUI
 import NukeUI
@@ -25,7 +18,6 @@ struct CommentLinkContentPreview: View {
       VStack(alignment: .leading, spacing: 0) {
         CommentLinkContent(forcedBodySize: nil, showReplies: showReplies, arrowKinds: arrowKinds, indentLines: indentLines, lineLimit: lineLimit, post: post, comment: comment, helioData: helioData, avatarsURL: avatarsURL)
       }
-//      .frame(width: .screenW, height: forcedBodySize.height + CGFloat((data.depth != 0 ? 42 : 30) + 16))
       .padding(.vertical, 12)
       .frame(width: contentWidth)
       .fixedSize()
@@ -49,7 +41,6 @@ struct CommentLinkContent: View {
   var comment: Comment
   var helioData: CommentHelioData
   var avatarsURL: [String: String]?
-  /// Replies hidden under this comment while it's collapsed.
   var hiddenReplyCount = 0
 
   @SilentState private var size: CGSize = .zero
@@ -81,9 +72,7 @@ struct CommentLinkContent: View {
 
     if let data = comment.data {
       let collapsed = data.collapsed ?? false
-      // `indentLines` overrides the depth, like the reply sheet's unindented preview.
       let barDepth = bars ? (indentLines ?? data.depth ?? 0) : nil
-      // The header's fixed height follows its text size.
       let authorSize = ContentTextScale.size(theme.theme.badge.authorText.size, relativeTo: .meta, dynamicTypeSize: dynamicTypeSize)
       let statsSize = ContentTextScale.size(theme.theme.badge.statsText.size, relativeTo: .meta, dynamicTypeSize: dynamicTypeSize)
       let headerLineHeight = max(authorSize * 1.25, theme.theme.badge.avatar.visible ? theme.theme.badge.avatar.size : 0)
@@ -103,9 +92,9 @@ struct CommentLinkContent: View {
           }
           HStack(spacing: 8) {
             if bars {
-              CommentHeaderLine(data: data, avatarRequest: helioData.avatarImageRequest, isOP: (post?.data?.author ?? "") == data.author, unseen: seenComments == nil ? false : !seenComments!.contains(data.id), theme: theme.theme)
+              CommentHeaderLine(data: data, subName: data.subreddit ?? post?.data?.subreddit, avatarRequest: helioData.avatarImageRequest, isOP: (post?.data?.author ?? "") == data.author, unseen: seenComments == nil ? false : !seenComments!.contains(data.id), theme: theme.theme)
             } else if let author = data.author {
-              BadgeView(avatarRequest: helioData.avatarImageRequest, saved: data.badgeKit.saved, unseen: seenComments == nil ? false : !seenComments!.contains(data.id), usernameColor: (post?.data?.author ?? "") == author ? Color.green : nil, author: data.badgeKit.author, userFlair: data.badgeKit.userFlair, created: data.badgeKit.created, theme: theme.theme.badge, commentTheme: theme.theme)
+              BadgeView(avatarRequest: helioData.avatarImageRequest, saved: data.badgeKit.saved, unseen: seenComments == nil ? false : !seenComments!.contains(data.id), usernameColor: (post?.data?.author ?? "") == author ? Color.green : nil, author: data.badgeKit.author, userFlair: data.badgeKit.userFlair, created: data.badgeKit.created, theme: theme.theme.badge, commentTheme: theme.theme, subName: data.subreddit ?? post?.data?.subreddit)
             }
 
             Spacer()
@@ -166,7 +155,6 @@ struct CommentLinkContent: View {
                   .accessibilityLabel(data.score_hidden == true ? "Score hidden" : "\(downup) points")
                   .foregroundColor(data.likes != nil ? (data.likes! ? .orange : .blue) : .gray)
                   .contentTransition(.numericText())
-                  //                  .foregroundColor(downup == 0 ? .gray : downup > 0 ? .orange : .blue)
                   .contentFont(14, .semibold, relativeTo: .meta)
 
                 Button {
@@ -186,7 +174,6 @@ struct CommentLinkContent: View {
               .padding(.horizontal, 6)
               .padding(.vertical, 2)
               .background(Capsule(style: .continuous).fill(.secondary.opacity(0.1)))
-              //              .viewVotes(ups, downs)
               .allowsHitTesting(!collapsed)
               .scaleEffect(1)
 
@@ -203,13 +190,10 @@ struct CommentLinkContent: View {
               }
             }
           }
-          // The header is the comment's collapse control: one element that reads who wrote it,
-          // its score and age, whether it's collapsed, and has the comment's actions.
           .accessibilityElement(children: .combine)
           .accessibilityAddTraits(.isButton)
           .accessibilityValue(collapsed ? "Collapsed" : "Expanded")
           .accessibilityAction(.default) { comment.toggleCollapsed(optimistic: true) }
-          // Its author button becomes one of its actions.
           .accessibilityActions { CommentLinkActions(comment: comment, data: data) }
           .padding(.top, headerTopPad)
           .compositingGroup()
@@ -343,13 +327,10 @@ struct CommentLinkContent: View {
   }
 }
 
-/// A comment's actions: its swipe actions, Select Text and Share. Its context menu, and its
-/// VoiceOver actions.
 struct CommentLinkActions: View {
   var comment: Comment
   var data: CommentData
 
-  /// Select Text below opens the selection sheet, so the swipe action's twin is left out.
   static let swipeActions = allCommentSwipeActions.filter { $0.id != SelectTextCommentAction().id }
 
   var body: some View {
@@ -374,7 +355,6 @@ struct CommentLinkActions: View {
     }
 
     if let permalink = data.permalink {
-      // ShareLink inside a .contextMenu is a known SwiftUI bug; present imperatively instead.
       Button {
         ShareUtils.shareItem(item: "https://reddit.com\(permalink.escape.urlEncoded)")
       } label: { Label("Share", systemImage: "square.and.arrow.up") }
@@ -382,7 +362,6 @@ struct CommentLinkActions: View {
   }
 }
 
-/// The eye button that reveals or hides a body's spoilers.
 struct SpoilerToggle: View {
   @Binding var showSpoiler: Bool
 
@@ -400,10 +379,10 @@ struct SpoilerToggle: View {
   }
 }
 
-/// Apollo's comment header: author, flair and score on one line.
 struct CommentHeaderLine: View {
   @Environment(\.navColumn) private var navColumn
   var data: CommentData
+  var subName: String?
   var avatarRequest: ImageRequest?
   var isOP: Bool
   var unseen: Bool
@@ -420,8 +399,6 @@ struct CommentHeaderLine: View {
         Button {
           Nav.to(.reddit(.user(User(id: author))), from: navColumn)
         } label: {
-          // The theme's accent rather than the app's tint, which is the same in every built-in
-          // theme: High Contrast's is darker so OP names reach 7:1.
           Text(author)
             .contentFont(badge.authorText.size, badge.authorText.weight.t, relativeTo: .meta)
             .foregroundStyle(author == "[deleted]" ? .red : isOP ? badge.subColor() : badge.authorText.color())
@@ -435,10 +412,8 @@ struct CommentHeaderLine: View {
         PostLinkGlowDot(unseenType: .dot(theme.unseenDot), seen: false, badge: true).equatable()
       }
 
-      if let flairs = flairWithoutEmojis(str: data.author_flair_text) {
-        ForEach(flairs, id: \.self) {
-          UserFlair(flair: $0, flairText: badge.flairText, flairBackground: badge.flairBackground).equatable()
-        }
+      if let flair = data.author_flair_text, !FlairParser.parse(flair).isEmpty {
+        UserFlair(flair: flair, subName: subName ?? data.subreddit, flairText: badge.flairText, flairBackground: badge.flairBackground).equatable()
       }
 
       if let ups = data.ups {
@@ -449,9 +424,3 @@ struct CommentHeaderLine: View {
     }
   }
 }
-
-// struct CommentLinkContent_Previews: PreviewProvider {
-//    static var previews: some View {
-//        CommentLinkContent()
-//    }
-// }

@@ -1,10 +1,3 @@
-//
-//  CredentialEditAdvancedMode.swift
-//  Helio
-//
-//  Created by Igor Marcossi on 01/01/24.
-//
-
 import SwiftUI
 
 struct CredentialEditAdvancedMode: View {
@@ -56,14 +49,12 @@ struct CredentialEditAdvancedMode: View {
             CredentialStatusMetaView(credMeta)
           }.animation(.spring, value: credMeta)
         }
-//
         NiceCredentialSection("Tokens") {
           HStack {
             BigInfoCredential(label: "Refresh", value: draftCredential.refreshToken)
             BigInfoCredential(label: "Access", value: draftCredential.accessToken?.token, refresh: renewAccessToken)
           }.frame(height: 108)
         }
-//
         Button {
           openURL(redditApiSettingsUrl)
         } label: {

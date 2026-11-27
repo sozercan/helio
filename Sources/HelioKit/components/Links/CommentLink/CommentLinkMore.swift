@@ -1,10 +1,3 @@
-//
-//  CommentLinkMore.swift
-//  Helio
-//
-//  Created by Igor Marcossi on 17/07/23.
-//
-
 import Defaults
 import SwiftUI
 
@@ -21,7 +14,6 @@ struct CommentLinkMore: View {
 
   var body: some View {
     let theme = selectedTheme.comments
-//    let curveColor = selectedTheme.comments.theme.indentColor()
     let horPad = selectedTheme.comments.theme.innerPadding.horizontal
     let bars = !theme.theme.indentColors.isEmpty
     if let data = comment.data, let count = data.count, let parentElement, count > 0 {
@@ -74,7 +66,6 @@ struct CommentLinkMore: View {
       .background(selectedTheme.comments.theme.bg())
       .contentShape(Rectangle())
       .onTapGesture { loadMore(parentElement) }
-      // One button for VoiceOver, instead of its separate words.
       .accessibilityElement(children: .ignore)
       .accessibilityLabel(loadMoreLoading ? "Loading more replies" : "Load \(count) more replies")
       .accessibilityAddTraits(.isButton)

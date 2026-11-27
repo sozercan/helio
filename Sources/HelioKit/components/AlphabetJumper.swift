@@ -1,10 +1,3 @@
-//
-//  AlphabetJumper.swift
-//  Helio
-//
-//  Created by Igor Marcossi on 14/08/23.
-//
-
 import SwiftUI
 
 struct AlphabetJumper: View {
@@ -12,7 +5,6 @@ struct AlphabetJumper: View {
   var proxy: ScrollViewProxy
   @GestureState private var scrollLetter = ""
   @State private var haptic = UIImpactFeedbackGenerator(style: .rigid)
-  /// The letter VoiceOver's swipe up and down moves through.
   @State private var accessibilityIndex = 0
 
   func scrollTo(_ letter: String) {
@@ -36,7 +28,6 @@ struct AlphabetJumper: View {
     .animation(spring, value: scrollLetter.isEmpty)
     .fontSize(11, .semibold)
     .frame(width: 16, alignment: .trailing)
-//    .background(Color(uiColor: UIColor.systemGroupedBackground))
     .background(Color.clear)
     .contentShape(Rectangle())
     .highPriorityGesture(
@@ -56,15 +47,12 @@ struct AlphabetJumper: View {
         },
     )
     .onChange(of: scrollLetter, perform: scrollTo)
-    // One adjustable element, like UIKit's table index: tapping a letter or dragging over the
-    // letters is the gesture above; VoiceOver users swipe up and down instead.
     .accessibilityElement(children: .ignore)
     .accessibilityLabel("Section index")
     .accessibilityValue(letters.indices.contains(accessibilityIndex) ? letters[accessibilityIndex] : "")
     .accessibilityAdjustableAction { direction in
       guard !letters.isEmpty else { return }
       switch direction {
-      // Clamped both ways: the list may have shrunk since the index was last set.
       case .increment: accessibilityIndex = min(max(accessibilityIndex + 1, 0), letters.count - 1)
       case .decrement: accessibilityIndex = min(max(accessibilityIndex - 1, 0), letters.count - 1)
       @unknown default: return
@@ -72,7 +60,6 @@ struct AlphabetJumper: View {
       scrollTo(letters[accessibilityIndex])
     }
     .accessibilityHidden(letters.isEmpty)
-    // Centered on the list it's over, such as the sidebar column, not on the window.
     .frame(maxHeight: .infinity, alignment: .trailing)
     .ignoresSafeArea()
     .foregroundStyle(Color.accentColor)

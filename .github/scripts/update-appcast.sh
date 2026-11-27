@@ -1,12 +1,4 @@
 #!/usr/bin/env bash
-# Writes the Sparkle appcast the Mac app checks for updates, served from gh-pages, with the
-# release as its only item: Sparkle only needs the newest one.
-#
-#   update-appcast.sh --appcast appcast.xml --update mac-update.json --url <zip url> \
-#     --release-page <release url> --notes notes.md
-#
-# --update is the Mac build's mac-update.json from release.yml: its version, build number,
-# minimum macOS and the zip's Sparkle signature and length.
 set -euo pipefail
 
 while [ $# -gt 0 ]; do
@@ -29,8 +21,6 @@ build=$(field buildVersion)
 min_os=$(field minOSVersion)
 signature=$(field edSignature)
 length=$(field length)
-# Sparkle shows the notes in its update window. Markdown, not HTML: a Mac Catalyst app can't
-# show HTML release notes. A "]]>" in them would end the CDATA section early.
 notes=$(sed 's/]]>/]]]]><![CDATA[>/g' "$notes_file")
 date=$(LC_ALL=C date -u "+%a, %d %b %Y %H:%M:%S +0000")
 

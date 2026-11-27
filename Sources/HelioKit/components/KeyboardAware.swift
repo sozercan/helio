@@ -1,10 +1,3 @@
-//
-//  KeyboardAware.swift
-//  Helio
-//
-//  Created by Igor Marcossi on 01/08/23.
-//
-
 import Combine
 import Foundation
 import SwiftUI

@@ -1,10 +1,3 @@
-//
-//  SubredditData.swift
-//  Helio
-//
-//  Created by Igor Marcossi on 24/01/24.
-//
-
 import Defaults
 import Foundation
 
@@ -78,41 +71,7 @@ struct SubredditData: Codable, GenericRedditEntityDataType, Defaults.Serializabl
   var created_utc: Double? = nil
   var user_is_contributor: Bool? = nil
   var helioFlairs: [Flair]? = nil
-  ///  let comment_contribution_settings: CommentContributionSettings
-  ///  let header_size: [Int]?
-  ///  let user_flair_position: String?
-  ///  let all_original_content: Bool?
-  ///  let has_menu_widget: Bool?
-  ///  let wls: Int?
-  ///  let submission_type: String?
-  ///  let allowed_media_in_comments: [String]
-  ///  let collapse_deleted_comments: Bool?
-  ///  let emojis_custom_size: [Int]?
-  ///  let is_crosspostable_subreddit: Bool?
-  ///  let notification_level: String?
-  ///  let should_show_media_in_comments_setting: Bool?
-  ///  let can_assign_link_flair: Bool?
-  ///  let accounts_active_is_fuzzed: Bool?
-  ///  let allow_prediction_contributors: Bool?
-  ///  let submit_text_label: String?
-  ///  let link_flair_position: String?
-  ///  let user_sr_flair_enabled: Bool?
-  ///  let user_flair_enabled_in_sr: Bool?
-  ///  let allow_chat_post_creation: Bool?
-  ///  let allow_discovery: Bool?
-  ///  let accept_followers: Bool?
-  ///  let user_sr_theme_enabled: Bool?
-  ///  let link_flair_enabled: Bool?
-  ///  let disable_contributor_requests: Bool?
   let subreddit_type: String?
-  //  let suggested_comment_sort: String?
-  //  let over18: Bool?
-  //  let header_title: String?
-  //  let lang: String?
-  //  let whitelist_status: String?
-  //  let banner_size: [Int]?
-  //  let mobile_banner_image: String?
-  //  let allow_predictions_tournament: Bool?
 
   var subredditIconKit: SubredditIconKit {
     let communityIconArr = community_icon?.split(separator: "?") ?? []
@@ -124,10 +83,6 @@ struct SubredditData: Codable, GenericRedditEntityDataType, Defaults.Serializabl
     return SubredditIconKit(url: iconURLStr, initialLetter: String(name.prefix(1)).uppercased(), color: String((firstNonEmptyString(color, "#828282") ?? "").dropFirst(1)))
   }
 
-  /// These details with the account's state from `cached`, the sidebar's copy, which is the
-  /// fresher for it (favorited, subscribed). Only that: the copy fills the fields it doesn't
-  /// keep with placeholders (no description, a public type). Settings don't depend on which
-  /// copy a subreddit holds (`Subreddit.settingsKey`).
   func takingAccountState(from cached: SubredditData) -> SubredditData {
     var data = self
     data.user_has_favorited = cached.user_has_favorited ?? data.user_has_favorited
@@ -311,7 +266,6 @@ struct SubredditData: Codable, GenericRedditEntityDataType, Defaults.Serializabl
     self.user_flair_text = try container.decodeIfPresent(String.self, forKey: .user_flair_text)
     self.banner_background_color = try container.decodeIfPresent(String.self, forKey: .banner_background_color)
     self.show_media = try container.decodeIfPresent(Bool.self, forKey: .show_media)
-    //  self.id = try container.decodeIfPresent(String.self, forKey: .id)
     self.user_is_moderator = try container.decodeIfPresent(Bool.self, forKey: .user_is_moderator)
     self.description = try container.decodeIfPresent(String.self, forKey: .description)
     self.is_chat_post_feature_enabled = try container.decodeIfPresent(Bool.self, forKey: .is_chat_post_feature_enabled)

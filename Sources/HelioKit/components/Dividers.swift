@@ -1,10 +1,3 @@
-//
-//  Dividers.swift
-//  Helio
-//
-//  Created by Igor Marcossi on 15/09/23.
-//
-
 import SwiftUI
 
 struct VDivider: View {

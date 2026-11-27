@@ -1,10 +1,3 @@
-//
-//  PostLink.swift
-//  Helio
-//
-//  Created by Igor Marcossi on 28/06/23.
-//
-
 import Defaults
 import NukeUI
 import SwiftUI
@@ -14,7 +7,6 @@ struct PostLink: View, Equatable, Identifiable {
     lhs.id == rhs.id && lhs.repostAvatarRequest?.url == rhs.repostAvatarRequest?.url && lhs.defSettings == rhs.defSettings && lhs.compactPerSubreddit == rhs.compactPerSubreddit && lhs.theme == rhs.theme && lhs.contentWidth == rhs.contentWidth
   }
 
-  //  var disableOuterVSpacing = false
   var id: String
   weak var controller: UIViewController?
   var repostAvatarRequest: ImageRequest?
@@ -65,10 +57,7 @@ extension View {
       .geometryGroup()
       .contentShape(Rectangle())
       .compositingGroup()
-//      .brightness(isOpen.wrappedValue ? 0.075 : 0)
       .opacity(fadeReadPosts && seen ? theme.unseenFadeOpacity : 1)
-      // Outside the read-post fade: opening a post marks it read, which mustn't hide its mark.
-      // Only the feed's own rows: a crosspost's embedded card has the original's id.
       .overlay {
         if !secondary {
           OpenPostHighlight(postID: post.id, cornerRadius: theme.cornerRadius)
@@ -78,8 +67,6 @@ extension View {
         PostLinkContext(post: post)
 
         if let permalink = post.data?.permalink {
-          // ShareLink inside a .contextMenu is a known SwiftUI bug (menu dismisses, share sheet
-          // never presents), so present the activity sheet imperatively instead.
           Button {
             ShareUtils.shareItem(item: "https://reddit.com\(permalink.escape.urlEncoded)")
           } label: { Label("Share", systemImage: "square.and.arrow.up") }
@@ -92,8 +79,6 @@ extension View {
   }
 }
 
-/// Marks a post read once it has scrolled fully past the top of the screen. Unlike
-/// `onDisappear`, this doesn't fire when scrolling back up, switching tabs or opening a post.
 struct ReadOnScrollModifier: ViewModifier {
   var post: Post
   var enabled: Bool
@@ -143,24 +128,19 @@ struct PostLinkGlowDot: View, Equatable {
   }
 }
 
-/// Marks the feed's post that's open beside it in the posts split view, as a list marks its
-/// selection. Only the feed column has one.
 struct OpenPostHighlight: View {
   let postID: String
   let cornerRadius: CGFloat
-  /// An outline instead of a tint, for canvas tiles: a tint barely shows over a picture.
   var outline = false
   @Environment(\.navColumn) private var navColumn
 
   var body: some View {
-    // Collapsed into one stack, the post covers the feed: nothing to mark.
     if isOpenBesideFeed(postID: postID, column: navColumn) {
       let shape = RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
       Group {
         if outline {
           shape.strokeBorder(Color.accentColor, lineWidth: 3)
         } else {
-          // The tint alone is faint (about 1.2:1 on white), so a bar in the accent color marks it too.
           shape.fill(Color.accentColor.opacity(0.12))
             .overlay(alignment: .leading) {
               Rectangle().fill(Color.accentColor).frame(width: 3)
@@ -201,9 +181,7 @@ struct PostLinkBG: View, Equatable {
   }
 }
 
-/// Whether the post with `postID`, in a feed column, is the one open beside it.
 @MainActor
 func isOpenBesideFeed(postID: String, column: Router.Column?) -> Bool {
-  // Collapsed into one stack, the post covers the feed: nothing to mark.
   column == .feed && Nav.shared[.posts].showsPostBesideFeed && Nav.shared[.posts].postColumn.first?.id == postID
 }

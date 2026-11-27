@@ -1,16 +1,8 @@
-//
-//  floatingBounceEffect.swift
-//  Helio
-//
-//  Created by Igor Marcossi on 07/12/23.
-//
-
 import Combine
 import SwiftUI
 
 typealias AutoconnectableTimer = Publishers.Autoconnect<Timer.TimerPublisher>
 
-/// A view modifier to apply a themed background to a list row.
 struct FloatingBounceEffectModifier: ViewModifier {
   static let floatOffsetVariationAmount: Double = 10
   static let floatingDuration: Double = 3

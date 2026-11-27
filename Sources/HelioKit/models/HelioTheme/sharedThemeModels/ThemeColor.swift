@@ -1,15 +1,6 @@
-//
-//  ThemeColor.swift
-//  Helio
-//
-//  Created by Igor Marcossi on 23/01/24.
-//
-
 import Foundation
 import SwiftUI
 
-/// Locked: colors are resolved off the main thread too, e.g. while posts are built in
-/// parallel (Post.initMultiple), and unsynchronized dictionary writes can crash.
 final class ThemeColorsCache: @unchecked Sendable {
   static let shared = ThemeColorsCache()
   private let lock = NSLock()

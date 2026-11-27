@@ -1,10 +1,3 @@
-//
-//  PostLinkCompact.swift
-//  Helio
-//
-//  Created by Igor Marcossi on 25/09/23.
-//
-
 import Defaults
 import NukeUI
 import SwiftUI
@@ -144,7 +137,6 @@ struct PostLinkCompact: View, Equatable, Identifiable {
       }
       .postLinkStyle(post: post, sub: sub, theme: theme.theme, secondary: secondary, readPostOnScroll: defSettings.readOnScroll)
       .swipyUI(onTap: openPost, actionsSet: defSettings.swipeActions, entity: post)
-//      .frame(width: helioData.postDimensions.size.width, height: helioData.postDimensions.size.height)
     }
   }
 }

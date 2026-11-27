@@ -1,10 +1,3 @@
-//
-//  AVLooperPlayer.swift
-//  Helio
-//
-//  Created by Igor Marcossi on 07/12/23.
-//
-
 import AVKit
 import Foundation
 

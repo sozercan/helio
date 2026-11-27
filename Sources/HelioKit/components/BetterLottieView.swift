@@ -1,10 +1,3 @@
-//
-//  BetterLottieView.swift
-//  Helio
-//
-//  Created by Igor Marcossi on 03/01/24.
-//
-
 import Lottie
 import SwiftUI
 

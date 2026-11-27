@@ -1,7 +1,6 @@
 import Foundation
 
 enum Paths {
-  /// The checkout this tool belongs to: this file is `Tools/perf/Sources/perf/Shell.swift`.
   static let repo = URL(fileURLWithPath: #filePath)
     .deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent()
     .deletingLastPathComponent().deletingLastPathComponent()
@@ -19,8 +18,6 @@ struct CommandResult {
   let output: String
 }
 
-/// Runs a command. With `log`, output goes to that file instead of being captured. With `check`,
-/// a failure ends the tool and shows the end of the output.
 @discardableResult
 func shell(_ arguments: [String], env: [String: String] = [:], log: URL? = nil, check: Bool = true) -> CommandResult {
   let process = Process()

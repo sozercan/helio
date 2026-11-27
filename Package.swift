@@ -1,8 +1,4 @@
 // swift-tools-version: 6.2
-// The app's code, dependencies and unit tests. Helio.xcodeproj is a thin shell that builds
-// the iOS app bundle (entry point, Info.plist, entitlements, resources) and the Safari
-// extension on top of the HelioKit library, plus the Mac app's updater plugin on top of
-// HelioMacUpdater.
 
 import PackageDescription
 
@@ -12,7 +8,6 @@ let package = Package(
   platforms: [
     .iOS("26.0"),
     .macCatalyst("26.0"),
-    // HelioMacUpdater only: Sparkle is AppKit, so it builds for macOS, not Mac Catalyst.
     .macOS("26.0"),
   ],
   products: [
@@ -43,8 +38,6 @@ let package = Package(
     .package(url: "https://github.com/marmelroy/Zip.git", from: "2.0.0"),
   ],
   targets: [
-    // Everything but the app entry point. Resources (asset catalog, strings, Core Data model,
-    // shaders, Lottie animations, media) stay in the app bundle, so lookups use Bundle.main.
     .target(
       name: "HelioKit",
       dependencies: [
@@ -76,8 +69,6 @@ let package = Package(
         .enableUpcomingFeature("BareSlashRegexLiterals"),
       ],
     ),
-    // Sparkle for the Mac app, which is Mac Catalyst and so can't link it: App/HelioMacUpdater
-    // builds this into a macOS plugin bundle that the app loads at runtime (MacUpdater).
     .target(
       name: "HelioMacUpdater",
       dependencies: [

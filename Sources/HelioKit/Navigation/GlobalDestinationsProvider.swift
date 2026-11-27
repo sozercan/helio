@@ -1,10 +1,3 @@
-//
-//  GlobalDestinationsProvider.swift
-//  Helio
-//
-//  Created by Igor Marcossi on 09/12/23.
-//
-
 import Defaults
 import SwiftUI
 

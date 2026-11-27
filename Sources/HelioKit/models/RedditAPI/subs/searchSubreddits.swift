@@ -1,10 +1,3 @@
-//
-//  searchSubreddits.swift
-//  Helio
-//
-//  Created by Igor Marcossi on 10/07/23.
-//
-
 import Alamofire
 import Foundation
 

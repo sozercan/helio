@@ -1,12 +1,4 @@
 #!/usr/bin/env bash
-# Adds a release to the AltStore/SideStore source feed served from gh-pages.
-#
-#   update-source.sh --source source.json --metadata metadata.json --url <ipa url> \
-#     --size <ipa bytes> --notes notes.md
-#
-# Creates the feed if it doesn't exist yet. Newest version first; re-running for a version
-# that's already listed replaces that entry, so a re-tagged release doesn't duplicate it.
-# --metadata is the output of app-metadata.sh for the released build.
 set -euo pipefail
 
 repo="https://github.com/sozercan/helio"
@@ -67,7 +59,6 @@ updated=$(jq --slurpfile meta "$metadata_file" --rawfile notes "$notes_file" --a
       error("No app with bundle id \($m.bundleIdentifier) in the source") end
   | .apps |= map(
       if .bundleIdentifier != $m.bundleIdentifier then . else
-        # AltStore checks a release'"'"'s entitlements against what the feed declares.
         .appPermissions = {entitlements: $m.entitlements, privacy: $m.privacy}
         | .versions = [{
             version: $m.version,
