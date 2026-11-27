@@ -149,10 +149,10 @@ struct PersistenceController {
 
   static func isCorruptionError(_ error: NSError) -> Bool {
     let sqliteCorruptionCodes: Set = [11, 24, 26]
-    if error.domain == NSCocoaErrorDomain && error.code == NSFileReadCorruptFileError {
+    if error.domain == NSCocoaErrorDomain, error.code == NSFileReadCorruptFileError {
       return true
     }
-    if error.domain == NSSQLiteErrorDomain && sqliteCorruptionCodes.contains(error.code) {
+    if error.domain == NSSQLiteErrorDomain, sqliteCorruptionCodes.contains(error.code) {
       return true
     }
     if let sqliteCode = error.userInfo[NSSQLiteErrorDomain] as? Int, sqliteCorruptionCodes.contains(sqliteCode) {
