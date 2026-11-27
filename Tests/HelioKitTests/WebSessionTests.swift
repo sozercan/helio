@@ -87,6 +87,7 @@ private class WebSessionRoutingProtocol: URLProtocol, @unchecked Sendable {
   static let requests = Mutex<[URLRequest]>([])
   static let responseBody = Mutex<Data>(Data(#"{"kind":"Listing","data":{"children":[],"after":null}}"#.utf8))
   static let statusCode = Mutex<Int>(200)
+  static let handler = Mutex<(@Sendable (URLRequest) -> (Int, Data))?>(nil)
 
   override class func canInit(with _: URLRequest) -> Bool {
     true
@@ -98,9 +99,10 @@ private class WebSessionRoutingProtocol: URLProtocol, @unchecked Sendable {
 
   override func startLoading() {
     Self.requests.withLock { $0.append(request) }
-    let code = Self.statusCode.withLock { $0 }
-    let body = Self.responseBody.withLock { $0 }
-    let response = HTTPURLResponse(url: request.url!, statusCode: code, httpVersion: nil, headerFields: ["Content-Type": "application/json"])!
+    let custom = Self.handler.withLock { $0 }
+    let (code, body) = custom?(request) ?? (Self.statusCode.withLock { $0 }, Self.responseBody.withLock { $0 })
+    let contentType = code == 403 ? "text/html" : "application/json"
+    let response = HTTPURLResponse(url: request.url!, statusCode: code, httpVersion: nil, headerFields: ["Content-Type": contentType])!
     client?.urlProtocol(self, didReceive: response, cacheStoragePolicy: .notAllowed)
     client?.urlProtocol(self, didLoad: body)
     client?.urlProtocolDidFinishLoading(self)
@@ -135,10 +137,11 @@ struct WebSessionRoutingTests {
     )
   }
 
-  private func session(body: String, statusCode: Int = 200) -> Session {
+  private func session(body: String, statusCode: Int = 200, handler: (@Sendable (URLRequest) -> (Int, Data))? = nil) -> Session {
     WebSessionRoutingProtocol.requests.withLock { $0 = [] }
     WebSessionRoutingProtocol.responseBody.withLock { $0 = Data(body.utf8) }
     WebSessionRoutingProtocol.statusCode.withLock { $0 = statusCode }
+    WebSessionRoutingProtocol.handler.withLock { $0 = handler }
     let configuration = URLSessionConfiguration.ephemeral
     configuration.protocolClasses = [WebSessionRoutingProtocol.self]
     return Session(configuration: configuration)
@@ -214,11 +217,184 @@ struct WebSessionRoutingTests {
 
   @Test func cookieRequest401DoesNotRetryAsBearerRenewal() async {
     let account = webAccount()
-    let api = RedditAPI(session: session(body: "[]", statusCode: 401), currentAccount: { account })
+    let api = RedditAPI(session: session(body: "[]", statusCode: 401), routeHealth: WebSessionRouteHealth(), currentAccount: { account })
     _ = await api.fetchPost(subreddit: "swift", postID: "t3_abc123")
 
     let count = WebSessionRoutingProtocol.requests.withLock { $0.count }
     #expect(count == 1)
+  }
+
+  @Test func webSessionFallsBackToNextRouteOn403AndCoolsDownRepeatedBlocks() async {
+    let account = webAccount()
+    let health = WebSessionRouteHealth()
+    let emptyListing = Data(#"{"kind":"Listing","data":{"children":[],"after":null}}"#.utf8)
+    let session = session(body: "") { request in
+      if request.url?.host == "oauth.reddit.com", request.value(forHTTPHeaderField: "Authorization") != nil {
+        return (403, Data("<html>blocked</html>".utf8))
+      }
+      return (200, emptyListing)
+    }
+    let api = RedditAPI(session: session, routeHealth: health, currentAccount: { account })
+
+    for _ in 0 ..< WebSessionRouteHealth.blockThreshold {
+      let result = await api.fetchSubPosts("/r/all", limit: 10, sort: .hot)
+      #expect(result != nil)
+    }
+    #expect(health.isCoolingDown(account: account.id, authorization: account.authorizationID, pattern: "/r/all/*", route: .oauthBearer))
+
+    WebSessionRoutingProtocol.requests.withLock { $0 = [] }
+    let afterCooldown = await api.fetchSubPosts("/r/all", limit: 10, sort: .hot)
+    #expect(afterCooldown != nil)
+    let requests = WebSessionRoutingProtocol.requests.withLock { $0 }
+    #expect(requests.count == 1)
+    #expect(requests.first?.value(forHTTPHeaderField: "Authorization") == nil)
+    #expect(requests.first?.value(forHTTPHeaderField: "Cookie") == account.webSessionCookies)
+  }
+
+  @Test func webSessionSearchSubredditsUsesCookieOnOAuth() async throws {
+    let account = webAccount()
+    let api = RedditAPI(session: session(body: #"{"kind":"Listing","data":{"children":[],"after":null}}"#), routeHealth: WebSessionRouteHealth(), currentAccount: { account })
+    _ = await api.searchSubreddits("swift")
+
+    let request = try #require(WebSessionRoutingProtocol.requests.withLock { $0.first })
+    #expect(request.url?.host == "oauth.reddit.com")
+    #expect(request.url?.path == "/subreddits/search")
+    #expect(request.value(forHTTPHeaderField: "Authorization") == nil)
+    #expect(request.value(forHTTPHeaderField: "Cookie") == account.webSessionCookies)
+  }
+
+  @Test func webSessionSearchSubredditsFallsBackToOldRedditJSONOn403() async {
+    let account = webAccount()
+    let emptyListing = Data(#"{"kind":"Listing","data":{"children":[],"after":null}}"#.utf8)
+    let session = session(body: "") { request in
+      if request.url?.host == "oauth.reddit.com" {
+        return (403, Data("<html>blocked</html>".utf8))
+      }
+      return (200, emptyListing)
+    }
+    let api = RedditAPI(session: session, routeHealth: WebSessionRouteHealth(), currentAccount: { account })
+    let result = await api.searchSubreddits("swift")
+    #expect(result != nil)
+
+    let requests = WebSessionRoutingProtocol.requests.withLock { $0 }
+    #expect(requests.count == 2)
+    #expect(requests[0].url?.host == "oauth.reddit.com")
+    #expect(requests[0].url?.path == "/subreddits/search")
+    #expect(requests[1].url?.host == "old.reddit.com")
+    #expect(requests[1].url?.path == "/subreddits/search/.json")
+  }
+
+  @Test func repeatedPrivateSubreddit403DoesNotSuppressPublicSubredditReads() async {
+    let account = webAccount()
+    let health = WebSessionRouteHealth()
+    let emptyListing = Data(#"{"kind":"Listing","data":{"children":[],"after":null}}"#.utf8)
+    let session = session(body: "") { request in
+      if request.url?.path.contains("/r/privateonly/") == true {
+        return (403, Data(#"{"reason":"private","message":"Forbidden","error":403}"#.utf8))
+      }
+      return (200, emptyListing)
+    }
+    let api = RedditAPI(session: session, routeHealth: health, currentAccount: { account })
+
+    for _ in 0 ..< WebSessionRouteHealth.blockThreshold {
+      let denied = await api.fetchSubPosts("/r/privateonly", limit: 10, sort: .hot)
+      #expect(denied == nil)
+    }
+
+    WebSessionRoutingProtocol.requests.withLock { $0 = [] }
+    let publicResult = await api.fetchSubPosts("/r/swift", limit: 10, sort: .hot)
+    #expect(publicResult != nil)
+    #expect(WebSessionRoutingProtocol.requests.withLock { $0.count } == 1)
+
+    for route in [WebSessionRoute.oauthBearer, .oauthCookie] {
+      for _ in 0 ..< WebSessionRouteHealth.blockThreshold {
+        health.recordBlock(account: account.id, authorization: account.authorizationID, pattern: "/r/*/search", route: route)
+      }
+    }
+    for _ in 0 ..< WebSessionRouteHealth.blockThreshold {
+      let deniedSearch = await api.searchInSubreddit("privateonly", RedditAPI.AdvancedPostsSearch(subreddit: "privateonly", flairs: nil, searchQuery: "test", sortOption: .best))
+      #expect(deniedSearch == nil)
+    }
+    WebSessionRoutingProtocol.requests.withLock { $0 = [] }
+    let publicSearch = await api.searchInSubreddit("swift", RedditAPI.AdvancedPostsSearch(subreddit: "swift", flairs: nil, searchQuery: "test", sortOption: .best))
+    #expect(publicSearch != nil)
+    #expect(WebSessionRoutingProtocol.requests.withLock { $0.count } == 1)
+  }
+
+  @Test func webSessionProbeDistinguishesActiveSignedOutAndTransientErrors() async {
+    let activeSession = session(body: #"{"data":{"name":"placeholder-user"}}"#)
+    #expect(await RedditWebSession.verifySession(cookies: "reddit_session=ok", userAgent: "UA", session: activeSession) == .active(username: "placeholder-user"))
+
+    let anonSession = session(body: #"{"data":{}}"#)
+    #expect(await RedditWebSession.verifySession(cookies: "reddit_session=anon", userAgent: "UA", session: anonSession) == .signedOut)
+
+    let emptyObjectSession = session(body: "{}")
+    #expect(await RedditWebSession.verifySession(cookies: "reddit_session=ok", userAgent: "UA", session: emptyObjectSession) == .failed)
+
+    let nullDataSession = session(body: #"{"data":null}"#)
+    #expect(await RedditWebSession.verifySession(cookies: "reddit_session=ok", userAgent: "UA", session: nullDataSession) == .failed)
+
+    let blockedSession = session(body: "<html>blocked</html>", statusCode: 403)
+    #expect(await RedditWebSession.verifySession(cookies: "reddit_session=ok", userAgent: "UA", session: blockedSession) == .failed)
+  }
+
+  @Test func allRoutesInCooldownSuppressesRequestsUntilCooldownExpires() async {
+    let account = webAccount()
+    let time = Mutex(Date(timeIntervalSince1970: 1_000_000))
+    let health = WebSessionRouteHealth(now: { time.withLock { $0 } })
+    let session = session(body: "<html>blocked</html>", statusCode: 403)
+    let api = RedditAPI(session: session, routeHealth: health, currentAccount: { account })
+
+    for route in WebSessionRoutePlanner.routes(for: "https://oauth.reddit.com/r/all/hot.json", method: .get, defaultAuth: .bearer) {
+      for _ in 0 ..< WebSessionRouteHealth.blockThreshold {
+        health.recordBlock(account: account.id, authorization: account.authorizationID, pattern: "/r/all/*", route: route)
+      }
+    }
+
+    WebSessionRoutingProtocol.requests.withLock { $0 = [] }
+    let suppressed = await api.fetchSubPosts("/r/all", limit: 10, sort: .hot)
+    #expect(suppressed == nil)
+    #expect(WebSessionRoutingProtocol.requests.withLock { $0.isEmpty })
+
+    time.withLock { $0 += WebSessionRouteHealth.baseCooldown + 1 }
+    _ = await api.fetchSubPosts("/r/all", limit: 10, sort: .hot)
+    #expect(!WebSessionRoutingProtocol.requests.withLock { $0.isEmpty })
+  }
+
+  @Test func routeHealthSeparatesReauthorizationFromTokenDrivenRenewal() throws {
+    let health = WebSessionRouteHealth()
+    var account = webAccount()
+    let originalAuth = try #require(account.authorizationID)
+
+    for _ in 0 ..< WebSessionRouteHealth.blockThreshold {
+      health.recordBlock(account: account.id, authorization: originalAuth, pattern: "/api/v1/me", route: .oauthBearer)
+    }
+    #expect(health.isCoolingDown(account: account.id, authorization: originalAuth, pattern: "/api/v1/me", route: .oauthBearer))
+
+    var renewed = account
+    let updated = try renewed.updateWebAccessToken(
+      .init(token: "renewed-token", expiration: 3600, lastRefresh: Date()),
+      cookies: "reddit_session=rotated-cookie",
+      renewedFrom: #require(account.webSessionCookies),
+      for: originalAuth,
+    )
+    #expect(updated)
+    #expect(renewed.authorizationID == originalAuth)
+    #expect(health.isCoolingDown(account: renewed.id, authorization: renewed.authorizationID, pattern: "/api/v1/me", route: .oauthBearer))
+
+    account.webSessionCookies = "reddit_session=fresh-reauth-cookie"
+    let reauthorizedAuth = try #require(account.authorizationID)
+    #expect(reauthorizedAuth != originalAuth)
+    #expect(!health.isCoolingDown(account: account.id, authorization: reauthorizedAuth, pattern: "/api/v1/me", route: .oauthBearer))
+  }
+
+  @Test func routePlannerHandlesDotJSONAndFilterPatterns() {
+    #expect(WebSessionRoutePlanner.patternKey(for: "https://oauth.reddit.com/r/all-politics/hot.json") == "/r/all/*")
+    #expect(WebSessionRoutePlanner.patternKey(for: "https://oauth.reddit.com/r/swift+ios/search.json") == "/r/+/search")
+    #expect(WebSessionRoute.wwwDotJSONCookie.apply(to: "https://oauth.reddit.com/api/info?id=t3_1") == "https://www.reddit.com/api/info/.json?id=t3_1")
+    #expect(WebSessionRoute.wwwDotJSONCookie.apply(to: "https://oauth.reddit.com/api/morechildren.json") == "https://www.reddit.com/api/morechildren/.json")
+    #expect(!WebSessionRoutePlanner.isFallbackEligible(method: .post, url: "https://oauth.reddit.com/api/vote"))
+    #expect(WebSessionRoutePlanner.isFallbackEligible(method: .post, url: "https://oauth.reddit.com/api/morechildren.json"))
   }
 }
 
@@ -283,12 +459,14 @@ struct RateLimitTests {
     #expect(limit.limitedUntil(account: nil) != nil)
   }
 
-  @Test func wwwRedditRateLimitResponsesCount() throws {
+  @Test func fallbackRedditHostsRateLimitResponsesCount() throws {
     let clock = Clock()
-    let limit = RedditRateLimit(now: { clock.now })
-    let account = UUID()
-    try limit.record(response(429, ["x-ratelimit-reset": "90"], host: "www.reddit.com"), account: account)
-    #expect(limit.limitedUntil(account: account) == clock.now.addingTimeInterval(90))
+    for host in ["www.reddit.com", "old.reddit.com", "api.reddit.com"] {
+      let limit = RedditRateLimit(now: { clock.now })
+      let account = UUID()
+      try limit.record(response(429, ["x-ratelimit-reset": "90"], host: host), account: account)
+      #expect(limit.limitedUntil(account: account) == clock.now.addingTimeInterval(90))
+    }
   }
 
   @Test func retryTextRoundsUpToWholeMinutes() {

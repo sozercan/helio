@@ -27,7 +27,7 @@ final class RedditRateLimit: Sendable {
 
   private static func isRedditAPIHost(_ host: String?) -> Bool {
     guard let host = host?.lowercased() else { return false }
-    return host == "oauth.reddit.com" || host == "www.reddit.com"
+    return host == "oauth.reddit.com" || host == "www.reddit.com" || host == "old.reddit.com" || host == "api.reddit.com"
   }
 
   func record(_ response: HTTPURLResponse?, account: UUID?, authorization: RedditCredential.AuthorizationID? = nil) {

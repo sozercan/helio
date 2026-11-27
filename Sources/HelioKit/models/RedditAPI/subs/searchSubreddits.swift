@@ -4,7 +4,7 @@ import Foundation
 extension RedditAPI {
   func searchSubreddits(_ query: String) async -> [SubredditData]? {
     let params = SearchSubredditPayload(q: query)
-    switch await self.doRequest("\(RedditAPI.redditApiURLBase)/subreddits/search", method: .get, params: params, paramsLocation: .queryString, decodable: Listing<SubredditData>.self) {
+    switch await self.doRequest("\(RedditAPI.redditApiURLBase)/subreddits/search", method: .get, params: params, paramsLocation: .queryString, decodable: Listing<SubredditData>.self, webSessionAuth: .cookie()) {
     case let .success(data):
       return data.data?.children?.compactMap(\.data)
     case let .failure(error):

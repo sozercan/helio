@@ -7,6 +7,7 @@ enum RedditWebSession {
   static let clientID = "0R-WAMhuoo-MyQ"
   static let loginURL = URL(string: "https://www.reddit.com/login")!
   static let tokenURL = "https://accounts.reddit.com/api/access_token"
+  static let sessionProbeURL = "https://www.reddit.com/api/me.json"
   static let sessionCookieName = "reddit_session"
 
   private static let logger = Logger(subsystem: "com.sertacozercan.helio", category: "WebSession")
@@ -138,6 +139,54 @@ enum RedditWebSession {
   static func cookieHeader(from cookies: [HTTPCookie]) -> String? {
     guard sessionCookieValue(from: cookies) != nil else { return nil }
     return redditCookies(cookies).map { "\($0.name)=\($0.value)" }.joined(separator: "; ")
+  }
+
+  enum SessionProbeResult: Equatable {
+    case active(username: String)
+    case signedOut
+    case failed
+  }
+
+  private struct SessionProbeResponse: Decodable {
+    struct DataPayload: Decodable {
+      let name: String?
+    }
+
+    let data: DataPayload?
+  }
+
+  static func verifySession(cookies: String, userAgent: String, session: Session = AF) async -> SessionProbeResult {
+    guard !cookies.isEmpty else { return .signedOut }
+    let headers: HTTPHeaders = [
+      "User-Agent": userAgent,
+      "Cookie": cookies,
+      "Referer": "\(RedditAPI.redditWWWApiURLBase)/",
+    ]
+    let response = await session.request(
+      sessionProbeURL,
+      method: .get,
+      headers: headers,
+      requestModifier: { request in
+        request.httpShouldHandleCookies = false
+        request.cachePolicy = .reloadIgnoringLocalAndRemoteCacheData
+      },
+    )
+    .validate()
+    .serializingDecodable(SessionProbeResponse.self).response
+
+    switch response.result {
+    case let .success(payload):
+      guard let data = payload.data else { return .failed }
+      if let name = data.name, !name.isEmpty {
+        return .active(username: name)
+      }
+      return .signedOut
+    case let .failure(error):
+      if error.responseCode == 401 {
+        return .signedOut
+      }
+      return .failed
+    }
   }
 
   enum SignInResult {
