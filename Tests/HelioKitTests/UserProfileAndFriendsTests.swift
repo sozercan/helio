@@ -101,7 +101,8 @@ struct UserProfileAndFriendsTests {
     let result = await api.fetchUserOverview("placeholder_me", section: section, "t3_after", limit: 20)
     #expect(result != nil)
     let request = try #require(UserProfileRequestProtocol.requests.withLock { $0.first })
-    #expect(request.url?.path == "/user/placeholder_me/\(section.endpointSegment).json")
+    let expectedPath = section == .friends ? "/r/friends.json" : "/user/placeholder_me/\(section.endpointSegment).json"
+    #expect(request.url?.path == expectedPath)
     let query = try URLComponents(url: #require(request.url), resolvingAgainstBaseURL: false)?.queryItems
     #expect(query?.first(where: { $0.name == "limit" })?.value == "20")
     #expect(query?.first(where: { $0.name == "after" })?.value == "t3_after")
@@ -110,11 +111,12 @@ struct UserProfileAndFriendsTests {
 
   @Test func ownSectionsIncludePrivateFeedsAndPublicSectionsExcludeThem() {
     #expect(UserListingSection.publicSections == [.overview, .submitted, .comments])
-    #expect(UserListingSection.ownSections == [.overview, .submitted, .comments, .upvoted, .downvoted, .saved, .hidden])
+    #expect(UserListingSection.ownSections == [.overview, .submitted, .comments, .upvoted, .downvoted, .saved, .hidden, .friends])
     #expect(UserListingSection.upvoted.isPrivate)
     #expect(UserListingSection.downvoted.isPrivate)
     #expect(UserListingSection.saved.isPrivate)
     #expect(UserListingSection.hidden.isPrivate)
+    #expect(UserListingSection.friends.isPrivate)
     #expect(!UserListingSection.overview.isPrivate)
   }
 
