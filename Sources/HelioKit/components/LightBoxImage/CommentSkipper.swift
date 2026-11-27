@@ -14,7 +14,6 @@ struct CommentSkipper: View {
 
   @Default(.CommentsSectionDefSettings) private var commentsSectionDefSettings
   @State private var lastNewCommentTarget: String?
-  @State private var suppressNextTap = false
 
   var body: some View {
     let mode = commentsSectionDefSettings.commentSkipperMode
@@ -28,51 +27,65 @@ struct CommentSkipper: View {
       : []
     let isNewModeActive = !newTargets.isEmpty
 
-    Button {
-      if suppressNextTap {
-        suppressNextTap = false
-        return
+    VStack(spacing: 1) {
+      if isNewModeActive {
+        Text("NEW")
+          .font(.system(size: 8, weight: .bold))
+          .tracking(0.4)
       }
-      Hap.shared.play(intensity: 0.75, sharpness: 0.9)
-      withAnimation {
-        jump(direction: 1, newTargets: newTargets)
-      }
-    } label: {
-      VStack(spacing: 1) {
-        if isNewModeActive {
-          Text("NEW")
-            .font(.system(size: 8, weight: .bold))
-            .tracking(0.4)
-        }
-        Image(systemName: "chevron.down")
-          .fontSize(isNewModeActive ? 16 : 20, .semibold)
-      }
-      .frame(width: 56, height: 56)
-      .contentShape(Circle())
+      Image(systemName: "chevron.down")
+        .fontSize(isNewModeActive ? 16 : 20, .semibold)
     }
-    .buttonStyle(.plain)
+    .frame(width: 56, height: 56)
+    .contentShape(Circle())
     .foregroundStyle(isNewModeActive ? Color.accentColor : .primary)
     .floating()
-    .simultaneousGesture(
-      LongPressGesture(minimumDuration: 0.35).onEnded { _ in
-        suppressNextTap = true
-        Hap.shared.play(intensity: 0.75, sharpness: 0.9)
-        withAnimation {
-          jump(direction: -1, newTargets: newTargets)
+    .gesture(
+      LongPressGesture(minimumDuration: 0.35)
+        .onEnded { _ in
+          Hap.shared.play(intensity: 0.75, sharpness: 0.9)
+          withAnimation {
+            jump(direction: -1, newTargets: newTargets)
+          }
         }
-      },
+        .exclusively(
+          before: TapGesture().onEnded {
+            Hap.shared.play(intensity: 0.75, sharpness: 0.9)
+            withAnimation {
+              jump(direction: 1, newTargets: newTargets)
+            }
+          },
+        ),
     )
     .onChange(of: userScrollGeneration) { _, _ in
       lastNewCommentTarget = nil
     }
+    .onChange(of: mode) { _, _ in
+      lastNewCommentTarget = nil
+    }
+    .accessibilityElement(children: .ignore)
+    .accessibilityAddTraits(.isButton)
     .accessibilityLabel(isNewModeActive ? "Jump to Next New Comment" : "Jump to Next Comment")
     .accessibilityHint("Long press to jump to previous")
+    .accessibilityAction {
+      Hap.shared.play(intensity: 0.75, sharpness: 0.9)
+      withAnimation {
+        jump(direction: 1, newTargets: newTargets)
+      }
+    }
+    .accessibilityAction(named: isNewModeActive ? "Jump to Previous New Comment" : "Jump to Previous Comment") {
+      Hap.shared.play(intensity: 0.75, sharpness: 0.9)
+      withAnimation {
+        jump(direction: -1, newTargets: newTargets)
+      }
+    }
   }
 
   private func jump(direction: Int, newTargets: [String]) {
     if !newTargets.isEmpty {
-      let current = lastNewCommentTarget ?? currentVisibleCommentID() ?? topVisibleCommentId
-      let ordered = lastNewCommentTarget == nil ? CommentJumpNavigator.orderedCommentIDs(roots: comments) : []
+      let reusableCursor = lastNewCommentTarget.flatMap { newTargets.contains($0) ? $0 : nil }
+      let current = reusableCursor ?? currentVisibleCommentID() ?? topVisibleCommentId
+      let ordered = reusableCursor == nil ? CommentJumpNavigator.orderedCommentIDs(roots: comments) : []
       guard let next = CommentJumpNavigator.step(targets: newTargets, orderedIDs: ordered, currentID: current, direction: direction) else { return }
       reader.scrollTo(next, anchor: .top)
       lastNewCommentTarget = next
