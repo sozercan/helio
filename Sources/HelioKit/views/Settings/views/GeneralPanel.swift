@@ -5,7 +5,7 @@ import UniformTypeIdentifiers
 import WebKit
 
 struct GeneralPanel: View {
-  @Default(.likedButNotSubbed) var likedButNotSubbed
+  private let userCollections = UserCollectionsStore.shared
   @Default(.BehaviorDefSettings) var behaviorDefSettings
   @Default(.GeneralDefSettings) var generalDefSettings
   @State private var totalCacheSize: String = ""
@@ -123,9 +123,9 @@ struct GeneralPanel: View {
           }
 
           WListButton {
-            likedButNotSubbed = []
+            userCollections.clearLikedButNotSubbed()
           } label: {
-            Label("Clear " + String(likedButNotSubbed.count) + " Local Favorites", systemImage: "heart.slash.fill")
+            Label("Clear " + String(userCollections.likedButNotSubbed.count) + " Local Favorites", systemImage: "heart.slash.fill")
               .foregroundColor(.red)
           }
         }

@@ -31,9 +31,6 @@ extension Defaults.Keys {
   static let PostPageDefSettings = Key<PostPageDefSettings>("PostPageDefSettings", default: .init())
   static let ThemesDefSettings = Key<ThemesDefSettings>("ThemesDefSettings", default: .init())
 
-  static let filteredSubreddits = Key<[String]>("filteredSubreddits", default: [])
-  static let likedButNotSubbed = Key<[Subreddit]>("likedButNotSubbed", default: [])
-
   static let contentTextSizeAdjustment = Key<Int>("contentTextSizeAdjustment", default: 0)
 
   static let canvasSubreddits = Key<Set<String>>("canvasSubreddits", default: [])

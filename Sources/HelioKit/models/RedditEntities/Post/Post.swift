@@ -300,15 +300,7 @@ extension Post {
   }
 
   func toggleFilterSubreddit(_ subreddit: String) async {
-    var filteredSubreddits = Defaults[.filteredSubreddits]
-
-    if let index = filteredSubreddits.firstIndex(of: subreddit) {
-      filteredSubreddits.remove(at: index)
-    } else {
-      filteredSubreddits.append(subreddit)
-    }
-
-    Defaults[.filteredSubreddits] = filteredSubreddits
+    UserCollectionsStore.shared.toggleFilteredSubreddit(subreddit)
   }
 
   func saveCommentsCount(numComments: Int) async {

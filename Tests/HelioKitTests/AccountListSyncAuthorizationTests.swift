@@ -394,14 +394,14 @@ struct AccountListSyncAuthorizationTests {
   }
 
   @Test func deviceLocalFavoritesPersistRemoval() throws {
-    let previous = Defaults[.likedButNotSubbed]
-    defer { Defaults[.likedButNotSubbed] = previous }
+    let previous = UserCollectionsStore.shared.likedButNotSubbed
+    defer { UserCollectionsStore.shared.setLikedButNotSubbed(previous) }
     let sub = try Subreddit(data: subreddit("placeholder-local-favorite", subscribed: false))
-    Defaults[.likedButNotSubbed] = []
+    UserCollectionsStore.shared.clearLikedButNotSubbed()
     #expect(sub.localFavoriteToggle())
-    #expect(Defaults[.likedButNotSubbed].contains { $0.id == sub.id })
+    #expect(UserCollectionsStore.shared.likedButNotSubbed.contains { $0.id == sub.id })
     #expect(!sub.localFavoriteToggle())
-    #expect(Defaults[.likedButNotSubbed].isEmpty)
+    #expect(UserCollectionsStore.shared.likedButNotSubbed.isEmpty)
   }
 }
 

@@ -1,5 +1,4 @@
 import AlertToast
-import Defaults
 import SwiftDate
 import SwiftUI
 
@@ -19,10 +18,10 @@ struct SubredditInfo: View {
   @State private var selectedTab: SubInfoTabs = .info
 
   @State private var addedToFavs = false
-  @Default(.likedButNotSubbed) var likedButNotSubbed
+  private let userCollections = UserCollectionsStore.shared
   @Environment(\.useTheme) private var theme
   var body: some View {
-    let isliked = likedButNotSubbed.contains(subreddit)
+    let isliked = userCollections.isLocallyFavorited(subreddit)
     List {
       Group {
         if let data = subreddit.data {

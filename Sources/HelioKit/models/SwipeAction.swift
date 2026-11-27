@@ -281,7 +281,7 @@ struct FilterSubredditAction: SwipeAction {
 
   func active(_ entity: Post) -> Bool {
     if let subreddit = entity.data?.subreddit {
-      return Defaults[.filteredSubreddits].contains(subreddit)
+      return UserCollectionsStore.shared.isSubredditFiltered(subreddit)
     }
 
     return false
