@@ -31,7 +31,7 @@ struct RedditListingFeed<Header: View, Footer: View, S: Sorting>: View {
     self.fetch = fetch
     let make = { FeedItemsManager(sorting: initialSorting, hideReadPosts: hideReadPosts, fetchFn: fetch) }
     self._lease = .init(initialValue: stateOwner.map { ScreenStates.shared.lease("feed", owner: $0, make: make) } ?? ScreenStateLease(unshared: make()))
-    self._filters = FetchRequest<CachedFilter>(sortDescriptors: [NSSortDescriptor(key: "text", ascending: true)], predicate: NSPredicate(format: "subID == %@", (subreddit?.data?.display_name ?? feedId) as CVarArg), animation: .default)
+    self._filters = FetchRequest<CachedFilter>(sortDescriptors: [NSSortDescriptor(key: "text", ascending: true)], predicate: NSPredicate(format: "subID == %@", (subreddit?.rawSubredditName ?? feedId) as CVarArg), animation: .default)
   }
 
   @FetchRequest private var filters: FetchedResults<CachedFilter>

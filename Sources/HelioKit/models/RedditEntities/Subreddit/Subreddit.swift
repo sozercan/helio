@@ -158,7 +158,7 @@ extension Subreddit {
 
   static func fetchAndCacheFlairsFrom(_ subID: String) async {
     let key = subID.lowercased()
-    guard !feedsAndSuch.contains(subID), flairsFetched.withLock({ $0.insert(key).inserted }) else { return }
+    guard flairsFetched.withLock({ $0.insert(key).inserted }) else { return }
     guard let flairs = await RedditAPI.shared.getFlairs(subID) else {
       flairsFetched.withLock { _ = $0.remove(key) }
       return
@@ -199,7 +199,7 @@ extension Subreddit {
       }
     }
     guard !flairs.isEmpty else { return }
-    let subID = id
+    let subID = rawSubredditName
     let context = PersistenceController.shared.container.newBackgroundContext()
     await context.perform {
       let fetchRequest = CachedFilter.fetchRequest()

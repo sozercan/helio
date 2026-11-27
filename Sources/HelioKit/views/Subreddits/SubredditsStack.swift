@@ -43,12 +43,6 @@ struct SubredditsStack: View {
     .onChange(of: layout.fitsSidebar, initial: true) { _, fits in
       columnVisibility = fits ? .all : .doubleColumn
     }
-    .onChange(of: router.fullPath) { _, path in
-      guard behaviorDefSettings.restoreReadingSession, let accountID = generalDefSettings.redditCredentialSelectedID else { return }
-      if let feedName = ReadingSessionStore.latestFeedName(in: path) {
-        ReadingSessionStore.save(feedName: feedName, accountID: accountID)
-      }
-    }
   }
 
   @MainActor

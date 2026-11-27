@@ -65,11 +65,14 @@ class Router: Hashable, Equatable, Identifiable {
     return fullPath.count > (protectsRoot ? 1 : 0)
   }
 
+  @ObservationIgnored var onPathChange: (([NavDest]) -> Void)?
+
   var fullPath: [NavDest] = [] {
     didSet {
       if fullPath.isEmpty != isAtRoot {
         isAtRoot = fullPath.isEmpty
       }
+      onPathChange?(fullPath)
     }
   }
 

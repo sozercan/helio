@@ -1,4 +1,5 @@
 import Combine
+import Defaults
 import Foundation
 import SafariServices
 import SwiftUI
@@ -27,6 +28,8 @@ class Nav: Identifiable, Equatable {
   static func present(_ content: PresentingSheet?) {
     Nav.shared.presentingSheet = content
   }
+
+  @ObservationIgnored var lastVisitedFeedName: String?
 
   private static func newRouterForTab(_ tab: TabIdentifier, _ id: UUID) -> Router {
     Router(id: "\(tab.rawValue)TabRouter-\(id.uuidString)")
@@ -115,6 +118,26 @@ class Nav: Identifiable, Equatable {
     self.id = id
     self.activeTab = activeTab
     self.routers = Dictionary(uniqueKeysWithValues: TabIdentifier.allCases.map { ($0, Self.newRouterForTab($0, id)) })
+    for router in routers.values {
+      observeFeedNavigation(on: router)
+    }
+  }
+
+  private func observeFeedNavigation(on router: Router) {
+    router.onPathChange = { [weak self] path in
+      guard let self, let feedName = ReadingSessionStore.latestFeedName(in: path) else { return }
+      lastVisitedFeedName = feedName
+      guard Defaults[.BehaviorDefSettings].restoreReadingSession,
+            let accountID = Defaults[.GeneralDefSettings].redditCredentialSelectedID
+      else { return }
+      ReadingSessionStore.save(feedName: feedName, accountID: accountID)
+    }
+  }
+
+  var currentFeedName: String? {
+    lastVisitedFeedName
+      ?? ReadingSessionStore.latestFeedName(in: activeRouter.fullPath)
+      ?? ReadingSessionStore.latestFeedName(in: self[.posts].fullPath)
   }
 
   func navigateTo(_ tab: TabIdentifier, _ dest: Router.NavDest, _ reset: Bool = true) {
@@ -139,6 +162,7 @@ class Nav: Identifiable, Equatable {
     let router = self.routers[tab] ?? Self.newRouterForTab(tab, id)
     if self.routers[tab] == nil {
       self.routers[tab] = router
+      observeFeedNavigation(on: router)
     }
     return router
   }
