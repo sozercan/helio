@@ -6,6 +6,7 @@ struct GeneralThemingPanel: View {
   @Default(.ThemesDefSettings) private var themesDefSettings
   @State private var restartAlert = false
   @State private var firstWarning = false
+  @State private var themeEdited = false
   var body: some View {
     ScrollView {
       VStack(alignment: .leading, spacing: 32) {
@@ -33,12 +34,16 @@ struct GeneralThemingPanel: View {
       }
       .padding(.vertical, 32)
     }
-    .onChange(of: theme, debounceTime: .milliseconds(500), perform: { _ in
-      if themesDefSettings.selectedThemeID == theme.id, !firstWarning {
-        restartAlert = true
-        firstWarning = true
-      }
-    })
+    .onChange(of: theme) { _, _ in
+      themeEdited = true
+    }
+    .task(id: theme) {
+      guard themeEdited, !firstWarning else { return }
+      try? await Task.sleep(for: .milliseconds(500))
+      guard !Task.isCancelled, themesDefSettings.selectedThemeID == theme.id, !firstWarning else { return }
+      restartAlert = true
+      firstWarning = true
+    }
     .scrollContentBackground(.hidden)
     .themedListBG(theme.lists.bg)
     .navigationTitle("General")

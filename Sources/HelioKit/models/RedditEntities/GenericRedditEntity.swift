@@ -1,4 +1,3 @@
-import Combine
 import Defaults
 import Foundation
 import SwiftUI
@@ -8,7 +7,7 @@ protocol GenericRedditEntityDataType: Codable, Hashable, Identifiable {
 }
 
 @Observable
-class GenericRedditEntity<T: GenericRedditEntityDataType, B: Hashable>: Identifiable, Hashable, ObservableObject, Observable, Codable, Defaults.Serializable {
+class GenericRedditEntity<T: GenericRedditEntityDataType, B: Hashable>: Identifiable, Hashable, Observable, Codable, Defaults.Serializable {
   func hash(into hasher: inout Hasher) {
     hasher.combine(id)
     hasher.combine(typePrefix)
@@ -94,7 +93,6 @@ class GenericRedditEntity<T: GenericRedditEntityDataType, B: Hashable>: Identifi
   }
 
   let redditAPI: RedditAPI = .shared
-  var anyCancellables: [AnyCancellable]? = nil
   var childrenHelio: [GenericRedditEntity<T, B>] = []
   var parentHelio: [GenericRedditEntity<T, B>]?
 

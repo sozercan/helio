@@ -1,5 +1,4 @@
 import SwiftUI
-import WrappingHStack
 
 struct PeakQuestionsScroller: View, Equatable {
   static func == (lhs: PeakQuestionsScroller, rhs: PeakQuestionsScroller) -> Bool {

@@ -1,5 +1,4 @@
 import Foundation
-import HighlightedTextEditor
 import Lottie
 import SwiftUI
 import UIKit

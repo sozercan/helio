@@ -55,14 +55,7 @@ struct CommentLinkContent: View {
   @Environment(\.contentTypeSize) private var dynamicTypeSize
 
   @State var commentViewLoaded = false
-
-  nonisolated func haptic() {
-    Task(priority: .background) {
-      let medium = await UIImpactFeedbackGenerator(style: .medium)
-      await medium.prepare()
-      await medium.impactOccurred()
-    }
-  }
+  @State private var voteHapticTrigger = 0
 
   var body: some View {
     let theme = selectedTheme.comments
@@ -138,8 +131,8 @@ struct CommentLinkContent: View {
             } else if let ups = data.ups {
               HStack(alignment: .center, spacing: 4) {
                 Button {
+                  voteHapticTrigger += 1
                   Task {
-                    haptic()
                     _ = await comment.vote(action: .up)
                   }
                 } label: {
@@ -153,13 +146,13 @@ struct CommentLinkContent: View {
                 let downup = Int(ups)
                 Text(data.score_hidden == true ? "–" : formatBigNumber(downup))
                   .accessibilityLabel(data.score_hidden == true ? "Score hidden" : "\(downup) points")
-                  .foregroundColor(data.likes != nil ? (data.likes! ? .orange : .blue) : .gray)
+                  .foregroundStyle(data.likes != nil ? (data.likes! ? .orange : .blue) : .gray)
                   .contentTransition(.numericText())
                   .contentFont(14, .semibold, relativeTo: .meta)
 
                 Button {
+                  voteHapticTrigger += 1
                   Task {
-                    haptic()
                     _ = await comment.vote(action: .down)
                   }
                 } label: {
@@ -170,6 +163,7 @@ struct CommentLinkContent: View {
                 .buttonStyle(.plain)
                 .accessibilityLabel("Downvote")
               }
+              .sensoryFeedback(.impact(weight: .medium), trigger: voteHapticTrigger)
               .contentFont(14, .medium, relativeTo: .meta)
               .padding(.horizontal, 6)
               .padding(.vertical, 2)

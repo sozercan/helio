@@ -20,40 +20,36 @@ struct VotesCluster: View, Equatable {
   var vertical = false
   var showScore = true
   var showUpVoteRatio: Bool
+  @State private var hapticTrigger = 0
 
-  nonisolated func haptic() {
+  func upvote() {
+    hapticTrigger += 1
     Task(priority: .background) {
-      let medium = await UIImpactFeedbackGenerator(style: .medium)
-      await medium.prepare()
-      await medium.impactOccurred()
-    }
-  }
-
-  nonisolated func upvote() {
-    Task(priority: .background) {
-      haptic()
       _ = await voteAction(.up)
     }
   }
 
-  nonisolated func downvote() {
+  func downvote() {
+    hapticTrigger += 1
     Task(priority: .background) {
-      haptic()
       _ = await voteAction(.down)
     }
   }
 
   var body: some View {
-    if vertical {
-      VotesClusterVertical(id: votesKit.id, likes: votesKit.likes, upvote: upvote, downvote: downvote)
-    } else if !showScore {
-      HStack(spacing: 0) {
-        VoteButton(active: votesKit.likes ?? false, color: .upvote, image: "arrow.up", label: "Upvote", action: upvote)
-        VoteButton(active: !(votesKit.likes ?? true), color: .downvote, image: "arrow.down", label: "Downvote", action: downvote)
+    Group {
+      if vertical {
+        VotesClusterVertical(id: votesKit.id, likes: votesKit.likes, upvote: upvote, downvote: downvote)
+      } else if !showScore {
+        HStack(spacing: 0) {
+          VoteButton(active: votesKit.likes ?? false, color: .upvote, image: "arrow.up", label: "Upvote", action: upvote)
+          VoteButton(active: !(votesKit.likes ?? true), color: .downvote, image: "arrow.down", label: "Downvote", action: downvote)
+        }
+      } else {
+        VotesClusterHorizontal(id: votesKit.id, likes: votesKit.likes, ups: votesKit.ups, upvote_ratio: votesKit.ratio, upvote: upvote, downvote: downvote, showUpVoteRatio: showUpVoteRatio)
       }
-    } else {
-      VotesClusterHorizontal(id: votesKit.id, likes: votesKit.likes, ups: votesKit.ups, upvote_ratio: votesKit.ratio, upvote: upvote, downvote: downvote, showUpVoteRatio: showUpVoteRatio)
     }
+    .sensoryFeedback(.impact(weight: .medium), trigger: hapticTrigger)
   }
 }
 

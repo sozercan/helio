@@ -1,19 +1,8 @@
 import LinkPresentation
 import SwiftUI
 
-struct ShareSheet: UIViewControllerRepresentable {
-  var items: [Any]
-  func makeUIViewController(context: Context) -> UIActivityViewController {
-    let controller = UIActivityViewController(activityItems: items, applicationActivities: nil)
-    controller.title = "Test"
-    return controller
-  }
-
-  func updateUIViewController(_ uiViewController: UIActivityViewController, context: Context) {}
-}
-
-class ShareImage: UIActivityItemProvider {
-  var image: UIImage
+final class ShareImage: UIActivityItemProvider, @unchecked Sendable {
+  let image: UIImage
 
   override var item: Any {
     self.image
@@ -28,7 +17,6 @@ class ShareImage: UIActivityItemProvider {
     super.init(placeholderItem: placeholderItem)
   }
 
-  @available(iOS 13.0, *)
   override func activityViewControllerLinkMetadata(_ activityViewController: UIActivityViewController) -> LPLinkMetadata? {
     let metadata = LPLinkMetadata()
     metadata.title = "Image"
@@ -69,11 +57,19 @@ class ShareUtils {
 
   static func shareItem(item: String, sourceView: UIView? = nil) {
     guard let url = URL(string: item) else { return }
+    shareItems([url], sourceView: sourceView)
+  }
+
+  static func shareImage(_ image: UIImage, sourceView: UIView? = nil) {
+    shareItems([ShareImage(placeholderItem: image)], sourceView: sourceView)
+  }
+
+  private static func shareItems(_ items: [Any], sourceView: UIView? = nil) {
     pendingPresentation?.cancel()
     pendingPresentation = Task { @MainActor in
       let ready = await waitForPresentationReady()
       guard !Task.isCancelled, ready else { return }
-      presentActivityController(for: [url], sourceView: sourceView)
+      presentActivityController(for: items, sourceView: sourceView)
     }
   }
 

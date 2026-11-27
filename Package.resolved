@@ -1,5 +1,5 @@
 {
-  "originHash" : "4162ad5777580eea2c68e89c2bc26f515e5d2df4e8a63c78dc4ea1fb29b97546",
+  "originHash" : "8a2175297d011250ff7bbe2d48ec007ab83153716dc55e0af5c8c93353025007",
   "pins" : [
     {
       "identity" : "alamofire",
@@ -20,15 +20,6 @@
       }
     },
     {
-      "identity" : "debouncedonchange",
-      "kind" : "remoteSourceControl",
-      "location" : "https://github.com/Tunous/DebouncedOnChange.git",
-      "state" : {
-        "revision" : "b699017e13966e35c9388c8cc97151c8883dda1e",
-        "version" : "1.1.0"
-      }
-    },
-    {
       "identity" : "defaults",
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/sindresorhus/Defaults",
@@ -44,15 +35,6 @@
       "state" : {
         "revision" : "b6fc594b30d0949a788338c54b07c26ae40c3444",
         "version" : "3.2.2"
-      }
-    },
-    {
-      "identity" : "highlightedtexteditor",
-      "kind" : "remoteSourceControl",
-      "location" : "https://github.com/kyle-n/HighlightedTextEditor",
-      "state" : {
-        "revision" : "759d7b4bd2c10d0bbe93bc62d68572a3702049e3",
-        "version" : "2.1.2"
       }
     },
     {
@@ -170,15 +152,6 @@
       "state" : {
         "revision" : "6157c77e8be9b3d2310bc680681b61a8d9e290ac",
         "version" : "2.2.1"
-      }
-    },
-    {
-      "identity" : "wrappinghstack",
-      "kind" : "remoteSourceControl",
-      "location" : "https://github.com/dkk/WrappingHStack",
-      "state" : {
-        "revision" : "425d9488ba55f58f0b34498c64c054c77fc2a44b",
-        "version" : "2.2.11"
       }
     },
     {
