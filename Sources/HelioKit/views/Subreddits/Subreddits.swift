@@ -103,118 +103,115 @@ struct Subreddits: View, Equatable {
 
   var body: some View {
     let selectedRow = selection.wrappedValue
-    ScrollViewReader { proxy in
-      List(selection: selection) {
-        if searchText == "" {
-          VStack(spacing: 12) {
-            HStack(spacing: 12) {
-              feedTile("Home", icon: "house.circle.fill", color: .blue, id: "home")
-              feedTile("Popular", icon: "chart.line.uptrend.xyaxis.circle.fill", color: .red, id: "popular")
-            }
-            HStack(spacing: 12) {
-              feedTile("All", icon: "signpost.right.and.left.circle.fill", color: .orange, id: "all")
-              feedTile("Saved", icon: "bookmark.circle.fill", color: .green, id: savedKeyword)
-            }
+    List(selection: selection) {
+      if searchText.isEmpty {
+        VStack(spacing: 12) {
+          HStack(spacing: 12) {
+            feedTile("Home", icon: "house.circle.fill", color: .blue, id: "home")
+            feedTile("Popular", icon: "chart.line.uptrend.xyaxis.circle.fill", color: .red, id: "popular")
           }
-          .environment(\.isInSidebar, false)
-          .frame(maxWidth: .infinity)
-          .id("bigButtons")
-          .listRowSeparator(.hidden)
-          .listRowBackground(Color.clear)
-          .listRowInsets(EdgeInsets(top: 0, leading: 0, bottom: 0, trailing: 0))
-
-          if !multis.isEmpty {
-            Section("Multis") {
-              ScrollView(.horizontal) {
-                HStack(spacing: 16) {
-                  ForEach(multis) { multi in
-                    let multi = Multi(data: MultiData(entity: multi))
-                    MultiLink(multi: multi, selected: firstDestination == .reddit(.multiFeed(multi)))
-                  }
-                }
-                .padding(.horizontal, 16)
-              }
-            }
-            .listRowBackground(Color.clear)
-            .listRowInsets(EdgeInsets(top: 0, leading: 0, bottom: 0, trailing: 0))
+          HStack(spacing: 12) {
+            feedTile("All", icon: "signpost.right.and.left.circle.fill", color: .orange, id: "all")
+            feedTile("Saved", icon: "bookmark.circle.fill", color: .green, id: savedKeyword)
           }
         }
+        .environment(\.isInSidebar, false)
+        .frame(maxWidth: .infinity)
+        .id("bigButtons")
+        .listRowSeparator(.hidden)
+        .listRowBackground(Color.clear)
+        .listRowInsets(EdgeInsets(top: 0, leading: 0, bottom: 0, trailing: 0))
 
-        Group {
-          if searchText != "" {
-            Section("Found subs") {
-              let foundSubs = Array(Array(subreddits.filter { ($0.display_name ?? "").lowercased().contains(searchText.lowercased()) }).enumerated())
-              ForEach(foundSubs, id: \.self.element.uuid) { _, cachedSub in
+        if !multis.isEmpty {
+          Section("Multis") {
+            ScrollView(.horizontal) {
+              HStack(spacing: 16) {
+                ForEach(multis) { multi in
+                  let multi = Multi(data: MultiData(entity: multi))
+                  MultiLink(multi: multi, selected: firstDestination == .reddit(.multiFeed(multi)))
+                }
+              }
+              .padding(.horizontal, 16)
+            }
+          }
+          .listRowBackground(Color.clear)
+          .listRowInsets(EdgeInsets(top: 0, leading: 0, bottom: 0, trailing: 0))
+        }
+      }
+
+      Group {
+        if !searchText.isEmpty {
+          Section("Found subs") {
+            let foundSubs = Array(Array(subreddits.filter { ($0.display_name ?? "").lowercased().contains(searchText.lowercased()) }).enumerated())
+            ForEach(foundSubs, id: \.self.element.uuid) { _, cachedSub in
+              subItem(cachedSub, selected: selectedRow)
+            }
+          }
+
+        } else {
+          let favs = subreddits.filter { $0.user_has_favorited && $0.user_is_subscriber }
+          if !favs.isEmpty {
+            Section("Favorites") {
+              let favs = Array(favs.sorted(by: { x, y in (x.display_name?.lowercased() ?? "a") < (y.display_name?.lowercased() ?? "a") }).enumerated())
+              ForEach(favs, id: \.self.element) { _, cachedSub in
+                subItem(cachedSub, inFavorites: true, selected: selectedRow)
+                  .id("\(cachedSub.uuid ?? "")-fav")
+              }
+              .onDelete(perform: deleteFromFavorites)
+            }
+          }
+
+          if appearanceDefSettings.disableAlphabetLettersSectionsInSubsList {
+            Section("Subs") {
+              let subs = Array(subreddits.filter(\.user_is_subscriber).sorted(by: { x, y in (x.display_name?.lowercased() ?? "a") < (y.display_name?.lowercased() ?? "a") }).enumerated())
+              ForEach(subs, id: \.self.element) { _, cachedSub in
                 subItem(cachedSub, selected: selectedRow)
               }
             }
 
           } else {
-            let favs = subreddits.filter { $0.user_has_favorited && $0.user_is_subscriber }
-            if !favs.isEmpty {
-              Section("Favorites") {
-                let favs = Array(favs.sorted(by: { x, y in (x.display_name?.lowercased() ?? "a") < (y.display_name?.lowercased() ?? "a") }).enumerated())
-                ForEach(favs, id: \.self.element) { _, cachedSub in
-                  subItem(cachedSub, inFavorites: true, selected: selectedRow)
-                    .id("\(cachedSub.uuid ?? "")-fav")
-                }
-                .onDelete(perform: deleteFromFavorites)
-              }
-            }
-
-            if appearanceDefSettings.disableAlphabetLettersSectionsInSubsList {
-              Section("Subs") {
-                let subs = Array(subreddits.filter(\.user_is_subscriber).sorted(by: { x, y in (x.display_name?.lowercased() ?? "a") < (y.display_name?.lowercased() ?? "a") }).enumerated())
-                ForEach(subs, id: \.self.element) { _, cachedSub in
-                  subItem(cachedSub, selected: selectedRow)
-                }
-              }
-
-            } else {
-              ForEach(sections.keys.sorted(), id: \.self) { letter in
-                Section(header: Text(letter)) {
-                  if let arr = sections[letter] {
-                    let subs = Array(arr.sorted(by: { x, y in
-                      (x.display_name?.lowercased() ?? "a") < (y.display_name?.lowercased() ?? "a")
-                    }).enumerated())
-                    ForEach(subs, id: \.self.element.uuid) { _, cachedSub in
-                      subItem(cachedSub, selected: selectedRow)
-                    }
-                    .onDelete(perform: { i in
-                      deleteFromList(at: i, letter: letter)
-                    })
+            ForEach(sections.keys.sorted(), id: \.self) { letter in
+              Section(header: Text(letter)) {
+                if let arr = sections[letter] {
+                  let subs = Array(arr.sorted(by: { x, y in
+                    (x.display_name?.lowercased() ?? "a") < (y.display_name?.lowercased() ?? "a")
+                  }).enumerated())
+                  ForEach(subs, id: \.self.element.uuid) { _, cachedSub in
+                    subItem(cachedSub, selected: selectedRow)
                   }
+                  .onDelete(perform: { i in
+                    deleteFromList(at: i, letter: letter)
+                  })
                 }
               }
+              .sectionIndexLabel(letter)
             }
           }
         }
-        .themedListSection(disable: usesThemeBackgroundInSidebar || inSidebar)
       }
-      .environment(\.isInSidebar, true)
-      .themedListBG(selectedTheme.lists.bg, disable: inSidebar && !usesThemeBackgroundInSidebar, keepSystemBackground: inSidebar && !usesThemeBackgroundInSidebar)
-      .touchScrollIndicators(.hidden)
-      .listStyle(.sidebar)
-      .scrollDismissesKeyboard(.immediately)
-      .loader(!loaded && subreddits.isEmpty)
-      .subsSearchAndEdit($searchText, isPresented: $searchPresented, focused: $searchFocused)
-      .commandTarget(CommandTargets.Target(kind: .subs, refresh: { Task { await refresh() } }, focusSearch: {
-        searchPresented = true
-        searchFocused = true
-      }))
-      .overlay(alignment: .trailing) {
-        if usesThemeBackgroundInSidebar {
-          Color(uiColor: .separator).frame(width: 1).ignoresSafeArea()
-        }
-      }
-      #if !targetEnvironment(macCatalyst)
-      .overlay(alignment: .trailing) {
-        AlphabetJumper(letters: searchText.isEmpty && !appearanceDefSettings.disableAlphabetLettersSectionsInSubsList ? sections.keys.sorted() : [], proxy: proxy)
-      }
-      #endif
-      .refreshable { await refresh() }
-      .navigationTitle("Subreddits")
+      .themedListSection(disable: usesThemeBackgroundInSidebar || inSidebar)
     }
+    .environment(\.isInSidebar, true)
+    .themedListBG(selectedTheme.lists.bg, disable: inSidebar && !usesThemeBackgroundInSidebar, keepSystemBackground: inSidebar && !usesThemeBackgroundInSidebar)
+    .touchScrollIndicators(.hidden)
+    .listStyle(.sidebar)
+    .scrollDismissesKeyboard(.immediately)
+    .loader(!loaded && subreddits.isEmpty)
+    .subsSearchAndEdit($searchText, isPresented: $searchPresented, focused: $searchFocused)
+    .commandTarget(CommandTargets.Target(kind: .subs, refresh: { Task { await refresh() } }, focusSearch: {
+      searchPresented = true
+      searchFocused = true
+    }))
+    .overlay(alignment: .trailing) {
+      if usesThemeBackgroundInSidebar {
+        Color(uiColor: .separator).frame(width: 1).ignoresSafeArea()
+      }
+    }
+    #if targetEnvironment(macCatalyst)
+    .listSectionIndexVisibility(.hidden)
+    #endif
+    .refreshable { await refresh() }
+    .navigationTitle("Subreddits")
   }
 
   private func refresh() async {
