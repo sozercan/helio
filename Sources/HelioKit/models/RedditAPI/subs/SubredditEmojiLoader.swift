@@ -110,9 +110,9 @@ actor SubredditEmojiLoader {
     if let existing = inFlight[key] {
       return await existing.value ?? [:]
     }
-    guard let account = await currentAccount() else { return [:] }
-    let task = Task<[String: URL]?, Never> { [fetch] in
-      await fetch(key, account)
+    let task = Task<[String: URL]?, Never> { [currentAccount, fetch] in
+      guard let account = await currentAccount() else { return nil }
+      return await fetch(key, account)
     }
     inFlight[key] = task
     let fetched = await task.value

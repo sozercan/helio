@@ -45,9 +45,12 @@ struct UserFlair: View, Equatable {
                 LazyImage(url: url) { state in
                   if let image = state.image {
                     image.resizable().scaledToFit()
+                      .accessibilityLabel(name.replacingOccurrences(of: "_", with: " "))
                   }
                 }
                 .frame(width: max(12, flairText.size + 2), height: max(12, flairText.size + 2))
+                .accessibilityElement(children: .ignore)
+                .accessibilityLabel(name.replacingOccurrences(of: "_", with: " "))
               }
             }
           }
