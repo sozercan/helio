@@ -30,6 +30,7 @@ class Nav: Identifiable, Equatable {
   }
 
   @ObservationIgnored private var lastVisitedFeedByAccount: [UUID: String] = [:]
+  @ObservationIgnored private var lastVisitedFeedByTab: [TabIdentifier: (accountID: UUID, feedName: String)] = [:]
 
   private static func newRouterForTab(_ tab: TabIdentifier, _ id: UUID) -> Router {
     Router(id: "\(tab.rawValue)TabRouter-\(id.uuidString)")
@@ -78,8 +79,10 @@ class Nav: Identifiable, Equatable {
       }
     }
     didSet {
-      if let feedName = ReadingSessionStore.latestFeedName(in: self[activeTab].fullPath) {
-        recordVisitedFeed(feedName)
+      if let entry = lastVisitedFeedByTab[activeTab],
+         entry.accountID == Defaults[.GeneralDefSettings].redditCredentialSelectedID
+      {
+        recordVisitedFeed(entry.feedName, for: activeTab)
       }
     }
   }
@@ -123,20 +126,21 @@ class Nav: Identifiable, Equatable {
     self.id = id
     self.activeTab = activeTab
     self.routers = Dictionary(uniqueKeysWithValues: TabIdentifier.allCases.map { ($0, Self.newRouterForTab($0, id)) })
-    for router in routers.values {
-      observeFeedNavigation(on: router)
+    for (tab, router) in routers {
+      observeFeedNavigation(on: router, tab: tab)
     }
   }
 
-  private func observeFeedNavigation(on router: Router) {
+  private func observeFeedNavigation(on router: Router, tab: TabIdentifier) {
     router.onFeedVisit = { [weak self] feedName in
-      self?.recordVisitedFeed(feedName)
+      self?.recordVisitedFeed(feedName, for: tab)
     }
   }
 
-  private func recordVisitedFeed(_ feedName: String) {
+  private func recordVisitedFeed(_ feedName: String, for tab: TabIdentifier) {
     guard let accountID = Defaults[.GeneralDefSettings].redditCredentialSelectedID else { return }
     lastVisitedFeedByAccount[accountID] = feedName
+    lastVisitedFeedByTab[tab] = (accountID, feedName)
     guard Defaults[.BehaviorDefSettings].restoreReadingSession else { return }
     ReadingSessionStore.save(feedName: feedName, accountID: accountID)
   }
@@ -168,7 +172,7 @@ class Nav: Identifiable, Equatable {
     let router = self.routers[tab] ?? Self.newRouterForTab(tab, id)
     if self.routers[tab] == nil {
       self.routers[tab] = router
-      observeFeedNavigation(on: router)
+      observeFeedNavigation(on: router, tab: tab)
     }
     return router
   }
