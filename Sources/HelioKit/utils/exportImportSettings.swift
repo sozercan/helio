@@ -14,6 +14,10 @@ func exportUserDefaultsToJSON(fileName: String) -> String? {
     }
   }
 
+  for (key, value) in UserCollectionsStore.shared.exportEntries() {
+    serializedDictionary[key] = value
+  }
+
   do {
     let jsonData = try JSONSerialization.data(withJSONObject: serializedDictionary, options: .prettyPrinted)
 
@@ -42,7 +46,8 @@ func importUserDefaultsFromJSON(jsonFilePath: URL) -> Bool {
     let jsonData = try Data(contentsOf: jsonFilePath)
 
     if let jsonObject = try JSONSerialization.jsonObject(with: jsonData, options: []) as? [String: Any] {
-      for (key, value) in jsonObject {
+      let collectionKeys = UserCollectionsStore.managedBackupKeys
+      for (key, value) in jsonObject where !collectionKeys.contains(key) {
         if let dateStr = value as? String,
            let date = Date.dateFromISO8601String(dateStr)
         {
@@ -52,6 +57,7 @@ func importUserDefaultsFromJSON(jsonFilePath: URL) -> Bool {
         }
       }
 
+      UserCollectionsStore.shared.importEntries(from: jsonObject)
       UserDefaults.standard.synchronize()
 
       print("UserDefaults imported from: \(jsonFilePath)")

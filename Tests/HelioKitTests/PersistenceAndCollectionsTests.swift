@@ -113,6 +113,13 @@ struct PersistenceControllerTests {
     #expect(controller.lastLoadError != nil)
     #expect(controller.container.persistentStoreCoordinator.persistentStores.count == 1)
     #expect(controller.container.persistentStoreCoordinator.persistentStores.first?.type == NSInMemoryStoreType)
+
+    let sub = NSEntityDescription.insertNewObject(forEntityName: "CachedSub", into: controller.container.viewContext)
+    sub.setValue("t5_mem", forKey: "uuid")
+    try controller.container.viewContext.save()
+    resetCoreData(container: controller.container)
+    let remaining = try controller.container.viewContext.fetch(NSFetchRequest<NSManagedObject>(entityName: "CachedSub"))
+    #expect(remaining.isEmpty)
   }
 }
 
@@ -144,7 +151,7 @@ struct UserCollectionsStoreTests {
     return Subreddit(data: data)
   }
 
-  @Test func migratesLegacyDefaultsArrayFormatOnceAndIsIdempotent() throws {
+  @Test func migratesLegacyDefaultsArrayFormatOnceAndIsIdempotent() async throws {
     let dir = try makeTempDirectory()
     defer { try? FileManager.default.removeItem(at: dir) }
     let (suiteName, defaults) = try makeUserDefaults()
@@ -169,6 +176,7 @@ struct UserCollectionsStoreTests {
 
     firstStore.removeFilteredSubreddit(at: 0)
     firstStore.clearLikedButNotSubbed()
+    await firstStore.flushPendingWrites()
 
     defaults.set(["should-not-overwrite"], forKey: "filteredSubreddits")
     let reopened = UserCollectionsStore(directory: dir, userDefaults: defaults)
@@ -190,7 +198,7 @@ struct UserCollectionsStoreTests {
     #expect(!defaults.bool(forKey: "UserCollectionsStore.migratedFromUserDefaults.v1"))
   }
 
-  @Test func persistsFilteredSubredditsAndLocalFavoritesAcrossReopen() throws {
+  @Test func persistsFilteredSubredditsAndLocalFavoritesAcrossReopen() async throws {
     let dir = try makeTempDirectory()
     defer { try? FileManager.default.removeItem(at: dir) }
     let (suiteName, defaults) = try makeUserDefaults()
@@ -211,6 +219,7 @@ struct UserCollectionsStoreTests {
     #expect(store.toggleLocalFavorite(subB))
     #expect(!store.toggleLocalFavorite(subA))
     #expect(store.likedButNotSubbed.map(\.id) == [subB.id])
+    await store.flushPendingWrites()
 
     let reopened = UserCollectionsStore(directory: dir, userDefaults: defaults)
     #expect(reopened.filteredSubreddits == ["gaming"])
@@ -218,5 +227,67 @@ struct UserCollectionsStoreTests {
     #expect(reopened.likedButNotSubbed.map(\.id) == [subB.id])
     #expect(reopened.isLocallyFavorited(subB))
     #expect(!reopened.isLocallyFavorited(subA))
+  }
+
+  @Test func blocksOverwritingCorruptedCollectionFileUntilExplicitReset() async throws {
+    let dir = try makeTempDirectory()
+    defer { try? FileManager.default.removeItem(at: dir) }
+    let (suiteName, defaults) = try makeUserDefaults()
+    defer { defaults.removePersistentDomain(forName: suiteName) }
+
+    let fileURL = dir.appending(path: "filteredSubreddits.json")
+    let corruptData = Data("{corrupt".utf8)
+    try corruptData.write(to: fileURL)
+
+    let store = UserCollectionsStore(directory: dir, userDefaults: defaults)
+    #expect(store.hasFilteredLoadError)
+    store.addFilteredSubreddit("newsub")
+    await store.flushPendingWrites()
+    #expect(try Data(contentsOf: fileURL) == corruptData)
+
+    store.resetAll()
+    #expect(!store.hasFilteredLoadError)
+    #expect(try JSONDecoder().decode([String].self, from: Data(contentsOf: fileURL)).isEmpty)
+  }
+
+  @Test func cleansUpLeftoverLegacyKeysWhenJsonFileAlreadyExists() throws {
+    let dir = try makeTempDirectory()
+    defer { try? FileManager.default.removeItem(at: dir) }
+    let (suiteName, defaults) = try makeUserDefaults()
+    defer { defaults.removePersistentDomain(forName: suiteName) }
+
+    try JSONEncoder().encode(["from-file"]).write(to: dir.appending(path: "filteredSubreddits.json"))
+    defaults.set(["from-legacy"], forKey: "filteredSubreddits")
+
+    let store = UserCollectionsStore(directory: dir, userDefaults: defaults)
+    #expect(store.filteredSubreddits == ["from-file"])
+    #expect(defaults.object(forKey: "filteredSubreddits") == nil)
+    #expect(defaults.bool(forKey: "UserCollectionsStore.migratedFromUserDefaults.v1"))
+  }
+
+  @Test func exportsAndImportsCollectionsExplicitly() async throws {
+    let dir = try makeTempDirectory()
+    defer { try? FileManager.default.removeItem(at: dir) }
+    let (suiteName, defaults) = try makeUserDefaults()
+    defer { defaults.removePersistentDomain(forName: suiteName) }
+
+    let sub = try makeSubreddit(id: "exp1", name: "swift")
+    let source = UserCollectionsStore(directory: dir, userDefaults: defaults)
+    source.addFilteredSubreddit("politics")
+    _ = source.toggleLocalFavorite(sub)
+    let exported = source.exportEntries()
+
+    let targetDir = try makeTempDirectory()
+    defer { try? FileManager.default.removeItem(at: targetDir) }
+    let (targetSuite, targetDefaults) = try makeUserDefaults()
+    defer { targetDefaults.removePersistentDomain(forName: targetSuite) }
+
+    let target = UserCollectionsStore(directory: targetDir, userDefaults: targetDefaults)
+    target.importEntries(from: exported)
+    await target.flushPendingWrites()
+
+    let reopened = UserCollectionsStore(directory: targetDir, userDefaults: targetDefaults)
+    #expect(reopened.filteredSubreddits == ["politics"])
+    #expect(reopened.likedButNotSubbed.map(\.id) == [sub.id])
   }
 }

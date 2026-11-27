@@ -123,6 +123,14 @@ struct ReplyModal<Content: View>: View {
     NavigationStack {
       ScrollView {
         VStack(spacing: 12) {
+          if PersistenceController.shared.storeLoadStatus == .inMemoryFallback {
+            Label("Local storage is temporarily unavailable; drafts will not be saved after relaunch.", systemImage: "exclamationmark.triangle.fill")
+              .font(.footnote)
+              .foregroundStyle(.orange)
+              .frame(maxWidth: .infinity, alignment: .leading)
+              .padding(10)
+              .background(Color.orange.opacity(0.12), in: RoundedRectangle(cornerRadius: 12))
+          }
           VStack(alignment: .leading) {
             if let me = RedditAPI.shared.me?.data, let avatarLink = me.icon_img ?? me.snoovatar_img, let rootURL = rootURLString(avatarLink), let avatarURL = URL(string: rootURL) {
               BadgeView(avatarRequest: ImageRequest(url: avatarURL), saved: false, author: me.name, userFlair: "", created: Date().timeIntervalSince1970, avatarURL: me.icon_img ?? me.snoovatar_img, theme: selectedTheme.comments.theme.badge, commentsCount: "0", votesCount: "0")
