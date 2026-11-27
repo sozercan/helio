@@ -16,6 +16,50 @@ enum Shim {
   static let logQueue = DispatchQueue(label: "helio.perf.log")
   static var mainThread = mach_thread_self()
   static var timers: [DispatchSourceTimer] = []
+  static let setupLock = NSLock()
+  nonisolated(unsafe) static var meCompleted = false
+  nonisolated(unsafe) static var setupCompleteLogged = false
+
+  static func markMeCompleted() {
+    setupLock.withLock {
+      meCompleted = true
+    }
+    checkSetupComplete()
+  }
+
+  static func hasPersistedSubsSyncedAt() -> Bool {
+    guard let bundleID = Bundle.main.bundleIdentifier,
+          let domain = UserDefaults.standard.persistentDomain(forName: bundleID),
+          let raw = domain["subsSyncedAt"] else { return false }
+    if let dict = raw as? [String: Any] {
+      return !dict.isEmpty
+    }
+    if let data = raw as? Data,
+       let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any]
+    {
+      return !json.isEmpty
+    }
+    if let str = raw as? String,
+       let data = str.data(using: .utf8),
+       let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any]
+    {
+      return !json.isEmpty
+    }
+    return false
+  }
+
+  static func checkSetupComplete() {
+    guard env["PERF_SEED_CREDENTIAL"] != nil else { return }
+    let hasSubsSyncedAt = hasPersistedSubsSyncedAt()
+    let shouldLog = setupLock.withLock { () -> Bool in
+      guard !setupCompleteLogged, meCompleted, hasSubsSyncedAt else { return false }
+      setupCompleteLogged = true
+      return true
+    }
+    if shouldLog {
+      log(String(format: "P %.0f setup_complete", now))
+    }
+  }
 
   static var now: Double {
     (CACurrentMediaTime() - t0) * 1000
@@ -47,7 +91,10 @@ enum Shim {
     log(String(format: "W %.3f wallclock", Date().timeIntervalSince1970))
     DispatchQueue.main.async { FrameWatch.shared.start() }
     timers = [
-      timer(every: 250) { sample() },
+      timer(every: 250) {
+        sample()
+        checkSetupComplete()
+      },
       timer(every: 50) { Driver.runCommands() },
     ]
   }
@@ -262,6 +309,9 @@ final class FixtureProtocol: URLProtocol {
       client?.urlProtocol(self, didReceive: response, cacheStoragePolicy: .notAllowed)
       client?.urlProtocol(self, didLoad: body)
       client?.urlProtocolDidFinishLoading(self)
+      if url.path.hasPrefix("/api/v1/me") {
+        Shim.markMeCompleted()
+      }
     }
   }
 
@@ -587,9 +637,22 @@ enum Driver {
         typealias Activate = @convention(c) (AnyObject, Selector, Bool) -> Void
         unsafeBitCast(method_getImplementation(method), to: Activate.self)(app, activate, true)
       }
-      scene.requestGeometryUpdate(.Mac(systemFrame: CGRect(origin: CGPoint(x: 40, y: 40), size: size))) { error in
+      let targetFrame = CGRect(origin: CGPoint(x: 40, y: 40), size: size)
+      let currentFrame = scene.effectiveGeometry.systemFrame
+      if abs(currentFrame.origin.x - targetFrame.origin.x) <= 2,
+         abs(currentFrame.origin.y - targetFrame.origin.y) <= 2,
+         abs(currentFrame.size.width - targetFrame.size.width) <= 2,
+         abs(currentFrame.size.height - targetFrame.size.height) <= 2,
+         scene.windows.contains(where: { !$0.isHidden })
+      {
+        Shim.log(String(format: "P %.0f window_ready %.0fx%.0f", Shim.now, size.width, size.height))
+        return
+      }
+      scene.requestGeometryUpdate(.Mac(systemFrame: targetFrame)) { error in
         Shim.log(String(format: "P %.0f window_failed %@", Shim.now, error.localizedDescription.replacingOccurrences(of: " ", with: "_")))
       }
+    #else
+      Shim.log(String(format: "P %.0f window_ready %.0fx%.0f", Shim.now, size.width, size.height))
     #endif
     Shim.log(String(format: "P %.0f window %.0fx%.0f", Shim.now, size.width, size.height))
   }
