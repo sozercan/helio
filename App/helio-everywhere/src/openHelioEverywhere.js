@@ -1,7 +1,6 @@
 const EXCLUDED_PATH_PREFIXES = [
   '/prefs/apps',
   '/api/v1/authorize',
-  '/api/v1/authorize.compact',
   '/login',
   '/register',
   '/account/login',
@@ -13,6 +12,7 @@ const EXCLUDED_PATH_PREFIXES = [
 const EXCLUDED_REDDIT_SUBDOMAINS = new Set([
   'accounts',
   'ads',
+  'api',
   'business',
   'events',
   'gql',
@@ -42,8 +42,11 @@ function isRedirectableRedditHost(hostname) {
   return /^[a-z0-9-]+$/.test(sub)
 }
 
-function isBareReddItHost(hostname) {
-  return (hostname || '').toLowerCase() === 'redd.it'
+function isExcludedPath(pathname) {
+  const lowerPath = (pathname || '').toLowerCase()
+  return EXCLUDED_PATH_PREFIXES.some(
+    (prefix) => lowerPath === prefix || lowerPath.startsWith(`${prefix}/`) || lowerPath.startsWith(`${prefix}.`),
+  )
 }
 
 function buildHelioRedirectURL(rawUrl) {
@@ -62,20 +65,11 @@ function buildHelioRedirectURL(rawUrl) {
     return null
   }
 
-  if (isBareReddItHost(url.hostname)) {
-    const segments = url.pathname.split('/').filter(Boolean)
-    if (segments.length !== 1 || !/^[a-z0-9]+$/i.test(segments[0])) {
-      return null
-    }
-    return `helioapp://reddit.com/comments/${segments[0]}${url.search}${url.hash}`
-  }
-
   if (!isRedirectableRedditHost(url.hostname)) {
     return null
   }
 
-  const lowerPath = url.pathname.toLowerCase()
-  if (EXCLUDED_PATH_PREFIXES.some((prefix) => lowerPath === prefix || lowerPath.startsWith(`${prefix}/`))) {
+  if (isExcludedPath(url.pathname)) {
     return null
   }
 
