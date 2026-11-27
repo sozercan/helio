@@ -271,6 +271,7 @@ struct UserView: View {
                     .background(isSelected ? selectedTheme.general.accentColor() : Color.secondary.opacity(0.15), in: Capsule())
                 }
                 .buttonStyle(.plain)
+                .accessibilityAddTraits(isSelected ? .isSelected : [])
               }
             }
             .padding(.horizontal, 8)
@@ -280,6 +281,25 @@ struct UserView: View {
             .fontSize(20, .bold)
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(.horizontal, 16)
+        } else if profileRefreshFailed {
+          VStack(spacing: 8) {
+            Text("Unable to load profile details")
+              .fontSize(15)
+              .foregroundStyle(selectedTheme.postLinks.theme.badge.statsText.color())
+            Button {
+              Task { await reloadUserForCurrentAccount() }
+            } label: {
+              Label("Retry Profile", systemImage: "arrow.clockwise")
+                .fontSize(15, .semibold)
+                .padding(.horizontal, 16)
+                .padding(.vertical, 8)
+                .foregroundStyle(selectedTheme.postLinks.theme.titleText.color())
+                .background(Color.secondary.opacity(0.2), in: Capsule())
+            }
+            .buttonStyle(.plain)
+          }
+          .frame(maxWidth: .infinity)
+          .padding(.vertical, 12)
         }
       }
       .listRowInsets(EdgeInsets(top: 8, leading: 8, bottom: 8, trailing: 8))
@@ -289,7 +309,7 @@ struct UserView: View {
     }, disableSearch: true, forceRefresh: $forceRefresh)
       .navigationBarTitleDisplayMode(.inline)
       .task {
-        if user.data == nil {
+        if user.data == nil || !isCurrentUser {
           await reloadUserForCurrentAccount()
         }
       }
