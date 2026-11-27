@@ -17,7 +17,7 @@ struct SubredditsStack: View {
   @State private var loaded = false
   @State private var layoutSwitch = LayoutSwitch()
   @AppStorage(DuoSplitDividerGeometry.defaultShareKey) private var savedDuoFeedShare: Double = 0
-  @State private var dragFeedWidth: CGFloat?
+  @GestureState private var dragFeedWidth: CGFloat?
 
   var body: some View {
     let layout = SplitLayout(sizeClass: horizontalSizeClass, frame: frame, division: WindowMetrics.shared.divisionFrame)
@@ -120,18 +120,16 @@ struct SubredditsStack: View {
     .contentShape(Rectangle())
     .gesture(
       DragGesture(minimumDistance: 4)
-        .onChanged { value in
-          dragFeedWidth = DuoSplitDividerGeometry.clampedWidth(baseWidth + value.translation.width, totalWidth: totalWidth)
+        .updating($dragFeedWidth) { value, state, _ in
+          state = DuoSplitDividerGeometry.clampedWidth(baseWidth + value.translation.width, totalWidth: totalWidth)
         }
         .onEnded { value in
           let finalWidth = DuoSplitDividerGeometry.clampedWidth(baseWidth + value.translation.width, totalWidth: totalWidth)
           savedDuoFeedShare = Double(DuoSplitDividerGeometry.snappedShare(forWidth: finalWidth, totalWidth: totalWidth))
-          dragFeedWidth = nil
         },
     )
     .onTapGesture(count: 2) {
       savedDuoFeedShare = 0.5
-      dragFeedWidth = nil
     }
     .accessibilityElement(children: .ignore)
     .accessibilityLabel("Resize feed and post panes")
@@ -145,7 +143,6 @@ struct SubredditsStack: View {
     }
     .accessibilityAction(named: "Equal Widths") {
       savedDuoFeedShare = 0.5
-      dragFeedWidth = nil
     }
   }
 
