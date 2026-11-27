@@ -17,11 +17,17 @@ class RedditAPI {
 
   private let currentAccount: @Sendable () async -> RedditCredential?
   private let session: Session
+  private let routeHealth: WebSessionRouteHealth
 
-  init(session: Session = AF, currentAccount: @escaping @Sendable () async -> RedditCredential? = {
-    await MainActor.run { RedditCredentialsManager.shared.selectedCredential }
-  }) {
+  init(
+    session: Session = AF,
+    routeHealth: WebSessionRouteHealth = .shared,
+    currentAccount: @escaping @Sendable () async -> RedditCredential? = {
+      await MainActor.run { RedditCredentialsManager.shared.selectedCredential }
+    },
+  ) {
     self.session = session
+    self.routeHealth = routeHealth
     self.currentAccount = currentAccount
   }
 
@@ -137,10 +143,16 @@ class RedditAPI {
     guard !authenticated || credential != nil else { return .failure(.serverTrustEvaluationFailed(reason: .noPublicKeysFound)) }
     let account = credential?.id
     let authorization = credential?.authorizationID
-    let resolvedURL = Self.resolveURL(url, for: credential, webSessionAuth: webSessionAuth)
-    return await self._doRequest(authenticated: authenticated, altCredential: credential, saveToken: saveToken, webSessionAuth: webSessionAuth, requestURL: resolvedURL) { headers in
-      let req = session.request(resolvedURL, method: method, parameters: params, encoder: URLEncodedFormParameterEncoder(destination: paramsLocation), headers: headers, requestModifier: reqModifier).validate()
-      return await RedditRateLimit.shared.recording(req.serializingDecodable(decodable).response, account: account, authorization: authorization)
+    return await executeWithWebSessionFallback(
+      url: url,
+      method: method,
+      credential: authenticated ? credential : nil,
+      defaultAuth: webSessionAuth,
+    ) { resolvedURL, routeAuth in
+      await self._doRequest(authenticated: authenticated, altCredential: credential, saveToken: saveToken, webSessionAuth: routeAuth, requestURL: resolvedURL) { headers in
+        let req = session.request(resolvedURL, method: method, parameters: params, encoder: URLEncodedFormParameterEncoder(destination: paramsLocation), headers: headers, requestModifier: reqModifier).validate()
+        return await RedditRateLimit.shared.recording(req.serializingDecodable(decodable).response, account: account, authorization: authorization)
+      }
     }
   }
 
@@ -161,11 +173,56 @@ class RedditAPI {
     guard !authenticated || credential != nil else { return .failure(.serverTrustEvaluationFailed(reason: .noPublicKeysFound)) }
     let account = credential?.id
     let authorization = credential?.authorizationID
-    let resolvedURL = Self.resolveURL(url, for: credential, webSessionAuth: webSessionAuth)
-    return await self._doRequest(authenticated: authenticated, altCredential: credential, saveToken: saveToken, webSessionAuth: webSessionAuth, requestURL: resolvedURL) { headers in
-      let req = session.request(resolvedURL, method: method, parameters: ["raw_json": 1], headers: headers, requestModifier: reqModifier).validate()
-      return await RedditRateLimit.shared.recording(req.serializingDecodable(decodable).response, account: account, authorization: authorization)
+    return await executeWithWebSessionFallback(
+      url: url,
+      method: method,
+      credential: authenticated ? credential : nil,
+      defaultAuth: webSessionAuth,
+    ) { resolvedURL, routeAuth in
+      await self._doRequest(authenticated: authenticated, altCredential: credential, saveToken: saveToken, webSessionAuth: routeAuth, requestURL: resolvedURL) { headers in
+        let req = session.request(resolvedURL, method: method, parameters: ["raw_json": 1], headers: headers, requestModifier: reqModifier).validate()
+        return await RedditRateLimit.shared.recording(req.serializingDecodable(decodable).response, account: account, authorization: authorization)
+      }
     }
+  }
+
+  private func executeWithWebSessionFallback<D>(
+    url: String,
+    method: HTTPMethod,
+    credential: RedditCredential?,
+    defaultAuth: WebSessionAuth,
+    perform: (String, WebSessionAuth) async -> Result<D, AFError>,
+  ) async -> Result<D, AFError> {
+    guard
+      let credential,
+      credential.isWebSession,
+      WebSessionRoutePlanner.isFallbackEligible(method: method, url: url)
+    else {
+      let resolvedURL = Self.resolveURL(url, for: credential, webSessionAuth: defaultAuth)
+      return await perform(resolvedURL, defaultAuth)
+    }
+
+    let pattern = WebSessionRoutePlanner.patternKey(for: url)
+    let allRoutes = WebSessionRoutePlanner.routes(for: url, method: method, defaultAuth: defaultAuth)
+    let candidateRoutes = routeHealth.orderedRoutes(allRoutes, account: credential.id, pattern: pattern)
+
+    var lastResult: Result<D, AFError>?
+    for route in candidateRoutes {
+      let resolvedURL = route.apply(to: url)
+      let result = await perform(resolvedURL, route.webSessionAuth)
+      switch result {
+      case .success:
+        routeHealth.recordSuccess(account: credential.id, pattern: pattern, route: route)
+        return result
+      case let .failure(error):
+        lastResult = result
+        guard error.responseCode == 403 else {
+          return result
+        }
+        routeHealth.recordBlock(account: credential.id, pattern: pattern, route: route)
+      }
+    }
+    return lastResult ?? .failure(.explicitlyCancelled)
   }
 
   func doRequest(

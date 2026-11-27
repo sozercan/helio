@@ -87,6 +87,7 @@ private class WebSessionRoutingProtocol: URLProtocol, @unchecked Sendable {
   static let requests = Mutex<[URLRequest]>([])
   static let responseBody = Mutex<Data>(Data(#"{"kind":"Listing","data":{"children":[],"after":null}}"#.utf8))
   static let statusCode = Mutex<Int>(200)
+  static let handler = Mutex<(@Sendable (URLRequest) -> (Int, Data))?>(nil)
 
   override class func canInit(with _: URLRequest) -> Bool {
     true
@@ -98,9 +99,10 @@ private class WebSessionRoutingProtocol: URLProtocol, @unchecked Sendable {
 
   override func startLoading() {
     Self.requests.withLock { $0.append(request) }
-    let code = Self.statusCode.withLock { $0 }
-    let body = Self.responseBody.withLock { $0 }
-    let response = HTTPURLResponse(url: request.url!, statusCode: code, httpVersion: nil, headerFields: ["Content-Type": "application/json"])!
+    let custom = Self.handler.withLock { $0 }
+    let (code, body) = custom?(request) ?? (Self.statusCode.withLock { $0 }, Self.responseBody.withLock { $0 })
+    let contentType = code == 403 ? "text/html" : "application/json"
+    let response = HTTPURLResponse(url: request.url!, statusCode: code, httpVersion: nil, headerFields: ["Content-Type": contentType])!
     client?.urlProtocol(self, didReceive: response, cacheStoragePolicy: .notAllowed)
     client?.urlProtocol(self, didLoad: body)
     client?.urlProtocolDidFinishLoading(self)
@@ -135,10 +137,11 @@ struct WebSessionRoutingTests {
     )
   }
 
-  private func session(body: String, statusCode: Int = 200) -> Session {
+  private func session(body: String, statusCode: Int = 200, handler: (@Sendable (URLRequest) -> (Int, Data))? = nil) -> Session {
     WebSessionRoutingProtocol.requests.withLock { $0 = [] }
     WebSessionRoutingProtocol.responseBody.withLock { $0 = Data(body.utf8) }
     WebSessionRoutingProtocol.statusCode.withLock { $0 = statusCode }
+    WebSessionRoutingProtocol.handler.withLock { $0 = handler }
     let configuration = URLSessionConfiguration.ephemeral
     configuration.protocolClasses = [WebSessionRoutingProtocol.self]
     return Session(configuration: configuration)
@@ -214,11 +217,70 @@ struct WebSessionRoutingTests {
 
   @Test func cookieRequest401DoesNotRetryAsBearerRenewal() async {
     let account = webAccount()
-    let api = RedditAPI(session: session(body: "[]", statusCode: 401), currentAccount: { account })
+    let api = RedditAPI(session: session(body: "[]", statusCode: 401), routeHealth: WebSessionRouteHealth(), currentAccount: { account })
     _ = await api.fetchPost(subreddit: "swift", postID: "t3_abc123")
 
     let count = WebSessionRoutingProtocol.requests.withLock { $0.count }
     #expect(count == 1)
+  }
+
+  @Test func webSessionFallsBackToNextRouteOn403AndCoolsDownRepeatedBlocks() async {
+    let account = webAccount()
+    let health = WebSessionRouteHealth()
+    let emptyListing = Data(#"{"kind":"Listing","data":{"children":[],"after":null}}"#.utf8)
+    let session = session(body: "") { request in
+      if request.url?.host == "oauth.reddit.com", request.value(forHTTPHeaderField: "Authorization") != nil {
+        return (403, Data("<html>blocked</html>".utf8))
+      }
+      return (200, emptyListing)
+    }
+    let api = RedditAPI(session: session, routeHealth: health, currentAccount: { account })
+
+    for _ in 0 ..< WebSessionRouteHealth.blockThreshold {
+      let result = await api.fetchSubPosts("/r/all", limit: 10, sort: .hot)
+      #expect(result != nil)
+    }
+    #expect(health.isCoolingDown(account: account.id, pattern: "/r/all/*", route: .oauthBearer))
+
+    WebSessionRoutingProtocol.requests.withLock { $0 = [] }
+    let afterCooldown = await api.fetchSubPosts("/r/all", limit: 10, sort: .hot)
+    #expect(afterCooldown != nil)
+    let requests = WebSessionRoutingProtocol.requests.withLock { $0 }
+    #expect(requests.count == 1)
+    #expect(requests.first?.value(forHTTPHeaderField: "Authorization") == nil)
+    #expect(requests.first?.value(forHTTPHeaderField: "Cookie") == account.webSessionCookies)
+  }
+
+  @Test func webSessionSearchSubredditsUsesCookieOnOAuth() async throws {
+    let account = webAccount()
+    let api = RedditAPI(session: session(body: #"{"kind":"Listing","data":{"children":[],"after":null}}"#), routeHealth: WebSessionRouteHealth(), currentAccount: { account })
+    _ = await api.searchSubreddits("swift")
+
+    let request = try #require(WebSessionRoutingProtocol.requests.withLock { $0.first })
+    #expect(request.url?.host == "oauth.reddit.com")
+    #expect(request.url?.path == "/subreddits/search")
+    #expect(request.value(forHTTPHeaderField: "Authorization") == nil)
+    #expect(request.value(forHTTPHeaderField: "Cookie") == account.webSessionCookies)
+  }
+
+  @Test func webSessionProbeDistinguishesActiveSignedOutAndTransientErrors() async {
+    let activeSession = session(body: #"{"data":{"name":"placeholder-user"}}"#)
+    #expect(await RedditWebSession.verifySession(cookies: "reddit_session=ok", userAgent: "UA", session: activeSession) == .active(username: "placeholder-user"))
+
+    let anonSession = session(body: #"{"data":{}}"#)
+    #expect(await RedditWebSession.verifySession(cookies: "reddit_session=anon", userAgent: "UA", session: anonSession) == .signedOut)
+
+    let blockedSession = session(body: "<html>blocked</html>", statusCode: 403)
+    #expect(await RedditWebSession.verifySession(cookies: "reddit_session=ok", userAgent: "UA", session: blockedSession) == .failed)
+  }
+
+  @Test func routePlannerHandlesDotJSONAndFilterPatterns() {
+    #expect(WebSessionRoutePlanner.patternKey(for: "https://oauth.reddit.com/r/all-politics/hot.json") == "/r/all/*")
+    #expect(WebSessionRoutePlanner.patternKey(for: "https://oauth.reddit.com/r/swift+ios/search.json") == "/r/+/search")
+    #expect(WebSessionRoute.wwwDotJSONCookie.apply(to: "https://oauth.reddit.com/api/info?id=t3_1") == "https://www.reddit.com/api/info/.json?id=t3_1")
+    #expect(WebSessionRoute.wwwDotJSONCookie.apply(to: "https://oauth.reddit.com/api/morechildren.json") == "https://www.reddit.com/api/morechildren/.json")
+    #expect(!WebSessionRoutePlanner.isFallbackEligible(method: .post, url: "https://oauth.reddit.com/api/vote"))
+    #expect(WebSessionRoutePlanner.isFallbackEligible(method: .post, url: "https://oauth.reddit.com/api/morechildren.json"))
   }
 }
 
