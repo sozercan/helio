@@ -185,6 +185,16 @@ struct MediaMetadataItemSize: Codable, Hashable {
   let x: Int
   let y: Int
   let u: String?
+  let gif: String?
+  let mp4: String?
+
+  init(x: Int, y: Int, u: String? = nil, gif: String? = nil, mp4: String? = nil) {
+    self.x = x
+    self.y = y
+    self.u = u
+    self.gif = gif
+    self.mp4 = mp4
+  }
 }
 
 struct PreviewImg: Codable, Hashable {

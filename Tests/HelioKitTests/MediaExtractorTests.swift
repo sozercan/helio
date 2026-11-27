@@ -151,6 +151,76 @@ struct MediaExtractorTests {
     #expect(imgs.first?.url.absoluteString == "https://i.redd.it/abc.jpg")
   }
 
+  @Test func repairsFailedGalleryMetadataUsingThumbnailExtensionAndJpegFallback() throws {
+    let result = try extract([
+      "is_gallery": true,
+      "thumbnail": "https://preview.redd.it/abc123.png?width=140&amp;s=sig",
+      "gallery_data": ["items": [
+        ["media_id": "abc123", "id": 1],
+        ["media_id": "def456", "id": 2],
+      ]],
+      "media_metadata": [
+        "abc123": ["status": "failed"],
+        "def456": ["status": "failed"],
+      ],
+    ])
+    guard case let .imgs(imgs) = result else {
+      Issue.record("expected repaired gallery images, got \(String(describing: result))")
+      return
+    }
+    #expect(imgs.map(\.url.absoluteString) == [
+      "https://i.redd.it/abc123.png",
+      "https://i.redd.it/def456.png",
+    ])
+    #expect(imgs.allSatisfy { $0.size == .zero })
+  }
+
+  @Test func repairsFailedGalleryMetadataWithoutThumbnailUsingJpeg() throws {
+    let result = try extract([
+      "is_gallery": true,
+      "thumbnail": "default",
+      "gallery_data": ["items": [["media_id": "abc123", "id": 1]]],
+      "media_metadata": ["abc123": ["status": "failed"]],
+    ])
+    guard case let .imgs(imgs) = result else {
+      Issue.record("expected repaired gallery image, got \(String(describing: result))")
+      return
+    }
+    #expect(imgs.map(\.url.absoluteString) == ["https://i.redd.it/abc123.jpeg"])
+  }
+
+  @Test func doesNotRepairFailedGalleryMetadataWithUnsafeMediaID() throws {
+    let result = try extract([
+      "is_gallery": true,
+      "gallery_data": ["items": [["media_id": "../evil", "id": 1]]],
+      "media_metadata": ["../evil": ["status": "failed"]],
+    ])
+    guard case .link = result else {
+      Issue.record("expected fallthrough to link for unsafe media_id, got \(String(describing: result))")
+      return
+    }
+  }
+
+  @Test func repairsIncompleteRedditHostedGIFMetadata() throws {
+    let result = try extract([
+      "is_gallery": true,
+      "gallery_data": ["items": [["media_id": "gif123", "id": 1]]],
+      "media_metadata": [
+        "gif123": [
+          "status": "unprocessed",
+          "e": "AnimatedImage",
+          "s": ["x": 480, "y": 270, "gif": "https://i.redd.it/gif123.gif"],
+        ],
+      ],
+    ])
+    guard case let .imgs(imgs) = result else {
+      Issue.record("expected repaired gif, got \(String(describing: result))")
+      return
+    }
+    #expect(imgs.map(\.url.absoluteString) == ["https://i.redd.it/gif123.gif"])
+    #expect(imgs.first?.size == CGSize(width: 480, height: 270))
+  }
+
   @Test func givesVideosAndGIFsThePreviewAsPoster() throws {
     let preview: [String: Any] = ["images": [["source": ["url": "https://preview.redd.it/abc.jpg?width=640&amp;s=sig", "width": 640, "height": 480]]]]
 
