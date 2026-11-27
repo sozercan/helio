@@ -32,5 +32,11 @@ struct PostLinkContext: View {
         Nav.present(.selectText(selftext))
       } label: { Label("Select Text", systemImage: "selection.pin.in.out") }
     }
+
+    if let data = post.data, !data.title.isEmpty {
+      Button {
+        Nav.present(.translateText(OnDeviceTranslation.postTranslationText(title: data.title, selftext: data.selftext)))
+      } label: { Label("Translate", systemImage: "translate") }
+    }
   }
 }
