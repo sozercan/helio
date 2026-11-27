@@ -362,30 +362,29 @@ final class UserCollectionsStore: @unchecked Sendable {
       Self.logger.error("Failed to encode \(Self.filteredSubredditsFileName, privacy: .public): \(error.localizedDescription, privacy: .public)")
       return false
     }
-    let revision: UInt64 = state.withLock { current in
-      current.filteredRevision += 1
-      return current.filteredRevision
-    }
-    pendingWrites.withLock { pending in
-      if revision > pending.minFilteredRevision {
-        pending.minFilteredRevision = revision
+    let committedRevision: UInt64? = state.withLock { current in
+      let nextRevision = current.filteredRevision + 1
+      guard writeSnapshot(
+        SnapshotWrite(revision: nextRevision, data: data),
+        isFiltered: true,
+        to: Self.filteredSubredditsFileName,
+      ) else {
+        return nil
       }
-      if let existing = pending.filtered, existing.revision <= revision {
-        pending.filtered = nil
-      }
-    }
-    guard writeSnapshot(
-      SnapshotWrite(revision: revision, data: data),
-      isFiltered: true,
-      to: Self.filteredSubredditsFileName,
-    ) else {
-      return false
-    }
-    state.withLock { current in
-      guard current.filteredRevision == revision else { return }
+      current.filteredRevision = nextRevision
       current.filteredLoadFailed = false
       current.filteredSubreddits = newValue
       current.filteredSubredditsSet = Set(newValue)
+      return nextRevision
+    }
+    guard let committedRevision else { return false }
+    pendingWrites.withLock { pending in
+      if committedRevision > pending.minFilteredRevision {
+        pending.minFilteredRevision = committedRevision
+      }
+      if let existing = pending.filtered, existing.revision <= committedRevision {
+        pending.filtered = nil
+      }
     }
     publishFilteredSubreddits(state.withLock(\.filteredSubreddits))
     return true
@@ -399,29 +398,28 @@ final class UserCollectionsStore: @unchecked Sendable {
       Self.logger.error("Failed to encode \(Self.likedButNotSubbedFileName, privacy: .public): \(error.localizedDescription, privacy: .public)")
       return false
     }
-    let revision: UInt64 = state.withLock { current in
-      current.likedRevision += 1
-      return current.likedRevision
-    }
-    pendingWrites.withLock { pending in
-      if revision > pending.minLikedRevision {
-        pending.minLikedRevision = revision
+    let committedRevision: UInt64? = state.withLock { current in
+      let nextRevision = current.likedRevision + 1
+      guard writeSnapshot(
+        SnapshotWrite(revision: nextRevision, data: data),
+        isFiltered: false,
+        to: Self.likedButNotSubbedFileName,
+      ) else {
+        return nil
       }
-      if let existing = pending.liked, existing.revision <= revision {
-        pending.liked = nil
-      }
-    }
-    guard writeSnapshot(
-      SnapshotWrite(revision: revision, data: data),
-      isFiltered: false,
-      to: Self.likedButNotSubbedFileName,
-    ) else {
-      return false
-    }
-    state.withLock { current in
-      guard current.likedRevision == revision else { return }
+      current.likedRevision = nextRevision
       current.likedLoadFailed = false
       current.likedButNotSubbed = newValue
+      return nextRevision
+    }
+    guard let committedRevision else { return false }
+    pendingWrites.withLock { pending in
+      if committedRevision > pending.minLikedRevision {
+        pending.minLikedRevision = committedRevision
+      }
+      if let existing = pending.liked, existing.revision <= committedRevision {
+        pending.liked = nil
+      }
     }
     publishLikedButNotSubbed(state.withLock(\.likedButNotSubbed))
     return true
