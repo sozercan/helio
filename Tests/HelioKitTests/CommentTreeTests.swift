@@ -103,6 +103,7 @@ struct CommentDataTests {
     #expect(shown.score_hidden == nil)
   }
 
+  @MainActor
   @Test func commentJumpNavigatorFindsNewCommentsAndSkipsActiveUser() {
     var d1 = CommentData(id: "c1")
     d1.author = "alice"
@@ -135,6 +136,12 @@ struct CommentDataTests {
     #expect(ordered == [c1.id, c2.id, c3.id, c4.id])
     #expect(CommentJumpNavigator.step(targets: targets, orderedIDs: ordered, currentID: c3.id, direction: 1) == c4.id)
     #expect(CommentJumpNavigator.step(targets: targets, orderedIDs: ordered, currentID: c3.id, direction: -1) == c2.id)
+
+    let session = PostSession(sort: .confidence)
+    session.comments = [c1, c4]
+    session.rowShown(c3.id)
+    session.rowShown(c4.id)
+    #expect(session.firstVisibleCommentID() == c3.id)
   }
 
   @Test func commentsSectionSettingsDecodesLegacyPayloadWithDefaultJumpMode() throws {

@@ -230,6 +230,9 @@ struct BadgeView: View, Equatable {
             }
           }
           .accessibilityElement(children: .combine)
+          .accessibilityAction(named: showAbsoluteTimestamp ? "Show relative timestamp" : "Show exact timestamp") {
+            showAbsoluteTimestamp.toggle()
+          }
         }
         .foregroundStyle(defaultIconColor)
         .contentFont(theme.statsText.size, theme.statsText.weight.t, relativeTo: .meta)

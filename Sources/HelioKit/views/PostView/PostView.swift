@@ -300,6 +300,7 @@ struct PostView: View, Equatable {
               seenComments: seenComments,
               activeUsername: activeUsername,
               userScrollGeneration: session.userScrollGeneration,
+              currentVisibleCommentID: { session.firstVisibleCommentID() },
               reader: proxy,
             )
           }
@@ -323,6 +324,7 @@ struct PostView: View, Equatable {
               seenComments: seenComments,
               activeUsername: activeUsername,
               userScrollGeneration: session.userScrollGeneration,
+              currentVisibleCommentID: { session.firstVisibleCommentID() },
               reader: proxy,
             )
           }
@@ -383,6 +385,11 @@ final class PostSession {
   func scrollAnchorRowID() -> String? {
     guard !savedRowIDs.isEmpty else { return nil }
     return CommentTree.rows(for: comments).first { savedRowIDs.contains($0.id) }?.id
+  }
+
+  func firstVisibleCommentID() -> String? {
+    guard !shownRowIDs.isEmpty else { return nil }
+    return CommentJumpNavigator.orderedCommentIDs(roots: comments).first { shownRowIDs[$0] != nil }
   }
 }
 

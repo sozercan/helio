@@ -9,10 +9,12 @@ struct CommentSkipper: View {
   var seenComments: String?
   var activeUsername: String?
   var userScrollGeneration: Int = 0
+  var currentVisibleCommentID: () -> String? = { nil }
   var reader: ScrollViewProxy
 
   @Default(.CommentsSectionDefSettings) private var commentsSectionDefSettings
   @State private var lastNewCommentTarget: String?
+  @State private var suppressNextTap = false
 
   var body: some View {
     let mode = commentsSectionDefSettings.commentSkipperMode
@@ -27,6 +29,10 @@ struct CommentSkipper: View {
     let isNewModeActive = !newTargets.isEmpty
 
     Button {
+      if suppressNextTap {
+        suppressNextTap = false
+        return
+      }
       Hap.shared.play(intensity: 0.75, sharpness: 0.9)
       withAnimation {
         jump(direction: 1, newTargets: newTargets)
@@ -49,6 +55,7 @@ struct CommentSkipper: View {
     .floating()
     .simultaneousGesture(
       LongPressGesture(minimumDuration: 0.35).onEnded { _ in
+        suppressNextTap = true
         Hap.shared.play(intensity: 0.75, sharpness: 0.9)
         withAnimation {
           jump(direction: -1, newTargets: newTargets)
@@ -64,7 +71,7 @@ struct CommentSkipper: View {
 
   private func jump(direction: Int, newTargets: [String]) {
     if !newTargets.isEmpty {
-      let current = lastNewCommentTarget ?? topVisibleCommentId
+      let current = lastNewCommentTarget ?? currentVisibleCommentID() ?? topVisibleCommentId
       let ordered = lastNewCommentTarget == nil ? CommentJumpNavigator.orderedCommentIDs(roots: comments) : []
       guard let next = CommentJumpNavigator.step(targets: newTargets, orderedIDs: ordered, currentID: current, direction: direction) else { return }
       reader.scrollTo(next, anchor: .top)
