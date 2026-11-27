@@ -19,20 +19,39 @@ final class UserCollectionsStore: @unchecked Sendable {
     var filteredSubreddits: [String]
     var filteredSubredditsSet: Set<String>
     var filteredLoadFailed: Bool
+    var filteredRevision: UInt64 = 0
     var likedButNotSubbed: [Subreddit]
     var likedLoadFailed: Bool
+    var likedRevision: UInt64 = 0
+  }
+
+  private struct RevisionedValue<Value> {
+    let value: Value
+    let revision: UInt64
+  }
+
+  private struct SnapshotWrite {
+    let revision: UInt64
+    let data: Data
   }
 
   private struct PendingWrites {
-    var filteredData: Data?
-    var likedData: Data?
+    var filtered: SnapshotWrite?
+    var liked: SnapshotWrite?
+    var minFilteredRevision: UInt64 = 0
+    var minLikedRevision: UInt64 = 0
     var runningTask: Task<Void, Never>?
+  }
+
+  private struct WriteState {
+    var lastWrittenFilteredRevision: UInt64 = 0
+    var lastWrittenLikedRevision: UInt64 = 0
   }
 
   @ObservationIgnored private let directory: URL
   @ObservationIgnored private let userDefaults: UserDefaults
   @ObservationIgnored private let state: Mutex<BackingState>
-  @ObservationIgnored private let writeLock = Mutex(())
+  @ObservationIgnored private let writeLock = Mutex(WriteState())
   @ObservationIgnored private let pendingWrites = Mutex(PendingWrites())
 
   private var filteredSubredditsCache: [String]
@@ -134,66 +153,70 @@ final class UserCollectionsStore: @unchecked Sendable {
 
   func addFilteredSubreddit(_ subreddit: String) {
     guard !subreddit.isEmpty else { return }
-    let updated: [String]? = state.withLock { current in
+    let updated: RevisionedValue<[String]>? = state.withLock { current in
       guard !current.filteredLoadFailed, !current.filteredSubredditsSet.contains(subreddit) else { return nil }
       current.filteredSubreddits.append(subreddit)
       current.filteredSubredditsSet.insert(subreddit)
-      return current.filteredSubreddits
+      current.filteredRevision += 1
+      return RevisionedValue(value: current.filteredSubreddits, revision: current.filteredRevision)
     }
     guard let updated else { return }
-    publishFilteredSubreddits(updated)
+    publishFilteredSubreddits(updated.value)
     schedulePersist(filtered: updated)
   }
 
   func removeFilteredSubreddit(at index: Int) {
-    let updated: [String]? = state.withLock { current in
+    let updated: RevisionedValue<[String]>? = state.withLock { current in
       guard !current.filteredLoadFailed, current.filteredSubreddits.indices.contains(index) else { return nil }
       let removed = current.filteredSubreddits.remove(at: index)
       current.filteredSubredditsSet.remove(removed)
-      return current.filteredSubreddits
+      current.filteredRevision += 1
+      return RevisionedValue(value: current.filteredSubreddits, revision: current.filteredRevision)
     }
     guard let updated else { return }
-    publishFilteredSubreddits(updated)
+    publishFilteredSubreddits(updated.value)
     schedulePersist(filtered: updated)
   }
 
   @discardableResult
   func toggleFilteredSubreddit(_ subreddit: String) -> Bool {
-    let result: (isFiltered: Bool, updated: [String])? = state.withLock { current in
+    let result: (isFiltered: Bool, updated: RevisionedValue<[String]>)? = state.withLock { current in
       guard !current.filteredLoadFailed else { return nil }
+      current.filteredRevision += 1
       if let index = current.filteredSubreddits.firstIndex(of: subreddit) {
         current.filteredSubreddits.remove(at: index)
         current.filteredSubredditsSet.remove(subreddit)
-        return (false, current.filteredSubreddits)
+        return (false, RevisionedValue(value: current.filteredSubreddits, revision: current.filteredRevision))
       }
       current.filteredSubreddits.append(subreddit)
       current.filteredSubredditsSet.insert(subreddit)
-      return (true, current.filteredSubreddits)
+      return (true, RevisionedValue(value: current.filteredSubreddits, revision: current.filteredRevision))
     }
     guard let result else { return false }
-    publishFilteredSubreddits(result.updated)
+    publishFilteredSubreddits(result.updated.value)
     schedulePersist(filtered: result.updated)
     return result.isFiltered
   }
 
   func setFilteredSubreddits(_ newValue: [String], allowOverwriteAfterLoadError: Bool = false) {
-    let updated: [String]? = state.withLock { current in
+    let updated: RevisionedValue<[String]>? = state.withLock { current in
       if current.filteredLoadFailed, !allowOverwriteAfterLoadError {
         return nil
       }
       current.filteredLoadFailed = false
       current.filteredSubreddits = newValue
       current.filteredSubredditsSet = Set(newValue)
-      return current.filteredSubreddits
+      current.filteredRevision += 1
+      return RevisionedValue(value: current.filteredSubreddits, revision: current.filteredRevision)
     }
     guard let updated else { return }
-    publishFilteredSubreddits(updated)
+    publishFilteredSubreddits(updated.value)
     schedulePersist(filtered: updated)
   }
 
   @discardableResult
   func toggleLocalFavorite(_ subreddit: Subreddit) -> Bool {
-    let result: (isLiked: Bool, updated: [Subreddit])? = state.withLock { current in
+    let result: (isLiked: Bool, updated: RevisionedValue<[Subreddit]>)? = state.withLock { current in
       guard !current.likedLoadFailed else { return nil }
       let wasLiked = current.likedButNotSubbed.contains(subreddit)
       if wasLiked {
@@ -201,25 +224,27 @@ final class UserCollectionsStore: @unchecked Sendable {
       } else {
         current.likedButNotSubbed.append(subreddit)
       }
-      return (!wasLiked, current.likedButNotSubbed)
+      current.likedRevision += 1
+      return (!wasLiked, RevisionedValue(value: current.likedButNotSubbed, revision: current.likedRevision))
     }
     guard let result else { return false }
-    publishLikedButNotSubbed(result.updated)
+    publishLikedButNotSubbed(result.updated.value)
     schedulePersist(liked: result.updated)
     return result.isLiked
   }
 
   func setLikedButNotSubbed(_ newValue: [Subreddit], allowOverwriteAfterLoadError: Bool = false) {
-    let updated: [Subreddit]? = state.withLock { current in
+    let updated: RevisionedValue<[Subreddit]>? = state.withLock { current in
       if current.likedLoadFailed, !allowOverwriteAfterLoadError {
         return nil
       }
       current.likedLoadFailed = false
       current.likedButNotSubbed = newValue
-      return current.likedButNotSubbed
+      current.likedRevision += 1
+      return RevisionedValue(value: current.likedButNotSubbed, revision: current.likedRevision)
     }
     guard let updated else { return }
-    publishLikedButNotSubbed(updated)
+    publishLikedButNotSubbed(updated.value)
     schedulePersist(liked: updated)
   }
 
@@ -228,17 +253,43 @@ final class UserCollectionsStore: @unchecked Sendable {
   }
 
   func resetAll() {
-    state.withLock { current in
+    let revisions: (filtered: UInt64, liked: UInt64) = state.withLock { current in
       current.filteredLoadFailed = false
       current.filteredSubreddits = []
       current.filteredSubredditsSet = []
+      current.filteredRevision += 1
       current.likedLoadFailed = false
       current.likedButNotSubbed = []
+      current.likedRevision += 1
+      return (current.filteredRevision, current.likedRevision)
+    }
+    pendingWrites.withLock { pending in
+      if revisions.filtered > pending.minFilteredRevision {
+        pending.minFilteredRevision = revisions.filtered
+      }
+      if let existing = pending.filtered, existing.revision <= revisions.filtered {
+        pending.filtered = nil
+      }
+      if revisions.liked > pending.minLikedRevision {
+        pending.minLikedRevision = revisions.liked
+      }
+      if let existing = pending.liked, existing.revision <= revisions.liked {
+        pending.liked = nil
+      }
     }
     publishFilteredSubreddits([])
     publishLikedButNotSubbed([])
-    _ = persistLatestFilteredSubreddits()
-    _ = persistLatestLikedButNotSubbed()
+    let emptyData = Data("[]".utf8)
+    _ = writeSnapshot(
+      SnapshotWrite(revision: revisions.filtered, data: emptyData),
+      isFiltered: true,
+      to: Self.filteredSubredditsFileName,
+    )
+    _ = writeSnapshot(
+      SnapshotWrite(revision: revisions.liked, data: emptyData),
+      isFiltered: false,
+      to: Self.likedButNotSubbedFileName,
+    )
     for key in Self.legacyFilteredKeys + Self.legacyLikedKeys {
       userDefaults.removeObject(forKey: key)
     }
@@ -306,32 +357,41 @@ final class UserCollectionsStore: @unchecked Sendable {
     }
   }
 
-  private func schedulePersist(filtered: [String]? = nil, liked: [Subreddit]? = nil) {
-    let filteredData: Data? = filtered.flatMap { value in
+  private func schedulePersist(
+    filtered: RevisionedValue<[String]>? = nil,
+    liked: RevisionedValue<[Subreddit]>? = nil,
+  ) {
+    let filteredSnapshot: SnapshotWrite? = filtered.flatMap { entry in
       do {
-        return try JSONEncoder().encode(value)
+        return try SnapshotWrite(revision: entry.revision, data: JSONEncoder().encode(entry.value))
       } catch {
         Self.logger.error("Failed to encode \(Self.filteredSubredditsFileName, privacy: .public): \(error.localizedDescription, privacy: .public)")
         return nil
       }
     }
-    let likedData: Data? = liked.flatMap { value in
+    let likedSnapshot: SnapshotWrite? = liked.flatMap { entry in
       do {
-        return try JSONEncoder().encode(value)
+        return try SnapshotWrite(revision: entry.revision, data: JSONEncoder().encode(entry.value))
       } catch {
         Self.logger.error("Failed to encode \(Self.likedButNotSubbedFileName, privacy: .public): \(error.localizedDescription, privacy: .public)")
         return nil
       }
     }
-    guard filteredData != nil || likedData != nil else { return }
+    guard filteredSnapshot != nil || likedSnapshot != nil else { return }
     pendingWrites.withLock { pending in
-      if let filteredData {
-        pending.filteredData = filteredData
+      if let filteredSnapshot,
+         filteredSnapshot.revision > pending.minFilteredRevision,
+         pending.filtered.map({ filteredSnapshot.revision > $0.revision }) ?? true
+      {
+        pending.filtered = filteredSnapshot
       }
-      if let likedData {
-        pending.likedData = likedData
+      if let likedSnapshot,
+         likedSnapshot.revision > pending.minLikedRevision,
+         pending.liked.map({ likedSnapshot.revision > $0.revision }) ?? true
+      {
+        pending.liked = likedSnapshot
       }
-      guard pending.runningTask == nil else { return }
+      guard pending.filtered != nil || pending.liked != nil, pending.runningTask == nil else { return }
       pending.runningTask = Task(priority: .utility) { [weak self] in
         self?.drainPendingWrites()
       }
@@ -340,10 +400,10 @@ final class UserCollectionsStore: @unchecked Sendable {
 
   private func drainPendingWrites() {
     while true {
-      let batch: (filtered: Data?, liked: Data?) = pendingWrites.withLock { pending in
-        let result = (pending.filteredData, pending.likedData)
-        pending.filteredData = nil
-        pending.likedData = nil
+      let batch: (filtered: SnapshotWrite?, liked: SnapshotWrite?) = pendingWrites.withLock { pending in
+        let result = (pending.filtered, pending.liked)
+        pending.filtered = nil
+        pending.liked = nil
         if result.0 == nil, result.1 == nil {
           pending.runningTask = nil
         }
@@ -353,10 +413,10 @@ final class UserCollectionsStore: @unchecked Sendable {
         return
       }
       if let filtered = batch.filtered {
-        _ = writeData(filtered, to: Self.filteredSubredditsFileName)
+        _ = writeSnapshot(filtered, isFiltered: true, to: Self.filteredSubredditsFileName)
       }
       if let liked = batch.liked {
-        _ = writeData(liked, to: Self.likedButNotSubbedFileName)
+        _ = writeSnapshot(liked, isFiltered: false, to: Self.likedButNotSubbedFileName)
       }
     }
   }
@@ -418,22 +478,35 @@ final class UserCollectionsStore: @unchecked Sendable {
   }
 
   @discardableResult
-  private func persistLatestFilteredSubreddits() -> Bool {
-    persist(to: Self.filteredSubredditsFileName) {
-      state.withLock(\.filteredSubreddits)
-    }
-  }
-
-  @discardableResult
-  private func persistLatestLikedButNotSubbed() -> Bool {
-    persist(to: Self.likedButNotSubbedFileName) {
-      state.withLock(\.likedButNotSubbed)
-    }
-  }
-
-  @discardableResult
   private func persist(_ value: some Encodable, to fileName: String) -> Bool {
-    persist(to: fileName) { value }
+    do {
+      let data = try JSONEncoder().encode(value)
+      return writeData(data, to: fileName)
+    } catch {
+      Self.logger.error("Failed to persist \(fileName, privacy: .public): \(error.localizedDescription, privacy: .public)")
+      return false
+    }
+  }
+
+  @discardableResult
+  private func writeSnapshot(_ snapshot: SnapshotWrite, isFiltered: Bool, to fileName: String) -> Bool {
+    writeLock.withLock { writeState in
+      let lastWritten = isFiltered ? writeState.lastWrittenFilteredRevision : writeState.lastWrittenLikedRevision
+      guard snapshot.revision > lastWritten else { return true }
+      do {
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        try snapshot.data.write(to: directory.appending(path: fileName), options: .atomic)
+        if isFiltered {
+          writeState.lastWrittenFilteredRevision = snapshot.revision
+        } else {
+          writeState.lastWrittenLikedRevision = snapshot.revision
+        }
+        return true
+      } catch {
+        Self.logger.error("Failed to persist \(fileName, privacy: .public): \(error.localizedDescription, privacy: .public)")
+        return false
+      }
+    }
   }
 
   @discardableResult
@@ -447,17 +520,6 @@ final class UserCollectionsStore: @unchecked Sendable {
         Self.logger.error("Failed to persist \(fileName, privacy: .public): \(error.localizedDescription, privacy: .public)")
         return false
       }
-    }
-  }
-
-  @discardableResult
-  private func persist(to fileName: String, latestValue: () -> some Encodable) -> Bool {
-    do {
-      let data = try JSONEncoder().encode(latestValue())
-      return writeData(data, to: fileName)
-    } catch {
-      Self.logger.error("Failed to persist \(fileName, privacy: .public): \(error.localizedDescription, privacy: .public)")
-      return false
     }
   }
 

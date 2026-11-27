@@ -290,4 +290,24 @@ struct UserCollectionsStoreTests {
     #expect(reopened.filteredSubreddits == ["politics"])
     #expect(reopened.likedButNotSubbed.map(\.id) == [sub.id])
   }
+
+  @Test func resetAllInvalidatesPendingWritesAndLeavesEmptyFilesOnDisk() async throws {
+    let dir = try makeTempDirectory()
+    defer { try? FileManager.default.removeItem(at: dir) }
+    let (suiteName, defaults) = try makeUserDefaults()
+    defer { defaults.removePersistentDomain(forName: suiteName) }
+
+    let sub = try makeSubreddit(id: "rst1", name: "swift")
+    let store = UserCollectionsStore(directory: dir, userDefaults: defaults)
+    for index in 0 ..< 25 {
+      store.addFilteredSubreddit("sub\(index)")
+    }
+    _ = store.toggleLocalFavorite(sub)
+    store.resetAll()
+    await store.flushPendingWrites()
+
+    let reopened = UserCollectionsStore(directory: dir, userDefaults: defaults)
+    #expect(reopened.filteredSubreddits.isEmpty)
+    #expect(reopened.likedButNotSubbed.isEmpty)
+  }
 }
