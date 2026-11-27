@@ -275,7 +275,7 @@ enum Bench {
     while Date() < deadline {
       let text = (try? String(contentsOf: log, encoding: .utf8)) ?? ""
       if !windowReady {
-        if text.contains(" window \(macWindow.width)x\(macWindow.height)") {
+        if text.contains(" window_ready \(macWindow.width)x\(macWindow.height)") {
           windowReady = true
         } else {
           seq += 1

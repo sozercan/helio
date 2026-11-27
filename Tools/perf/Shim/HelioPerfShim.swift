@@ -27,9 +27,30 @@ enum Shim {
     checkSetupComplete()
   }
 
+  static func hasPersistedSubsSyncedAt() -> Bool {
+    guard let bundleID = Bundle.main.bundleIdentifier,
+          let domain = UserDefaults.standard.persistentDomain(forName: bundleID),
+          let raw = domain["subsSyncedAt"] else { return false }
+    if let dict = raw as? [String: Any] {
+      return !dict.isEmpty
+    }
+    if let data = raw as? Data,
+       let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any]
+    {
+      return !json.isEmpty
+    }
+    if let str = raw as? String,
+       let data = str.data(using: .utf8),
+       let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any]
+    {
+      return !json.isEmpty
+    }
+    return false
+  }
+
   static func checkSetupComplete() {
     guard env["PERF_SEED_CREDENTIAL"] != nil else { return }
-    let hasSubsSyncedAt = UserDefaults.standard.object(forKey: "subsSyncedAt") != nil
+    let hasSubsSyncedAt = hasPersistedSubsSyncedAt()
     let shouldLog = setupLock.withLock { () -> Bool in
       guard !setupCompleteLogged, meCompleted, hasSubsSyncedAt else { return false }
       setupCompleteLogged = true
@@ -609,6 +630,14 @@ enum Driver {
       return
     }
     #if targetEnvironment(macCatalyst)
+      let currentSize = scene.effectiveGeometry.systemFrame.size
+      if abs(currentSize.width - size.width) <= 2,
+         abs(currentSize.height - size.height) <= 2,
+         scene.windows.contains(where: { !$0.isHidden })
+      {
+        Shim.log(String(format: "P %.0f window_ready %.0fx%.0f", Shim.now, size.width, size.height))
+        return
+      }
       let activate = NSSelectorFromString("activateIgnoringOtherApps:")
       if let app = (NSClassFromString("NSApplication") as? NSObject.Type)?.value(forKey: "sharedApplication") as? NSObject,
          let method = class_getInstanceMethod(type(of: app), activate)
@@ -619,6 +648,8 @@ enum Driver {
       scene.requestGeometryUpdate(.Mac(systemFrame: CGRect(origin: CGPoint(x: 40, y: 40), size: size))) { error in
         Shim.log(String(format: "P %.0f window_failed %@", Shim.now, error.localizedDescription.replacingOccurrences(of: " ", with: "_")))
       }
+    #else
+      Shim.log(String(format: "P %.0f window_ready %.0fx%.0f", Shim.now, size.width, size.height))
     #endif
     Shim.log(String(format: "P %.0f window %.0fx%.0f", Shim.now, size.width, size.height))
   }
