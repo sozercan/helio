@@ -27,13 +27,7 @@ extension Subreddit {
 
   @MainActor
   func localFavoriteToggle() -> Bool {
-    let wasLiked = Defaults[.likedButNotSubbed].contains(self)
-    if wasLiked {
-      Defaults[.likedButNotSubbed].removeAll { $0.id == self.id }
-    } else {
-      Defaults[.likedButNotSubbed].append(self)
-    }
-    return !wasLiked
+    UserCollectionsStore.shared.toggleLocalFavorite(self)
   }
 
   @MainActor

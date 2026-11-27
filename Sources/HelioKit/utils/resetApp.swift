@@ -5,28 +5,48 @@ import KeychainAccess
 
 func resetPreferences() {
   UserDefaults.standard.removeAll()
+  UserCollectionsStore.shared.resetAll()
 }
 
 func resetCaches() {
   Caches.streamable.removeAll()
 }
 
-func resetCoreData(keeping: Set<String> = []) {
-  let container = PersistenceController.shared.container
+func resetCoreData(keeping: Set<String> = [], container: NSPersistentContainer = PersistenceController.shared.container) {
   let entities = container.managedObjectModel.entities
+  let usesSQLite = container.persistentStoreCoordinator.persistentStores.allSatisfy { $0.type == NSSQLiteStoreType }
   for entity in entities where !keeping.contains(entity.name ?? "") {
-    delete(entityName: entity.name!)
+    if let name = entity.name {
+      delete(entityName: name)
+    }
   }
 
   func delete(entityName: String) {
     let fetchRequest = NSFetchRequest<NSFetchRequestResult>(entityName: entityName)
-    let deleteRequest = NSBatchDeleteRequest(fetchRequest: fetchRequest)
-    do {
-      _ = try container.viewContext.performAndWait {
-        try container.viewContext.executeAndMergeChanges(deleteRequest)
+    if usesSQLite {
+      let deleteRequest = NSBatchDeleteRequest(fetchRequest: fetchRequest)
+      do {
+        _ = try container.viewContext.performAndWait {
+          try container.viewContext.executeAndMergeChanges(deleteRequest)
+        }
+      } catch let error as NSError {
+        debugPrint(error)
       }
-    } catch let error as NSError {
-      debugPrint(error)
+    } else {
+      container.viewContext.performAndWait {
+        do {
+          if let objects = try container.viewContext.fetch(fetchRequest) as? [NSManagedObject] {
+            for object in objects {
+              container.viewContext.delete(object)
+            }
+            if container.viewContext.hasChanges {
+              try container.viewContext.save()
+            }
+          }
+        } catch let error as NSError {
+          debugPrint(error)
+        }
+      }
     }
   }
 }
