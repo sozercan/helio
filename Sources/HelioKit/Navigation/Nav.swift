@@ -79,10 +79,11 @@ class Nav: Identifiable, Equatable {
       }
     }
     didSet {
-      if let entry = lastVisitedFeedByTab[activeTab],
+      if ReadingSessionStore.latestFeedName(in: self[activeTab].fullPath) != nil,
+         let entry = lastVisitedFeedByTab[activeTab],
          entry.accountID == Defaults[.GeneralDefSettings].redditCredentialSelectedID
       {
-        recordVisitedFeed(entry.feedName, for: activeTab)
+        recordVisitedFeed(entry.feedName, for: activeTab, isExplicitSelection: false)
       }
     }
   }
@@ -132,13 +133,19 @@ class Nav: Identifiable, Equatable {
   }
 
   private func observeFeedNavigation(on router: Router, tab: TabIdentifier) {
-    router.onFeedVisit = { [weak self] feedName in
-      self?.recordVisitedFeed(feedName, for: tab)
+    router.onFeedVisit = { [weak self] feedName, isExplicitSelection in
+      self?.recordVisitedFeed(feedName, for: tab, isExplicitSelection: isExplicitSelection)
+    }
+    router.onFeedCleared = { [weak self] in
+      self?.lastVisitedFeedByTab.removeValue(forKey: tab)
     }
   }
 
-  private func recordVisitedFeed(_ feedName: String, for tab: TabIdentifier) {
+  private func recordVisitedFeed(_ feedName: String, for tab: TabIdentifier, isExplicitSelection: Bool) {
     guard let accountID = Defaults[.GeneralDefSettings].redditCredentialSelectedID else { return }
+    if !isExplicitSelection, lastVisitedFeedByTab[tab]?.accountID != accountID {
+      return
+    }
     lastVisitedFeedByAccount[accountID] = feedName
     lastVisitedFeedByTab[tab] = (accountID, feedName)
     guard Defaults[.BehaviorDefSettings].restoreReadingSession else { return }

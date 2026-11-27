@@ -48,7 +48,7 @@ class Router: Hashable, Equatable, Identifiable {
         if let first = fullPath.first, first.isSameFeed(as: newValue) {
           first.takeSubredditDetails(from: newValue)
           if let feedName = ReadingSessionStore.feedIdentifier(for: newValue) {
-            onFeedVisit?(feedName)
+            onFeedVisit?(feedName, true)
           }
         } else {
           fullPath = [newValue]
@@ -68,15 +68,20 @@ class Router: Hashable, Equatable, Identifiable {
     return fullPath.count > (protectsRoot ? 1 : 0)
   }
 
-  @ObservationIgnored var onFeedVisit: ((String) -> Void)?
+  @ObservationIgnored var onFeedVisit: ((String, Bool) -> Void)?
+  @ObservationIgnored var onFeedCleared: (() -> Void)?
 
   var fullPath: [NavDest] = [] {
     didSet {
       if fullPath.isEmpty != isAtRoot {
         isAtRoot = fullPath.isEmpty
       }
-      if !suppressNextFeedVisitNotification, let feedName = ReadingSessionStore.latestFeedName(in: fullPath) {
-        onFeedVisit?(feedName)
+      guard !suppressNextFeedVisitNotification else { return }
+      if let feedName = ReadingSessionStore.latestFeedName(in: fullPath) {
+        let isExplicitSelection = fullPath.count >= oldValue.count
+        onFeedVisit?(feedName, isExplicitSelection)
+      } else {
+        onFeedCleared?()
       }
     }
   }
@@ -125,7 +130,7 @@ class Router: Hashable, Equatable, Identifiable {
       fullPath = feedStack + [dest] + (dest.opensInPostColumn ? [] : postColumn)
       suppressNextFeedVisitNotification = false
       if let explicitFeed {
-        onFeedVisit?(explicitFeed)
+        onFeedVisit?(explicitFeed, true)
       }
     } else {
       path.append(dest)
