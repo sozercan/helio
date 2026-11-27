@@ -185,6 +185,7 @@ class Router: Hashable, Equatable, Identifiable {
         case let .multiFeed(multi): multi.id
         case let .multiInfo(multi): multi.id
         case let .user(user): user.id
+        case .friends: "friends"
         }
       }
 
@@ -195,6 +196,7 @@ class Router: Hashable, Equatable, Identifiable {
       case multiFeed(Multi)
       case multiInfo(Multi)
       case user(User)
+      case friends
     }
 
     enum Setting: String, Hashable, Codable, Identifiable {

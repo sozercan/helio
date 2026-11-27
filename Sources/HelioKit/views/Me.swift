@@ -12,7 +12,7 @@ struct Me: View {
     NavigationStack(path: $router.fullPath) {
       Group {
         if let user = RedditCredentialsManager.profile.user {
-          UserView(user: user)
+          UserView(user: user, isOwnProfile: true)
             .id("me-user-view-\(user.id)")
 
         } else if RedditCredentialsManager.profile.state == .error {

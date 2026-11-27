@@ -18,9 +18,15 @@ extension User {
     self.init(id: id, typePrefix: "\(User.prefix)_")
   }
 
-  func refetchOverview(_ dataTypeFilter: String? = nil, _ after: String? = nil, contentWidth: Double = .screenW, limit: Int = Defaults[.SubredditFeedDefSettings].chunkLoadSize, altCredential: RedditCredential? = nil) async -> ([Either<Post, Comment>]?, String?)? {
+  func refetchOverview(
+    section: UserListingSection = .overview,
+    _ after: String? = nil,
+    contentWidth: Double = .screenW,
+    limit: Int = Defaults[.SubredditFeedDefSettings].chunkLoadSize,
+    altCredential: RedditCredential? = nil,
+  ) async -> ([Either<Post, Comment>]?, String?)? {
     let name = data?.name ?? data?.id ?? id
-    if let overviewDataResult = await RedditAPI.shared.fetchUserOverview(name, dataTypeFilter, after, limit: limit, altCredential: altCredential), let overviewData = overviewDataResult.0 {
+    if let overviewDataResult = await RedditAPI.shared.fetchUserOverview(name, section: section, after, limit: limit, altCredential: altCredential), let overviewData = overviewDataResult.0 {
       await MainActor.run {
         self.loading = false
       }
@@ -37,18 +43,41 @@ extension User {
     return nil
   }
 
-  func refetchUser() async {
-    await MainActor.run {
-      self.loading = true
-    }
+  func setFriend(_ isFriend: Bool, altCredential: RedditCredential? = nil) async -> Bool {
     let userName = data?.name ?? id
-    if let data = await (RedditAPI.shared.fetchUser(userName)) {
+    let expectedAuth = await MainActor.run {
+      altCredential?.authorizationID ?? RedditCredentialsManager.shared.selectedCredential?.authorizationID
+    }
+    let succeeded = await RedditAPI.shared.setFriend(userName, isFriend: isFriend, altCredential: altCredential)
+    if succeeded {
       await MainActor.run {
+        if expectedAuth == nil || RedditCredentialsManager.shared.selectedCredential?.authorizationID == expectedAuth {
+          self.data?.is_friend = isFriend
+        }
+      }
+    }
+    return succeeded
+  }
+
+  func refetchUser(altCredential: RedditCredential? = nil) async {
+    let credential = await MainActor.run { () -> RedditCredential? in
+      self.loading = true
+      return altCredential ?? RedditCredentialsManager.shared.selectedCredential
+    }
+    let expectedAuth = credential?.authorizationID
+    let userName = data?.name ?? id
+    if let data = await RedditAPI.shared.fetchUser(userName, altCredential: credential) {
+      await MainActor.run {
+        guard !Task.isCancelled,
+              expectedAuth == nil || RedditCredentialsManager.shared.selectedCredential?.authorizationID == expectedAuth
+        else { return }
         self.data = data
       }
     }
     await MainActor.run {
-      self.loading = false
+      if expectedAuth == nil || RedditCredentialsManager.shared.selectedCredential?.authorizationID == expectedAuth {
+        self.loading = false
+      }
     }
   }
 
