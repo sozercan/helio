@@ -17,6 +17,7 @@ struct GlobalDestinationsProvider<C: View>: View {
             case .onboarding: Onboarding().interactiveDismissDisabled(true)
             case let .redditSignIn(cred): NavigationStack { RedditWebLoginView(credential: cred ?? RedditCredential(), showsCancel: true) }
             case let .selectText(text): SelectableTextSheet(markdown: text)
+            case let .translateText(text): TranslationSheet(sourceText: text)
             }
           }
           .environment(\.sheetHeight, geo.size.height)
