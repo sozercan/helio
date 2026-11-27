@@ -7,7 +7,19 @@ import SwiftUI
 
 @Observable
 final class VideoPlayerHolder {
-  @ObservationIgnored let player: AVPlayer?
+  @ObservationIgnored private var _player: AVPlayer?
+  var player: AVPlayer? {
+    if let _player {
+      return _player
+    }
+    guard let url else { return nil }
+    let created = AVPlayer(playerItem: AVPlayerItem(url: url))
+    created.volume = 0.0
+    _player = created
+    observeCurrentItem()
+    return created
+  }
+
   private(set) var isReadyToPlay = false
   private(set) var itemFailed = false
   @ObservationIgnored private let url: URL?
@@ -35,14 +47,6 @@ final class VideoPlayerHolder {
     self.dashURL = dashURL
     self.fallbackURL = fallbackURL
     self.recoverPlaylist = recoverPlaylist
-    if let url {
-      let p = AVPlayer(playerItem: AVPlayerItem(url: url))
-      p.volume = 0.0
-      player = p
-    } else {
-      player = nil
-    }
-    observeCurrentItem()
   }
 
   @MainActor
@@ -125,11 +129,11 @@ final class VideoPlayerHolder {
   }
 
   var hasFailed: Bool {
-    player?.status == .failed || player?.currentItem?.status == .failed
+    _player?.status == .failed || _player?.currentItem?.status == .failed
   }
 
   private func observeCurrentItem() {
-    statusObservation = player?.currentItem?.observe(\.status, options: [.initial, .new]) { [weak self] item, _ in
+    statusObservation = _player?.currentItem?.observe(\.status, options: [.initial, .new]) { [weak self] item, _ in
       let ready = item.status == .readyToPlay
       let failed = item.status == .failed
       Task { @MainActor [weak self] in
@@ -142,8 +146,8 @@ final class VideoPlayerHolder {
   deinit {
     recoveryTask?.cancel()
     statusObservation?.invalidate()
-    player?.pause()
-    player?.replaceCurrentItem(with: nil)
+    _player?.pause()
+    _player?.replaceCurrentItem(with: nil)
   }
 }
 

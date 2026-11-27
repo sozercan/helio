@@ -14,6 +14,7 @@ struct VideoPlayerHolderTests {
   @Test func reloadsAFailedItemAFewTimesThenStops() async {
     let missing = FileManager.default.temporaryDirectory.appendingPathComponent("missing-\(UUID().uuidString).mp4")
     let holder = VideoPlayerHolder(url: missing)
+    #expect(holder.player != nil)
     await waitUntil { holder.hasFailed }
     #expect(holder.hasFailed)
     #expect(!holder.isReadyToPlay)

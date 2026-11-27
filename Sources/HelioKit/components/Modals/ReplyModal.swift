@@ -87,6 +87,7 @@ struct ReplyModal<Content: View>: View {
   @Environment(\.dismiss) private var dismiss
   @Environment(\.managedObjectContext) private var viewContext
   @State private var currentDraft: ReplyDraft?
+  @State private var discardDraft = false
   @State private var loading = false
   @State private var selection: PresentationDetent = .medium
   @Environment(\.useTheme) private var selectedTheme
@@ -151,6 +152,7 @@ struct ReplyModal<Content: View>: View {
           action({ result in
             globalLoaderDismiss()
             if result, let currentDraft {
+              discardDraft = true
               Task {
                 await viewContext.perform(schedule: .enqueued) {
                   viewContext.delete(currentDraft)
@@ -169,19 +171,24 @@ struct ReplyModal<Content: View>: View {
       )
       .task(id: replyText) {
         try? await Task.sleep(for: .milliseconds(500))
-        guard !Task.isCancelled else { return }
-        currentDraft?.replyText = replyText
+        guard !Task.isCancelled, !discardDraft, let currentDraft, !currentDraft.isDeleted else { return }
+        currentDraft.replyText = replyText
         await viewContext.perform(schedule: .enqueued) {
           try? viewContext.save()
         }
       }
       .onDisappear {
-        if replyText.isEmpty, let currentDraft {
-          Task {
-            await viewContext.perform(schedule: .enqueued) {
+        guard !discardDraft, let currentDraft, !currentDraft.isDeleted else { return }
+        let text = replyText
+        Task {
+          await viewContext.perform(schedule: .enqueued) {
+            guard !currentDraft.isDeleted else { return }
+            if text.isEmpty {
               viewContext.delete(currentDraft)
-              try? viewContext.save()
+            } else {
+              currentDraft.replyText = text
             }
+            try? viewContext.save()
           }
         }
       }
@@ -219,6 +226,7 @@ struct ReplyModal<Content: View>: View {
           .disabled(replyText.isEmpty)
           .confirmationDialog("Discard this draft?", isPresented: $alertExit, titleVisibility: .visible) {
             Button("Discard", role: .destructive) {
+              discardDraft = true
               withAnimation(spring) {
                 dismiss()
               }
