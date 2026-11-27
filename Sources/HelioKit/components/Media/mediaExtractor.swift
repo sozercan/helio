@@ -129,39 +129,8 @@ func mediaExtractor(compact: Bool, contentWidth: Double = .screenW, _ data: Post
 
   let contentWidth = contentWidth - ((theme?.postLinks.theme.innerPadding.horizontal ?? 0) * 2) - ((theme?.postLinks.theme.outerHPadding ?? 0) * 2)
 
-  if let is_gallery = data.is_gallery, is_gallery, let galleryData = data.gallery_data?.items, let metadata = data.media_metadata {
-    let halfWidth = (contentWidth - ImageMediaPost.gallerySpacing) / 2
-    let sizes = [
-      1: [0: contentWidth],
-      2: [0: halfWidth, 1: halfWidth],
-      3: [0: halfWidth, 1: halfWidth, 2: contentWidth],
-    ]
-
-    let galleryArr = Array(galleryData.enumerated()).compactMap { i, item in
-      let id = item.media_id
-      if let itemMeta = metadata[String(id)], let extArr = itemMeta?.m?.split(separator: "/"), let size = itemMeta?.s, let imgURL = URL(string: "https://i.redd.it/\(id).\(extArr[extArr.count - 1])") {
-        var actualWidth = contentWidth
-        if let sizeInstructions = sizes[galleryData.count], let mySize = sizeInstructions[i] {
-          actualWidth = mySize
-        } else {
-          actualWidth = halfWidth
-        }
-
-        let sizeSimple = compact ? scaledCompactModeThumbSize() : actualWidth
-        let processors: [ImageProcessing] = contentWidth == 0 ? [] : [ImageProcessors.Resize(size: .init(width: sizeSimple, height: sizeSimple), unit: .points, contentMode: .aspectFill, crop: false, upscale: true)]
-        var userInfo: [ImageRequest.UserInfoKey: Any] = [:]
-        if compact, !imgURL.isGIF {
-          userInfo[.thumbnailKey] = ImageRequest.ThumbnailOptions(size: .init(width: scaledCompactModeThumbSize(), height: scaledCompactModeThumbSize()), unit: .points, contentMode: .aspectFill)
-        } else if contentWidth != 0, !imgURL.isGIF {
-          userInfo[.thumbnailKey] = decodingFilling(sizeSimple)
-        }
-        return ImgExtracted(url: imgURL, size: CGSize(width: size.x, height: size.y), request: ImageRequest(url: imgURL, processors: processors + [ImageProcessors.ScaleFixer()], userInfo: userInfo))
-      }
-      return nil
-    }
-    if !galleryArr.isEmpty {
-      return .imgs(galleryArr)
-    }
+  if let gallery = extractGalleryImages(data, compact: compact, contentWidth: contentWidth) {
+    return .imgs(gallery)
   }
 
   if let videoPreview = data.preview?.reddit_video_preview, let videoURL = (videoPreview.hls_url ?? videoPreview.fallback_url).flatMap(URL.init(string:)) {
@@ -207,46 +176,8 @@ func mediaExtractor(compact: Bool, contentWidth: Double = .screenW, _ data: Post
     return .streamable(StreamableExtracted(url: data.url))
   }
 
-  let actualURL = data.url.hasPrefix("/r/") || data.url.hasPrefix("/u/") ? "https://reddit.com\(data.url)" : data.url
-  guard let urlComponents = URLComponents(string: actualURL) else {
-    return nil
-  }
-
-  let pathComponents = urlComponents.path.components(separatedBy: "/").filter { !$0.isEmpty }
-  func linked(_ media: MediaExtractedType) -> MediaExtractedType {
-    if fetchLinkMetadata {
-      media.loadLinkedEntity()
-    }
-    return media
-  }
-
-  if urlComponents.host?.hasSuffix("reddit.com") == true, pathComponents.count > 1 {
-    switch pathComponents[0] {
-    case "r":
-      let subredditName = pathComponents[1]
-      if pathComponents.count > 2, pathComponents[2] == "comments" {
-        let postId = pathComponents[3]
-        if pathComponents.count >= 6 {
-          let commentId = pathComponents[5]
-          let comment = Comment(id: commentId, typePrefix: Comment.prefix)
-          return linked(.comment(EntityExtracted(subredditID: subredditName, postID: postId, commentID: commentId, entity: comment)))
-        }
-        let post = Post(id: postId, typePrefix: Post.prefix)
-        return linked(.post(EntityExtracted(subredditID: subredditName, postID: postId, entity: post)))
-      }
-      let sub = Subreddit(id: subredditName)
-      return linked(.subreddit(EntityExtracted(subredditID: subredditName, entity: sub)))
-
-    case "user", "u":
-      let username = pathComponents[1]
-      let user = User(id: username, typePrefix: User.prefix)
-      return linked(.user(EntityExtracted(userID: username, entity: user)))
-
-    default:
-      if !data.is_self, let linkURL = URL(string: data.url) {
-        return .link(PreviewModel.shared(linkURL, compact: compact, fetch: fetchLinkMetadata))
-      }
-    }
+  if let redditEntity = extractLinkedRedditEntity(data, compact: compact, fetchLinkMetadata: fetchLinkMetadata) {
+    return redditEntity
   }
 
   if data.post_hint == "link" || !data.domain.isEmpty, let linkURL = URL(string: data.url) {
@@ -260,6 +191,168 @@ extension URL {
   var isGIF: Bool {
     pathExtension.lowercased() == "gif"
   }
+}
+
+private func extractLinkedRedditEntity(_ data: PostData, compact: Bool, fetchLinkMetadata: Bool) -> MediaExtractedType? {
+  let actualURL = data.url.hasPrefix("/r/") || data.url.hasPrefix("/u/") ? "https://reddit.com\(data.url)" : data.url
+  guard let urlComponents = URLComponents(string: actualURL) else {
+    return nil
+  }
+  let pathComponents = urlComponents.path.components(separatedBy: "/").filter { !$0.isEmpty }
+  func linked(_ media: MediaExtractedType) -> MediaExtractedType {
+    if fetchLinkMetadata {
+      media.loadLinkedEntity()
+    }
+    return media
+  }
+  guard urlComponents.host?.hasSuffix("reddit.com") == true, pathComponents.count > 1 else {
+    return nil
+  }
+  switch pathComponents[0] {
+  case "r":
+    let subredditName = pathComponents[1]
+    if pathComponents.count > 2, pathComponents[2] == "comments" {
+      let postId = pathComponents[3]
+      if pathComponents.count >= 6 {
+        let commentId = pathComponents[5]
+        let comment = Comment(id: commentId, typePrefix: Comment.prefix)
+        return linked(.comment(EntityExtracted(subredditID: subredditName, postID: postId, commentID: commentId, entity: comment)))
+      }
+      let post = Post(id: postId, typePrefix: Post.prefix)
+      return linked(.post(EntityExtracted(subredditID: subredditName, postID: postId, entity: post)))
+    }
+    let sub = Subreddit(id: subredditName)
+    return linked(.subreddit(EntityExtracted(subredditID: subredditName, entity: sub)))
+
+  case "user", "u":
+    let username = pathComponents[1]
+    let user = User(id: username, typePrefix: User.prefix)
+    return linked(.user(EntityExtracted(userID: username, entity: user)))
+
+  default:
+    if !data.is_self, let linkURL = URL(string: data.url) {
+      return .link(PreviewModel.shared(linkURL, compact: compact, fetch: fetchLinkMetadata))
+    }
+    return nil
+  }
+}
+
+private func extractGalleryImages(_ data: PostData, compact: Bool, contentWidth: Double) -> [ImgExtracted]? {
+  guard data.is_gallery == true, let galleryData = data.gallery_data?.items, let metadata = data.media_metadata else {
+    return nil
+  }
+  let halfWidth = (contentWidth - ImageMediaPost.gallerySpacing) / 2
+  let sizes = [
+    1: [0: contentWidth],
+    2: [0: halfWidth, 1: halfWidth],
+    3: [0: halfWidth, 1: halfWidth, 2: contentWidth],
+  ]
+  let thumbnailInfo = galleryThumbnailInfo(from: data.thumbnail)
+  let fallbackExtension = if let ext = thumbnailInfo?.extension, ext != "gif" {
+    ext
+  } else {
+    "jpeg"
+  }
+
+  let galleryArr = Array(galleryData.enumerated()).compactMap { i, item -> ImgExtracted? in
+    let id = item.media_id
+    guard case let .some(itemMeta?) = metadata[id], let resolved = resolvedGalleryImage(
+      mediaID: id,
+      itemMeta: itemMeta,
+      thumbnailInfo: thumbnailInfo,
+      fallbackExtension: fallbackExtension,
+    ) else { return nil }
+
+    let actualWidth = sizes[galleryData.count]?[i] ?? halfWidth
+    let sizeSimple = compact ? scaledCompactModeThumbSize() : actualWidth
+    let processors: [ImageProcessing] = contentWidth == 0 ? [] : [ImageProcessors.Resize(size: .init(width: sizeSimple, height: sizeSimple), unit: .points, contentMode: .aspectFill, crop: false, upscale: true)]
+    var userInfo: [ImageRequest.UserInfoKey: Any] = [:]
+    if compact, !resolved.url.isGIF {
+      userInfo[.thumbnailKey] = ImageRequest.ThumbnailOptions(size: .init(width: scaledCompactModeThumbSize(), height: scaledCompactModeThumbSize()), unit: .points, contentMode: .aspectFill)
+    } else if contentWidth != 0, !resolved.url.isGIF {
+      userInfo[.thumbnailKey] = decodingFilling(sizeSimple)
+    }
+    return ImgExtracted(url: resolved.url, size: resolved.size, request: ImageRequest(url: resolved.url, processors: processors + [ImageProcessors.ScaleFixer()], userInfo: userInfo))
+  }
+  return galleryArr.isEmpty ? nil : galleryArr
+}
+
+private let galleryImageExtensions: Set<String> = ["jpg", "jpeg", "png", "gif", "webp"]
+
+private func isPlainRedditMediaID(_ mediaID: String) -> Bool {
+  !mediaID.isEmpty && mediaID.count <= 64 && mediaID.unicodeScalars.allSatisfy {
+    ("a" ... "z").contains($0) || ("A" ... "Z").contains($0) || ("0" ... "9").contains($0)
+  }
+}
+
+private func galleryThumbnailInfo(from thumbnail: String?) -> (mediaID: String, extension: String)? {
+  guard
+    let thumbnail,
+    let url = URL(string: thumbnail.escape),
+    let host = url.host?.lowercased(),
+    host == "preview.redd.it" || host == "i.redd.it"
+  else { return nil }
+  let filename = url.lastPathComponent
+  let ext = url.pathExtension.lowercased()
+  guard galleryImageExtensions.contains(ext) else { return nil }
+  let mediaID = (filename as NSString).deletingPathExtension
+  guard isPlainRedditMediaID(mediaID) else { return nil }
+  return (mediaID, ext)
+}
+
+private func isRedditHostedGIFSourceURL(_ raw: String) -> Bool {
+  guard let components = URLComponents(string: raw.escape), let host = components.host?.lowercased() else {
+    return false
+  }
+  if host == "i.redd.it" {
+    return (components.path as NSString).pathExtension.lowercased() == "gif"
+  }
+  if host == "preview.redd.it" {
+    return components.queryItems?.contains(where: { $0.name.lowercased() == "format" && $0.value?.lowercased() == "mp4" }) == true
+  }
+  return false
+}
+
+private func isRedditHostedGIFMetadata(mediaID: String, item: MediaMetadataItem) -> Bool {
+  guard !mediaID.isEmpty, !mediaID.hasPrefix("giphy|") else { return false }
+  if item.m?.lowercased() == "image/gif" || item.e == "AnimatedImage" {
+    return true
+  }
+  let sourceURLs = [item.s?.gif, item.s?.mp4, item.s?.u].compactMap(\.self)
+  return sourceURLs.contains(where: isRedditHostedGIFSourceURL)
+}
+
+private func mimeExtension(from mime: String?) -> String? {
+  guard let parts = mime?.split(separator: "/"), parts.count == 2 else { return nil }
+  let subtype = String(parts[1]).lowercased()
+  return galleryImageExtensions.contains(subtype) ? subtype : nil
+}
+
+private func resolvedGalleryImage(
+  mediaID: String,
+  itemMeta: MediaMetadataItem,
+  thumbnailInfo: (mediaID: String, extension: String)?,
+  fallbackExtension: String,
+) -> (url: URL, size: CGSize)? {
+  if let extArr = itemMeta.m?.split(separator: "/"), let rawExt = extArr.last, !rawExt.isEmpty, let size = itemMeta.s, let imgURL = URL(string: "https://i.redd.it/\(mediaID).\(rawExt)") {
+    return (imgURL, CGSize(width: size.x, height: size.y))
+  }
+
+  if isRedditHostedGIFMetadata(mediaID: mediaID, item: itemMeta), isPlainRedditMediaID(mediaID), let gifURL = URL(string: "https://i.redd.it/\(mediaID).gif") {
+    let size = itemMeta.s.map { CGSize(width: $0.x, height: $0.y) } ?? .zero
+    return (gifURL, size)
+  }
+
+  guard itemMeta.status.lowercased() == "failed", isPlainRedditMediaID(mediaID) else {
+    return nil
+  }
+  let ext = mimeExtension(from: itemMeta.m)
+    ?? (thumbnailInfo?.mediaID == mediaID ? thumbnailInfo?.extension : nil)
+    ?? fallbackExtension
+  guard let imgURL = URL(string: "https://i.redd.it/\(mediaID).\(ext)") else {
+    return nil
+  }
+  return (imgURL, .zero)
 }
 
 func directImageURL(_ data: PostData) -> URL? {
