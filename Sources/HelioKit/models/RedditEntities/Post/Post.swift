@@ -219,7 +219,7 @@ extension Post {
   private func resolveStreamable(_ streamable: StreamableExtracted, contentWidth: Double, secondary: Bool, theme: HelioTheme, sub: Subreddit?) {
     Task(priority: .utility) {
       if let video = await self.loadStreamableMedia(streamable: streamable) {
-        Caches.streamable.addKeyValue(key: streamable.shortCode, data: { StreamableCached(url: video.url, size: video.size) }, expires: Date().dateByAdding(1, .day).date)
+        Caches.streamable.set(key: streamable.shortCode, value: StreamableCached(url: video.url, size: video.size), expiresAt: Date().dateByAdding(1, .day).date)
 
         await MainActor.run {
           withAnimation {

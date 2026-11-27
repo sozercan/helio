@@ -9,11 +9,10 @@ struct SubredditPosts: View, Equatable {
   var subreddit: Subreddit
 
   @Environment(\.useTheme) private var selectedTheme
-  @Environment(\.contentWidth) private var contentWidth
   @Default(.SubredditFeedDefSettings) private var subFeedSettings
 
   func caller(_ lastElementId: String?, _ sorting: SubListingSortOption?, _ searchQuery: String?, _ flair: String?, _ context: FeedItemsManager<SubListingSortOption>.FetchContext) async -> ([RedditEntityType]?, String?)? {
-    if let sorting, let result = await subreddit.fetchPosts(sort: sorting, after: lastElementId, searchText: searchQuery, contentWidth: contentWidth, flair: flair, limit: context.limit, altCredential: context.credential), let entities = result.0 {
+    if let sorting, let result = await subreddit.fetchPosts(sort: sorting, after: lastElementId, searchText: searchQuery, contentWidth: context.contentWidth, flair: flair, limit: context.limit, altCredential: context.credential), let entities = result.0 {
       return (entities, result.1)
     }
     return nil

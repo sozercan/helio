@@ -53,7 +53,8 @@ Implemented in `Sources/HelioKit/globals/Defaults/CachedDefaults.swift`, `Source
   - `flairsFetched` deduplicates flair API requests per session (flairs rarely change) and skips virtual feeds (Home, Popular, etc.) that have no Reddit flair endpoints.
   - Flairs observed on feed posts are cached in a single background Core Data save per page to keep the main queue free during layout.
   - The flair picker stays visible whenever `selectedFilter != nil` so users can clear an active filter even if a refresh dropped that flair. Options are tagged by `pickerKey` (kind + text, excluding volatile colors that can change on background refresh and uncheck the active filter; flairs with identical text in different colors appear once).
-- **Video cache eviction**: Evicting a `SharedVideo` from the cache dictionary deliberately skips `replaceCurrentItem(nil)`. `PostHelioData` strongly retains the same `SharedVideo`, so niling its item leaves a blank/dead video on scroll-back; hardware decode-pipeline teardown is owned per `AVPlayerLayer` (`InlinePlayerLayer`), so eviction only caps the dictionary.
+- **Streamable cache**: `Caches.streamable` uses `ExpiringCache` backed by `NSCache` (with count limit and per-entry expiration) instead of a manual dictionary cache, so memory pressure evicts entries automatically without owning video players (`VideoPlayerHolder` owns `AVPlayer` lifetimes per ADR-0004).
+- **Current column width on feed fetches**: `FeedItemsManager` carries the feed's current `contentWidth` in `FetchContext` (updated by `RedditListingFeed` as the column resizes) and relayouts fetched posts if `contentWidth` changed while the request was in flight, avoiding stale creation-time widths without watching every post's `layoutWidth`.
 
 ### 3. Account Lists, Subscriptions, Multis, and Core Data Concurrency
 

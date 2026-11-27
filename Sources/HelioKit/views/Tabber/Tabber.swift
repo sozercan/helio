@@ -33,7 +33,7 @@ struct Tabber: View {
   }
 
   private var meTitle: String {
-    appearanceDefSettings.showUsernameInTabBar ? RedditAPI.shared.me?.data?.name ?? "Me" : "Me"
+    appearanceDefSettings.showUsernameInTabBar ? RedditCredentialsManager.profile.user?.data?.name ?? "Me" : "Me"
   }
 
   var body: some View {

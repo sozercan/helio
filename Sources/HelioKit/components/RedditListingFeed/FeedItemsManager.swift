@@ -8,6 +8,7 @@ class FeedItemsManager<S> {
   struct FetchContext {
     let limit: Int
     let credential: RedditCredential
+    let contentWidth: Double
   }
 
   typealias ItemsFetchFn = @MainActor (_ lastElementId: String?, _ sorting: S?, _ searchQuery: String?, _ flair: String?, _ context: FetchContext) async -> (entities: [RedditEntityType]?, after: String?)?
@@ -49,6 +50,7 @@ class FeedItemsManager<S> {
   var selectedFilter: ShallowCachedFilter?
 
   var chunkSize: Int
+  @ObservationIgnored var contentWidth: Double
   @ObservationIgnored private var fetchFn: ItemsFetchFn
   private let currentCredential: @MainActor () -> RedditCredential?
   private let rateLimitedUntil: @MainActor (RedditCredential) -> Date?
@@ -61,6 +63,7 @@ class FeedItemsManager<S> {
   init(
     sorting: S?,
     hideReadPosts: Bool = false,
+    contentWidth: Double = .screenW,
     currentCredential: @escaping @MainActor () -> RedditCredential? = { RedditCredentialsManager.shared.selectedCredential },
     rateLimitedUntil: @escaping @MainActor (RedditCredential) -> Date? = { credential in
       RedditRateLimit.shared.limitedUntil(account: credential.id, authorization: credential.authorizationID)
@@ -74,6 +77,7 @@ class FeedItemsManager<S> {
   ) {
     self.sorting = sorting
     self.hideReadPosts = hideReadPosts
+    self.contentWidth = contentWidth
     self.fetchFn = fetchFn
     self.currentCredential = currentCredential
     self.rateLimitedUntil = rateLimitedUntil
@@ -203,7 +207,7 @@ class FeedItemsManager<S> {
       withAnimation { displayMode = .error }
       return
     }
-    let result = await fetchFn(lastElementId, request.sorting, request.searchQuery, request.flair, FetchContext(limit: request.chunkSize, credential: credential))
+    let result = await fetchFn(lastElementId, request.sorting, request.searchQuery, request.flair, FetchContext(limit: request.chunkSize, credential: credential, contentWidth: contentWidth))
     guard currentRequestID == requestID, !Task.isCancelled, currentCredential()?.authorizationID == request.authorization else { return }
     guard let (fetchedEntities, after) = result, let fetchedEntities else {
       failedLoadingMore = loadingMore
@@ -213,6 +217,13 @@ class FeedItemsManager<S> {
 
     let reachedEnd = after == nil || fetchedEntities.isEmpty
     let shownEntities = withoutReadPosts(fetchedEntities)
+    let currentWidth = contentWidth
+    if currentWidth > 0 {
+      let currentTheme = InMemoryTheme.shared.currentTheme
+      for case let .post(post) in shownEntities {
+        post.relayout(contentWidth: currentWidth, theme: currentTheme)
+      }
+    }
     let onlyReadPosts = shownEntities.isEmpty && !fetchedEntities.isEmpty && !reachedEnd
     let skipPage = onlyReadPosts && hiddenPagesInARow < maxHiddenPagesInARow
     let gaveUp = onlyReadPosts && !skipPage

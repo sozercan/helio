@@ -431,7 +431,7 @@ struct EditCommentAction: SwipeAction {
 
   @MainActor
   func enabled(_ entity: Comment) -> Bool {
-    entity.data?.author == entity.redditAPI.me?.data?.name
+    entity.data?.author == RedditCredentialsManager.profile.user?.data?.name
   }
 }
 
@@ -451,7 +451,7 @@ struct DeleteCommentAction: SwipeAction {
 
   @MainActor
   func enabled(_ entity: Comment) -> Bool {
-    entity.data?.author == entity.redditAPI.me?.data?.name
+    entity.data?.author == RedditCredentialsManager.profile.user?.data?.name
   }
 }
 

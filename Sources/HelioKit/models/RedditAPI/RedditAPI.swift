@@ -29,10 +29,6 @@ class RedditAPI {
     await currentAccount()
   }
 
-  @MainActor var me: User? {
-    RedditCredentialsManager.profile.user
-  }
-
   func fetchRequestHeaders(
     force: Bool = false,
     includeAuth: Bool = true,

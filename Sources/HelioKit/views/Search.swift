@@ -236,6 +236,9 @@ struct Search: View {
       .navigationTitle("Search")
       .readableWidth()
       .relayoutPosts({ resultPosts }, contentWidth: contentWidth, theme: theme)
+      .onChange(of: resultPosts) { _, posts in
+        posts.forEach { $0.relayout(contentWidth: contentWidth, theme: theme) }
+      }
       .onChange(of: [searchType.rawValue, searchQuery.debounced]) {
         if searchQuery.debounced == "" {
           resultsSubs = []

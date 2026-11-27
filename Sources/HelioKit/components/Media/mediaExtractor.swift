@@ -123,11 +123,11 @@ func singleImageProcessing(compact: Bool, contentWidth: Double, url: URL, knownS
 func mediaExtractor(compact: Bool, contentWidth: Double = .screenW, _ data: PostData, theme: HelioTheme? = nil, fetchLinkMetadata: Bool = true) -> MediaExtractedType? {
   guard !data.is_self else { return nil }
 
-  let contentWidth = contentWidth - ((theme?.postLinks.theme.innerPadding.horizontal ?? 0) * 2) - ((theme?.postLinks.theme.outerHPadding ?? 0) * 2)
-
   if let postEmbed = data.crosspost_parent_list?.first {
     return .repost(Post(data: postEmbed, contentWidth: contentWidth, secondary: true, theme: theme, fetchAvatar: false, fetchLinkMetadata: fetchLinkMetadata))
   }
+
+  let contentWidth = contentWidth - ((theme?.postLinks.theme.innerPadding.horizontal ?? 0) * 2) - ((theme?.postLinks.theme.outerHPadding ?? 0) * 2)
 
   if let is_gallery = data.is_gallery, is_gallery, let galleryData = data.gallery_data?.items, let metadata = data.media_metadata {
     let halfWidth = (contentWidth - ImageMediaPost.gallerySpacing) / 2
