@@ -52,6 +52,13 @@ struct BehaviorPanel: View {
           }
           .pickerStyle(DefaultPickerStyle())
 
+          Toggle("Restore reading session", isOn: $behaviorDefSettings.restoreReadingSession)
+            .onChange(of: behaviorDefSettings.restoreReadingSession) { _, enabled in
+              if !enabled {
+                ReadingSessionStore.clearAll()
+              }
+            }
+
           WSNavigationLink(.setting(.filteredSubreddits), "Filtered Subreddits")
         }
 

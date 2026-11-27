@@ -16,6 +16,8 @@ struct SubredditsStack: View {
 
   @State private var loaded = false
   @State private var layoutSwitch = LayoutSwitch()
+  @AppStorage(DuoSplitDividerGeometry.defaultShareKey) private var savedDuoFeedShare: Double = 0
+  @State private var dragFeedWidth: CGFloat?
 
   var body: some View {
     let layout = SplitLayout(sizeClass: horizontalSizeClass, frame: frame, division: WindowMetrics.shared.divisionFrame)
@@ -40,6 +42,12 @@ struct SubredditsStack: View {
     }
     .onChange(of: layout.fitsSidebar, initial: true) { _, fits in
       columnVisibility = fits ? .all : .doubleColumn
+    }
+    .onChange(of: router.firstSelected) { _, dest in
+      guard behaviorDefSettings.restoreReadingSession, let accountID = generalDefSettings.redditCredentialSelectedID else { return }
+      if let feedName = dest?.subredditFeedName {
+        ReadingSessionStore.save(feedName: feedName, accountID: accountID)
+      }
     }
   }
 
@@ -76,14 +84,65 @@ struct SubredditsStack: View {
   }
 
   private func panes(_ layout: SplitLayout) -> some View {
-    HStack(spacing: 0) {
+    let totalWidth = frame.width
+    let share: CGFloat? = savedDuoFeedShare > 0 ? CGFloat(savedDuoFeedShare) : nil
+    let activeFeedWidth = dragFeedWidth ?? DuoSplitDividerGeometry.resolvedFeedWidth(
+      savedShare: share,
+      totalWidth: totalWidth,
+      defaultWidth: layout.feedPaneWidth,
+    )
+    let canResize = totalWidth >= DuoSplitDividerGeometry.minPaneWidth * 2
+    return HStack(spacing: 0) {
       feedPane
         .environment(\.paneHingeEdges, .trailing)
-        .frame(width: layout.feedPaneWidth)
-      Divider()
+        .frame(width: activeFeedWidth)
+      if canResize {
+        paneDivider(baseWidth: activeFeedWidth ?? totalWidth / 2, totalWidth: totalWidth)
+      } else {
+        Divider()
+      }
       postColumn(layout)
         .environment(\.paneHingeEdges, .leading)
         .environment(\.horizontalSizeClass, .compact)
+    }
+  }
+
+  private func paneDivider(baseWidth: CGFloat, totalWidth: CGFloat) -> some View {
+    ZStack {
+      Divider()
+      Capsule()
+        .fill(Color.secondary.opacity(dragFeedWidth != nil ? 0.85 : 0.4))
+        .frame(width: 4, height: 36)
+    }
+    .frame(width: 14)
+    .contentShape(Rectangle())
+    .gesture(
+      DragGesture(minimumDistance: 4)
+        .onChanged { value in
+          dragFeedWidth = DuoSplitDividerGeometry.clampedWidth(baseWidth + value.translation.width, totalWidth: totalWidth)
+        }
+        .onEnded { value in
+          let finalWidth = DuoSplitDividerGeometry.clampedWidth(baseWidth + value.translation.width, totalWidth: totalWidth)
+          savedDuoFeedShare = Double(DuoSplitDividerGeometry.snappedShare(forWidth: finalWidth, totalWidth: totalWidth))
+          dragFeedWidth = nil
+        },
+    )
+    .onTapGesture(count: 2) {
+      savedDuoFeedShare = 0.5
+      dragFeedWidth = nil
+    }
+    .accessibilityElement(children: .ignore)
+    .accessibilityLabel("Resize feed and post panes")
+    .accessibilityValue("\(Int((DuoSplitDividerGeometry.share(forWidth: baseWidth, totalWidth: totalWidth) * 100).rounded())) percent")
+    .accessibilityAdjustableAction { direction in
+      let step: CGFloat = direction == .increment ? 0.05 : -0.05
+      let current = DuoSplitDividerGeometry.share(forWidth: baseWidth, totalWidth: totalWidth)
+      let nextWidth = DuoSplitDividerGeometry.clampedWidth((current + step) * totalWidth, totalWidth: totalWidth)
+      savedDuoFeedShare = Double(DuoSplitDividerGeometry.share(forWidth: nextWidth, totalWidth: totalWidth))
+    }
+    .accessibilityAction(named: "Equal Widths") {
+      savedDuoFeedShare = 0.5
+      dragFeedWidth = nil
     }
   }
 
@@ -134,7 +193,10 @@ struct SubredditsStack: View {
   private func chooseLaunchFeed(in frame: CGRect) {
     let layout = SplitLayout(sizeClass: horizontalSizeClass, frame: frame, division: WindowMetrics.shared.divisionFrame)
     guard !loaded, layout.measured else { return }
-    if let feed = Self.launchFeed(defaultFeed: behaviorDefSettings.preferenceDefaultFeed, showsColumns: layout.showsColumns, current: router.firstSelected) {
+    let restoredFeed = behaviorDefSettings.restoreReadingSession
+      ? ReadingSessionStore.load(accountID: generalDefSettings.redditCredentialSelectedID)?.feedName
+      : nil
+    if let feed = Self.launchFeed(defaultFeed: restoredFeed ?? behaviorDefSettings.preferenceDefaultFeed, showsColumns: layout.showsColumns, current: router.firstSelected) {
       router.firstSelected = feed
     }
     withAnimation {
