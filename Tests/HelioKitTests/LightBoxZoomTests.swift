@@ -58,12 +58,25 @@ struct LightBoxZoomTests {
   @Test func shareUtilsWaitsUntilTopControllerStopsTransitioning() async {
     let controller = UIViewController()
     var yields = 0
-    await ShareUtils.waitForPresentationReady(
+    let ready = await ShareUtils.waitForPresentationReady(
       resolveTop: { controller },
       maxAttempts: 5,
       yield: { yields += 1 },
+      sleep: {},
     )
+    #expect(ready)
     #expect(yields == 1)
     #expect(!ShareUtils.isTransitioning(controller))
+  }
+
+  @MainActor
+  @Test func shareUtilsReturnsFalseWhenNoTopControllerExists() async {
+    let ready = await ShareUtils.waitForPresentationReady(
+      resolveTop: { nil },
+      maxAttempts: 3,
+      yield: {},
+      sleep: {},
+    )
+    #expect(!ready)
   }
 }

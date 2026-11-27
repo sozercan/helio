@@ -71,8 +71,8 @@ class ShareUtils {
     guard let url = URL(string: item) else { return }
     pendingPresentation?.cancel()
     pendingPresentation = Task { @MainActor in
-      await waitForPresentationReady()
-      guard !Task.isCancelled else { return }
+      let ready = await waitForPresentationReady()
+      guard !Task.isCancelled, ready else { return }
       presentActivityController(for: [url], sourceView: sourceView)
     }
   }
@@ -81,12 +81,13 @@ class ShareUtils {
     resolveTop: @MainActor () -> UIViewController? = { topViewController() },
     maxAttempts: Int = 20,
     yield: @MainActor () async -> Void = { await Task.yield() },
-  ) async {
+    sleep: @MainActor () async -> Void = { try? await Task.sleep(for: .milliseconds(25)) },
+  ) async -> Bool {
     await yield()
     for _ in 0 ..< maxAttempts {
-      guard !Task.isCancelled, let top = resolveTop() else { return }
+      guard !Task.isCancelled, let top = resolveTop() else { return false }
       if !isTransitioning(top) {
-        return
+        return true
       }
       if let coordinator = transitionCoordinator(for: top) {
         await withCheckedContinuation { continuation in
@@ -95,9 +96,11 @@ class ShareUtils {
           }
         }
       } else {
-        await yield()
+        await sleep()
       }
     }
+    guard !Task.isCancelled, let top = resolveTop() else { return false }
+    return !isTransitioning(top)
   }
 
   static func isTransitioning(_ viewController: UIViewController) -> Bool {
