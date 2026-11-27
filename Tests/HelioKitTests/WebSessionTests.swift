@@ -305,6 +305,20 @@ struct WebSessionRoutingTests {
     let publicResult = await api.fetchSubPosts("/r/swift", limit: 10, sort: .hot)
     #expect(publicResult != nil)
     #expect(WebSessionRoutingProtocol.requests.withLock { $0.count } == 1)
+
+    for route in [WebSessionRoute.oauthBearer, .oauthCookie] {
+      for _ in 0 ..< WebSessionRouteHealth.blockThreshold {
+        health.recordBlock(account: account.id, authorization: account.authorizationID, pattern: "/r/*/search", route: route)
+      }
+    }
+    for _ in 0 ..< WebSessionRouteHealth.blockThreshold {
+      let deniedSearch = await api.searchInSubreddit("privateonly", RedditAPI.AdvancedPostsSearch(subreddit: "privateonly", flairs: nil, searchQuery: "test", sortOption: .best))
+      #expect(deniedSearch == nil)
+    }
+    WebSessionRoutingProtocol.requests.withLock { $0 = [] }
+    let publicSearch = await api.searchInSubreddit("swift", RedditAPI.AdvancedPostsSearch(subreddit: "swift", flairs: nil, searchQuery: "test", sortOption: .best))
+    #expect(publicSearch != nil)
+    #expect(WebSessionRoutingProtocol.requests.withLock { $0.count } == 1)
   }
 
   @Test func webSessionProbeDistinguishesActiveSignedOutAndTransientErrors() async {

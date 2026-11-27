@@ -230,9 +230,6 @@ class RedditAPI {
         blockedRoutes.append(route)
       }
     }
-    if candidateRoutes.count == 1, let onlyRoute = blockedRoutes.first {
-      routeHealth.recordBlock(account: credential.id, authorization: authorization, pattern: pattern, route: onlyRoute)
-    }
     return lastResult ?? .failure(.explicitlyCancelled)
   }
 
