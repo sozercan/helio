@@ -310,4 +310,42 @@ struct UserCollectionsStoreTests {
     #expect(reopened.filteredSubreddits.isEmpty)
     #expect(reopened.likedButNotSubbed.isEmpty)
   }
+
+  @Test func duplicateFilteredEntriesStayConsistentOnRemoveAndToggle() async throws {
+    let dir = try makeTempDirectory()
+    defer { try? FileManager.default.removeItem(at: dir) }
+    let (suiteName, defaults) = try makeUserDefaults()
+    defer { defaults.removePersistentDomain(forName: suiteName) }
+
+    let store = UserCollectionsStore(directory: dir, userDefaults: defaults)
+    store.setFilteredSubreddits(["news", "news", "gaming"])
+    store.removeFilteredSubreddit(at: 0)
+    #expect(store.filteredSubreddits == ["news", "gaming"])
+    #expect(store.isSubredditFiltered("news"))
+
+    store.setFilteredSubreddits(["news", "news", "gaming"])
+    #expect(!store.toggleFilteredSubreddit("news"))
+    #expect(store.filteredSubreddits == ["gaming"])
+    #expect(!store.isSubredditFiltered("news"))
+    await store.flushPendingWrites()
+
+    let reopened = UserCollectionsStore(directory: dir, userDefaults: defaults)
+    #expect(reopened.filteredSubreddits == ["gaming"])
+    #expect(!reopened.isSubredditFiltered("news"))
+  }
+
+  @Test func importEntriesPreservesLegacyKeysAndReportsFailureWhenWriteFails() throws {
+    let dir = try makeTempDirectory()
+    defer { try? FileManager.default.removeItem(at: dir) }
+    let blockerFile = dir.appending(path: "not-a-directory")
+    try Data("blocker".utf8).write(to: blockerFile)
+    let (suiteName, defaults) = try makeUserDefaults()
+    defer { defaults.removePersistentDomain(forName: suiteName) }
+
+    defaults.set(["legacy"], forKey: "filteredSubreddits")
+    let store = UserCollectionsStore(directory: blockerFile, userDefaults: defaults)
+    let imported = store.importEntries(from: ["filteredSubreddits": ["imported"]])
+    #expect(!imported)
+    #expect(defaults.stringArray(forKey: "filteredSubreddits") == ["legacy"])
+  }
 }

@@ -57,12 +57,12 @@ func importUserDefaultsFromJSON(jsonFilePath: URL) -> Bool {
         }
       }
 
-      UserCollectionsStore.shared.importEntries(from: jsonObject)
+      let importedCollections = UserCollectionsStore.shared.importEntries(from: jsonObject)
       UserDefaults.standard.synchronize()
 
       print("UserDefaults imported from: \(jsonFilePath)")
       jsonFilePath.stopAccessingSecurityScopedResource()
-      return true
+      return importedCollections
     }
   } catch {
     print("Error importing UserDefaults from JSON: \(error)")

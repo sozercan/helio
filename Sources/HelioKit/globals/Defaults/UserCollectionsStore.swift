@@ -169,7 +169,9 @@ final class UserCollectionsStore: @unchecked Sendable {
     let updated: RevisionedValue<[String]>? = state.withLock { current in
       guard !current.filteredLoadFailed, current.filteredSubreddits.indices.contains(index) else { return nil }
       let removed = current.filteredSubreddits.remove(at: index)
-      current.filteredSubredditsSet.remove(removed)
+      if !current.filteredSubreddits.contains(removed) {
+        current.filteredSubredditsSet.remove(removed)
+      }
       current.filteredRevision += 1
       return RevisionedValue(value: current.filteredSubreddits, revision: current.filteredRevision)
     }
@@ -183,8 +185,8 @@ final class UserCollectionsStore: @unchecked Sendable {
     let result: (isFiltered: Bool, updated: RevisionedValue<[String]>)? = state.withLock { current in
       guard !current.filteredLoadFailed else { return nil }
       current.filteredRevision += 1
-      if let index = current.filteredSubreddits.firstIndex(of: subreddit) {
-        current.filteredSubreddits.remove(at: index)
+      if current.filteredSubredditsSet.contains(subreddit) {
+        current.filteredSubreddits.removeAll { $0 == subreddit }
         current.filteredSubredditsSet.remove(subreddit)
         return (false, RevisionedValue(value: current.filteredSubreddits, revision: current.filteredRevision))
       }
@@ -322,33 +324,107 @@ final class UserCollectionsStore: @unchecked Sendable {
     return entries
   }
 
-  func importEntries(from jsonObject: [String: Any]) {
-    var importedFiltered = false
+  @discardableResult
+  func importEntries(from jsonObject: [String: Any]) -> Bool {
+    var succeeded = true
     for key in Self.legacyFilteredKeys {
       if let raw = jsonObject[key], let decoded = Self.decodeLegacyArray(String.self, from: raw) {
-        setFilteredSubreddits(decoded, allowOverwriteAfterLoadError: true)
-        importedFiltered = true
+        if persistImportedFilteredSubreddits(decoded) {
+          for legacyKey in Self.legacyFilteredKeys {
+            userDefaults.removeObject(forKey: legacyKey)
+          }
+        } else {
+          succeeded = false
+        }
         break
       }
     }
-    var importedLiked = false
     for key in Self.legacyLikedKeys {
       if let raw = jsonObject[key], let decoded = Self.decodeLegacyArray(Subreddit.self, from: raw) {
-        setLikedButNotSubbed(decoded, allowOverwriteAfterLoadError: true)
-        importedLiked = true
+        if persistImportedLikedButNotSubbed(decoded) {
+          for legacyKey in Self.legacyLikedKeys {
+            userDefaults.removeObject(forKey: legacyKey)
+          }
+        } else {
+          succeeded = false
+        }
         break
       }
     }
-    if importedFiltered {
-      for key in Self.legacyFilteredKeys {
-        userDefaults.removeObject(forKey: key)
+    return succeeded
+  }
+
+  private func persistImportedFilteredSubreddits(_ newValue: [String]) -> Bool {
+    let data: Data
+    do {
+      data = try JSONEncoder().encode(newValue)
+    } catch {
+      Self.logger.error("Failed to encode \(Self.filteredSubredditsFileName, privacy: .public): \(error.localizedDescription, privacy: .public)")
+      return false
+    }
+    let revision: UInt64 = state.withLock { current in
+      current.filteredRevision += 1
+      return current.filteredRevision
+    }
+    pendingWrites.withLock { pending in
+      if revision > pending.minFilteredRevision {
+        pending.minFilteredRevision = revision
+      }
+      if let existing = pending.filtered, existing.revision <= revision {
+        pending.filtered = nil
       }
     }
-    if importedLiked {
-      for key in Self.legacyLikedKeys {
-        userDefaults.removeObject(forKey: key)
+    guard writeSnapshot(
+      SnapshotWrite(revision: revision, data: data),
+      isFiltered: true,
+      to: Self.filteredSubredditsFileName,
+    ) else {
+      return false
+    }
+    state.withLock { current in
+      guard current.filteredRevision == revision else { return }
+      current.filteredLoadFailed = false
+      current.filteredSubreddits = newValue
+      current.filteredSubredditsSet = Set(newValue)
+    }
+    publishFilteredSubreddits(state.withLock(\.filteredSubreddits))
+    return true
+  }
+
+  private func persistImportedLikedButNotSubbed(_ newValue: [Subreddit]) -> Bool {
+    let data: Data
+    do {
+      data = try JSONEncoder().encode(newValue)
+    } catch {
+      Self.logger.error("Failed to encode \(Self.likedButNotSubbedFileName, privacy: .public): \(error.localizedDescription, privacy: .public)")
+      return false
+    }
+    let revision: UInt64 = state.withLock { current in
+      current.likedRevision += 1
+      return current.likedRevision
+    }
+    pendingWrites.withLock { pending in
+      if revision > pending.minLikedRevision {
+        pending.minLikedRevision = revision
+      }
+      if let existing = pending.liked, existing.revision <= revision {
+        pending.liked = nil
       }
     }
+    guard writeSnapshot(
+      SnapshotWrite(revision: revision, data: data),
+      isFiltered: false,
+      to: Self.likedButNotSubbedFileName,
+    ) else {
+      return false
+    }
+    state.withLock { current in
+      guard current.likedRevision == revision else { return }
+      current.likedLoadFailed = false
+      current.likedButNotSubbed = newValue
+    }
+    publishLikedButNotSubbed(state.withLock(\.likedButNotSubbed))
+    return true
   }
 
   func flushPendingWrites() async {
