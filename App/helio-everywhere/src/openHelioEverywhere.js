@@ -14,6 +14,7 @@ const EXCLUDED_REDDIT_SUBDOMAINS = new Set([
   'ads',
   'api',
   'business',
+  'chat',
   'events',
   'gql',
   'gql-fed',
