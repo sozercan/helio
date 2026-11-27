@@ -62,11 +62,11 @@ struct UserFlair: View, Equatable {
       }
     }
     .task(id: hasEmojis ? subName : nil) {
+      emojiURLs = [:]
       guard hasEmojis, let subName, !subName.isEmpty else { return }
       let loaded = await SubredditEmojiLoader.shared.emojiURLs(for: subName)
-      if !loaded.isEmpty {
-        emojiURLs = loaded
-      }
+      guard !Task.isCancelled else { return }
+      emojiURLs = loaded
     }
   }
 }

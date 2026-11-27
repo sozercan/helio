@@ -89,10 +89,10 @@ struct FlairEmojiTests {
     #expect(counter.all.isEmpty)
   }
 
-  @Test func retriesAfterFailedEmojiFetch() async {
+  @Test func backsOffAndRetriesAfterFailedEmojiFetch() async {
     let counter = EmojiFetchCounter()
     let account = RedditCredential(apiAppID: "placeholder-client-id", refreshToken: "placeholder-refresh-token")
-    let loader = SubredditEmojiLoader(currentAccount: { account }, fetch: { subreddit, _ in
+    let loader = SubredditEmojiLoader(currentAccount: { account }, failureBackoff: 60, fetch: { subreddit, _ in
       counter.record(subreddit)
       if counter.all.count == 1 {
         return nil
@@ -100,10 +100,13 @@ struct FlairEmojiTests {
       return ["star": URL(string: "https://emoji.redditmedia.com/star.png")!]
     })
 
-    let first = await loader.emojiURLs(for: "swift")
-    let second = await loader.emojiURLs(for: "swift")
+    let t0 = Date(timeIntervalSince1970: 1_000)
+    let first = await loader.emojiURLs(for: "swift", now: t0)
+    let duringBackoff = await loader.emojiURLs(for: "swift", now: t0.addingTimeInterval(30))
+    let afterBackoff = await loader.emojiURLs(for: "swift", now: t0.addingTimeInterval(61))
     #expect(first.isEmpty)
-    #expect(second["star"]?.absoluteString == "https://emoji.redditmedia.com/star.png")
+    #expect(duringBackoff.isEmpty)
+    #expect(afterBackoff["star"]?.absoluteString == "https://emoji.redditmedia.com/star.png")
     #expect(counter.all == ["swift", "swift"])
   }
 }

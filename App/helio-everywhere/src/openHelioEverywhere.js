@@ -1,4 +1,4 @@
-const EXCLUDED_PATH_PREFIXES = ['/prefs/apps', '/api/v1/authorize']
+const EXCLUDED_PATH_PREFIXES = ['/prefs/apps', '/api/v1/authorize', '/login', '/register', '/account/login', '/account/register', '/account/sso', '/auth']
 
 function isRedirectableRedditHost(hostname) {
   const lower = hostname.toLowerCase()
