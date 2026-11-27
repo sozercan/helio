@@ -16,6 +16,7 @@ struct PostView: View, Equatable {
   @Default(.PostPageDefSettings) private var defSettings
   @Default(.CommentsSectionDefSettings) var commentsSectionDefSettings
   @Default(.CommentLinkDefSettings) private var commentLinkDefSettings
+  @Default(.GeneralDefSettings) private var generalDefSettings
   @Environment(\.useTheme) private var selectedTheme
   @Environment(\.globalLoaderStart) private var globalLoaderStart
   @Environment(\.globalLoaderDismiss) private var globalLoaderDismiss
@@ -288,11 +289,21 @@ struct PostView: View, Equatable {
     let inlineActions = selectedTheme.posts.inlineFloatingPill
     let showSkipper = commentsSectionDefSettings.commentSkipper
     let skipperOnLeft = !inlineActions || commentLinkDefSettings.jumpNextCommentButtonLeft
+    let activeUsername = RedditCredentialsManager.shared.selectedCredential(id: generalDefSettings.redditCredentialSelectedID)?.userName
     if showSkipper || !inlineActions {
       GlassEffectContainer(spacing: 12) {
         HStack(spacing: 12) {
           if showSkipper, skipperOnLeft {
-            CommentSkipper(topVisibleCommentId: Bindable(session).topVisibleCommentId, previousScrollTarget: Bindable(session).previousScrollTarget, comments: comments, reader: proxy)
+            CommentSkipper(
+              topVisibleCommentId: Bindable(session).topVisibleCommentId,
+              previousScrollTarget: Bindable(session).previousScrollTarget,
+              comments: comments,
+              seenComments: seenComments,
+              activeUsername: activeUsername,
+              userScrollGeneration: session.userScrollGeneration,
+              currentVisibleCommentID: { session.firstVisibleCommentID() },
+              reader: proxy,
+            )
           }
           if inlineActions {
             Spacer(minLength: 0)
@@ -307,7 +318,16 @@ struct PostView: View, Equatable {
             .frame(maxWidth: .infinity, alignment: .trailing)
           }
           if showSkipper, !skipperOnLeft {
-            CommentSkipper(topVisibleCommentId: Bindable(session).topVisibleCommentId, previousScrollTarget: Bindable(session).previousScrollTarget, comments: comments, reader: proxy)
+            CommentSkipper(
+              topVisibleCommentId: Bindable(session).topVisibleCommentId,
+              previousScrollTarget: Bindable(session).previousScrollTarget,
+              comments: comments,
+              seenComments: seenComments,
+              activeUsername: activeUsername,
+              userScrollGeneration: session.userScrollGeneration,
+              currentVisibleCommentID: { session.firstVisibleCommentID() },
+              reader: proxy,
+            )
           }
         }
       }
@@ -331,6 +351,7 @@ final class PostSession {
   var seenComments: String?
   var ignoreSpecificComment = false
   var hideElements = true
+  var userScrollGeneration = 0
   @ObservationIgnored var topVisibleCommentId: String?
   @ObservationIgnored var previousScrollTarget: String?
   @ObservationIgnored private var shownRowIDs: [String: Int] = [:]
@@ -355,6 +376,7 @@ final class PostSession {
 
   func readerScrolled() {
     scrolled = true
+    userScrollGeneration += 1
   }
 
   func saveScrollAnchor() {
@@ -364,6 +386,11 @@ final class PostSession {
   func scrollAnchorRowID() -> String? {
     guard !savedRowIDs.isEmpty else { return nil }
     return CommentTree.rows(for: comments).first { savedRowIDs.contains($0.id) }?.id
+  }
+
+  func firstVisibleCommentID() -> String? {
+    guard !shownRowIDs.isEmpty else { return nil }
+    return CommentJumpNavigator.orderedCommentIDs(roots: comments).first { shownRowIDs[$0] != nil }
   }
 }
 

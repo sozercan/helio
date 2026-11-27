@@ -21,6 +21,15 @@ func timeSince(_ timestamp: Int) -> String {
   }
 }
 
+func absoluteTimestamp(_ timestamp: Int, locale: Locale = .current, timeZone: TimeZone = .current) -> String {
+  let formatter = DateFormatter()
+  formatter.locale = locale
+  formatter.timeZone = timeZone
+  formatter.dateStyle = .medium
+  formatter.timeStyle = .short
+  return formatter.string(from: Date(timeIntervalSince1970: TimeInterval(timestamp)))
+}
+
 func spokenTimeSince(_ timestamp: Int) -> String {
   let timeInterval = Int(Date().timeIntervalSince1970) - timestamp
   let minute = 60
