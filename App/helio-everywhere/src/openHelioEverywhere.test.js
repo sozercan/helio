@@ -35,6 +35,7 @@ test('rejects excluded auth/API/media hosts, suffix tricks, credentials, custom 
     'https://accounts.reddit.com/api/access_token',
     'https://api.reddit.com/r/swift/hot',
     'https://chat.reddit.com/',
+    'https://mod.reddit.com/',
     'https://oauth.reddit.com/r/swift/hot',
     'https://i.reddit.com/pic.jpg',
     'https://user:pass@www.reddit.com/r/swift',

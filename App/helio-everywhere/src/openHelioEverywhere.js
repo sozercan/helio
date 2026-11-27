@@ -19,6 +19,7 @@ const EXCLUDED_REDDIT_SUBDOMAINS = new Set([
   'gql',
   'gql-fed',
   'i',
+  'mod',
   'oauth',
   'out',
   'preview',
