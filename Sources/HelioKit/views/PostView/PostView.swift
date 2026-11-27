@@ -16,6 +16,7 @@ struct PostView: View, Equatable {
   @Default(.PostPageDefSettings) private var defSettings
   @Default(.CommentsSectionDefSettings) var commentsSectionDefSettings
   @Default(.CommentLinkDefSettings) private var commentLinkDefSettings
+  @Default(.GeneralDefSettings) private var generalDefSettings
   @Environment(\.useTheme) private var selectedTheme
   @Environment(\.globalLoaderStart) private var globalLoaderStart
   @Environment(\.globalLoaderDismiss) private var globalLoaderDismiss
@@ -288,7 +289,7 @@ struct PostView: View, Equatable {
     let inlineActions = selectedTheme.posts.inlineFloatingPill
     let showSkipper = commentsSectionDefSettings.commentSkipper
     let skipperOnLeft = !inlineActions || commentLinkDefSettings.jumpNextCommentButtonLeft
-    let activeUsername = RedditCredentialsManager.shared.selectedCredential?.userName
+    let activeUsername = RedditCredentialsManager.shared.selectedCredential(id: generalDefSettings.redditCredentialSelectedID)?.userName
     if showSkipper || !inlineActions {
       GlassEffectContainer(spacing: 12) {
         HStack(spacing: 12) {
