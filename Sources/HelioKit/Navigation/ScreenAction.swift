@@ -136,7 +136,12 @@ extension ScreenAction {
   }
 
   @MainActor
-  static func switchAccount(manager: RedditCredentialsManager = .shared, selectedID: UUID? = nil, logOut: @escaping @MainActor (RedditCredential) -> Void = { LogOutConfirmation.shared.ask($0) }) -> ScreenAction? {
+  static func switchAccount(
+    manager: RedditCredentialsManager = .shared,
+    selectedID: UUID? = nil,
+    addAccount: @escaping @MainActor () -> Void = { Nav.present(.editingCredential(.init())) },
+    logOut: @escaping @MainActor (RedditCredential) -> Void = { LogOutConfirmation.shared.ask($0) },
+  ) -> ScreenAction? {
     guard let selected = selectedID.map({ manager.selectedCredential(id: $0) }) ?? manager.selectedCredential else { return nil }
     let credentials = manager.validCredentials
     var entries: [Entry] = []
@@ -147,6 +152,9 @@ extension ScreenAction {
         }
       }))
     }
+    entries.append(.section(nil, [.choice("Add Account", systemImage: "person.badge.plus", isOn: false) {
+      addAccount()
+    }]))
     entries.append(.section(nil, [.choice(LogOutConfirmation.title(selected), systemImage: "rectangle.portrait.and.arrow.right", isOn: false) {
       logOut(selected)
     }]))
