@@ -78,12 +78,32 @@ struct ReadingSessionAndDuoDividerTests {
     router.onFeedVisit = { visited.append(($0, $1)) }
 
     router.firstSelected = .reddit(.subFeed(Subreddit(id: "home")))
-    router.navigateTo(.reddit(.post(Post(id: "p1", subID: "home"))), from: .feed)
-    router.navigateTo(.reddit(.subFeed(Subreddit(id: "apple"))), from: .post)
-    router.navigateTo(.reddit(.subFeed(Subreddit(id: "swift"))), from: .feed)
+    #expect(visited.last?.0 == "feed:home")
+    #expect(visited.last?.1 == true)
 
+    router.navigateTo(.reddit(.post(Post(id: "p1", subID: "home"))), from: .feed)
+    #expect(visited.last?.0 == "feed:home")
+    #expect(visited.last?.1 == false)
+
+    router.navigateTo(.reddit(.subFeed(Subreddit(id: "apple"))), from: .post)
+    #expect(visited.last?.0 == "apple")
+    #expect(visited.last?.1 == true)
+
+    router.navigateTo(.reddit(.subFeed(Subreddit(id: "swift"))), from: .feed)
     #expect(visited.last?.0 == "swift")
     #expect(visited.last?.1 == true)
+
+    router.firstSelected = .reddit(.subFeed(Subreddit(id: "pics")))
+    #expect(visited.last?.0 == "pics")
+    #expect(visited.last?.1 == true)
+
+    router.showFeedRoot(.reddit(.subFeed(Subreddit(id: "news"))))
+    #expect(visited.last?.0 == "news")
+    #expect(visited.last?.1 == true)
+
+    router.navigateTo(.reddit(.post(Post(id: "p2", subID: "news"))), from: .feed)
+    #expect(visited.last?.0 == "news")
+    #expect(visited.last?.1 == false)
 
     router.goBack()
     #expect(visited.last?.1 == false)
