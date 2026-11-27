@@ -203,8 +203,9 @@ class RedditAPI {
     }
 
     let pattern = WebSessionRoutePlanner.patternKey(for: url)
+    let authorization = credential.authorizationID
     let allRoutes = WebSessionRoutePlanner.routes(for: url, method: method, defaultAuth: defaultAuth)
-    let candidateRoutes = routeHealth.orderedRoutes(allRoutes, account: credential.id, pattern: pattern)
+    let candidateRoutes = routeHealth.orderedRoutes(allRoutes, account: credential.id, authorization: authorization, pattern: pattern)
     guard !candidateRoutes.isEmpty else {
       return .failure(.responseValidationFailed(reason: .unacceptableStatusCode(code: 403)))
     }
@@ -215,14 +216,14 @@ class RedditAPI {
       let result = await perform(resolvedURL, route.webSessionAuth)
       switch result {
       case .success:
-        routeHealth.recordSuccess(account: credential.id, pattern: pattern, route: route)
+        routeHealth.recordSuccess(account: credential.id, authorization: authorization, pattern: pattern, route: route)
         return result
       case let .failure(error):
         lastResult = result
         guard error.responseCode == 403 else {
           return result
         }
-        routeHealth.recordBlock(account: credential.id, pattern: pattern, route: route)
+        routeHealth.recordBlock(account: credential.id, authorization: authorization, pattern: pattern, route: route)
       }
     }
     return lastResult ?? .failure(.explicitlyCancelled)

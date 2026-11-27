@@ -240,7 +240,7 @@ struct WebSessionRoutingTests {
       let result = await api.fetchSubPosts("/r/all", limit: 10, sort: .hot)
       #expect(result != nil)
     }
-    #expect(health.isCoolingDown(account: account.id, pattern: "/r/all/*", route: .oauthBearer))
+    #expect(health.isCoolingDown(account: account.id, authorization: account.authorizationID, pattern: "/r/all/*", route: .oauthBearer))
 
     WebSessionRoutingProtocol.requests.withLock { $0 = [] }
     let afterCooldown = await api.fetchSubPosts("/r/all", limit: 10, sort: .hot)
@@ -299,6 +299,33 @@ struct WebSessionRoutingTests {
     time.withLock { $0 += WebSessionRouteHealth.baseCooldown + 1 }
     _ = await api.fetchSubPosts("/r/all", limit: 10, sort: .hot)
     #expect(!WebSessionRoutingProtocol.requests.withLock { $0.isEmpty })
+  }
+
+  @Test func routeHealthSeparatesReauthorizationFromTokenDrivenRenewal() throws {
+    let health = WebSessionRouteHealth()
+    var account = webAccount()
+    let originalAuth = try #require(account.authorizationID)
+
+    for _ in 0 ..< WebSessionRouteHealth.blockThreshold {
+      health.recordBlock(account: account.id, authorization: originalAuth, pattern: "/api/v1/me", route: .oauthBearer)
+    }
+    #expect(health.isCoolingDown(account: account.id, authorization: originalAuth, pattern: "/api/v1/me", route: .oauthBearer))
+
+    var renewed = account
+    let updated = try renewed.updateWebAccessToken(
+      .init(token: "renewed-token", expiration: 3600, lastRefresh: Date()),
+      cookies: "reddit_session=rotated-cookie",
+      renewedFrom: #require(account.webSessionCookies),
+      for: originalAuth,
+    )
+    #expect(updated)
+    #expect(renewed.authorizationID == originalAuth)
+    #expect(health.isCoolingDown(account: renewed.id, authorization: renewed.authorizationID, pattern: "/api/v1/me", route: .oauthBearer))
+
+    account.webSessionCookies = "reddit_session=fresh-reauth-cookie"
+    let reauthorizedAuth = try #require(account.authorizationID)
+    #expect(reauthorizedAuth != originalAuth)
+    #expect(!health.isCoolingDown(account: account.id, authorization: reauthorizedAuth, pattern: "/api/v1/me", route: .oauthBearer))
   }
 
   @Test func routePlannerHandlesDotJSONAndFilterPatterns() {

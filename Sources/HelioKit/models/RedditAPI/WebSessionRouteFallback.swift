@@ -162,6 +162,7 @@ final class WebSessionRouteHealth: Sendable {
 
   private struct RouteKey: Hashable, Sendable {
     let account: UUID
+    let authorization: RedditCredential.AuthorizationID?
     let pattern: String
     let route: WebSessionRoute
   }
@@ -179,12 +180,17 @@ final class WebSessionRouteHealth: Sendable {
     self.now = now
   }
 
-  func orderedRoutes(_ routes: [WebSessionRoute], account: UUID?, pattern: String) -> [WebSessionRoute] {
+  func orderedRoutes(
+    _ routes: [WebSessionRoute],
+    account: UUID?,
+    authorization: RedditCredential.AuthorizationID? = nil,
+    pattern: String,
+  ) -> [WebSessionRoute] {
     guard let account, !routes.isEmpty else { return routes }
     let currentTime = now()
     return entries.withLock { store in
       routes.filter { route in
-        guard let until = store[RouteKey(account: account, pattern: pattern, route: route)]?.cooledDownUntil else {
+        guard let until = store[RouteKey(account: account, authorization: authorization, pattern: pattern, route: route)]?.cooledDownUntil else {
           return true
         }
         return until <= currentTime
@@ -192,11 +198,16 @@ final class WebSessionRouteHealth: Sendable {
     }
   }
 
-  func recordBlock(account: UUID?, pattern: String, route: WebSessionRoute) {
+  func recordBlock(
+    account: UUID?,
+    authorization: RedditCredential.AuthorizationID? = nil,
+    pattern: String,
+    route: WebSessionRoute,
+  ) {
     guard let account else { return }
     let currentTime = now()
     entries.withLock { store in
-      let key = RouteKey(account: account, pattern: pattern, route: route)
+      let key = RouteKey(account: account, authorization: authorization, pattern: pattern, route: route)
       var entry = store[key] ?? Entry()
       entry.consecutiveBlocks += 1
       if entry.consecutiveBlocks >= Self.blockThreshold {
@@ -210,17 +221,27 @@ final class WebSessionRouteHealth: Sendable {
     }
   }
 
-  func recordSuccess(account: UUID?, pattern: String, route: WebSessionRoute) {
+  func recordSuccess(
+    account: UUID?,
+    authorization: RedditCredential.AuthorizationID? = nil,
+    pattern: String,
+    route: WebSessionRoute,
+  ) {
     guard let account else { return }
     entries.withLock { store in
-      store.removeValue(forKey: RouteKey(account: account, pattern: pattern, route: route))
+      store.removeValue(forKey: RouteKey(account: account, authorization: authorization, pattern: pattern, route: route))
     }
   }
 
-  func isCoolingDown(account: UUID, pattern: String, route: WebSessionRoute) -> Bool {
+  func isCoolingDown(
+    account: UUID,
+    authorization: RedditCredential.AuthorizationID? = nil,
+    pattern: String,
+    route: WebSessionRoute,
+  ) -> Bool {
     let currentTime = now()
     return entries.withLock { store in
-      guard let until = store[RouteKey(account: account, pattern: pattern, route: route)]?.cooledDownUntil else {
+      guard let until = store[RouteKey(account: account, authorization: authorization, pattern: pattern, route: route)]?.cooledDownUntil else {
         return false
       }
       return until > currentTime
