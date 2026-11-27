@@ -38,7 +38,7 @@ struct ListingDecodingTests {
       ["kind": "Listing", "data": ["children": [["kind": "t1", "data": comment]]]],
     ])
 
-    let decoded = try JSONDecoder().decode(RedditAPI.FetchPostCommentsResponse.self, from: response)
+    let decoded = try JSONDecoder().decode([Either<Listing<PostData>, Listing<CommentData>>?].self, from: response)
 
     guard decoded.count == 2, case let .first(posts) = decoded[0], case let .second(comments) = decoded[1] else {
       Issue.record("Expected a post listing then a comment listing, got \(decoded)")
@@ -46,6 +46,18 @@ struct ListingDecodingTests {
     }
     #expect(posts.data?.children?.compactMap(\.data?.id) == ["p"])
     #expect(comments.data?.children?.compactMap(\.data?.id) == ["helioSample"])
+  }
+
+  @Test func postCommentsResponseDecodesEmptySecondListingAsEmptyComments() throws {
+    let response = try JSONSerialization.data(withJSONObject: [
+      ["kind": "Listing", "data": ["children": [["kind": "t3", "data": postJSON(["id": "p"])]]]],
+      ["kind": "Listing", "data": ["children": [Any]()]],
+    ])
+
+    let decoded = try JSONDecoder().decode(RedditAPI.FetchPostCommentsResponse.self, from: response)
+
+    #expect(decoded.post?.data?.children?.compactMap(\.data?.id) == ["p"])
+    #expect(decoded.comments?.data?.children?.isEmpty == true)
   }
 
   @Test func stillEncodesAndDecodesRoundTrip() throws {

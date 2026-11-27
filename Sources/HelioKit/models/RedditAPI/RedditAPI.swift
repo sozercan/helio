@@ -29,12 +29,19 @@ class RedditAPI {
     await currentAccount()
   }
 
+  enum WebSessionAuth {
+    case bearer
+    case cookie(host: String? = nil)
+  }
+
   func fetchRequestHeaders(
     force: Bool = false,
     includeAuth: Bool = true,
     altCredential: RedditCredential? = nil,
     saveToken: Bool = true,
     rejectedToken: String? = nil,
+    webSessionAuth: WebSessionAuth = .bearer,
+    requestURL: String? = nil,
   ) async -> HTTPHeaders? {
     var headers: HTTPHeaders = [
       "User-Agent": RedditCredential.defaultUserAgent(),
@@ -44,10 +51,13 @@ class RedditAPI {
       if credential == nil {
         credential = await currentAccount()
       }
-      if
-        let selectedCredential = credential,
-        let accessToken = await selectedCredential.getUpToDateToken(forceRenew: force, saveToken: saveToken, rejectedToken: rejectedToken)
-      {
+      guard let selectedCredential = credential else { return nil }
+      if selectedCredential.isWebSession, case .cookie = webSessionAuth {
+        guard let session = await currentWebSession(for: selectedCredential) else { return nil }
+        headers["Cookie"] = session.cookies
+        headers["Referer"] = Self.originReferer(for: requestURL)
+        headers["User-Agent"] = session.userAgent
+      } else if let accessToken = await selectedCredential.getUpToDateToken(forceRenew: force, saveToken: saveToken, rejectedToken: rejectedToken) {
         headers["Authorization"] = "Bearer \(accessToken.token)"
         headers["User-Agent"] = selectedCredential.userAgent
       } else {
@@ -58,6 +68,39 @@ class RedditAPI {
     HTTPCookieStorage.shared.cookies?.forEach(HTTPCookieStorage.shared.deleteCookie)
 
     return headers
+  }
+
+  private func currentWebSession(for credential: RedditCredential) async -> (cookies: String, userAgent: String)? {
+    guard let authorization = credential.authorizationID else { return nil }
+    let installed = await MainActor.run { RedditCredentialsManager.getById(credential.id) }
+    let current = if let installed, installed.authorizationID == authorization {
+      installed
+    } else {
+      credential
+    }
+    guard let cookies = current.webSessionCookies, !cookies.isEmpty else { return nil }
+    return (cookies, current.userAgent)
+  }
+
+  static func resolveURL(_ url: String, for credential: RedditCredential?, webSessionAuth: WebSessionAuth) -> String {
+    guard
+      let credential,
+      credential.isWebSession,
+      case let .cookie(host?) = webSessionAuth,
+      var components = URLComponents(string: url)
+    else { return url }
+    components.host = host
+    return components.string ?? url
+  }
+
+  static func originReferer(for url: String?) -> String {
+    guard
+      let url,
+      let components = URLComponents(string: url),
+      let scheme = components.scheme,
+      let host = components.host
+    else { return "\(redditWWWApiURLBase)/" }
+    return "\(scheme)://\(host)/"
   }
 
   @MainActor
@@ -72,6 +115,7 @@ class RedditAPI {
 
   private let reqModifier: Session.RequestModifier = { urlReq in
     urlReq.cachePolicy = .reloadIgnoringLocalAndRemoteCacheData
+    urlReq.httpShouldHandleCookies = false
   }
 
   func doRequest<D: Decodable>(
@@ -84,6 +128,7 @@ class RedditAPI {
     altCredential: RedditCredential? = nil,
     attempt: Int = 0,
     saveToken: Bool = true,
+    webSessionAuth: WebSessionAuth = .bearer,
   ) async -> Result<D, AFError> {
     var credential = altCredential
     if authenticated, credential == nil {
@@ -92,8 +137,9 @@ class RedditAPI {
     guard !authenticated || credential != nil else { return .failure(.serverTrustEvaluationFailed(reason: .noPublicKeysFound)) }
     let account = credential?.id
     let authorization = credential?.authorizationID
-    return await self._doRequest(authenticated: authenticated, altCredential: credential, saveToken: saveToken) { headers in
-      let req = session.request(url, method: method, parameters: params, encoder: URLEncodedFormParameterEncoder(destination: paramsLocation), headers: headers, requestModifier: reqModifier).validate()
+    let resolvedURL = Self.resolveURL(url, for: credential, webSessionAuth: webSessionAuth)
+    return await self._doRequest(authenticated: authenticated, altCredential: credential, saveToken: saveToken, webSessionAuth: webSessionAuth, requestURL: resolvedURL) { headers in
+      let req = session.request(resolvedURL, method: method, parameters: params, encoder: URLEncodedFormParameterEncoder(destination: paramsLocation), headers: headers, requestModifier: reqModifier).validate()
       return await RedditRateLimit.shared.recording(req.serializingDecodable(decodable).response, account: account, authorization: authorization)
     }
   }
@@ -106,6 +152,7 @@ class RedditAPI {
     altCredential: RedditCredential? = nil,
     attempt: Int = 0,
     saveToken: Bool = true,
+    webSessionAuth: WebSessionAuth = .bearer,
   ) async -> Result<D, AFError> {
     var credential = altCredential
     if authenticated, credential == nil {
@@ -114,8 +161,9 @@ class RedditAPI {
     guard !authenticated || credential != nil else { return .failure(.serverTrustEvaluationFailed(reason: .noPublicKeysFound)) }
     let account = credential?.id
     let authorization = credential?.authorizationID
-    return await self._doRequest(authenticated: authenticated, altCredential: credential, saveToken: saveToken) { headers in
-      let req = session.request(url, method: method, parameters: ["raw_json": 1], headers: headers, requestModifier: reqModifier).validate()
+    let resolvedURL = Self.resolveURL(url, for: credential, webSessionAuth: webSessionAuth)
+    return await self._doRequest(authenticated: authenticated, altCredential: credential, saveToken: saveToken, webSessionAuth: webSessionAuth, requestURL: resolvedURL) { headers in
+      let req = session.request(resolvedURL, method: method, parameters: ["raw_json": 1], headers: headers, requestModifier: reqModifier).validate()
       return await RedditRateLimit.shared.recording(req.serializingDecodable(decodable).response, account: account, authorization: authorization)
     }
   }
@@ -129,6 +177,7 @@ class RedditAPI {
     altCredential: RedditCredential? = nil,
     attempt: Int = 0,
     saveToken: Bool = true,
+    webSessionAuth: WebSessionAuth = .bearer,
   ) async -> Result<String, AFError> {
     var credential = altCredential
     if authenticated, credential == nil {
@@ -137,8 +186,9 @@ class RedditAPI {
     guard !authenticated || credential != nil else { return .failure(.serverTrustEvaluationFailed(reason: .noPublicKeysFound)) }
     let account = credential?.id
     let authorization = credential?.authorizationID
-    return await self._doRequest(authenticated: authenticated, altCredential: credential, saveToken: saveToken) { headers in
-      let req = session.request(url, method: method, parameters: params, encoder: URLEncodedFormParameterEncoder(destination: paramsLocation), headers: headers, requestModifier: reqModifier).validate()
+    let resolvedURL = Self.resolveURL(url, for: credential, webSessionAuth: webSessionAuth)
+    return await self._doRequest(authenticated: authenticated, altCredential: credential, saveToken: saveToken, webSessionAuth: webSessionAuth, requestURL: resolvedURL) { headers in
+      let req = session.request(resolvedURL, method: method, parameters: params, encoder: URLEncodedFormParameterEncoder(destination: paramsLocation), headers: headers, requestModifier: reqModifier).validate()
       return await RedditRateLimit.shared.recording(req.serializingString().response, account: account, authorization: authorization)
     }
   }
@@ -151,6 +201,8 @@ class RedditAPI {
     saveToken: Bool = true,
     rejectedToken: String? = nil,
     renewedToken: Bool = false,
+    webSessionAuth: WebSessionAuth = .bearer,
+    requestURL: String? = nil,
     req: (HTTPHeaders) async -> Result<D, AFError>,
   ) async -> Result<D, AFError> {
     guard !Task.isCancelled else { return .failure(.explicitlyCancelled) }
@@ -162,20 +214,23 @@ class RedditAPI {
     if authenticated, RedditRateLimit.shared.limitedUntil(account: credential?.id, authorization: credential?.authorizationID) != nil {
       return .failure(RedditRateLimit.limitedError)
     }
-    guard !authenticated || credential != nil, let headers = await fetchRequestHeaders(force: forceAuth, includeAuth: authenticated, altCredential: credential, saveToken: saveToken, rejectedToken: rejectedToken) else { return .failure(.serverTrustEvaluationFailed(reason: .noPublicKeysFound)) }
+    guard
+      !authenticated || credential != nil,
+      let headers = await fetchRequestHeaders(force: forceAuth, includeAuth: authenticated, altCredential: credential, saveToken: saveToken, rejectedToken: rejectedToken, webSessionAuth: webSessionAuth, requestURL: requestURL)
+    else { return .failure(.serverTrustEvaluationFailed(reason: .noPublicKeysFound)) }
     guard !Task.isCancelled else { return .failure(.explicitlyCancelled) }
 
     let result = await req(headers)
     guard case let .failure(error) = result, !Task.isCancelled else { return result }
-    if authenticated, !renewedToken, error.responseCode == 401 {
-      let rejected = headers["Authorization"].map { String($0.dropFirst("Bearer ".count)) }
+    if authenticated, !renewedToken, error.responseCode == 401, let auth = headers["Authorization"] {
+      let rejected = String(auth.dropFirst("Bearer ".count))
       return await self._doRequest(attempt: attempt, forceAuth: true, authenticated: authenticated, altCredential: credential, saveToken: saveToken,
-                                   rejectedToken: rejected, renewedToken: true, req: req)
+                                   rejectedToken: rejected, renewedToken: true, webSessionAuth: webSessionAuth, requestURL: requestURL, req: req)
     }
     if attempt < Self.maxRetries, Self.isTransient(error) {
       try? await Task.sleep(for: .milliseconds(300 * (attempt + 1)))
       return await self._doRequest(attempt: attempt + 1, authenticated: authenticated, altCredential: credential, saveToken: saveToken,
-                                   rejectedToken: rejectedToken, renewedToken: renewedToken, req: req)
+                                   rejectedToken: rejectedToken, renewedToken: renewedToken, webSessionAuth: webSessionAuth, requestURL: requestURL, req: req)
     }
     return result
   }

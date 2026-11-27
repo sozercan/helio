@@ -83,8 +83,11 @@ struct PostView: View, Equatable {
     let commentID = ignoreSpecificComment ? nil : highlightID
     let result = await post.refreshPost(commentID: commentID, sort: sort, subreddit: subreddit.data?.display_name ?? subreddit.id, full: full, appliesDetails: { [commentsLoad] in commentsLoad.isCurrent(request) })
     guard commentsLoad.isCurrent(request) else { return }
-    commentsLoad.finish()
-    guard let result, let newComments = result.0 else { return }
+    guard let result, let newComments = result.0 else {
+      commentsLoad.finish(failed: true)
+      return
+    }
+    commentsLoad.finish(failed: false)
     newComments.forEach { $0.parentHelio = comments }
     comments = newComments
     Task(priority: .utility) {
@@ -148,7 +151,11 @@ struct PostView: View, Equatable {
             .listRowBackground(Color.clear)
 
             if !hideElements {
-              PostReplies(commentsLoad: commentsLoad, seenComments: seenComments, post: post, subreddit: subreddit, ignoreSpecificComment: ignoreSpecificComment, highlightID: highlightID, sort: sort, proxy: proxy, topVisibleCommentId: Bindable(session).topVisibleCommentId, previousScrollTarget: Bindable(session).previousScrollTarget, comments: Bindable(session).comments, session: session)
+              PostReplies(commentsLoad: commentsLoad, seenComments: seenComments, post: post, subreddit: subreddit, ignoreSpecificComment: ignoreSpecificComment, highlightID: highlightID, sort: sort, proxy: proxy, topVisibleCommentId: Bindable(session).topVisibleCommentId, previousScrollTarget: Bindable(session).previousScrollTarget, comments: Bindable(session).comments, session: session, retry: {
+                Task(priority: .userInitiated) {
+                  await asyncFetch(full: post.data == nil, proxy: proxy)
+                }
+              })
             }
 
             if !ignoreSpecificComment, highlightID != nil {
@@ -365,10 +372,15 @@ final class PostSession {
 final class CommentsLoad {
   private(set) var started = false
   private(set) var loaded = false
+  private(set) var failed = false
   @ObservationIgnored private var generation = 0
 
   func begin() -> Int {
     started = true
+    if failed {
+      loaded = false
+    }
+    failed = false
     generation += 1
     return generation
   }
@@ -377,7 +389,8 @@ final class CommentsLoad {
     request == generation
   }
 
-  func finish() {
+  func finish(failed: Bool = false) {
+    self.failed = failed
     loaded = true
   }
 }

@@ -10,7 +10,15 @@ extension RedditAPI {
     }
     url += "/search.json"
     print(advanced)
-    switch await self.doRequest(url, method: .get, params: advanced, paramsLocation: .queryString, decodable: Listing<Either<PostData, CommentData>>.self, altCredential: altCredential) {
+    switch await self.doRequest(
+      url,
+      method: .get,
+      params: advanced,
+      paramsLocation: .queryString,
+      decodable: Listing<Either<PostData, CommentData>>.self,
+      altCredential: altCredential,
+      webSessionAuth: .cookie(),
+    ) {
     case let .success(data):
       return (data.data?.children, data.data?.after)
     case .failure:

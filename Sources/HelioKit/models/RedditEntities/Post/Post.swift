@@ -448,40 +448,27 @@ extension Post {
   }
 
   func refreshPost(commentID: String? = nil, sort: CommentSortOption = .confidence, subreddit: String? = nil, full: Bool = true, appliesDetails: @MainActor @escaping () -> Bool = { true }) async -> ([Comment]?, String?)? {
-    if let subreddit = data?.subreddit ?? subreddit, let response = await RedditAPI.shared.fetchPost(subreddit: subreddit, postID: id, commentID: commentID, sort: sort), response.count >= 2 {
-      if let post = response[0] {
-        switch post {
-        case let .first(actualData):
-          if full {
-            await MainActor.run {
-              guard appliesDetails() else { return }
-              var newData = actualData.data?.children?[0].data
-              if self.data?.helioSeen == true {
-                newData?.helioSeen = true
-              }
-              self.data = newData
-              setupHelioData(data: newData, secondary: false, theme: InMemoryTheme.shared.currentTheme)
-            }
-          }
-        case .second:
-          break
-        }
-      }
+    guard let subreddit = data?.subreddit ?? subreddit,
+          let response = await RedditAPI.shared.fetchPost(subreddit: subreddit, postID: id, commentID: commentID, sort: sort)
+    else { return nil }
 
-      if let comments = response[1] {
-        switch comments {
-        case .first:
-          return nil
-        case let .second(actualData):
-          if let data = actualData.data, let children = data.children {
-            await saveSeenComments(comments: data)
-
-            let dataArr = children.compactMap(\.self)
-            let comments = Comment.initMultiple(datas: dataArr)
-            return (comments, data.after)
-          }
+    if full, let actualData = response.post {
+      await MainActor.run {
+        guard appliesDetails() else { return }
+        var newData = actualData.data?.children?.first?.data
+        if self.data?.helioSeen == true {
+          newData?.helioSeen = true
         }
+        self.data = newData
+        setupHelioData(data: newData, secondary: false, theme: InMemoryTheme.shared.currentTheme)
       }
+    }
+
+    if let data = response.comments?.data, let children = data.children {
+      await saveSeenComments(comments: data)
+
+      let comments = Comment.initMultiple(datas: children)
+      return (comments, data.after)
     }
     return nil
   }

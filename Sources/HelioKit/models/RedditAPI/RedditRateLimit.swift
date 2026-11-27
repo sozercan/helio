@@ -25,9 +25,14 @@ final class RedditRateLimit: Sendable {
     self.now = now
   }
 
+  private static func isRedditAPIHost(_ host: String?) -> Bool {
+    guard let host = host?.lowercased() else { return false }
+    return host == "oauth.reddit.com" || host == "www.reddit.com"
+  }
+
   func record(_ response: HTTPURLResponse?, account: UUID?, authorization: RedditCredential.AuthorizationID? = nil) {
     let key = Key(account: account, authorization: authorization)
-    guard let response, response.url?.host == "oauth.reddit.com" else { return }
+    guard let response, Self.isRedditAPIHost(response.url?.host) else { return }
     let limited = response.statusCode == 429
     let remaining = response.value(forHTTPHeaderField: "x-ratelimit-remaining").flatMap(Double.init)
     let reset = response.value(forHTTPHeaderField: "x-ratelimit-reset").flatMap(TimeInterval.init)
