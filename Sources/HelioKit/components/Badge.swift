@@ -31,7 +31,7 @@ struct UserFlair: View, Equatable {
         emojiURLs[name] != nil || emojiURLs[name.lowercased()] != nil
       }
     }
-    Group {
+    ZStack {
       if !visible.isEmpty {
         HStack(alignment: .center, spacing: 3) {
           ForEach(Array(visible.enumerated()), id: \.offset) { _, segment in
@@ -59,10 +59,6 @@ struct UserFlair: View, Equatable {
         .background(flairBackground())
         .cornerRadius(4.0)
         .allowsHitTesting(false)
-      } else if hasEmojis {
-        Color.clear
-          .frame(width: 0, height: 0)
-          .accessibilityHidden(true)
       }
     }
     .task(id: hasEmojis ? subName : nil) {
