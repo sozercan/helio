@@ -56,15 +56,32 @@ class Hap {
     }
   }
 
-  func play(intensity: Float, sharpness: Float) {
-    guard supportsHaptics, let engine = self.engine else { return }
+  struct TransientBeat: Equatable, Sendable {
+    let relativeTime: TimeInterval
+    let intensity: Float
+    let sharpness: Float
+  }
 
-    let intensityParameter = CHHapticEventParameter(parameterID: .hapticIntensity, value: intensity)
-    let sharpnessParameter = CHHapticEventParameter(parameterID: .hapticSharpness, value: sharpness)
-    let event = CHHapticEvent(eventType: .hapticTransient, parameters: [intensityParameter, sharpnessParameter], relativeTime: 0)
+  func play(intensity: Float, sharpness: Float) {
+    playSequence([TransientBeat(relativeTime: 0, intensity: intensity, sharpness: sharpness)])
+  }
+
+  func playSequence(_ beats: [TransientBeat]) {
+    guard supportsHaptics, let engine = self.engine, !beats.isEmpty else { return }
+
+    let events = beats.map { beat in
+      CHHapticEvent(
+        eventType: .hapticTransient,
+        parameters: [
+          CHHapticEventParameter(parameterID: .hapticIntensity, value: beat.intensity),
+          CHHapticEventParameter(parameterID: .hapticSharpness, value: beat.sharpness),
+        ],
+        relativeTime: beat.relativeTime,
+      )
+    }
 
     do {
-      let pattern = try CHHapticPattern(events: [event], parameters: [])
+      let pattern = try CHHapticPattern(events: events, parameters: [])
       let player = try engine.makePlayer(with: pattern)
       try player.start(atTime: CHHapticTimeImmediate)
     } catch {

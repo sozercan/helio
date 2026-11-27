@@ -21,8 +21,7 @@
 		EC1AC99B2B1FEB0200674B31 /* HelioApiHelper.7dea448f.css in Resources */ = {isa = PBXBuildFile; fileRef = EC1AC97F2B1FEB0200674B31 /* HelioApiHelper.7dea448f.css */; };
 		EC1AC99C2B1FEB0200674B31 /* HelioApiHelper.eb60403a.js in Resources */ = {isa = PBXBuildFile; fileRef = EC1AC9802B1FEB0200674B31 /* HelioApiHelper.eb60403a.js */; };
 		EC1AC99D2B1FEB0200674B31 /* side-helio.3141c099.png in Resources */ = {isa = PBXBuildFile; fileRef = EC1AC9812B1FEB0200674B31 /* side-helio.3141c099.png */; };
-		EC1AC99E2B1FEB0200674B31 /* background.26caa449.js in Resources */ = {isa = PBXBuildFile; fileRef = EC1AC9822B1FEB0200674B31 /* background.26caa449.js */; };
-		EC1AC99F2B1FEB0200674B31 /* openHelioEverywhere.320f702a.js in Resources */ = {isa = PBXBuildFile; fileRef = EC1AC9832B1FEB0200674B31 /* openHelioEverywhere.320f702a.js */; };
+		EC1AC99F2B1FEB0200674B31 /* openHelioEverywhere.de8ff9a0.js in Resources */ = {isa = PBXBuildFile; fileRef = EC1AC9832B1FEB0200674B31 /* openHelioEverywhere.de8ff9a0.js */; };
 		EC1AC9A02B1FEB0200674B31 /* popup.dc9af302.html in Resources */ = {isa = PBXBuildFile; fileRef = EC1AC9842B1FEB0200674B31 /* popup.dc9af302.html */; };
 		EC1AC9A12B1FEB0200674B31 /* toolbar-icon-38.f748fbf5.png in Resources */ = {isa = PBXBuildFile; fileRef = EC1AC9852B1FEB0200674B31 /* toolbar-icon-38.f748fbf5.png */; };
 		EC1AC9A22B1FEB0200674B31 /* toolbar-icon-16.9cddc2a3.png in Resources */ = {isa = PBXBuildFile; fileRef = EC1AC9862B1FEB0200674B31 /* toolbar-icon-16.9cddc2a3.png */; };
@@ -156,8 +155,7 @@
 		EC1AC97F2B1FEB0200674B31 /* HelioApiHelper.7dea448f.css */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.css; path = HelioApiHelper.7dea448f.css; sourceTree = "<group>"; };
 		EC1AC9802B1FEB0200674B31 /* HelioApiHelper.eb60403a.js */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.javascript; path = HelioApiHelper.eb60403a.js; sourceTree = "<group>"; };
 		EC1AC9812B1FEB0200674B31 /* side-helio.3141c099.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = "side-helio.3141c099.png"; sourceTree = "<group>"; };
-		EC1AC9822B1FEB0200674B31 /* background.26caa449.js */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.javascript; path = background.26caa449.js; sourceTree = "<group>"; };
-		EC1AC9832B1FEB0200674B31 /* openHelioEverywhere.320f702a.js */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.javascript; path = openHelioEverywhere.320f702a.js; sourceTree = "<group>"; };
+		EC1AC9832B1FEB0200674B31 /* openHelioEverywhere.de8ff9a0.js */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.javascript; path = openHelioEverywhere.de8ff9a0.js; sourceTree = "<group>"; };
 		EC1AC9842B1FEB0200674B31 /* popup.dc9af302.html */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.html; path = popup.dc9af302.html; sourceTree = "<group>"; };
 		EC1AC9852B1FEB0200674B31 /* toolbar-icon-38.f748fbf5.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = "toolbar-icon-38.f748fbf5.png"; sourceTree = "<group>"; };
 		EC1AC9862B1FEB0200674B31 /* toolbar-icon-16.9cddc2a3.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = "toolbar-icon-16.9cddc2a3.png"; sourceTree = "<group>"; };
@@ -297,8 +295,7 @@
 				EC1AC97F2B1FEB0200674B31 /* HelioApiHelper.7dea448f.css */,
 				EC1AC9802B1FEB0200674B31 /* HelioApiHelper.eb60403a.js */,
 				EC1AC9812B1FEB0200674B31 /* side-helio.3141c099.png */,
-				EC1AC9822B1FEB0200674B31 /* background.26caa449.js */,
-				EC1AC9832B1FEB0200674B31 /* openHelioEverywhere.320f702a.js */,
+				EC1AC9832B1FEB0200674B31 /* openHelioEverywhere.de8ff9a0.js */,
 				EC1AC9842B1FEB0200674B31 /* popup.dc9af302.html */,
 				EC1AC9852B1FEB0200674B31 /* toolbar-icon-38.f748fbf5.png */,
 				EC1AC9862B1FEB0200674B31 /* toolbar-icon-16.9cddc2a3.png */,
@@ -675,8 +672,7 @@
 				EC1AC99A2B1FEB0200674B31 /* openInHelio.92b5b04e.js in Resources */,
 				EC1AC9B12B1FEB0200674B31 /* icon-link.ea5c3354.svg in Resources */,
 				EC1AC9A42B1FEB0200674B31 /* icon-512.fa271110.png in Resources */,
-				EC1AC99E2B1FEB0200674B31 /* background.26caa449.js in Resources */,
-				EC1AC99F2B1FEB0200674B31 /* openHelioEverywhere.320f702a.js in Resources */,
+				EC1AC99F2B1FEB0200674B31 /* openHelioEverywhere.de8ff9a0.js in Resources */,
 				ECF72AE72B267CE20078AD0B /* _locales in Resources */,
 				EC1AC9A92B1FEB0200674B31 /* toolbar-icon-32.1cbb4524.png in Resources */,
 			);

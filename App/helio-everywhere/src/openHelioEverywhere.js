@@ -1,22 +1,44 @@
-browser.webNavigation.onBeforeNavigate.addListener(function(details) {
-  if (details.frameId === 0) {
-    console.log('Navigating to:', details.url);
-    
-    try {
-      var url = new URL(details.url);
-      console.log('Parsed URL:', url);
+const EXCLUDED_PATH_PREFIXES = ['/prefs/apps', '/api/v1/authorize']
 
-      if (url.hostname.includes('reddit.com')) {
-        var newUrl = details.url.replace(/(https?:\/\/)?(www\.)?reddit\.com/gi, 'helioapp://reddit.com');
-        console.log('Modified URL:', newUrl);
+function isRedirectableRedditHost(hostname) {
+  const lower = hostname.toLowerCase()
+  return lower === 'reddit.com' || lower === 'www.reddit.com' || lower === 'old.reddit.com' || lower === 'm.reddit.com'
+}
 
-        browser.webNavigation.onBeforeNavigate.removeListener(listener);
-        browser.webNavigation.navigate({ url: newUrl });
-      }
-    } catch (e) {
-      console.error('Invalid URL', details.url, e);
-    }
+function buildHelioRedirectURL(rawUrl) {
+  let url
+  try {
+    url = new URL(rawUrl)
+  } catch {
+    return null
   }
-});
 
-var listener = browser.webNavigation.onBeforeNavigate.addListener(function() {});
+  if (url.protocol !== 'http:' && url.protocol !== 'https:') {
+    return null
+  }
+
+  if (!isRedirectableRedditHost(url.hostname)) {
+    return null
+  }
+
+  if (EXCLUDED_PATH_PREFIXES.some((prefix) => url.pathname.startsWith(prefix))) {
+    return null
+  }
+
+  return `helioapp://reddit.com${url.pathname}${url.search}${url.hash}`
+}
+
+if (typeof browser !== 'undefined' && browser.webNavigation?.onBeforeNavigate) {
+  browser.webNavigation.onBeforeNavigate.addListener((details) => {
+    if (details.frameId !== 0 || details.tabId == null) {
+      return
+    }
+
+    const redirectUrl = buildHelioRedirectURL(details.url)
+    if (!redirectUrl) {
+      return
+    }
+
+    browser.tabs.update(details.tabId, { url: redirectUrl })
+  })
+}

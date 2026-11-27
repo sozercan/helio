@@ -92,9 +92,9 @@ struct CommentLinkContent: View {
           }
           HStack(spacing: 8) {
             if bars {
-              CommentHeaderLine(data: data, avatarRequest: helioData.avatarImageRequest, isOP: (post?.data?.author ?? "") == data.author, unseen: seenComments == nil ? false : !seenComments!.contains(data.id), theme: theme.theme)
+              CommentHeaderLine(data: data, subName: data.subreddit ?? post?.data?.subreddit, avatarRequest: helioData.avatarImageRequest, isOP: (post?.data?.author ?? "") == data.author, unseen: seenComments == nil ? false : !seenComments!.contains(data.id), theme: theme.theme)
             } else if let author = data.author {
-              BadgeView(avatarRequest: helioData.avatarImageRequest, saved: data.badgeKit.saved, unseen: seenComments == nil ? false : !seenComments!.contains(data.id), usernameColor: (post?.data?.author ?? "") == author ? Color.green : nil, author: data.badgeKit.author, userFlair: data.badgeKit.userFlair, created: data.badgeKit.created, theme: theme.theme.badge, commentTheme: theme.theme)
+              BadgeView(avatarRequest: helioData.avatarImageRequest, saved: data.badgeKit.saved, unseen: seenComments == nil ? false : !seenComments!.contains(data.id), usernameColor: (post?.data?.author ?? "") == author ? Color.green : nil, author: data.badgeKit.author, userFlair: data.badgeKit.userFlair, created: data.badgeKit.created, theme: theme.theme.badge, commentTheme: theme.theme, subName: data.subreddit ?? post?.data?.subreddit)
             }
 
             Spacer()
@@ -380,6 +380,7 @@ struct SpoilerToggle: View {
 struct CommentHeaderLine: View {
   @Environment(\.navColumn) private var navColumn
   var data: CommentData
+  var subName: String?
   var avatarRequest: ImageRequest?
   var isOP: Bool
   var unseen: Bool
@@ -409,10 +410,8 @@ struct CommentHeaderLine: View {
         PostLinkGlowDot(unseenType: .dot(theme.unseenDot), seen: false, badge: true).equatable()
       }
 
-      if let flairs = flairWithoutEmojis(str: data.author_flair_text) {
-        ForEach(flairs, id: \.self) {
-          UserFlair(flair: $0, flairText: badge.flairText, flairBackground: badge.flairBackground).equatable()
-        }
+      if let flair = data.author_flair_text, !FlairParser.parse(flair).isEmpty {
+        UserFlair(flair: flair, subName: subName ?? data.subreddit, flairText: badge.flairText, flairBackground: badge.flairBackground).equatable()
       }
 
       if let ups = data.ups {
