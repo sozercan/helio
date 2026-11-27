@@ -16,6 +16,29 @@ enum Shim {
   static let logQueue = DispatchQueue(label: "helio.perf.log")
   static var mainThread = mach_thread_self()
   static var timers: [DispatchSourceTimer] = []
+  static let setupLock = NSLock()
+  nonisolated(unsafe) static var meCompleted = false
+  nonisolated(unsafe) static var setupCompleteLogged = false
+
+  static func markMeCompleted() {
+    setupLock.withLock {
+      meCompleted = true
+    }
+    checkSetupComplete()
+  }
+
+  static func checkSetupComplete() {
+    guard env["PERF_SEED_CREDENTIAL"] != nil else { return }
+    let hasSubsSyncedAt = UserDefaults.standard.object(forKey: "subsSyncedAt") != nil
+    let shouldLog = setupLock.withLock { () -> Bool in
+      guard !setupCompleteLogged, meCompleted, hasSubsSyncedAt else { return false }
+      setupCompleteLogged = true
+      return true
+    }
+    if shouldLog {
+      log(String(format: "P %.0f setup_complete", now))
+    }
+  }
 
   static var now: Double {
     (CACurrentMediaTime() - t0) * 1000
@@ -47,7 +70,10 @@ enum Shim {
     log(String(format: "W %.3f wallclock", Date().timeIntervalSince1970))
     DispatchQueue.main.async { FrameWatch.shared.start() }
     timers = [
-      timer(every: 250) { sample() },
+      timer(every: 250) {
+        sample()
+        checkSetupComplete()
+      },
       timer(every: 50) { Driver.runCommands() },
     ]
   }
@@ -262,6 +288,9 @@ final class FixtureProtocol: URLProtocol {
       client?.urlProtocol(self, didReceive: response, cacheStoragePolicy: .notAllowed)
       client?.urlProtocol(self, didLoad: body)
       client?.urlProtocolDidFinishLoading(self)
+      if url.path.hasPrefix("/api/v1/me") {
+        Shim.markMeCompleted()
+      }
     }
   }
 

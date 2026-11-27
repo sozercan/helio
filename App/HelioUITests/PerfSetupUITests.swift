@@ -32,6 +32,19 @@ final class PerfSetupUITests: XCTestCase {
     XCTAssertTrue(home.waitForExistence(timeout: 10))
     let firstSubreddit = app.staticTexts["apple"].firstMatch
     XCTAssertTrue(firstSubreddit.waitForExistence(timeout: 15))
+    if let logPath = env["HELIO_PERF_LOG"] {
+      let setupDeadline = Date().addingTimeInterval(15)
+      var setupComplete = false
+      while Date() < setupDeadline {
+        let text = (try? String(contentsOfFile: logPath, encoding: .utf8)) ?? ""
+        if text.contains(" setup_complete") {
+          setupComplete = true
+          break
+        }
+        RunLoop.current.run(until: Date().addingTimeInterval(0.1))
+      }
+      XCTAssertTrue(setupComplete)
+    }
     app.terminate()
   }
 }

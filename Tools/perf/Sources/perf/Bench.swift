@@ -286,8 +286,7 @@ enum Bench {
           }
         }
       }
-      if text.contains("/api/v1/me"), text.contains("/subreddits/mine"), text.contains("/api/multi/mine") {
-        Thread.sleep(forTimeInterval: 0.5)
+      if windowReady, text.contains(" setup_complete") {
         return true
       }
       Thread.sleep(forTimeInterval: 0.25)
