@@ -58,6 +58,8 @@ struct RouterDestinationView: View {
         EmptyView()
       case let .user(user):
         UserView(user: user)
+      case .friends:
+        FriendsView()
       }
     case let .setting(settingsDest):
       switch settingsDest {

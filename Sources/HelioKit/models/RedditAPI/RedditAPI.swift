@@ -193,6 +193,29 @@ class RedditAPI {
     }
   }
 
+  func doJSONRequest(
+    _ url: String,
+    authenticated: Bool = true,
+    method: HTTPMethod,
+    body: some Encodable,
+    altCredential: RedditCredential? = nil,
+    saveToken: Bool = true,
+    webSessionAuth: WebSessionAuth = .bearer,
+  ) async -> Result<String, AFError> {
+    var credential = altCredential
+    if authenticated, credential == nil {
+      credential = await currentAccount()
+    }
+    guard !authenticated || credential != nil else { return .failure(.serverTrustEvaluationFailed(reason: .noPublicKeysFound)) }
+    let account = credential?.id
+    let authorization = credential?.authorizationID
+    let resolvedURL = Self.resolveURL(url, for: credential, webSessionAuth: webSessionAuth)
+    return await self._doRequest(authenticated: authenticated, altCredential: credential, saveToken: saveToken, webSessionAuth: webSessionAuth, requestURL: resolvedURL) { headers in
+      let req = session.request(resolvedURL, method: method, parameters: body, encoder: JSONParameterEncoder.default, headers: headers, requestModifier: reqModifier).validate()
+      return await RedditRateLimit.shared.recording(req.serializingString().response, account: account, authorization: authorization)
+    }
+  }
+
   func _doRequest<D: Decodable>(
     attempt: Int = 0,
     forceAuth: Bool = false,

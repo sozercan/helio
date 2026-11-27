@@ -4,14 +4,41 @@ import SwiftUI
 
 struct UserView: View {
   var user: User
+  var isOwnProfile = false
   @Default(.SubredditFeedDefSettings) private var subFeedSettings
+  @Default(.GeneralDefSettings) private var generalDefSettings
   @Environment(\.useTheme) private var selectedTheme
+  @Environment(\.navColumn) private var navColumn
 
-  @State private var dataTypeFilter: String = ""
+  @State private var selectedSection: UserListingSection = .overview
   @State private var forceRefresh = false
+  @State private var updatingFriend = false
+
+  private var selectedAuthorization: RedditCredential.AuthorizationID? {
+    RedditCredentialsManager.shared.selectedCredential(id: generalDefSettings.redditCredentialSelectedID)?.authorizationID
+  }
+
+  private var isCurrentUser: Bool {
+    if isOwnProfile {
+      return true
+    }
+    guard let selectedAuthorization,
+          let currentAccount = RedditCredentialsManager.shared.selectedCredential(id: generalDefSettings.redditCredentialSelectedID),
+          currentAccount.authorizationID == selectedAuthorization
+    else { return false }
+    let currentName = currentAccount.userName ?? RedditCredentialsManager.profile.user?.data?.name
+    guard let currentName,
+          let profileName = user.data?.name ?? (user.id.isEmpty ? nil : user.id)
+    else { return false }
+    return currentName.caseInsensitiveCompare(profileName) == .orderedSame
+  }
+
+  private var availableSections: [UserListingSection] {
+    isCurrentUser ? UserListingSection.ownSections : UserListingSection.publicSections
+  }
 
   func fetcher(_ after: String?, _ sorting: SubListingSortOption?, _ searchQuery: String?, _ flair: String?, _ context: FeedItemsManager<SubListingSortOption>.FetchContext) async -> ([RedditEntityType]?, String?)? {
-    if let overviewDataResult = await user.refetchOverview(dataTypeFilter, after, contentWidth: context.contentWidth, limit: context.limit, altCredential: context.credential), let overviewData = overviewDataResult.0 {
+    if let overviewDataResult = await user.refetchOverview(section: selectedSection, after, contentWidth: context.contentWidth, limit: context.limit, altCredential: context.credential), let overviewData = overviewDataResult.0 {
       Task { await user.redditAPI.updateOverviewSubjectsWithAvatar(subjects: overviewData, avatarSize: selectedTheme.postLinks.theme.badge.avatar.size) }
 
       let newData: [RedditEntityType]? = overviewData.compactMap {
@@ -28,8 +55,27 @@ struct UserView: View {
     return nil
   }
 
+  private func toggleSection(_ section: UserListingSection) {
+    withAnimation(.easeInOut(duration: 0.2)) {
+      selectedSection = selectedSection == section ? .overview : section
+    }
+  }
+
+  private func toggleFriend() {
+    guard !updatingFriend, let currentFriend = user.data?.is_friend else { return }
+    let account = RedditCredentialsManager.shared.selectedCredential
+    let authorization = account?.authorizationID
+    updatingFriend = true
+    Task {
+      _ = await user.setFriend(!currentFriend, altCredential: account)
+      if RedditCredentialsManager.shared.selectedCredential?.authorizationID == authorization {
+        updatingFriend = false
+      }
+    }
+  }
+
   var body: some View {
-    RedditListingFeed(feedId: user.fullname, title: "\(subFeedSettings.showPrefixOnFeedTitle ? "u/" : "")\(user.data?.name ?? "Loading...")", theme: selectedTheme.lists.bg, fetch: fetcher, header: {
+    RedditListingFeed(feedId: user.fullname, showSubInPosts: true, title: "\(subFeedSettings.showPrefixOnFeedTitle ? "u/" : "")\(user.data?.name ?? "Loading...")", theme: selectedTheme.lists.bg, fetch: fetcher, header: {
       VStack(spacing: 16) {
         if let data = user.data {
           Group {
@@ -51,10 +97,31 @@ struct UserView: View {
             .frame(maxWidth: .infinity)
             .padding(.bottom, data.subreddit?.banner_img == "" || data.subreddit?.banner_img == nil ? 0 : 78)
 
-            if let description = data.subreddit?.public_description {
+            if let description = data.subreddit?.public_description, !description.isEmpty {
               Text(description.md())
                 .fontSize(15)
                 .multilineTextAlignment(.center)
+            }
+
+            if !isCurrentUser, let isFriend = data.is_friend {
+              Button(action: toggleFriend) {
+                HStack(spacing: 6) {
+                  if updatingFriend {
+                    ProgressView()
+                      .controlSize(.small)
+                  } else {
+                    Image(systemName: isFriend ? "person.badge.minus" : "person.badge.plus")
+                  }
+                  Text(isFriend ? "Remove Friend" : "Add Friend")
+                }
+                .fontSize(15, .semibold)
+                .padding(.horizontal, 16)
+                .padding(.vertical, 8)
+                .foregroundStyle(isFriend ? selectedTheme.postLinks.theme.titleText.color() : Color.white)
+                .background(isFriend ? Color.secondary.opacity(0.2) : selectedTheme.general.accentColor(), in: Capsule())
+              }
+              .buttonStyle(.plain)
+              .disabled(updatingFriend)
             }
 
             VStack {
@@ -71,15 +138,9 @@ struct UserView: View {
                   )
                   .transition(.opacity)
                   .onTapGesture {
-                    withAnimation(.easeInOut(duration: 0.2)) {
-                      if dataTypeFilter == "posts" {
-                        dataTypeFilter = ""
-                      } else {
-                        dataTypeFilter = "posts"
-                      }
-                    }
+                    toggleSection(.submitted)
                   }
-                  .overlay(dataTypeFilter == "posts" ?
+                  .overlay(selectedSection == .submitted ?
                     accentColor.opacity(0.2)
                     .clipShape(RoundedRectangle(cornerRadius: 20))
                     .allowsHitTesting(false)
@@ -97,15 +158,9 @@ struct UserView: View {
                   )
                   .transition(.opacity)
                   .onTapGesture {
-                    withAnimation(.easeInOut(duration: 0.2)) {
-                      if dataTypeFilter == "comments" {
-                        dataTypeFilter = ""
-                      } else {
-                        dataTypeFilter = "comments"
-                      }
-                    }
+                    toggleSection(.comments)
                   }
-                  .overlay(dataTypeFilter == "comments" ?
+                  .overlay(selectedSection == .comments ?
                     accentColor.opacity(0.2)
                     .clipShape(RoundedRectangle(cornerRadius: 20))
                     .allowsHitTesting(false)
@@ -129,7 +184,55 @@ struct UserView: View {
             .transition(.opacity)
           }
 
-          Text(dataTypeFilter.isEmpty ? "Latest activity" : "Latest " + dataTypeFilter)
+          if isCurrentUser {
+            Button {
+              Nav.to(.reddit(.friends), from: navColumn)
+            } label: {
+              HStack(spacing: 12) {
+                Image(systemName: "person.2.fill")
+                  .fontSize(18, .semibold)
+                  .foregroundStyle(selectedTheme.general.accentColor())
+                Text("Friends")
+                  .fontSize(16, .semibold)
+                  .foregroundStyle(selectedTheme.postLinks.theme.titleText.color())
+                Spacer()
+                Image(systemName: "chevron.right")
+                  .font(.caption.weight(.semibold))
+                  .foregroundStyle(.tertiary)
+              }
+              .padding(.horizontal, 16)
+              .padding(.vertical, 12)
+              .themedListRowLikeBG()
+              .mask(RR(16, Color.black))
+              .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .padding(.horizontal, 8)
+          }
+
+          ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 8) {
+              ForEach(availableSections) { section in
+                let isSelected = selectedSection == section
+                Button {
+                  withAnimation(.easeInOut(duration: 0.2)) {
+                    selectedSection = section
+                  }
+                } label: {
+                  Label(section.label, systemImage: section.systemImage)
+                    .fontSize(14, .semibold)
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 8)
+                    .foregroundStyle(isSelected ? Color.white : selectedTheme.postLinks.theme.titleText.color())
+                    .background(isSelected ? selectedTheme.general.accentColor() : Color.secondary.opacity(0.15), in: Capsule())
+                }
+                .buttonStyle(.plain)
+              }
+            }
+            .padding(.horizontal, 8)
+          }
+
+          Text(selectedSection.heading)
             .fontSize(20, .bold)
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(.horizontal, 16)
@@ -146,8 +249,17 @@ struct UserView: View {
           await user.refetchUser()
         }
       }
-      .onChange(of: dataTypeFilter) { _, _ in
+      .onChange(of: selectedSection) { _, _ in
         forceRefresh = true
+      }
+      .onChange(of: selectedAuthorization) { _, _ in
+        updatingFriend = false
+        if !isCurrentUser, selectedSection.isPrivate {
+          selectedSection = .overview
+        }
+        if !isOwnProfile {
+          Task { await user.refetchUser() }
+        }
       }
   }
 }
