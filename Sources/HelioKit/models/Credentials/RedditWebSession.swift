@@ -176,7 +176,8 @@ enum RedditWebSession {
 
     switch response.result {
     case let .success(payload):
-      if let name = payload.data?.name, !name.isEmpty {
+      guard let data = payload.data else { return .failed }
+      if let name = data.name, !name.isEmpty {
         return .active(username: name)
       }
       return .signedOut

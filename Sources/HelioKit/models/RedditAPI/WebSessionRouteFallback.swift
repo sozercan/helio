@@ -180,9 +180,9 @@ final class WebSessionRouteHealth: Sendable {
   }
 
   func orderedRoutes(_ routes: [WebSessionRoute], account: UUID?, pattern: String) -> [WebSessionRoute] {
-    guard let account, routes.count > 1 else { return routes }
+    guard let account, !routes.isEmpty else { return routes }
     let currentTime = now()
-    let available = entries.withLock { store in
+    return entries.withLock { store in
       routes.filter { route in
         guard let until = store[RouteKey(account: account, pattern: pattern, route: route)]?.cooledDownUntil else {
           return true
@@ -190,7 +190,6 @@ final class WebSessionRouteHealth: Sendable {
         return until <= currentTime
       }
     }
-    return available.isEmpty ? routes : available
   }
 
   func recordBlock(account: UUID?, pattern: String, route: WebSessionRoute) {

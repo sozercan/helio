@@ -205,6 +205,9 @@ class RedditAPI {
     let pattern = WebSessionRoutePlanner.patternKey(for: url)
     let allRoutes = WebSessionRoutePlanner.routes(for: url, method: method, defaultAuth: defaultAuth)
     let candidateRoutes = routeHealth.orderedRoutes(allRoutes, account: credential.id, pattern: pattern)
+    guard !candidateRoutes.isEmpty else {
+      return .failure(.responseValidationFailed(reason: .unacceptableStatusCode(code: 403)))
+    }
 
     var lastResult: Result<D, AFError>?
     for route in candidateRoutes {

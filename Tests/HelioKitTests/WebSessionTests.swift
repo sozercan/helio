@@ -270,8 +270,35 @@ struct WebSessionRoutingTests {
     let anonSession = session(body: #"{"data":{}}"#)
     #expect(await RedditWebSession.verifySession(cookies: "reddit_session=anon", userAgent: "UA", session: anonSession) == .signedOut)
 
+    let emptyObjectSession = session(body: "{}")
+    #expect(await RedditWebSession.verifySession(cookies: "reddit_session=ok", userAgent: "UA", session: emptyObjectSession) == .failed)
+
+    let nullDataSession = session(body: #"{"data":null}"#)
+    #expect(await RedditWebSession.verifySession(cookies: "reddit_session=ok", userAgent: "UA", session: nullDataSession) == .failed)
+
     let blockedSession = session(body: "<html>blocked</html>", statusCode: 403)
     #expect(await RedditWebSession.verifySession(cookies: "reddit_session=ok", userAgent: "UA", session: blockedSession) == .failed)
+  }
+
+  @Test func allRoutesInCooldownSuppressesRequestsUntilCooldownExpires() async {
+    let account = webAccount()
+    let time = Mutex(Date(timeIntervalSince1970: 1_000_000))
+    let health = WebSessionRouteHealth(now: { time.withLock { $0 } })
+    let session = session(body: "<html>blocked</html>", statusCode: 403)
+    let api = RedditAPI(session: session, routeHealth: health, currentAccount: { account })
+
+    for _ in 0 ..< WebSessionRouteHealth.blockThreshold {
+      _ = await api.fetchSubPosts("/r/all", limit: 10, sort: .hot)
+    }
+
+    WebSessionRoutingProtocol.requests.withLock { $0 = [] }
+    let suppressed = await api.fetchSubPosts("/r/all", limit: 10, sort: .hot)
+    #expect(suppressed == nil)
+    #expect(WebSessionRoutingProtocol.requests.withLock { $0.isEmpty })
+
+    time.withLock { $0 += WebSessionRouteHealth.baseCooldown + 1 }
+    _ = await api.fetchSubPosts("/r/all", limit: 10, sort: .hot)
+    #expect(!WebSessionRoutingProtocol.requests.withLock { $0.isEmpty })
   }
 
   @Test func routePlannerHandlesDotJSONAndFilterPatterns() {
@@ -345,12 +372,14 @@ struct RateLimitTests {
     #expect(limit.limitedUntil(account: nil) != nil)
   }
 
-  @Test func wwwRedditRateLimitResponsesCount() throws {
+  @Test func fallbackRedditHostsRateLimitResponsesCount() throws {
     let clock = Clock()
-    let limit = RedditRateLimit(now: { clock.now })
-    let account = UUID()
-    try limit.record(response(429, ["x-ratelimit-reset": "90"], host: "www.reddit.com"), account: account)
-    #expect(limit.limitedUntil(account: account) == clock.now.addingTimeInterval(90))
+    for host in ["www.reddit.com", "old.reddit.com", "api.reddit.com"] {
+      let limit = RedditRateLimit(now: { clock.now })
+      let account = UUID()
+      try limit.record(response(429, ["x-ratelimit-reset": "90"], host: host), account: account)
+      #expect(limit.limitedUntil(account: account) == clock.now.addingTimeInterval(90))
+    }
   }
 
   @Test func retryTextRoundsUpToWholeMinutes() {
