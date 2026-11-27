@@ -22,14 +22,6 @@ private struct SheetHeightKey: EnvironmentKey {
   static let defaultValue: Double = 0
 }
 
-private struct SetTabBarHeightKey: EnvironmentKey {
-  static let defaultValue: (Double) -> Void = { _ in }
-}
-
-private struct TabBarHeightKey: EnvironmentKey {
-  static let defaultValue: Double? = nil
-}
-
 private struct EnableSwipeAnywhereKey: EnvironmentKey {
   static let defaultValue = false
 }
@@ -77,16 +69,6 @@ extension EnvironmentValues {
   var sheetHeight: Double {
     get { self[SheetHeightKey.self] }
     set { self[SheetHeightKey.self] = newValue }
-  }
-
-  var setTabBarHeight: (Double) -> Void {
-    get { self[SetTabBarHeightKey.self] }
-    set { self[SetTabBarHeightKey.self] = newValue }
-  }
-
-  var tabBarHeight: Double? {
-    get { self[TabBarHeightKey.self] }
-    set { self[TabBarHeightKey.self] = newValue }
   }
 
   var enableSwipeAnywhere: Bool {

@@ -7,7 +7,6 @@ struct Tabber: View {
   @State var nav = Nav.shared
 
   @Environment(\.useTheme) private var currentTheme
-  @Environment(\.setTabBarHeight) private var setTabBarHeight
   @Default(.AppearanceDefSettings) private var appearanceDefSettings
   #if targetEnvironment(macCatalyst)
     @State private var macTabToolbar = MacTabToolbar()
@@ -42,7 +41,6 @@ struct Tabber: View {
         WithCredentialOnly(credential: redditCredentialsManager.selectedCredential) {
           SubredditsStack(router: nav[.posts])
         }
-        .measureTabBar(setTabBarHeight)
         .hidesTabBarOnMac()
       }
 
@@ -51,7 +49,6 @@ struct Tabber: View {
           Inbox(router: nav[.inbox])
         }
         .columnContentWidth()
-        .measureTabBar(setTabBarHeight)
         .hidesTabBarOnMac()
       }
 
@@ -60,14 +57,12 @@ struct Tabber: View {
           Me(router: nav[.me])
         }
         .columnContentWidth()
-        .measureTabBar(setTabBarHeight)
         .hidesTabBarOnMac()
       }
 
       Tab("Settings", systemImage: "gearshape.fill", value: Nav.TabIdentifier.settings) {
         Settings(router: nav[.settings])
           .columnContentWidth()
-          .measureTabBar(setTabBarHeight)
           .hidesTabBarOnMac()
       }
 
@@ -76,7 +71,6 @@ struct Tabber: View {
           Search(router: nav[.search])
         }
         .columnContentWidth()
-        .measureTabBar(setTabBarHeight)
         .hidesTabBarOnMac()
       }
     }

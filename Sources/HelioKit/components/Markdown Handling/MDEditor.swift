@@ -1,4 +1,3 @@
-import HighlightedTextEditor
 import SwiftUI
 
 private let placeholders: [String] = [

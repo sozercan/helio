@@ -1,21 +1,6 @@
 import Defaults
-import HighlightedTextEditor
 import NukeUI
 import SwiftUI
-
-class TextFieldObserver: ObservableObject {
-  @Published var debouncedTeplyText: String
-  @Published var replyText: String
-
-  init(delay: DispatchQueue.SchedulerTimeType.Stride, text: String? = nil) {
-    let initial = ""
-    debouncedTeplyText = text ?? initial
-    replyText = text ?? initial
-    $replyText
-      .debounce(for: delay, scheduler: DispatchQueue.main)
-      .assign(to: &$debouncedTeplyText)
-  }
-}
 
 struct EditReplyModalComment: View {
   var comment: Comment
@@ -98,10 +83,11 @@ struct ReplyModal<Content: View>: View {
   let content: (() -> Content)?
 
   @State private var alertExit = false
-  @StateObject private var textWrapper: TextFieldObserver
+  @State private var replyText: String
   @Environment(\.dismiss) private var dismiss
   @Environment(\.managedObjectContext) private var viewContext
   @State private var currentDraft: ReplyDraft?
+  @State private var discardDraft = false
   @State private var loading = false
   @State private var selection: PresentationDetent = .medium
   @Environment(\.useTheme) private var selectedTheme
@@ -116,7 +102,7 @@ struct ReplyModal<Content: View>: View {
     self.content = content
     self.thingFullname = thingFullname
     self.action = action
-    self._textWrapper = StateObject(wrappedValue: TextFieldObserver(delay: 0.5, text: text))
+    self._replyText = State(initialValue: text ?? "")
   }
 
   var body: some View {
@@ -135,7 +121,7 @@ struct ReplyModal<Content: View>: View {
             if let me = RedditCredentialsManager.profile.user?.data, let avatarLink = me.icon_img ?? me.snoovatar_img, let rootURL = rootURLString(avatarLink), let avatarURL = URL(string: rootURL) {
               BadgeView(avatarRequest: ImageRequest(url: avatarURL), saved: false, author: me.name, userFlair: "", created: Date().timeIntervalSince1970, avatarURL: me.icon_img ?? me.snoovatar_img, theme: selectedTheme.comments.theme.badge, commentsCount: "0", votesCount: "0")
             }
-            MDEditor(text: $textWrapper.replyText)
+            MDEditor(text: $replyText)
           }
           .padding(.horizontal, 12)
           .padding(.vertical, 8)
@@ -166,6 +152,7 @@ struct ReplyModal<Content: View>: View {
           action({ result in
             globalLoaderDismiss()
             if result, let currentDraft {
+              discardDraft = true
               Task {
                 await viewContext.perform(schedule: .enqueued) {
                   viewContext.delete(currentDraft)
@@ -173,7 +160,7 @@ struct ReplyModal<Content: View>: View {
                 }
               }
             }
-          }, textWrapper.replyText)
+          }, replyText)
         }
         .shrinkOnTap()
         .offset(y: loading || selection == collapsedPresentation ? 90 : 0)
@@ -182,21 +169,26 @@ struct ReplyModal<Content: View>: View {
         .padding(.bottom, 8),
         alignment: .bottom,
       )
-      .onChange(of: textWrapper.debouncedTeplyText, perform: { val in
-        currentDraft?.replyText = val
+      .task(id: replyText) {
+        try? await Task.sleep(for: .milliseconds(500))
+        guard !Task.isCancelled, !discardDraft, let currentDraft, !currentDraft.isDeleted else { return }
+        currentDraft.replyText = replyText
+        await viewContext.perform(schedule: .enqueued) {
+          try? viewContext.save()
+        }
+      }
+      .onDisappear {
+        guard !discardDraft, let currentDraft, !currentDraft.isDeleted else { return }
+        let text = replyText
         Task {
           await viewContext.perform(schedule: .enqueued) {
-            try? viewContext.save()
-          }
-        }
-      })
-      .onDisappear {
-        if textWrapper.replyText == "", let currentDraft {
-          Task {
-            await viewContext.perform(schedule: .enqueued) {
+            guard !currentDraft.isDeleted else { return }
+            if text.isEmpty {
               viewContext.delete(currentDraft)
-              try? viewContext.save()
+            } else {
+              currentDraft.replyText = text
             }
+            try? viewContext.save()
           }
         }
       }
@@ -208,7 +200,7 @@ struct ReplyModal<Content: View>: View {
         }
         if let draftEntity = drafts.first(where: { draft in draft.thingID == thingFullname }) {
           if let draftText = draftEntity.replyText {
-            textWrapper.replyText = draftText
+            replyText = draftText
           }
           currentDraft = draftEntity
         } else {
@@ -231,9 +223,10 @@ struct ReplyModal<Content: View>: View {
           Button("Discard draft", systemImage: "trash", role: .destructive) {
             alertExit = true
           }
-          .disabled(textWrapper.replyText.isEmpty)
+          .disabled(replyText.isEmpty)
           .confirmationDialog("Discard this draft?", isPresented: $alertExit, titleVisibility: .visible) {
             Button("Discard", role: .destructive) {
+              discardDraft = true
               withAnimation(spring) {
                 dismiss()
               }

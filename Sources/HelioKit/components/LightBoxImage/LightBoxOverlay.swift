@@ -17,8 +17,7 @@ struct LightBoxOverlay: View {
   @Environment(\.dismiss) var dismiss
   @Binding var done: Bool
   @Environment(\.useTheme) private var selectedTheme
-  @State private var isPresentingShareSheet = false
-  @State private var sharedImageData: Data?
+  @State private var shareTask: Task<Void, Never>?
   var body: some View {
     VStack(alignment: .leading) {
       VStack(alignment: .leading, spacing: 8) {
@@ -65,18 +64,14 @@ struct LightBoxOverlay: View {
             }
           }
           LightBoxButton(icon: "square.and.arrow.up", label: "Share Image") {
-            Task {
-              sharedImageData = try await downloadAndSaveImage(url: img.url)
+            shareTask?.cancel()
+            shareTask = Task {
+              guard let data = try? await downloadAndSaveImage(url: img.url), !Task.isCancelled, let uiimg = UIImage(data: data) else { return }
+              ShareUtils.shareImage(uiimg)
             }
-            isPresentingShareSheet.toggle()
           }
           .contentShape(Circle())
-          .sheet(isPresented: $isPresentingShareSheet) {
-            if let sharedImageData, let uiimg = UIImage(data: sharedImageData) {
-              let image = ShareImage(placeholderItem: uiimg)
-              ShareSheet(items: [image])
-            }
-          }
+          .onDisappear { shareTask?.cancel() }
         }
       }
       .compositingGroup()

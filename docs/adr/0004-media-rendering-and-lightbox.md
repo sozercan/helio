@@ -49,7 +49,7 @@ Implemented in `Sources/HelioKit/components/Media/PreviewLink/PreviewModel.swift
 
 Implemented in `Sources/HelioKit/components/Media/VideoPlayerPost.swift`.
 
-- **View-scoped `AVPlayer` ownership**: `VideoPlayerHolder` owns a single `AVPlayer` via `@StateObject` so `deinit` runs reliably when SwiftUI de-realizes a `List` cell (unlike `onDisappear`, which `List` fires unreliably). This bounds live player count to the `List` realization window, replacing an earlier design where append-only `PostHelioData` pinned `SharedVideo`-owned players alive until iOS froze video playback.
+- **View-scoped `AVPlayer` ownership**: `VideoPlayerHolder` (`@Observable`) owns a single `AVPlayer` via `@State` so `deinit` runs reliably when SwiftUI de-realizes a `List` cell (unlike `onDisappear`, which `List` fires unreliably). This bounds live player count to the `List` realization window, replacing an earlier design where append-only `PostHelioData` pinned `SharedVideo`-owned players alive until iOS froze video playback.
 - **Hardware decode-pipeline budget (~16 simultaneous pipelines)**:
   - Because SwiftUI's `VideoPlayer` provides no teardown hook, inline feed/detail video uses a bare `AVPlayerLayer` (`PlayerLayerHostView` / `InlinePlayerLayer`) mounted only when the cell is visible and not in fullscreen. Off-screen cells render `Color.clear`, invoking `dismantleUIView` to release the `AVPlayerLayer` decode pipeline while leaving the shared cached `AVPlayer` intact for instant resume.
   - For `AVPlayerViewController`-backed views, `dismantleUIView` explicitly calls `removeFromParent()` so scrolled-past cells do not leak child view controllers and decode sessions on the long-lived feed controller.

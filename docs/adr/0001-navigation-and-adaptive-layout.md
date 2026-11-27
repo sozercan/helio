@@ -17,7 +17,6 @@ Helio runs across iPhone, iPad, iPhone Duo (folded and unfolded postures), and M
   - `contentFrame` (in global coordinates) defines the safe-area content region so columns extending under the Duo's side tab bar can intersect with it to compute actual usable width.
   - `divisionFrame` (in global coordinates) marks the open iPhone Duo's hinge so content and controls do not span it (`nil` on displays without a hinge). It is retained across all postures—including flat—so layout does not jump when posture changes.
   - Reading `reservedRegions(kind: .division)` is guarded with `#if compiler(>=6.4)` because the API exists only in the iOS 27.1 SDK (Xcode 27.2) and is invisible to Xcode 26.
-- **Dynamic tab bar measurement** (`Sources/HelioKit/extensions/ViewModifiers/measureTabBar.swift`): Tab bar height is measured in `viewDidLayoutSubviews()` rather than once on appear, because folding iPhone Duo or resizing windows repositions the tab bar. Height above the bottom safe area is reported as `0` whenever the tab bar is not a horizontal bottom bar (top-mounted on iPad and unfolded iPhone Duo; side-mounted on folded iPhone Duo).
 
 ### 2. Single-Stack / Split-View Navigation Model
 

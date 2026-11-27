@@ -4,8 +4,6 @@ import SwiftUI
 struct GlobalDestinationsProvider<C: View>: View {
   @State var nav = Nav.shared
 
-  @Environment(\.tabBarHeight) private var tabBarHeight
-
   @ViewBuilder var content: () -> C
   var body: some View {
     content()
@@ -21,7 +19,6 @@ struct GlobalDestinationsProvider<C: View>: View {
             case let .selectText(text): SelectableTextSheet(markdown: text)
             }
           }
-          .environment(\.tabBarHeight, tabBarHeight)
           .environment(\.sheetHeight, geo.size.height)
         }
         .coordinateSpace(name: "sheet")

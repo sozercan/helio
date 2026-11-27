@@ -193,13 +193,16 @@ struct SwipeUI<T: GenericRedditEntityDataType, B: Hashable>: ViewModifier {
           let increasing = triggering.rawValue > triggeredAction.rawValue
           let isSecond = triggering == .leftSecond || triggering == .rightSecond
 
-          let impact = UIImpactFeedbackGenerator(style: increasing ? .rigid : .soft)
-          impact.prepare()
-          impact.impactOccurred()
           withAnimation(motionAware(isSecond ? .default.speed(2) : .interpolatingSpring(stiffness: 200, damping: 15, initialVelocity: increasing ? 35 : 0))) {
             triggeredAction = triggering
           }
         }
+      }
+      .sensoryFeedback(trigger: triggeredAction) { oldValue, newValue in
+        if newValue == .none, (controlledDragAmount?.wrappedValue ?? dragAmount) == 0 {
+          return nil
+        }
+        return .impact(flexibility: newValue.rawValue > oldValue.rawValue ? .rigid : .soft)
       }
   }
 }

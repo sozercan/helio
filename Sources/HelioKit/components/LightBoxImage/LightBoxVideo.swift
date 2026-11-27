@@ -1,6 +1,5 @@
 import AVFoundation
 import AVKit
-import Combine
 import Defaults
 import SwiftUI
 
@@ -13,7 +12,7 @@ final class LightBoxVideo: MediaScrubbable {
   @ObservationIgnored private var timeObserver: Any?
   @ObservationIgnored private var statusObservation: NSKeyValueObservation?
   @ObservationIgnored private var itemObservers: [NSObjectProtocol] = []
-  @ObservationIgnored private var failureObservation: AnyCancellable?
+  @ObservationIgnored private var failureTask: Task<Void, Never>?
   @ObservationIgnored private var active = false
   @ObservationIgnored private var wantsPlayback = false
   @ObservationIgnored private var released = false
@@ -71,8 +70,16 @@ final class LightBoxVideo: MediaScrubbable {
         }
       },
     ]
-    failureObservation = self.holder.$itemFailed.removeDuplicates().filter(\.self).sink { [weak self] _ in
-      MainActor.assumeIsolated { self?.recover() }
+    let holder = self.holder
+    failureTask = Task { @MainActor [weak self] in
+      var wasFailed = false
+      for await failed in Observations({ holder.itemFailed }) {
+        guard !Task.isCancelled else { return }
+        if failed, !wasFailed {
+          self?.recover()
+        }
+        wasFailed = failed
+      }
     }
     if AVPictureInPictureController.isPictureInPictureSupported() {
       let controller = AVPictureInPictureController(playerLayer: layerView.playerLayer)
@@ -172,7 +179,8 @@ final class LightBoxVideo: MediaScrubbable {
     statusObservation?.invalidate()
     itemObservers.forEach { NotificationCenter.default.removeObserver($0) }
     itemObservers = []
-    failureObservation = nil
+    failureTask?.cancel()
+    failureTask = nil
     layerView.playerLayer.player = nil
   }
 
@@ -243,7 +251,7 @@ private final class PictureInPictureDelegate: NSObject, AVPictureInPictureContro
 
 struct LightBoxVideoPage: View {
   let video: LightBoxVideo
-  @ObservedObject var holder: VideoPlayerHolder
+  let holder: VideoPlayerHolder
   var width: CGFloat
   var posterURL: URL?
   var label: String?

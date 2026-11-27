@@ -11,13 +11,8 @@ struct AppContent: View {
 
   let biometrics = Biometrics()
   @State private var isAuthenticating = false
-  @State private var tabBarHeight: Double = 0
   @State private var lockBlur: Int = 0
   @State private var restartAlert = false
-
-  func setTabBarHeight(_ val: Double) {
-    tabBarHeight = val
-  }
 
   var body: some View {
     GlobalDestinationsProvider {
@@ -26,8 +21,6 @@ struct AppContent: View {
     }
     .whatsNewSheet()
     .logOutConfirmation()
-    .environment(\.tabBarHeight, tabBarHeight)
-    .environment(\.setTabBarHeight, setTabBarHeight)
     .environment(\.contentWidth, WindowMetrics.shared.contentWidth)
     .environment(\.useTheme, InMemoryTheme.shared.currentTheme)
     .environment(\.enableSwipeAnywhere, behaviorDefSettings.enableSwipeAnywhere)

@@ -5,22 +5,35 @@ import CoreMedia
 import Defaults
 import SwiftUI
 
-final class VideoPlayerHolder: ObservableObject {
-  let player: AVPlayer?
-  @Published private(set) var isReadyToPlay = false
-  @Published private(set) var itemFailed = false
-  private let url: URL?
-  private let dashURL: URL?
-  private let fallbackURL: URL?
-  private let recoverPlaylist: @Sendable (URL, URL?, URL?) async -> RedditVideoPlaylistRecovery.RecoveredSource?
-  private var recoveredSource: RedditVideoPlaylistRecovery.RecoveredSource?
-  private var resourceLoaderDelegate: AVAssetResourceLoaderDelegate?
-  private var attemptedRecovery = false
-  private var recoveryTask: Task<Void, Never>?
-  private var pendingReloadCallbacks: [@MainActor () -> Void] = []
-  private var statusObservation: NSKeyValueObservation?
-  private var reloads = 0
-  private let maxReloads = 2
+@Observable
+final class VideoPlayerHolder {
+  @ObservationIgnored private var _player: AVPlayer?
+  var player: AVPlayer? {
+    if let _player {
+      return _player
+    }
+    guard let url else { return nil }
+    let created = AVPlayer(playerItem: AVPlayerItem(url: url))
+    created.volume = 0.0
+    _player = created
+    observeCurrentItem()
+    return created
+  }
+
+  private(set) var isReadyToPlay = false
+  private(set) var itemFailed = false
+  @ObservationIgnored private let url: URL?
+  @ObservationIgnored private let dashURL: URL?
+  @ObservationIgnored private let fallbackURL: URL?
+  @ObservationIgnored private let recoverPlaylist: @Sendable (URL, URL?, URL?) async -> RedditVideoPlaylistRecovery.RecoveredSource?
+  @ObservationIgnored private var recoveredSource: RedditVideoPlaylistRecovery.RecoveredSource?
+  @ObservationIgnored private var resourceLoaderDelegate: AVAssetResourceLoaderDelegate?
+  @ObservationIgnored private var attemptedRecovery = false
+  @ObservationIgnored private var recoveryTask: Task<Void, Never>?
+  @ObservationIgnored private var pendingReloadCallbacks: [@MainActor () -> Void] = []
+  @ObservationIgnored private var statusObservation: NSKeyValueObservation?
+  @ObservationIgnored private var reloads = 0
+  @ObservationIgnored private let maxReloads = 2
 
   init(
     url: URL?,
@@ -34,14 +47,6 @@ final class VideoPlayerHolder: ObservableObject {
     self.dashURL = dashURL
     self.fallbackURL = fallbackURL
     self.recoverPlaylist = recoverPlaylist
-    if let url {
-      let p = AVPlayer(playerItem: AVPlayerItem(url: url))
-      p.volume = 0.0
-      player = p
-    } else {
-      player = nil
-    }
-    observeCurrentItem()
   }
 
   @MainActor
@@ -124,11 +129,11 @@ final class VideoPlayerHolder: ObservableObject {
   }
 
   var hasFailed: Bool {
-    player?.status == .failed || player?.currentItem?.status == .failed
+    _player?.status == .failed || _player?.currentItem?.status == .failed
   }
 
   private func observeCurrentItem() {
-    statusObservation = player?.currentItem?.observe(\.status, options: [.initial, .new]) { [weak self] item, _ in
+    statusObservation = _player?.currentItem?.observe(\.status, options: [.initial, .new]) { [weak self] item, _ in
       let ready = item.status == .readyToPlay
       let failed = item.status == .failed
       Task { @MainActor [weak self] in
@@ -141,8 +146,8 @@ final class VideoPlayerHolder: ObservableObject {
   deinit {
     recoveryTask?.cancel()
     statusObservation?.invalidate()
-    player?.pause()
-    player?.replaceCurrentItem(with: nil)
+    _player?.pause()
+    _player?.replaceCurrentItem(with: nil)
   }
 }
 
@@ -215,7 +220,7 @@ struct VideoPlayerPost: View, Equatable {
   @State private var observerBag = VideoObserverBag()
   @State private var isVisible = false
   @State private var systemAutoplay = UIAccessibility.isVideoAutoplayEnabled
-  @StateObject private var holder: VideoPlayerHolder
+  @State private var holder: VideoPlayerHolder
 
   private var autoPlayVideos: Bool {
     videoDefSettings.autoPlay && systemAutoplay
@@ -251,7 +256,7 @@ struct VideoPlayerPost: View, Equatable {
     self.cornerRadius = cornerRadius
     self.lightboxPost = lightboxPost ?? LightBoxPost(key: "opened", markAsSeen: markAsSeen)
     self.feedPost = feedPost
-    _holder = StateObject(wrappedValue: VideoPlayerHolder(url: cachedVideo != nil ? url : nil, dashURL: cachedVideo?.dashURL, fallbackURL: cachedVideo?.fallbackURL))
+    _holder = State(initialValue: VideoPlayerHolder(url: cachedVideo != nil ? url : nil, dashURL: cachedVideo?.dashURL, fallbackURL: cachedVideo?.fallbackURL))
   }
 
   var body: some View {
