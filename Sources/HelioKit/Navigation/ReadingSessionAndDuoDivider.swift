@@ -173,4 +173,14 @@ enum DuoSplitDividerGeometry {
     let available = availablePaneWidth(totalWidth: totalWidth)
     return clampedWidth(available * savedShare, totalWidth: totalWidth)
   }
+
+  static func dragOffset(
+    forBaseWidth baseWidth: CGFloat,
+    translation: CGFloat,
+    totalWidth: CGFloat,
+  ) -> CGFloat {
+    let clampedBase = clampedWidth(baseWidth, totalWidth: totalWidth)
+    let targetWidth = clampedWidth(clampedBase + translation, totalWidth: totalWidth)
+    return targetWidth - clampedBase
+  }
 }

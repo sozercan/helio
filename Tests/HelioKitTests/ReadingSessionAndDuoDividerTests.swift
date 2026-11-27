@@ -135,4 +135,15 @@ struct ReadingSessionAndDuoDividerTests {
     #expect(!DuoSplitDividerGeometry.canResize(totalWidth: DuoSplitDividerGeometry.minPaneWidth * 2))
     #expect(DuoSplitDividerGeometry.canResize(totalWidth: DuoSplitDividerGeometry.minPaneWidth * 2 + DuoSplitDividerGeometry.dividerWidth))
   }
+
+  @Test func duoDividerDragOffsetClampsWithinPaneBounds() {
+    let total: CGFloat = 1000 + DuoSplitDividerGeometry.dividerWidth
+    let minWidth = DuoSplitDividerGeometry.minPaneWidth
+    let maxWidth = 1000 - minWidth
+
+    #expect(DuoSplitDividerGeometry.dragOffset(forBaseWidth: 500, translation: 75, totalWidth: total) == 75)
+    #expect(DuoSplitDividerGeometry.dragOffset(forBaseWidth: 500, translation: -500, totalWidth: total) == minWidth - 500)
+    #expect(DuoSplitDividerGeometry.dragOffset(forBaseWidth: 500, translation: 500, totalWidth: total) == maxWidth - 500)
+    #expect(DuoSplitDividerGeometry.dragOffset(forBaseWidth: 100, translation: 0, totalWidth: total) == 0)
+  }
 }
