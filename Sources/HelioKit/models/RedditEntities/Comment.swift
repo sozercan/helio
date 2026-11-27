@@ -94,7 +94,7 @@ extension Comment {
 
     let commentID = id
     let context = PersistenceController.shared.primaryBGContext
-    let persist = {
+    let persist: () -> Bool = {
       let fetchRequest = NSFetchRequest<CollapsedComment>(entityName: "CollapsedComment")
       fetchRequest.predicate = NSPredicate(format: "commentID == %@", commentID as CVarArg)
 
@@ -109,18 +109,23 @@ extension Comment {
           results.forEach(context.delete)
           try context.save()
         }
+        return true
       } catch {
         context.rollback()
         print("Error fetching or updating data in Core Data: \(error)")
+        return false
       }
     }
 
     if optimistic {
-      context.perform(persist)
+      context.perform {
+        _ = persist()
+      }
     } else {
       context.performAndWait {
-        persist()
-        data?.collapsed = newState
+        if persist() {
+          data?.collapsed = newState
+        }
       }
     }
   }
