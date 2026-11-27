@@ -630,14 +630,6 @@ enum Driver {
       return
     }
     #if targetEnvironment(macCatalyst)
-      let currentSize = scene.effectiveGeometry.systemFrame.size
-      if abs(currentSize.width - size.width) <= 2,
-         abs(currentSize.height - size.height) <= 2,
-         scene.windows.contains(where: { !$0.isHidden })
-      {
-        Shim.log(String(format: "P %.0f window_ready %.0fx%.0f", Shim.now, size.width, size.height))
-        return
-      }
       let activate = NSSelectorFromString("activateIgnoringOtherApps:")
       if let app = (NSClassFromString("NSApplication") as? NSObject.Type)?.value(forKey: "sharedApplication") as? NSObject,
          let method = class_getInstanceMethod(type(of: app), activate)
@@ -645,7 +637,18 @@ enum Driver {
         typealias Activate = @convention(c) (AnyObject, Selector, Bool) -> Void
         unsafeBitCast(method_getImplementation(method), to: Activate.self)(app, activate, true)
       }
-      scene.requestGeometryUpdate(.Mac(systemFrame: CGRect(origin: CGPoint(x: 40, y: 40), size: size))) { error in
+      let targetFrame = CGRect(origin: CGPoint(x: 40, y: 40), size: size)
+      let currentFrame = scene.effectiveGeometry.systemFrame
+      if abs(currentFrame.origin.x - targetFrame.origin.x) <= 2,
+         abs(currentFrame.origin.y - targetFrame.origin.y) <= 2,
+         abs(currentFrame.size.width - targetFrame.size.width) <= 2,
+         abs(currentFrame.size.height - targetFrame.size.height) <= 2,
+         scene.windows.contains(where: { !$0.isHidden })
+      {
+        Shim.log(String(format: "P %.0f window_ready %.0fx%.0f", Shim.now, size.width, size.height))
+        return
+      }
+      scene.requestGeometryUpdate(.Mac(systemFrame: targetFrame)) { error in
         Shim.log(String(format: "P %.0f window_failed %@", Shim.now, error.localizedDescription.replacingOccurrences(of: " ", with: "_")))
       }
     #else
