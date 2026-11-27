@@ -137,6 +137,9 @@ struct CommentDataTests {
     #expect(CommentJumpNavigator.step(targets: targets, orderedIDs: ordered, currentID: c3.id, direction: 1) == c4.id)
     #expect(CommentJumpNavigator.step(targets: targets, orderedIDs: ordered, currentID: c3.id, direction: -1) == c2.id)
 
+    #expect(CommentJumpNavigator.targetIDs(roots: [c1, c4], mode: .newComments, seenComments: nil, activeUsername: "currentuser").isEmpty)
+    #expect(CommentJumpNavigator.targetIDs(roots: [c1, c4], mode: .newComments, seenComments: "", activeUsername: "currentuser") == [c1.id, c2.id, c4.id])
+
     let session = PostSession(sort: .confidence)
     session.comments = [c1, c4]
     session.rowShown(c3.id)

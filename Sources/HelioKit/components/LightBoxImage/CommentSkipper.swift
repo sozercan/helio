@@ -57,6 +57,14 @@ struct CommentSkipper: View {
           },
         ),
     )
+    .focusable()
+    .onKeyPress(keys: [.space, .return]) { _ in
+      Hap.shared.play(intensity: 0.75, sharpness: 0.9)
+      withAnimation {
+        jump(direction: 1, newTargets: newTargets)
+      }
+      return .handled
+    }
     .onChange(of: userScrollGeneration) { _, _ in
       lastNewCommentTarget = nil
     }

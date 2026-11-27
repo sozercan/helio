@@ -33,8 +33,8 @@ enum CommentJumpNavigator {
     case .threads:
       return roots.map(\.id)
     case .newComments:
+      guard let seenComments else { return [] }
       let seen = parseSeenCommentIDs(seenComments)
-      guard !seen.isEmpty else { return [] }
       let normalizedUser = activeUsername?.lowercased()
       var results: [String] = []
       for root in roots {
