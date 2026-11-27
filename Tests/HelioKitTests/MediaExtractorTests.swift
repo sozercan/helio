@@ -254,6 +254,37 @@ struct MediaExtractorTests {
       return
     }
     #expect(pngImgs.map(\.url.absoluteString) == ["https://i.redd.it/png123.png"])
+
+    let previewMp4Gif = try extract([
+      "is_gallery": true,
+      "gallery_data": ["items": [["media_id": "gifmp4", "id": 1]]],
+      "media_metadata": [
+        "gifmp4": [
+          "status": "unprocessed",
+          "s": ["x": 400, "y": 300, "mp4": "https://preview.redd.it/gifmp4.gif?width=400&amp;format=mp4&amp;s=sig"],
+        ],
+      ],
+    ])
+    guard case let .imgs(mp4Imgs) = previewMp4Gif else {
+      Issue.record("expected preview.redd.it format=mp4 to recover as gif, got \(String(describing: previewMp4Gif))")
+      return
+    }
+    #expect(mp4Imgs.map(\.url.absoluteString) == ["https://i.redd.it/gifmp4.gif"])
+
+    let nonFormatMp4 = try extract([
+      "is_gallery": true,
+      "gallery_data": ["items": [["media_id": "notgif", "id": 1]]],
+      "media_metadata": [
+        "notgif": [
+          "status": "unprocessed",
+          "s": ["x": 400, "y": 300, "u": "https://preview.redd.it/notgif.jpg?note=format=mp4&amp;s=sig"],
+        ],
+      ],
+    ])
+    guard case .link = nonFormatMp4 else {
+      Issue.record("expected unrelated mp4 query param not to match gif, got \(String(describing: nonFormatMp4))")
+      return
+    }
   }
 
   @Test func givesVideosAndGIFsThePreviewAsPoster() throws {
