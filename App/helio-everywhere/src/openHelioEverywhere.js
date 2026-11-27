@@ -46,6 +46,9 @@ function isRedirectableRedditHost(hostname) {
 
 function isExcludedPath(pathname) {
   const lowerPath = (pathname || '').toLowerCase()
+  if (/^\/r\/[^/]+\/s\/[^/]+(?:\/.*)?$/.test(lowerPath)) {
+    return true
+  }
   return EXCLUDED_PATH_PREFIXES.some(
     (prefix) => lowerPath === prefix || lowerPath.startsWith(`${prefix}/`) || lowerPath.startsWith(`${prefix}.`),
   )

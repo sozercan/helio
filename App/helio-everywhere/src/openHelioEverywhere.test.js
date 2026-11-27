@@ -13,12 +13,14 @@ test('accepts standard, legacy, mobile, np, and language reddit.com subdomains',
     assert.equal(isRedirectableRedditHost(host), true, host)
   }
   assert.equal(buildHelioRedirectURL('https://np.reddit.com/r/swift/comments/abc123/title/?sort=new#c1'), 'helioapp://reddit.com/r/swift/comments/abc123/title/?sort=new#c1')
-  assert.equal(buildHelioRedirectURL('https://de.reddit.com/r/swift/s/shareToken'), 'helioapp://reddit.com/r/swift/s/shareToken')
+  assert.equal(buildHelioRedirectURL('https://de.reddit.com/r/swift/comments/abc123/title/'), 'helioapp://reddit.com/r/swift/comments/abc123/title/')
 })
 
-test('leaves redd.it short links and media hosts to resolve in Safari', () => {
+test('leaves redd.it short links, /s/ share links, and media hosts to resolve in Safari', () => {
   for (const url of [
     'https://redd.it/abc123',
+    'https://de.reddit.com/r/swift/s/shareToken',
+    'https://www.reddit.com/r/swift/s/shareToken?utm_source=share',
     'https://i.redd.it/abc123.jpg',
     'https://v.redd.it/abc123',
     'https://preview.redd.it/abc123.png',
