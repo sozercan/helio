@@ -64,6 +64,11 @@ struct AccountSwitcherMenu: View {
           }
         }
       }
+      Section {
+        Button("Add Account", systemImage: "person.badge.plus") {
+          Nav.present(.editingCredential(.init()))
+        }
+      }
       if let selected {
         Section {
           Button(LogOutConfirmation.title(selected), systemImage: "rectangle.portrait.and.arrow.right", role: .destructive) {

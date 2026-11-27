@@ -182,25 +182,37 @@ struct ScreenActionTests {
     #expect(ScreenAction.switchAccount(manager: RedditCredentialsManager(credentials: [])) == nil)
 
     let only = account("placeholder-one")
+    var addedAccount = false
     var loggedOut: RedditCredential?
-    let single = ScreenAction.switchAccount(manager: RedditCredentialsManager(credentials: [only]), selectedID: only.id) { loggedOut = $0 }
-    #expect(titles(single) == [["Log Out u/placeholder-one"]])
-    guard case let .menu(entries)? = single?.content, case let .section(_, items)? = entries.last,
-          case let .choice(_, _, isOn, select)? = items.first
+    let single = ScreenAction.switchAccount(
+      manager: RedditCredentialsManager(credentials: [only]),
+      selectedID: only.id,
+      addAccount: { addedAccount = true },
+      logOut: { loggedOut = $0 },
+    )
+    #expect(titles(single) == [["Add Account"], ["Log Out u/placeholder-one"]])
+    guard case let .menu(entries)? = single?.content, entries.count == 2,
+          case let .section(_, addItems) = entries[0],
+          case let .choice(_, _, addIsOn, addSelect)? = addItems.first,
+          case let .section(_, logOutItems) = entries[1],
+          case let .choice(_, _, logOutIsOn, logOutSelect)? = logOutItems.first
     else {
-      Issue.record("Expected a Log Out item")
+      Issue.record("Expected Add Account and Log Out items")
       return
     }
-    #expect(!isOn)
-    select()
+    #expect(!addIsOn)
+    addSelect()
+    #expect(addedAccount)
+    #expect(!logOutIsOn)
+    logOutSelect()
     #expect(loggedOut == only)
 
     let other = account("placeholder-two")
     let two = ScreenAction.switchAccount(manager: RedditCredentialsManager(credentials: [only, other]), selectedID: other.id) { _ in }
-    #expect(titles(two) == [["placeholder-one", "placeholder-two"], ["Log Out u/placeholder-two"]])
+    #expect(titles(two) == [["placeholder-one", "placeholder-two"], ["Add Account"], ["Log Out u/placeholder-two"]])
 
     let signedOut = account("placeholder-signed-out", signedIn: false)
     let fallback = ScreenAction.switchAccount(manager: RedditCredentialsManager(credentials: [signedOut, other]), selectedID: signedOut.id) { _ in }
-    #expect(titles(fallback) == [["placeholder-two"], ["Log Out u/placeholder-signed-out"]])
+    #expect(titles(fallback) == [["placeholder-two"], ["Add Account"], ["Log Out u/placeholder-signed-out"]])
   }
 }
