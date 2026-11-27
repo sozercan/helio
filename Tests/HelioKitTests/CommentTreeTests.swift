@@ -102,4 +102,47 @@ struct CommentDataTests {
     let shown = try JSONDecoder().decode(CommentData.self, from: Data(#"{"id":"def","ups":12}"#.utf8))
     #expect(shown.score_hidden == nil)
   }
+
+  @Test func commentJumpNavigatorFindsNewCommentsAndSkipsActiveUser() {
+    var d1 = CommentData(id: "c1")
+    d1.author = "alice"
+    var d2 = CommentData(id: "c2")
+    d2.author = "bob"
+    var d3 = CommentData(id: "c3")
+    d3.author = "CurrentUser"
+    var d4 = CommentData(id: "c4")
+    d4.author = "carol"
+
+    let c2 = RedditComment(data: d2, kind: "t1")
+    let c3 = RedditComment(data: d3, kind: "t1")
+    let c1 = RedditComment(data: d1, kind: "t1")
+    c1.childrenHelio = [c2, c3]
+    let c4 = RedditComment(data: d4, kind: "t1")
+
+    let targets = CommentJumpNavigator.targetIDs(
+      roots: [c1, c4],
+      mode: .newComments,
+      seenComments: "c1",
+      activeUsername: "currentuser",
+    )
+    #expect(targets == [c2.id, c4.id])
+    #expect(CommentJumpNavigator.step(targets: targets, currentID: nil, direction: 1) == c2.id)
+    #expect(CommentJumpNavigator.step(targets: targets, currentID: c2.id, direction: 1) == c4.id)
+    #expect(CommentJumpNavigator.step(targets: targets, currentID: c4.id, direction: 1) == c2.id)
+    #expect(CommentJumpNavigator.step(targets: targets, currentID: c2.id, direction: -1) == c4.id)
+  }
+
+  @Test func commentsSectionSettingsDecodesLegacyPayloadWithDefaultJumpMode() throws {
+    let legacy = Data(#"{"collapseAutoModerator":true,"commentSkipper":true}"#.utf8)
+    let decoded = try JSONDecoder().decode(CommentsSectionDefSettings.self, from: legacy)
+    #expect(decoded.collapseAutoModerator)
+    #expect(decoded.commentSkipper)
+    #expect(decoded.commentSkipperMode == .threads)
+  }
+
+  @Test func absoluteTimestampFormatsDeterministicUTCDate() throws {
+    let formatted = try absoluteTimestamp(1_700_000_000, locale: Locale(identifier: "en_US_POSIX"), timeZone: #require(TimeZone(secondsFromGMT: 0)))
+    #expect(formatted.contains("2023"))
+    #expect(formatted.contains("Nov 14"))
+  }
 }

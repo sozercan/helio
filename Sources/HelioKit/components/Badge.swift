@@ -120,6 +120,7 @@ struct BadgeView: View, Equatable {
   var subName: String?
   var onTapStats: (() -> Void)?
   var upvoteRatio: Double?
+  @State private var showAbsoluteTimestamp = false
 
   nonisolated func openUser() {
     Nav.to(.reddit(.user(User(id: author))), from: navColumn)
@@ -213,7 +214,14 @@ struct BadgeView: View, Equatable {
                 .accessibilityLabel("\(newComments) new")
             }
 
-            BadgeStat(icon: "clock", text: timeSince(Int(created)), label: spokenTimeSince(Int(created)))
+            BadgeStat(
+              icon: "clock",
+              text: showAbsoluteTimestamp ? absoluteTimestamp(Int(created)) : timeSince(Int(created)),
+              label: showAbsoluteTimestamp ? absoluteTimestamp(Int(created)) : spokenTimeSince(Int(created)),
+            )
+            .onTapGesture {
+              showAbsoluteTimestamp.toggle()
+            }
 
             if saved, !showAvatar, !showsFirstLine {
               Image(systemName: "bookmark.fill").foregroundStyle(.green)

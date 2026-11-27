@@ -169,6 +169,13 @@ struct BehaviorPanel: View {
 
           Toggle("Collapse AutoModerator comments", isOn: $commentsSectionDefSettings.collapseAutoModerator)
           Toggle("Comment skipper button", isOn: $commentsSectionDefSettings.commentSkipper)
+          if commentsSectionDefSettings.commentSkipper {
+            Picker("Jump button mode", selection: $commentsSectionDefSettings.commentSkipperMode) {
+              ForEach(CommentSkipperMode.allCases) { mode in
+                Text(mode.label).tag(mode)
+              }
+            }
+          }
           Toggle("Save comment sort per post", isOn: $postPageDefSettings.perPostSort)
         }
       }

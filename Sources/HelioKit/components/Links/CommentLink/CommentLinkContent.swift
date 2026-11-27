@@ -47,6 +47,7 @@ struct CommentLinkContent: View {
   @State private var offsetX: CGFloat = 0
   @State private var highlight = false
   @State private var showSpoiler = false
+  @State private var showAbsoluteTimestamp = false
   @State private var commentSwipeActions: SwipeActionsSet = CachedDefaults[.CommentLinkDefSettings].swipeActions
 
   @Default(.CommentsSectionDefSettings) private var sectionDefSettings
@@ -131,10 +132,13 @@ struct CommentLinkContent: View {
                   .background(theme.theme.loadMoreBackground(), in: Capsule(style: .continuous))
                   .accessibilityLabel("\(hiddenReplyCount) hidden \(hiddenReplyCount == 1 ? "reply" : "replies")")
               }
-              Text(timeSince(Int(data.badgeKit.created)))
+              Text(showAbsoluteTimestamp ? absoluteTimestamp(Int(data.badgeKit.created)) : timeSince(Int(data.badgeKit.created)))
                 .contentFont(theme.theme.badge.statsText.size, theme.theme.badge.statsText.weight.t, relativeTo: .meta)
                 .foregroundStyle(theme.theme.badge.statsText.color())
-                .accessibilityLabel(spokenTimeSince(Int(data.badgeKit.created)))
+                .accessibilityLabel(showAbsoluteTimestamp ? absoluteTimestamp(Int(data.badgeKit.created)) : spokenTimeSince(Int(data.badgeKit.created)))
+                .onTapGesture {
+                  showAbsoluteTimestamp.toggle()
+                }
             } else if let ups = data.ups {
               HStack(alignment: .center, spacing: 4) {
                 Button {

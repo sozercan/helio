@@ -288,11 +288,19 @@ struct PostView: View, Equatable {
     let inlineActions = selectedTheme.posts.inlineFloatingPill
     let showSkipper = commentsSectionDefSettings.commentSkipper
     let skipperOnLeft = !inlineActions || commentLinkDefSettings.jumpNextCommentButtonLeft
+    let activeUsername = RedditCredentialsManager.shared.selectedCredential?.userName
     if showSkipper || !inlineActions {
       GlassEffectContainer(spacing: 12) {
         HStack(spacing: 12) {
           if showSkipper, skipperOnLeft {
-            CommentSkipper(topVisibleCommentId: Bindable(session).topVisibleCommentId, previousScrollTarget: Bindable(session).previousScrollTarget, comments: comments, reader: proxy)
+            CommentSkipper(
+              topVisibleCommentId: Bindable(session).topVisibleCommentId,
+              previousScrollTarget: Bindable(session).previousScrollTarget,
+              comments: comments,
+              seenComments: seenComments,
+              activeUsername: activeUsername,
+              reader: proxy,
+            )
           }
           if inlineActions {
             Spacer(minLength: 0)
@@ -307,7 +315,14 @@ struct PostView: View, Equatable {
             .frame(maxWidth: .infinity, alignment: .trailing)
           }
           if showSkipper, !skipperOnLeft {
-            CommentSkipper(topVisibleCommentId: Bindable(session).topVisibleCommentId, previousScrollTarget: Bindable(session).previousScrollTarget, comments: comments, reader: proxy)
+            CommentSkipper(
+              topVisibleCommentId: Bindable(session).topVisibleCommentId,
+              previousScrollTarget: Bindable(session).previousScrollTarget,
+              comments: comments,
+              seenComments: seenComments,
+              activeUsername: activeUsername,
+              reader: proxy,
+            )
           }
         }
       }
