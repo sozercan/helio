@@ -299,6 +299,7 @@ struct PostView: View, Equatable {
               comments: comments,
               seenComments: seenComments,
               activeUsername: activeUsername,
+              userScrollGeneration: session.userScrollGeneration,
               reader: proxy,
             )
           }
@@ -321,6 +322,7 @@ struct PostView: View, Equatable {
               comments: comments,
               seenComments: seenComments,
               activeUsername: activeUsername,
+              userScrollGeneration: session.userScrollGeneration,
               reader: proxy,
             )
           }
@@ -346,6 +348,7 @@ final class PostSession {
   var seenComments: String?
   var ignoreSpecificComment = false
   var hideElements = true
+  var userScrollGeneration = 0
   @ObservationIgnored var topVisibleCommentId: String?
   @ObservationIgnored var previousScrollTarget: String?
   @ObservationIgnored private var shownRowIDs: [String: Int] = [:]
@@ -370,6 +373,7 @@ final class PostSession {
 
   func readerScrolled() {
     scrolled = true
+    userScrollGeneration += 1
   }
 
   func saveScrollAnchor() {

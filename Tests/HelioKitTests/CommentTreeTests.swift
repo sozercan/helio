@@ -130,6 +130,11 @@ struct CommentDataTests {
     #expect(CommentJumpNavigator.step(targets: targets, currentID: c2.id, direction: 1) == c4.id)
     #expect(CommentJumpNavigator.step(targets: targets, currentID: c4.id, direction: 1) == c2.id)
     #expect(CommentJumpNavigator.step(targets: targets, currentID: c2.id, direction: -1) == c4.id)
+
+    let ordered = CommentJumpNavigator.orderedCommentIDs(roots: [c1, c4])
+    #expect(ordered == [c1.id, c2.id, c3.id, c4.id])
+    #expect(CommentJumpNavigator.step(targets: targets, orderedIDs: ordered, currentID: c3.id, direction: 1) == c4.id)
+    #expect(CommentJumpNavigator.step(targets: targets, orderedIDs: ordered, currentID: c3.id, direction: -1) == c2.id)
   }
 
   @Test func commentsSectionSettingsDecodesLegacyPayloadWithDefaultJumpMode() throws {

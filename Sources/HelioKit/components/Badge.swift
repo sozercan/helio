@@ -219,9 +219,10 @@ struct BadgeView: View, Equatable {
               text: showAbsoluteTimestamp ? absoluteTimestamp(Int(created)) : timeSince(Int(created)),
               label: showAbsoluteTimestamp ? absoluteTimestamp(Int(created)) : spokenTimeSince(Int(created)),
             )
-            .onTapGesture {
+            .contentShape(Rectangle())
+            .highPriorityGesture(TapGesture().onEnded {
               showAbsoluteTimestamp.toggle()
-            }
+            })
 
             if saved, !showAvatar, !showsFirstLine {
               Image(systemName: "bookmark.fill").foregroundStyle(.green)
@@ -232,9 +233,11 @@ struct BadgeView: View, Equatable {
         }
         .foregroundStyle(defaultIconColor)
         .contentFont(theme.statsText.size, theme.statsText.weight.t, relativeTo: .meta)
-        .contentShape(Rectangle())
-        .onTapGesture { onTapStats?() }
-        .allowsHitTesting(onTapStats != nil)
+        .if(onTapStats != nil) { view in
+          view
+            .contentShape(Rectangle())
+            .onTapGesture { onTapStats?() }
+        }
       }
     }
     .geometryGroup()

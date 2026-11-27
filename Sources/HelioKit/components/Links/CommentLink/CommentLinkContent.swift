@@ -198,7 +198,14 @@ struct CommentLinkContent: View {
           .accessibilityAddTraits(.isButton)
           .accessibilityValue(collapsed ? "Collapsed" : "Expanded")
           .accessibilityAction(.default) { comment.toggleCollapsed(optimistic: true) }
-          .accessibilityActions { CommentLinkActions(comment: comment, data: data) }
+          .accessibilityActions {
+            if bars {
+              Button(showAbsoluteTimestamp ? "Show relative timestamp" : "Show exact timestamp") {
+                showAbsoluteTimestamp.toggle()
+              }
+            }
+            CommentLinkActions(comment: comment, data: data)
+          }
           .padding(.top, headerTopPad)
           .compositingGroup()
           .opacity(collapsed && !bars ? 0.5 : 1)

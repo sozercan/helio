@@ -8,39 +8,28 @@ struct CommentSkipper: View {
   var comments: [Comment]
   var seenComments: String?
   var activeUsername: String?
+  var userScrollGeneration: Int = 0
   var reader: ScrollViewProxy
 
   @Default(.CommentsSectionDefSettings) private var commentsSectionDefSettings
   @State private var lastNewCommentTarget: String?
 
-  private var mode: CommentSkipperMode {
-    commentsSectionDefSettings.commentSkipperMode
-  }
-
-  private var targets: [String] {
-    let resolved = CommentJumpNavigator.targetIDs(
-      roots: comments,
-      mode: mode,
-      seenComments: seenComments,
-      activeUsername: activeUsername,
-    )
-    return resolved.isEmpty ? comments.map(\.id) : resolved
-  }
-
-  private var isNewModeActive: Bool {
-    mode == .newComments && !CommentJumpNavigator.targetIDs(
-      roots: comments,
-      mode: .newComments,
-      seenComments: seenComments,
-      activeUsername: activeUsername,
-    ).isEmpty
-  }
-
   var body: some View {
+    let mode = commentsSectionDefSettings.commentSkipperMode
+    let newTargets = mode == .newComments
+      ? CommentJumpNavigator.targetIDs(
+        roots: comments,
+        mode: .newComments,
+        seenComments: seenComments,
+        activeUsername: activeUsername,
+      )
+      : []
+    let isNewModeActive = !newTargets.isEmpty
+
     Button {
       Hap.shared.play(intensity: 0.75, sharpness: 0.9)
       withAnimation {
-        jump(direction: 1)
+        jump(direction: 1, newTargets: newTargets)
       }
     } label: {
       VStack(spacing: 1) {
@@ -62,26 +51,31 @@ struct CommentSkipper: View {
       LongPressGesture(minimumDuration: 0.35).onEnded { _ in
         Hap.shared.play(intensity: 0.75, sharpness: 0.9)
         withAnimation {
-          jump(direction: -1)
+          jump(direction: -1, newTargets: newTargets)
         }
       },
     )
+    .onChange(of: userScrollGeneration) { _, _ in
+      lastNewCommentTarget = nil
+    }
     .accessibilityLabel(isNewModeActive ? "Jump to Next New Comment" : "Jump to Next Comment")
     .accessibilityHint("Long press to jump to previous")
   }
 
-  private func jump(direction: Int) {
-    if isNewModeActive {
+  private func jump(direction: Int, newTargets: [String]) {
+    if !newTargets.isEmpty {
       let current = lastNewCommentTarget ?? topVisibleCommentId
-      guard let next = CommentJumpNavigator.step(targets: targets, currentID: current, direction: direction) else { return }
+      let ordered = lastNewCommentTarget == nil ? CommentJumpNavigator.orderedCommentIDs(roots: comments) : []
+      guard let next = CommentJumpNavigator.step(targets: newTargets, orderedIDs: ordered, currentID: current, direction: direction) else { return }
       reader.scrollTo(next, anchor: .top)
       lastNewCommentTarget = next
       return
     }
 
+    let threadTargets = comments.map(\.id)
     if direction < 0 {
-      let current = previousScrollTarget ?? topVisibleCommentId
-      guard let prev = CommentJumpNavigator.step(targets: targets, currentID: current, direction: -1) else { return }
+      let current = topVisibleCommentId ?? previousScrollTarget
+      guard let prev = CommentJumpNavigator.step(targets: threadTargets, currentID: current, direction: -1) else { return }
       reader.scrollTo(prev, anchor: .top)
       topVisibleCommentId = prev
       previousScrollTarget = prev
@@ -95,7 +89,7 @@ struct CommentSkipper: View {
     }
 
     if let topVisibleCommentId {
-      let topVisibleCommentIndex = comments.map(\.id).firstIndex(of: topVisibleCommentId) ?? 0
+      let topVisibleCommentIndex = threadTargets.firstIndex(of: topVisibleCommentId) ?? 0
       if topVisibleCommentId == previousScrollTarget {
         let nextIndex = min(topVisibleCommentIndex + 1, comments.count - 1)
         reader.scrollTo(comments[nextIndex].id, anchor: .top)
