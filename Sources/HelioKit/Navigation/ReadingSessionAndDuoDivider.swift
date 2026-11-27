@@ -33,6 +33,24 @@ enum ReadingSessionStore {
     defaults.removeObject(forKey: storageKey)
   }
 
+  static func latestFeedName(in path: [Router.NavDest]) -> String? {
+    path.last(where: { $0.subredditFeedName != nil })?.subredditFeedName
+  }
+
+  static func destination(
+    forSavedFeedName savedName: String,
+    resolveSubreddit: (String) -> Subreddit = QuickAction.cachedSubreddit(named:),
+  ) -> Router.NavDest? {
+    let trimmed = savedName.trimmingCharacters(in: .whitespacesAndNewlines)
+    guard !trimmed.isEmpty else { return nil }
+    if trimmed.hasPrefix("feed:") {
+      let builtInID = String(trimmed.dropFirst("feed:".count))
+      guard !builtInID.isEmpty else { return nil }
+      return .reddit(.subFeed(Subreddit(id: builtInID)))
+    }
+    return .reddit(.subFeed(resolveSubreddit(trimmed)))
+  }
+
   private static func loadAll(defaults: UserDefaults) -> [String: ReadingSessionSnapshot] {
     guard
       let data = defaults.data(forKey: storageKey),
@@ -44,31 +62,43 @@ enum ReadingSessionStore {
 
 enum DuoSplitDividerGeometry {
   static let minPaneWidth: CGFloat = 320
+  static let dividerWidth: CGFloat = 14
   static let snapShares: [CGFloat] = [1.0 / 3.0, 0.4, 0.5, 0.6]
   static let snapTolerancePoints: CGFloat = 6
   static let defaultShareKey = "Helio.DuoDividerFeedShare"
 
+  static func availablePaneWidth(totalWidth: CGFloat) -> CGFloat {
+    max(0, totalWidth - dividerWidth)
+  }
+
+  static func canResize(totalWidth: CGFloat) -> Bool {
+    availablePaneWidth(totalWidth: totalWidth) >= minPaneWidth * 2
+  }
+
   static func clampedWidth(_ proposed: CGFloat, totalWidth: CGFloat) -> CGFloat {
-    let maxWidth = max(minPaneWidth, totalWidth - minPaneWidth)
+    let available = availablePaneWidth(totalWidth: totalWidth)
+    let maxWidth = max(minPaneWidth, available - minPaneWidth)
     return min(max(proposed, minPaneWidth), maxWidth)
   }
 
   static func share(forWidth width: CGFloat, totalWidth: CGFloat) -> CGFloat {
-    guard totalWidth > 0 else { return 0.5 }
-    return clampedWidth(width, totalWidth: totalWidth) / totalWidth
+    let available = availablePaneWidth(totalWidth: totalWidth)
+    guard available > 0 else { return 0.5 }
+    return clampedWidth(width, totalWidth: totalWidth) / available
   }
 
   static func snappedShare(forWidth width: CGFloat, totalWidth: CGFloat) -> CGFloat {
-    guard totalWidth > 0 else { return 0.5 }
+    let available = availablePaneWidth(totalWidth: totalWidth)
+    guard available > 0 else { return 0.5 }
     let clamped = clampedWidth(width, totalWidth: totalWidth)
     for landmark in snapShares {
-      let targetWidth = totalWidth * landmark
-      guard targetWidth >= minPaneWidth, totalWidth - targetWidth >= minPaneWidth else { continue }
+      let targetWidth = available * landmark
+      guard targetWidth >= minPaneWidth, available - targetWidth >= minPaneWidth else { continue }
       if abs(clamped - targetWidth) <= snapTolerancePoints {
         return landmark
       }
     }
-    return clamped / totalWidth
+    return clamped / available
   }
 
   static func resolvedFeedWidth(
@@ -76,9 +106,10 @@ enum DuoSplitDividerGeometry {
     totalWidth: CGFloat,
     defaultWidth: CGFloat?,
   ) -> CGFloat? {
-    guard totalWidth >= minPaneWidth * 2, let savedShare, savedShare.isFinite, savedShare > 0, savedShare < 1 else {
+    guard canResize(totalWidth: totalWidth), let savedShare, savedShare.isFinite, savedShare > 0, savedShare < 1 else {
       return defaultWidth
     }
-    return clampedWidth(totalWidth * savedShare, totalWidth: totalWidth)
+    let available = availablePaneWidth(totalWidth: totalWidth)
+    return clampedWidth(available * savedShare, totalWidth: totalWidth)
   }
 }
