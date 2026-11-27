@@ -55,8 +55,8 @@ struct BehaviorPanel: View {
           Toggle("Restore reading session", isOn: $behaviorDefSettings.restoreReadingSession)
             .onChange(of: behaviorDefSettings.restoreReadingSession) { _, enabled in
               if enabled {
-                if let feedName = Nav.shared.currentFeedName,
-                   let accountID = generalDefSettings.redditCredentialSelectedID
+                if let accountID = generalDefSettings.redditCredentialSelectedID,
+                   let feedName = Nav.shared.currentFeedName(for: accountID)
                 {
                   ReadingSessionStore.save(feedName: feedName, accountID: accountID)
                 }

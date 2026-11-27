@@ -29,7 +29,7 @@ class Nav: Identifiable, Equatable {
     Nav.shared.presentingSheet = content
   }
 
-  @ObservationIgnored var lastVisitedFeedName: String?
+  @ObservationIgnored private var lastVisitedFeedByAccount: [UUID: String] = [:]
 
   private static func newRouterForTab(_ tab: TabIdentifier, _ id: UUID) -> Router {
     Router(id: "\(tab.rawValue)TabRouter-\(id.uuidString)")
@@ -75,6 +75,11 @@ class Nav: Identifiable, Equatable {
         } else {
           self.activeRouter.resetNavPath()
         }
+      }
+    }
+    didSet {
+      if let feedName = ReadingSessionStore.latestFeedName(in: self[activeTab].fullPath) {
+        recordVisitedFeed(feedName)
       }
     }
   }
@@ -126,18 +131,20 @@ class Nav: Identifiable, Equatable {
   private func observeFeedNavigation(on router: Router) {
     router.onPathChange = { [weak self] path in
       guard let self, let feedName = ReadingSessionStore.latestFeedName(in: path) else { return }
-      lastVisitedFeedName = feedName
-      guard Defaults[.BehaviorDefSettings].restoreReadingSession,
-            let accountID = Defaults[.GeneralDefSettings].redditCredentialSelectedID
-      else { return }
-      ReadingSessionStore.save(feedName: feedName, accountID: accountID)
+      recordVisitedFeed(feedName)
     }
   }
 
-  var currentFeedName: String? {
-    lastVisitedFeedName
-      ?? ReadingSessionStore.latestFeedName(in: activeRouter.fullPath)
-      ?? ReadingSessionStore.latestFeedName(in: self[.posts].fullPath)
+  private func recordVisitedFeed(_ feedName: String) {
+    guard let accountID = Defaults[.GeneralDefSettings].redditCredentialSelectedID else { return }
+    lastVisitedFeedByAccount[accountID] = feedName
+    guard Defaults[.BehaviorDefSettings].restoreReadingSession else { return }
+    ReadingSessionStore.save(feedName: feedName, accountID: accountID)
+  }
+
+  func currentFeedName(for accountID: UUID?) -> String? {
+    guard let accountID else { return nil }
+    return lastVisitedFeedByAccount[accountID]
   }
 
   func navigateTo(_ tab: TabIdentifier, _ dest: Router.NavDest, _ reset: Bool = true) {

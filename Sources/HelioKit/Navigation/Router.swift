@@ -47,6 +47,7 @@ class Router: Hashable, Equatable, Identifiable {
       if let newValue {
         if let first = fullPath.first, first.isSameFeed(as: newValue) {
           first.takeSubredditDetails(from: newValue)
+          onPathChange?(fullPath)
         } else {
           fullPath = [newValue]
         }
