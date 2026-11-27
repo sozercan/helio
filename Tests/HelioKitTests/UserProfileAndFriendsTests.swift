@@ -195,4 +195,33 @@ struct UserProfileAndFriendsTests {
     #expect(model.state == .loaded)
     #expect(model.friends.map(\.name) == ["new_friend"])
   }
+
+  @MainActor
+  @Test func friendsListModelInvalidatesPendingRefreshWhenDeleteSucceeds() async {
+    let cred = account("placeholder_me")
+    let fetchCount = Mutex(0)
+    let model = FriendsListModel(
+      currentAccount: { cred },
+      fetchFriends: { _ in
+        let attempt = fetchCount.withLock {
+          $0 += 1
+          return $0
+        }
+        if attempt == 2 {
+          try? await Task.sleep(for: .milliseconds(50))
+        }
+        return [RedditFriend(id: "t2_1", name: "alpha_user", date: nil, rel_id: nil, note: nil)]
+      },
+      removeFriendRequest: { _, _ in true },
+    )
+    await model.load()
+    #expect(model.friends.map(\.name) == ["alpha_user"])
+
+    let refreshTask = Task { await model.load() }
+    try? await Task.sleep(for: .milliseconds(10))
+    let removed = await model.remove(model.friends[0])
+    #expect(removed)
+    await refreshTask.value
+    #expect(model.friends.isEmpty)
+  }
 }

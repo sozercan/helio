@@ -57,7 +57,11 @@ final class FriendsListModel {
     guard let account = currentAccount(), let authorization = account.authorizationID else { return false }
     let removed = await removeFriendRequest(friend.name, account)
     guard removed, currentAccount()?.authorizationID == authorization else { return false }
+    requestID = nil
     friends.removeAll { $0.id == friend.id }
+    if state == .loading {
+      await load()
+    }
     return true
   }
 }

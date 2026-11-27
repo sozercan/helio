@@ -59,18 +59,25 @@ extension User {
     return succeeded
   }
 
-  func refetchUser() async {
-    await MainActor.run {
+  func refetchUser(altCredential: RedditCredential? = nil) async {
+    let credential = await MainActor.run { () -> RedditCredential? in
       self.loading = true
+      return altCredential ?? RedditCredentialsManager.shared.selectedCredential
     }
+    let expectedAuth = credential?.authorizationID
     let userName = data?.name ?? id
-    if let data = await (RedditAPI.shared.fetchUser(userName)) {
+    if let data = await RedditAPI.shared.fetchUser(userName, altCredential: credential) {
       await MainActor.run {
+        guard !Task.isCancelled,
+              expectedAuth == nil || RedditCredentialsManager.shared.selectedCredential?.authorizationID == expectedAuth
+        else { return }
         self.data = data
       }
     }
     await MainActor.run {
-      self.loading = false
+      if expectedAuth == nil || RedditCredentialsManager.shared.selectedCredential?.authorizationID == expectedAuth {
+        self.loading = false
+      }
     }
   }
 

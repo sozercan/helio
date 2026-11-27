@@ -13,6 +13,8 @@ struct UserView: View {
   @State private var selectedSection: UserListingSection = .overview
   @State private var forceRefresh = false
   @State private var updatingFriend = false
+  @State private var refreshingUser = false
+  @State private var userFetchID = UUID()
 
   private var selectedAuthorization: RedditCredential.AuthorizationID? {
     RedditCredentialsManager.shared.selectedCredential(id: generalDefSettings.redditCredentialSelectedID)?.authorizationID
@@ -62,7 +64,7 @@ struct UserView: View {
   }
 
   private func toggleFriend() {
-    guard !updatingFriend, let currentFriend = user.data?.is_friend else { return }
+    guard !updatingFriend, !refreshingUser, let currentFriend = user.data?.is_friend else { return }
     let account = RedditCredentialsManager.shared.selectedCredential
     let authorization = account?.authorizationID
     updatingFriend = true
@@ -72,6 +74,25 @@ struct UserView: View {
         updatingFriend = false
       }
     }
+  }
+
+  private func reloadUserForCurrentAccount() async {
+    let fetchID = UUID()
+    userFetchID = fetchID
+    let account = RedditCredentialsManager.shared.selectedCredential(id: generalDefSettings.redditCredentialSelectedID)
+    let authorization = account?.authorizationID
+    refreshingUser = true
+    user.data?.is_friend = nil
+    let userName = user.data?.name ?? user.id
+    let fetched = await RedditAPI.shared.fetchUser(userName, altCredential: account)
+    guard userFetchID == fetchID,
+          !Task.isCancelled,
+          selectedAuthorization == authorization
+    else { return }
+    if let fetched {
+      user.data = fetched
+    }
+    refreshingUser = false
   }
 
   var body: some View {
@@ -103,7 +124,7 @@ struct UserView: View {
                 .multilineTextAlignment(.center)
             }
 
-            if !isCurrentUser, let isFriend = data.is_friend {
+            if !isCurrentUser, !refreshingUser, let isFriend = data.is_friend {
               Button(action: toggleFriend) {
                 HStack(spacing: 6) {
                   if updatingFriend {
@@ -246,7 +267,7 @@ struct UserView: View {
       .navigationBarTitleDisplayMode(.inline)
       .task {
         if user.data == nil {
-          await user.refetchUser()
+          await reloadUserForCurrentAccount()
         }
       }
       .onChange(of: selectedSection) { _, _ in
@@ -258,7 +279,7 @@ struct UserView: View {
           selectedSection = .overview
         }
         if !isOwnProfile {
-          Task { await user.refetchUser() }
+          Task { await reloadUserForCurrentAccount() }
         }
       }
   }
