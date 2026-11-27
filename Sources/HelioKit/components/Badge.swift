@@ -59,6 +59,10 @@ struct UserFlair: View, Equatable {
         .background(flairBackground())
         .cornerRadius(4.0)
         .allowsHitTesting(false)
+      } else if hasEmojis {
+        Color.clear
+          .frame(width: 0, height: 0)
+          .accessibilityHidden(true)
       }
     }
     .task(id: hasEmojis ? subName : nil) {

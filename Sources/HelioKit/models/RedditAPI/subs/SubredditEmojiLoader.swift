@@ -76,18 +76,26 @@ actor SubredditEmojiLoader {
 
   typealias Fetch = @Sendable (_ subreddit: String, _ account: RedditCredential) async -> [String: URL]?
 
+  private struct AccountRequestKey: Hashable {
+    let accountID: UUID
+    let authorizationID: RedditCredential.AuthorizationID?
+    let subreddit: String
+  }
+
   private let fetch: Fetch
   private let currentAccount: @Sendable () async -> RedditCredential?
   private let failureBackoff: TimeInterval
+  private let nowProvider: @Sendable () -> Date
   private var cache: [String: (emojis: [String: URL], date: Date)] = [:]
-  private var failedUntil: [String: Date] = [:]
-  private var inFlight: [String: Task<[String: URL]?, Never>] = [:]
+  private var failedUntil: [AccountRequestKey: Date] = [:]
+  private var inFlight: [AccountRequestKey: Task<[String: URL]?, Never>] = [:]
 
   init(
     currentAccount: @escaping @Sendable () async -> RedditCredential? = {
       await MainActor.run { RedditCredentialsManager.shared.selectedCredential }
     },
     failureBackoff: TimeInterval = SubredditEmojiLoader.defaultFailureBackoff,
+    nowProvider: @escaping @Sendable () -> Date = { Date() },
     fetch: @escaping Fetch = { subreddit, account in
       guard !RedditRateLimit.shared.isLow(account: account.id, authorization: account.authorizationID) else { return nil }
       return await RedditAPI.shared.fetchSubredditEmojis(subreddit, altCredential: account)
@@ -95,43 +103,51 @@ actor SubredditEmojiLoader {
   ) {
     self.currentAccount = currentAccount
     self.failureBackoff = failureBackoff
+    self.nowProvider = nowProvider
     self.fetch = fetch
   }
 
   func cachedEmojiURLs(for subreddit: String) -> [String: URL]? {
     let key = Self.normalize(subreddit)
-    guard !key.isEmpty, let entry = cache[key], Date().timeIntervalSince(entry.date) < Self.maxAge else {
+    guard !key.isEmpty, let entry = cache[key], nowProvider().timeIntervalSince(entry.date) < Self.maxAge else {
       return nil
     }
     return entry.emojis
   }
 
-  func emojiURLs(for subreddit: String, now: Date = Date()) async -> [String: URL] {
+  func emojiURLs(for subreddit: String, now: Date? = nil) async -> [String: URL] {
     let key = Self.normalize(subreddit)
     guard !key.isEmpty else { return [:] }
-    if let entry = cache[key], now.timeIntervalSince(entry.date) < Self.maxAge {
+    let startTime = now ?? nowProvider()
+    if let entry = cache[key], startTime.timeIntervalSince(entry.date) < Self.maxAge {
       return entry.emojis
     }
-    if let retryAfter = failedUntil[key], now < retryAfter {
+    guard let account = await currentAccount() else { return [:] }
+    let accountKey = AccountRequestKey(accountID: account.id, authorizationID: account.authorizationID, subreddit: key)
+    let checkTime = now ?? nowProvider()
+    if let entry = cache[key], checkTime.timeIntervalSince(entry.date) < Self.maxAge {
+      return entry.emojis
+    }
+    if let retryAfter = failedUntil[accountKey], checkTime < retryAfter {
       return [:]
     }
-    if let existing = inFlight[key] {
+    if let existing = inFlight[accountKey] {
       return await existing.value ?? [:]
     }
-    let task = Task<[String: URL]?, Never> { [currentAccount, fetch] in
-      guard let account = await currentAccount() else { return nil }
-      return await fetch(key, account)
+    let task = Task<[String: URL]?, Never> { [fetch] in
+      await fetch(key, account)
     }
-    inFlight[key] = task
+    inFlight[accountKey] = task
     let fetched = await task.value
-    inFlight[key] = nil
+    inFlight[accountKey] = nil
+    let completionTime = now ?? nowProvider()
     if let fetched {
-      failedUntil[key] = nil
-      cache[key] = (fetched, now)
+      failedUntil[accountKey] = nil
+      cache[key] = (fetched, completionTime)
       return fetched
     }
     if failureBackoff > 0 {
-      failedUntil[key] = now.addingTimeInterval(failureBackoff)
+      failedUntil[accountKey] = completionTime.addingTimeInterval(failureBackoff)
     }
     return [:]
   }

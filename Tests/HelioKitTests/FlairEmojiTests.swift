@@ -109,4 +109,28 @@ struct FlairEmojiTests {
     #expect(afterBackoff["star"]?.absoluteString == "https://emoji.redditmedia.com/star.png")
     #expect(counter.all == ["swift", "swift"])
   }
+
+  @Test func scopesFailureBackoffPerAccount() async {
+    let accountA = RedditCredential(apiAppID: "client-a", refreshToken: "refresh-a")
+    let accountB = RedditCredential(apiAppID: "client-b", refreshToken: "refresh-b")
+    let activeAccount = Mutex(accountA)
+    let loader = SubredditEmojiLoader(
+      currentAccount: { activeAccount.withLock { $0 } },
+      failureBackoff: 60,
+      fetch: { _, account in
+        if account.id == accountA.id {
+          return nil
+        }
+        return ["star": URL(string: "https://emoji.redditmedia.com/star.png")!]
+      },
+    )
+
+    let t0 = Date(timeIntervalSince1970: 2_000)
+    let failedA = await loader.emojiURLs(for: "swift", now: t0)
+    #expect(failedA.isEmpty)
+
+    activeAccount.withLock { $0 = accountB }
+    let succeededB = await loader.emojiURLs(for: "swift", now: t0.addingTimeInterval(5))
+    #expect(succeededB["star"]?.absoluteString == "https://emoji.redditmedia.com/star.png")
+  }
 }
