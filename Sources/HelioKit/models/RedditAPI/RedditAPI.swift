@@ -211,11 +211,15 @@ class RedditAPI {
     }
 
     var lastResult: Result<D, AFError>?
+    var blockedRoutes: [WebSessionRoute] = []
     for route in candidateRoutes {
       let resolvedURL = route.apply(to: url)
       let result = await perform(resolvedURL, route.webSessionAuth)
       switch result {
       case .success:
+        for blocked in blockedRoutes {
+          routeHealth.recordBlock(account: credential.id, authorization: authorization, pattern: pattern, route: blocked)
+        }
         routeHealth.recordSuccess(account: credential.id, authorization: authorization, pattern: pattern, route: route)
         return result
       case let .failure(error):
@@ -223,8 +227,11 @@ class RedditAPI {
         guard error.responseCode == 403 else {
           return result
         }
-        routeHealth.recordBlock(account: credential.id, authorization: authorization, pattern: pattern, route: route)
+        blockedRoutes.append(route)
       }
+    }
+    if candidateRoutes.count == 1, let onlyRoute = blockedRoutes.first {
+      routeHealth.recordBlock(account: credential.id, authorization: authorization, pattern: pattern, route: onlyRoute)
     }
     return lastResult ?? .failure(.explicitlyCancelled)
   }

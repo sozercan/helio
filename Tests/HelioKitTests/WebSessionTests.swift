@@ -263,6 +263,50 @@ struct WebSessionRoutingTests {
     #expect(request.value(forHTTPHeaderField: "Cookie") == account.webSessionCookies)
   }
 
+  @Test func webSessionSearchSubredditsFallsBackToOldRedditJSONOn403() async {
+    let account = webAccount()
+    let emptyListing = Data(#"{"kind":"Listing","data":{"children":[],"after":null}}"#.utf8)
+    let session = session(body: "") { request in
+      if request.url?.host == "oauth.reddit.com" {
+        return (403, Data("<html>blocked</html>".utf8))
+      }
+      return (200, emptyListing)
+    }
+    let api = RedditAPI(session: session, routeHealth: WebSessionRouteHealth(), currentAccount: { account })
+    let result = await api.searchSubreddits("swift")
+    #expect(result != nil)
+
+    let requests = WebSessionRoutingProtocol.requests.withLock { $0 }
+    #expect(requests.count == 2)
+    #expect(requests[0].url?.host == "oauth.reddit.com")
+    #expect(requests[0].url?.path == "/subreddits/search")
+    #expect(requests[1].url?.host == "old.reddit.com")
+    #expect(requests[1].url?.path == "/subreddits/search/.json")
+  }
+
+  @Test func repeatedPrivateSubreddit403DoesNotSuppressPublicSubredditReads() async {
+    let account = webAccount()
+    let health = WebSessionRouteHealth()
+    let emptyListing = Data(#"{"kind":"Listing","data":{"children":[],"after":null}}"#.utf8)
+    let session = session(body: "") { request in
+      if request.url?.path.contains("/r/privateonly/") == true {
+        return (403, Data(#"{"reason":"private","message":"Forbidden","error":403}"#.utf8))
+      }
+      return (200, emptyListing)
+    }
+    let api = RedditAPI(session: session, routeHealth: health, currentAccount: { account })
+
+    for _ in 0 ..< WebSessionRouteHealth.blockThreshold {
+      let denied = await api.fetchSubPosts("/r/privateonly", limit: 10, sort: .hot)
+      #expect(denied == nil)
+    }
+
+    WebSessionRoutingProtocol.requests.withLock { $0 = [] }
+    let publicResult = await api.fetchSubPosts("/r/swift", limit: 10, sort: .hot)
+    #expect(publicResult != nil)
+    #expect(WebSessionRoutingProtocol.requests.withLock { $0.count } == 1)
+  }
+
   @Test func webSessionProbeDistinguishesActiveSignedOutAndTransientErrors() async {
     let activeSession = session(body: #"{"data":{"name":"placeholder-user"}}"#)
     #expect(await RedditWebSession.verifySession(cookies: "reddit_session=ok", userAgent: "UA", session: activeSession) == .active(username: "placeholder-user"))
@@ -287,8 +331,10 @@ struct WebSessionRoutingTests {
     let session = session(body: "<html>blocked</html>", statusCode: 403)
     let api = RedditAPI(session: session, routeHealth: health, currentAccount: { account })
 
-    for _ in 0 ..< WebSessionRouteHealth.blockThreshold {
-      _ = await api.fetchSubPosts("/r/all", limit: 10, sort: .hot)
+    for route in WebSessionRoutePlanner.routes(for: "https://oauth.reddit.com/r/all/hot.json", method: .get, defaultAuth: .bearer) {
+      for _ in 0 ..< WebSessionRouteHealth.blockThreshold {
+        health.recordBlock(account: account.id, authorization: account.authorizationID, pattern: "/r/all/*", route: route)
+      }
     }
 
     WebSessionRoutingProtocol.requests.withLock { $0 = [] }

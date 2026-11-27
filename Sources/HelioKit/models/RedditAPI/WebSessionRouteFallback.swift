@@ -23,6 +23,7 @@ struct WebSessionRoute: Equatable, Hashable, Sendable {
   static let wwwCookie = Self(host: "www.reddit.com", auth: .cookie)
   static let wwwDotJSONCookie = Self(host: "www.reddit.com", auth: .cookie, dotJSONSuffix: true)
   static let oldCookie = Self(host: "old.reddit.com", auth: .cookie)
+  static let oldDotJSONCookie = Self(host: "old.reddit.com", auth: .cookie, dotJSONSuffix: true)
   static let apiCookie = Self(host: "api.reddit.com", auth: .cookie)
 
   var webSessionAuth: RedditAPI.WebSessionAuth {
@@ -136,7 +137,7 @@ enum WebSessionRoutePlanner {
     case "/api/info", "/api/morechildren":
       [primary, .oauthCookie, .wwwDotJSONCookie, .oldCookie]
     case "/search", "/subreddits/search", "/r/*/search", "/r/+/search":
-      [primary, .oauthCookie, .oldCookie]
+      [primary, .oauthCookie, .oldDotJSONCookie]
     case "/r/all", "/r/all/*":
       [primary, .oauthCookie, .apiCookie, .oldCookie]
     case "/r/*/comments/*", "/comments/*":
