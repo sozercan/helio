@@ -21,6 +21,7 @@ struct Search: View {
   @State private var dummyAllSub: Subreddit? = nil
   @State private var searchViewLoaded: Bool = false
   @State private var searchPresented = false
+  @FocusState private var searchFocused: Bool
 
   @Default(.PostLinkDefSettings) private var postLinkDefSettings
   @Default(.searchHistory) private var searchHistory
@@ -132,8 +133,8 @@ struct Search: View {
   }
 
   private func presentSearchField() {
-    searchPresented = false
-    Task { @MainActor in searchPresented = true }
+    searchPresented = true
+    searchFocused = true
   }
 
   var body: some View {
@@ -224,6 +225,7 @@ struct Search: View {
       .injectInTabDestinations()
       .scrollDismissesKeyboard(.automatic)
       .searchable(text: $searchQuery.value, isPresented: $searchPresented, placement: .navigationBarDrawer(displayMode: .always), prompt: "Search Reddit")
+      .searchFocused($searchFocused)
       .autocorrectionDisabled(true)
       .textInputAutocapitalization(.none)
       .refreshable { fetch() }
@@ -246,7 +248,7 @@ struct Search: View {
         if !searchViewLoaded {
           dummyAllSub = Subreddit(id: "all")
           searchViewLoaded = true
-          searchPresented = true
+          presentSearchField()
         }
         if CommandTargets.shared.takeSearchFocusRequest() {
           presentSearchField()

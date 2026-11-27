@@ -44,7 +44,10 @@ class ShareImage: UIActivityItemProvider {
   }
 }
 
+@MainActor
 class ShareUtils {
+  private static var pendingPresentation: Task<Void, Never>?
+
   static func topViewController(_ base: UIViewController? = nil) -> UIViewController? {
     let scenes = UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }
     let scene = scenes.first(where: { $0.activationState == .foregroundActive }) ?? scenes.first
@@ -56,6 +59,9 @@ class ShareUtils {
       return topViewController(tab.selectedViewController ?? tab)
     }
     if let presented = root?.presentedViewController {
+      if presented.isBeingDismissed {
+        return root
+      }
       return topViewController(presented)
     }
     return root
@@ -63,15 +69,60 @@ class ShareUtils {
 
   static func shareItem(item: String, sourceView: UIView? = nil) {
     guard let url = URL(string: item) else { return }
-    DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
-      guard let top = topViewController() else { return }
-      let activityViewController = UIActivityViewController(activityItems: [url], applicationActivities: nil)
-      if let popoverController = activityViewController.popoverPresentationController {
-        popoverController.sourceView = sourceView ?? top.view
-        popoverController.sourceRect = sourceView?.bounds ?? CGRect(x: top.view.bounds.midX, y: top.view.bounds.midY, width: 0, height: 0)
-        popoverController.permittedArrowDirections = []
-      }
-      top.present(activityViewController, animated: true, completion: nil)
+    pendingPresentation?.cancel()
+    pendingPresentation = Task { @MainActor in
+      let ready = await waitForPresentationReady()
+      guard !Task.isCancelled, ready else { return }
+      presentActivityController(for: [url], sourceView: sourceView)
     }
+  }
+
+  static func waitForPresentationReady(
+    resolveTop: @MainActor () -> UIViewController? = { topViewController() },
+    maxAttempts: Int = 20,
+    yield: @MainActor () async -> Void = { await Task.yield() },
+    sleep: @MainActor () async -> Void = { try? await Task.sleep(for: .milliseconds(25)) },
+  ) async -> Bool {
+    await yield()
+    for _ in 0 ..< maxAttempts {
+      guard !Task.isCancelled, let top = resolveTop() else { return false }
+      if !isTransitioning(top) {
+        return true
+      }
+      if let coordinator = transitionCoordinator(for: top) {
+        await withCheckedContinuation { continuation in
+          coordinator.animate(alongsideTransition: nil) { _ in
+            continuation.resume()
+          }
+        }
+      } else {
+        await sleep()
+      }
+    }
+    guard !Task.isCancelled, let top = resolveTop() else { return false }
+    return !isTransitioning(top)
+  }
+
+  static func isTransitioning(_ viewController: UIViewController) -> Bool {
+    viewController.isBeingDismissed
+      || viewController.isBeingPresented
+      || viewController.transitionCoordinator != nil
+      || (viewController.presentedViewController?.isBeingDismissed ?? false)
+      || (viewController.presentedViewController?.isBeingPresented ?? false)
+  }
+
+  private static func transitionCoordinator(for viewController: UIViewController) -> UIViewControllerTransitionCoordinator? {
+    viewController.transitionCoordinator ?? viewController.presentedViewController?.transitionCoordinator
+  }
+
+  private static func presentActivityController(for items: [Any], sourceView: UIView?) {
+    guard let top = topViewController() else { return }
+    let activityViewController = UIActivityViewController(activityItems: items, applicationActivities: nil)
+    if let popoverController = activityViewController.popoverPresentationController {
+      popoverController.sourceView = sourceView ?? top.view
+      popoverController.sourceRect = sourceView?.bounds ?? CGRect(x: top.view.bounds.midX, y: top.view.bounds.midY, width: 0, height: 0)
+      popoverController.permittedArrowDirections = []
+    }
+    top.present(activityViewController, animated: true, completion: nil)
   }
 }

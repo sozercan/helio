@@ -3,6 +3,30 @@ import SwiftUI
 import UIKit
 
 struct ZoomableScrollView<Content: View>: UIViewRepresentable {
+  static var doubleTapZoomScale: CGFloat {
+    2.5
+  }
+
+  static func doubleTapZoomRect(
+    in bounds: CGRect,
+    centeredAt point: CGPoint,
+    scale: CGFloat = doubleTapZoomScale,
+    minimumZoomScale: CGFloat = 1,
+    maximumZoomScale: CGFloat = 20,
+  ) -> CGRect {
+    let clampedScale = max(minimumZoomScale, min(scale, maximumZoomScale))
+    guard bounds.width > 0, bounds.height > 0, clampedScale > 0 else {
+      return bounds
+    }
+    let width = bounds.width / clampedScale
+    let height = bounds.height / clampedScale
+    let maxOriginX = bounds.maxX - width
+    let maxOriginY = bounds.maxY - height
+    let originX = min(max(point.x - width / 2, bounds.minX), maxOriginX)
+    let originY = min(max(point.y - height / 2, bounds.minY), maxOriginY)
+    return CGRect(x: originX, y: originY, width: width, height: height)
+  }
+
   private var content: Content
   private var onTap: (() -> Void)?
   private var onSwipe: ((Int) -> Void)?
@@ -63,6 +87,10 @@ struct ZoomableScrollView<Content: View>: UIViewRepresentable {
     context.coordinator.gestures.onHold = onHold
     assert(context.coordinator.hostingController.view.superview == uiView)
 
+    if !isZoomed, uiView.zoomScale > uiView.minimumZoomScale {
+      uiView.setZoomScale(uiView.minimumZoomScale, animated: false)
+    }
+
     if uiView.zoomScale == uiView.minimumZoomScale {
       let hostedView = context.coordinator.hostingController.view!
       hostedView.frame = uiView.bounds
@@ -91,7 +119,10 @@ struct ZoomableScrollView<Content: View>: UIViewRepresentable {
     }
 
     func scrollViewDidZoom(_ scrollView: UIScrollView) {
-      isZoomed = scrollView.zoomScale > scrollView.minimumZoomScale
+      let zoomed = scrollView.zoomScale > scrollView.minimumZoomScale
+      if isZoomed != zoomed {
+        isZoomed = zoomed
+      }
     }
 
     @objc func handleTap(_ gestureRecognizer: UITapGestureRecognizer) {
@@ -99,14 +130,18 @@ struct ZoomableScrollView<Content: View>: UIViewRepresentable {
     }
 
     @objc func handleDoubleTap(_ gestureRecognizer: UITapGestureRecognizer) {
-      if let scrollView = gestureRecognizer.view as? UIScrollView {
-        if scrollView.zoomScale == 1 {
-          let tapLocation = gestureRecognizer.location(in: scrollView)
-          let zoomRect = CGRect(origin: CGPoint(x: tapLocation.x / 1.35, y: tapLocation.y * 0.87), size: CGSize(width: 100, height: 100))
-          scrollView.zoom(to: zoomRect, animated: true)
-        } else {
-          scrollView.setZoomScale(1, animated: true)
-        }
+      guard let scrollView = gestureRecognizer.view as? UIScrollView else { return }
+      if scrollView.zoomScale <= scrollView.minimumZoomScale {
+        let tapLocation = gestureRecognizer.location(in: hostingController.view)
+        let zoomRect = ZoomableScrollView.doubleTapZoomRect(
+          in: hostingController.view.bounds,
+          centeredAt: tapLocation,
+          minimumZoomScale: scrollView.minimumZoomScale,
+          maximumZoomScale: scrollView.maximumZoomScale,
+        )
+        scrollView.zoom(to: zoomRect, animated: true)
+      } else {
+        scrollView.setZoomScale(scrollView.minimumZoomScale, animated: true)
       }
     }
   }
