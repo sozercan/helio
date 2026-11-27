@@ -221,6 +221,41 @@ struct MediaExtractorTests {
     #expect(imgs.first?.size == CGSize(width: 480, height: 270))
   }
 
+  @Test func detectsRedditHostedGIFSourceWithQueryStringAndPreservesMimeOnFailedItem() throws {
+    let gifWithQuery = try extract([
+      "is_gallery": true,
+      "gallery_data": ["items": [["media_id": "gifq1", "id": 1]]],
+      "media_metadata": [
+        "gifq1": [
+          "status": "unprocessed",
+          "s": ["x": 320, "y": 240, "gif": "https://i.redd.it/gifq1.gif?s=signature"],
+        ],
+      ],
+    ])
+    guard case let .imgs(gifImgs) = gifWithQuery else {
+      Issue.record("expected gif with query string, got \(String(describing: gifWithQuery))")
+      return
+    }
+    #expect(gifImgs.map(\.url.absoluteString) == ["https://i.redd.it/gifq1.gif"])
+
+    let failedWithMime = try extract([
+      "is_gallery": true,
+      "thumbnail": "default",
+      "gallery_data": ["items": [["media_id": "png123", "id": 1]]],
+      "media_metadata": [
+        "png123": [
+          "status": "failed",
+          "m": "image/png",
+        ],
+      ],
+    ])
+    guard case let .imgs(pngImgs) = failedWithMime else {
+      Issue.record("expected failed item to keep mime png, got \(String(describing: failedWithMime))")
+      return
+    }
+    #expect(pngImgs.map(\.url.absoluteString) == ["https://i.redd.it/png123.png"])
+  }
+
   @Test func givesVideosAndGIFsThePreviewAsPoster() throws {
     let preview: [String: Any] = ["images": [["source": ["url": "https://preview.redd.it/abc.jpg?width=640&amp;s=sig", "width": 640, "height": 480]]]]
 

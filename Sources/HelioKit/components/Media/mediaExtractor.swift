@@ -300,15 +300,32 @@ private func galleryThumbnailInfo(from thumbnail: String?) -> (mediaID: String, 
   return (mediaID, ext)
 }
 
+private func isRedditHostedGIFSourceURL(_ raw: String) -> Bool {
+  guard let components = URLComponents(string: raw.escape), let host = components.host?.lowercased() else {
+    return false
+  }
+  if host == "i.redd.it" {
+    return (components.path as NSString).pathExtension.lowercased() == "gif"
+  }
+  if host == "preview.redd.it" {
+    return components.queryItems?.contains(where: { $0.name.lowercased() == "format" && $0.value?.lowercased() == "mp4" }) == true
+  }
+  return false
+}
+
 private func isRedditHostedGIFMetadata(mediaID: String, item: MediaMetadataItem) -> Bool {
   guard !mediaID.isEmpty, !mediaID.hasPrefix("giphy|") else { return false }
   if item.m?.lowercased() == "image/gif" || item.e == "AnimatedImage" {
     return true
   }
-  let sourceURLs = [item.s?.gif, item.s?.mp4, item.s?.u].compactMap { $0?.lowercased() }
-  return sourceURLs.contains { url in
-    (url.contains("i.redd.it") && url.hasSuffix(".gif")) || (url.contains("preview.redd.it") && url.contains("format=mp4"))
-  }
+  let sourceURLs = [item.s?.gif, item.s?.mp4, item.s?.u].compactMap(\.self)
+  return sourceURLs.contains(where: isRedditHostedGIFSourceURL)
+}
+
+private func mimeExtension(from mime: String?) -> String? {
+  guard let parts = mime?.split(separator: "/"), parts.count == 2 else { return nil }
+  let subtype = String(parts[1]).lowercased()
+  return galleryImageExtensions.contains(subtype) ? subtype : nil
 }
 
 private func resolvedGalleryImage(
@@ -329,7 +346,9 @@ private func resolvedGalleryImage(
   guard itemMeta.status.lowercased() == "failed", isPlainRedditMediaID(mediaID) else {
     return nil
   }
-  let ext = (thumbnailInfo?.mediaID == mediaID ? thumbnailInfo?.extension : nil) ?? fallbackExtension
+  let ext = mimeExtension(from: itemMeta.m)
+    ?? (thumbnailInfo?.mediaID == mediaID ? thumbnailInfo?.extension : nil)
+    ?? fallbackExtension
   guard let imgURL = URL(string: "https://i.redd.it/\(mediaID).\(ext)") else {
     return nil
   }
