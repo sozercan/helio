@@ -25,6 +25,20 @@ extension Subreddit {
     feedsAndSuch.contains(self.id)
   }
 
+  var rawSubredditName: String {
+    if let displayName = data?.display_name, !displayName.isEmpty {
+      return displayName
+    }
+    var name = id
+    if name.hasPrefix("/r/") {
+      name = String(name.dropFirst(3))
+    }
+    if name.hasSuffix("/") {
+      name = String(name.dropLast())
+    }
+    return name
+  }
+
   @MainActor
   func localFavoriteToggle() -> Bool {
     UserCollectionsStore.shared.toggleLocalFavorite(self)
@@ -133,7 +147,7 @@ extension Subreddit {
 
   func loadIfNeeded() async {
     guard data == nil, !feedsAndSuch.contains(id) else { return }
-    if let data = await RedditInfoLoader.shared.subreddit(named: id) {
+    if let data = await RedditInfoLoader.shared.subreddit(named: rawSubredditName) {
       await MainActor.run {
         self.data = data
       }
@@ -144,7 +158,7 @@ extension Subreddit {
 
   static func fetchAndCacheFlairsFrom(_ subID: String) async {
     let key = subID.lowercased()
-    guard !feedsAndSuch.contains(subID), flairsFetched.withLock({ $0.insert(key).inserted }) else { return }
+    guard flairsFetched.withLock({ $0.insert(key).inserted }) else { return }
     guard let flairs = await RedditAPI.shared.getFlairs(subID) else {
       flairsFetched.withLock { _ = $0.remove(key) }
       return
@@ -166,7 +180,8 @@ extension Subreddit {
   }
 
   func fetchAndCacheFlairs() async {
-    await Self.fetchAndCacheFlairsFrom(self.data?.display_name ?? self.id)
+    guard !isFeed else { return }
+    await Self.fetchAndCacheFlairsFrom(rawSubredditName)
   }
 
   func fetchRules() async -> RedditAPI.FetchSubRulesResponse? {
@@ -184,7 +199,7 @@ extension Subreddit {
       }
     }
     guard !flairs.isEmpty else { return }
-    let subID = id
+    let subID = rawSubredditName
     let context = PersistenceController.shared.container.newBackgroundContext()
     await context.perform {
       let fetchRequest = CachedFilter.fetchRequest()

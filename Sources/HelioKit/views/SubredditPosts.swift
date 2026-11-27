@@ -22,7 +22,7 @@ struct SubredditPosts: View, Equatable {
     switch subreddit.id {
     case "home": "Home"
     case savedKeyword: "Saved"
-    default: "\(subFeedSettings.showPrefixOnFeedTitle ? "r/" : "")\(subreddit.data?.display_name ?? subreddit.id)"
+    default: "\(subFeedSettings.showPrefixOnFeedTitle ? "r/" : "")\(subreddit.rawSubredditName)"
     }
   }
 

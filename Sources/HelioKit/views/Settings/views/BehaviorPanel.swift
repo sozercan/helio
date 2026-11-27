@@ -52,6 +52,19 @@ struct BehaviorPanel: View {
           }
           .pickerStyle(DefaultPickerStyle())
 
+          Toggle("Restore reading session", isOn: $behaviorDefSettings.restoreReadingSession)
+            .onChange(of: behaviorDefSettings.restoreReadingSession) { _, enabled in
+              if enabled {
+                if let accountID = generalDefSettings.redditCredentialSelectedID,
+                   let feedName = Nav.shared.currentFeedName(for: accountID)
+                {
+                  ReadingSessionStore.save(feedName: feedName, accountID: accountID)
+                }
+              } else {
+                ReadingSessionStore.clearAll()
+              }
+            }
+
           WSNavigationLink(.setting(.filteredSubreddits), "Filtered Subreddits")
         }
 

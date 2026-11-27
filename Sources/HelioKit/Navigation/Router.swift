@@ -45,10 +45,16 @@ class Router: Hashable, Equatable, Identifiable {
     get { fullPath.first }
     set {
       if let newValue {
+        let explicitFeed = ReadingSessionStore.feedIdentifier(for: newValue)
         if let first = fullPath.first, first.isSameFeed(as: newValue) {
           first.takeSubredditDetails(from: newValue)
+          if let explicitFeed {
+            onFeedVisit?(explicitFeed, true)
+          }
         } else {
-          fullPath = [newValue]
+          setPath(reportingExplicitFeed: explicitFeed) {
+            fullPath = [newValue]
+          }
         }
       } else {
         fullPath = []
@@ -65,11 +71,31 @@ class Router: Hashable, Equatable, Identifiable {
     return fullPath.count > (protectsRoot ? 1 : 0)
   }
 
+  @ObservationIgnored var onFeedVisit: ((String, Bool) -> Void)?
+  @ObservationIgnored var onFeedCleared: (() -> Void)?
+
   var fullPath: [NavDest] = [] {
     didSet {
       if fullPath.isEmpty != isAtRoot {
         isAtRoot = fullPath.isEmpty
       }
+      guard !suppressNextFeedVisitNotification else { return }
+      if let feedName = ReadingSessionStore.latestFeedName(in: fullPath) {
+        onFeedVisit?(feedName, false)
+      } else {
+        onFeedCleared?()
+      }
+    }
+  }
+
+  @ObservationIgnored private var suppressNextFeedVisitNotification = false
+
+  private func setPath(reportingExplicitFeed explicitFeed: String?, _ update: () -> Void) {
+    suppressNextFeedVisitNotification = explicitFeed != nil
+    update()
+    suppressNextFeedVisitNotification = false
+    if let explicitFeed {
+      onFeedVisit?(explicitFeed, true)
     }
   }
 
@@ -106,13 +132,16 @@ class Router: Hashable, Equatable, Identifiable {
   }
 
   func navigateTo(_ dest: NavDest, _ reset: Bool = false, from column: Column? = nil) {
-    if reset {
-      path = [dest]
-    } else if column == .feed, !fullPath.isEmpty {
-      let feedStack = Array(fullPath[..<(postColumnStart ?? fullPath.count)])
-      fullPath = feedStack + [dest] + (dest.opensInPostColumn ? [] : postColumn)
-    } else {
-      path.append(dest)
+    let explicitFeed = ReadingSessionStore.feedIdentifier(for: dest)
+    setPath(reportingExplicitFeed: explicitFeed) {
+      if reset {
+        path = [dest]
+      } else if column == .feed, !fullPath.isEmpty {
+        let feedStack = Array(fullPath[..<(postColumnStart ?? fullPath.count)])
+        fullPath = feedStack + [dest] + (dest.opensInPostColumn ? [] : postColumn)
+      } else {
+        path.append(dest)
+      }
     }
   }
 
@@ -209,11 +238,14 @@ class Router: Hashable, Equatable, Identifiable {
   }
 
   func showFeedRoot(_ dest: NavDest) {
-    if let first = fullPath.first, first.isSameFeed(as: dest) {
-      first.takeSubredditDetails(from: dest)
-      fullPath = [first]
-    } else {
-      fullPath = [dest]
+    let explicitFeed = ReadingSessionStore.feedIdentifier(for: dest)
+    setPath(reportingExplicitFeed: explicitFeed) {
+      if let first = fullPath.first, first.isSameFeed(as: dest) {
+        first.takeSubredditDetails(from: dest)
+        fullPath = [first]
+      } else {
+        fullPath = [dest]
+      }
     }
   }
 
@@ -238,7 +270,7 @@ extension Router.NavDest {
     if sub.data == nil, builtInFeedIDs.contains(sub.id) {
       return "feed:\(sub.id)"
     }
-    return (sub.data?.display_name ?? sub.id).lowercased()
+    return sub.rawSubredditName.lowercased()
   }
 
   var isFeed: Bool {

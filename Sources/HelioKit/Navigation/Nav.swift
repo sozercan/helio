@@ -1,4 +1,5 @@
 import Combine
+import Defaults
 import Foundation
 import SafariServices
 import SwiftUI
@@ -27,6 +28,9 @@ class Nav: Identifiable, Equatable {
   static func present(_ content: PresentingSheet?) {
     Nav.shared.presentingSheet = content
   }
+
+  @ObservationIgnored private var lastVisitedFeedByAccount: [UUID: String] = [:]
+  @ObservationIgnored private var lastVisitedFeedByTab: [TabIdentifier: (accountID: UUID, feedName: String)] = [:]
 
   private static func newRouterForTab(_ tab: TabIdentifier, _ id: UUID) -> Router {
     Router(id: "\(tab.rawValue)TabRouter-\(id.uuidString)")
@@ -74,6 +78,14 @@ class Nav: Identifiable, Equatable {
         }
       }
     }
+    didSet {
+      if ReadingSessionStore.latestFeedName(in: self[activeTab].fullPath) != nil,
+         let entry = lastVisitedFeedByTab[activeTab],
+         entry.accountID == Defaults[.GeneralDefSettings].redditCredentialSelectedID
+      {
+        recordVisitedFeed(entry.feedName, for: activeTab, isExplicitSelection: false)
+      }
+    }
   }
 
   var routers: [TabIdentifier: Router]
@@ -115,6 +127,34 @@ class Nav: Identifiable, Equatable {
     self.id = id
     self.activeTab = activeTab
     self.routers = Dictionary(uniqueKeysWithValues: TabIdentifier.allCases.map { ($0, Self.newRouterForTab($0, id)) })
+    for (tab, router) in routers {
+      observeFeedNavigation(on: router, tab: tab)
+    }
+  }
+
+  private func observeFeedNavigation(on router: Router, tab: TabIdentifier) {
+    router.onFeedVisit = { [weak self] feedName, isExplicitSelection in
+      self?.recordVisitedFeed(feedName, for: tab, isExplicitSelection: isExplicitSelection)
+    }
+    router.onFeedCleared = { [weak self] in
+      self?.lastVisitedFeedByTab.removeValue(forKey: tab)
+    }
+  }
+
+  private func recordVisitedFeed(_ feedName: String, for tab: TabIdentifier, isExplicitSelection: Bool) {
+    guard let accountID = Defaults[.GeneralDefSettings].redditCredentialSelectedID else { return }
+    if !isExplicitSelection, lastVisitedFeedByTab[tab]?.accountID != accountID {
+      return
+    }
+    lastVisitedFeedByAccount[accountID] = feedName
+    lastVisitedFeedByTab[tab] = (accountID, feedName)
+    guard Defaults[.BehaviorDefSettings].restoreReadingSession else { return }
+    ReadingSessionStore.save(feedName: feedName, accountID: accountID)
+  }
+
+  func currentFeedName(for accountID: UUID?) -> String? {
+    guard let accountID else { return nil }
+    return lastVisitedFeedByAccount[accountID]
   }
 
   func navigateTo(_ tab: TabIdentifier, _ dest: Router.NavDest, _ reset: Bool = true) {
@@ -139,6 +179,7 @@ class Nav: Identifiable, Equatable {
     let router = self.routers[tab] ?? Self.newRouterForTab(tab, id)
     if self.routers[tab] == nil {
       self.routers[tab] = router
+      observeFeedNavigation(on: router, tab: tab)
     }
     return router
   }
