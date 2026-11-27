@@ -78,6 +78,7 @@ struct UserView: View {
   }
 
   private func reloadUserForCurrentAccount() async {
+    guard !updatingFriend else { return }
     let fetchID = UUID()
     userFetchID = fetchID
     let account = RedditCredentialsManager.shared.selectedCredential(id: generalDefSettings.redditCredentialSelectedID)
