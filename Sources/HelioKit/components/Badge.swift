@@ -4,18 +4,70 @@ import NukeUI
 import SwiftUI
 
 struct UserFlair: View, Equatable {
+  static func == (lhs: UserFlair, rhs: UserFlair) -> Bool {
+    lhs.flair == rhs.flair && lhs.subName == rhs.subName && lhs.flairText == rhs.flairText && lhs.flairBackground == rhs.flairBackground
+  }
+
   let flair: String
+  var subName: String?
   let flairText: ThemeText
   let flairBackground: ColorSchemes<ThemeColor>
 
+  @State private var emojiURLs: [String: URL] = [:]
+
   var body: some View {
-    Text(flair).contentFont(flairText.size, flairText.weight.t, relativeTo: .meta)
-      .lineLimit(1)
-      .foregroundColor(flairText.color())
-      .padding(EdgeInsets(top: 0, leading: 4, bottom: 0, trailing: 4))
-      .background(flairBackground())
-      .cornerRadius(4.0)
-      .allowsHitTesting(false)
+    let segments = FlairParser.parse(flair)
+    let hasEmojis = segments.contains {
+      if case .emoji = $0 {
+        return true
+      }
+      return false
+    }
+    let visible = segments.filter { segment in
+      switch segment {
+      case .text:
+        true
+      case let .emoji(name):
+        emojiURLs[name] != nil || emojiURLs[name.lowercased()] != nil
+      }
+    }
+    ZStack {
+      if !visible.isEmpty {
+        HStack(alignment: .center, spacing: 3) {
+          ForEach(Array(visible.enumerated()), id: \.offset) { _, segment in
+            switch segment {
+            case let .text(text):
+              Text(text).contentFont(flairText.size, flairText.weight.t, relativeTo: .meta)
+                .lineLimit(1)
+                .foregroundStyle(flairText.color())
+            case let .emoji(name):
+              if let url = emojiURLs[name] ?? emojiURLs[name.lowercased()] {
+                LazyImage(url: url) { state in
+                  if let image = state.image {
+                    image.resizable().scaledToFit()
+                      .accessibilityLabel(name.replacingOccurrences(of: "_", with: " "))
+                  }
+                }
+                .frame(width: max(12, flairText.size + 2), height: max(12, flairText.size + 2))
+                .accessibilityElement(children: .ignore)
+                .accessibilityLabel(name.replacingOccurrences(of: "_", with: " "))
+              }
+            }
+          }
+        }
+        .padding(EdgeInsets(top: 0, leading: 4, bottom: 0, trailing: 4))
+        .background(flairBackground())
+        .cornerRadius(4.0)
+        .allowsHitTesting(false)
+      }
+    }
+    .task(id: hasEmojis ? subName : nil) {
+      emojiURLs = [:]
+      guard hasEmojis, let subName, !subName.isEmpty else { return }
+      let loaded = await SubredditEmojiLoader.shared.emojiURLs(for: subName)
+      guard !Task.isCancelled else { return }
+      emojiURLs = loaded
+    }
   }
 }
 
@@ -46,7 +98,7 @@ struct BadgeView: View, Equatable {
   @Environment(\.navColumn) private var navColumn
   static let authorStatsSpacing: Double = 6
   static func == (lhs: BadgeView, rhs: BadgeView) -> Bool {
-    lhs.avatarURL == rhs.avatarURL && lhs.saved == rhs.saved && lhs.avatarRequest?.url == rhs.avatarRequest?.url && lhs.theme == rhs.theme && lhs.commentsCount == rhs.commentsCount && lhs.newCommentsCount == rhs.newCommentsCount && lhs.votesCount == rhs.votesCount && lhs.likes == rhs.likes
+    lhs.avatarURL == rhs.avatarURL && lhs.saved == rhs.saved && lhs.avatarRequest?.url == rhs.avatarRequest?.url && lhs.theme == rhs.theme && lhs.commentsCount == rhs.commentsCount && lhs.newCommentsCount == rhs.newCommentsCount && lhs.votesCount == rhs.votesCount && lhs.likes == rhs.likes && lhs.userFlair == rhs.userFlair && lhs.subName == rhs.subName
   }
 
   var avatarRequest: ImageRequest?
@@ -118,10 +170,8 @@ struct BadgeView: View, Equatable {
                 PostLinkGlowDot(unseenType: .dot(commentTheme?.unseenDot ?? ColorSchemes<ThemeColor>(light: .init(hex: "FF0000"), dark: .init(hex: "FF0000"))), seen: false, badge: true).equatable()
               }
 
-              if let flairs = flairWithoutEmojis(str: userFlair) {
-                ForEach(flairs, id: \.self) {
-                  UserFlair(flair: $0, flairText: theme.flairText, flairBackground: theme.flairBackground).equatable()
-                }
+              if let userFlair, !FlairParser.parse(userFlair).isEmpty {
+                UserFlair(flair: userFlair, subName: subName, flairText: theme.flairText, flairBackground: theme.flairBackground).equatable()
               }
             }
 
@@ -208,7 +258,7 @@ struct Badge: View {
 
   var body: some View {
     if let data = post.data {
-      BadgeView(saved: data.saved, usernameColor: usernameColor, author: data.author, userFlair: data.author_flair_text, created: data.created, avatarURL: avatarURL, theme: theme, commentsCount: formatBigNumber(data.num_comments), votesCount: !showVotes ? nil : formatBigNumber(data.ups))
+      BadgeView(saved: data.saved, usernameColor: usernameColor, author: data.author, userFlair: data.author_flair_text, created: data.created, avatarURL: avatarURL, theme: theme, commentsCount: formatBigNumber(data.num_comments), votesCount: !showVotes ? nil : formatBigNumber(data.ups), subName: data.subreddit)
     }
   }
 }

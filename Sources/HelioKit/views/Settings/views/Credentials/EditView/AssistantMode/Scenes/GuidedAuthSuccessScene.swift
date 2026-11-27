@@ -1,6 +1,27 @@
 import SwiftUI
 
 struct GuidedAuthSuccessScene: View {
+  private static let celebrationSequence: [Hap.TransientBeat] = [
+    .init(relativeTime: 0.1, intensity: 1, sharpness: 0.85),
+    .init(relativeTime: 0.6, intensity: 0.35, sharpness: 1),
+    .init(relativeTime: 0.63, intensity: 0.35, sharpness: 1),
+    .init(relativeTime: 0.745, intensity: 0.55, sharpness: 1),
+    .init(relativeTime: 0.75, intensity: 0.45, sharpness: 1),
+    .init(relativeTime: 0.8, intensity: 0.45, sharpness: 1),
+    .init(relativeTime: 0.815, intensity: 0.25, sharpness: 1),
+    .init(relativeTime: 0.84, intensity: 0.45, sharpness: 1),
+    .init(relativeTime: 0.845, intensity: 0.35, sharpness: 1),
+    .init(relativeTime: 1.15, intensity: 0.75, sharpness: 1),
+    .init(relativeTime: 1.35, intensity: 0.45, sharpness: 1),
+    .init(relativeTime: 1.45, intensity: 0.65, sharpness: 1),
+    .init(relativeTime: 1.7, intensity: 0.5, sharpness: 1),
+  ]
+
+  private static let saveButtonSequence: [Hap.TransientBeat] = [
+    .init(relativeTime: 0, intensity: 0.75, sharpness: 0.5),
+    .init(relativeTime: 0.1, intensity: 0.9, sharpness: 1),
+  ]
+
   let draftCredential: RedditCredential
   var body: some View {
     VStack(spacing: 40) {
@@ -13,8 +34,7 @@ struct GuidedAuthSuccessScene: View {
       }
       VStack(spacing: 16) {
         HelioButton {
-          Hap.shared.play(intensity: 0.75, sharpness: 0.5)
-          doThisAfter(0.1) { Hap.shared.play(intensity: 0.9, sharpness: 1) }
+          Hap.shared.playSequence(Self.saveButtonSequence)
           draftCredential.save()
           Nav.present(nil)
         } label: {
@@ -31,47 +51,7 @@ struct GuidedAuthSuccessScene: View {
     .padding(EdgeInsets(top: 64, leading: 32, bottom: 0, trailing: 32))
     .frame(maxHeight: .infinity, alignment: .top)
     .onAppear {
-      Task {
-        doThisAfter(0.1) {
-          Hap.shared.play(intensity: 1, sharpness: 0.85)
-          doThisAfter(0.5) {
-            Hap.shared.play(intensity: 0.35, sharpness: 1)
-            doThisAfter(0.03) {
-              Hap.shared.play(intensity: 0.35, sharpness: 1)
-            }
-            doThisAfter(0.145) {
-              Hap.shared.play(intensity: 0.55, sharpness: 1)
-            }
-            doThisAfter(0.15) {
-              Hap.shared.play(intensity: 0.45, sharpness: 1)
-            }
-            doThisAfter(0.2) {
-              Hap.shared.play(intensity: 0.45, sharpness: 1)
-            }
-            doThisAfter(0.215) {
-              Hap.shared.play(intensity: 0.25, sharpness: 1)
-            }
-            doThisAfter(0.24) {
-              Hap.shared.play(intensity: 0.45, sharpness: 1)
-            }
-            doThisAfter(0.245) {
-              Hap.shared.play(intensity: 0.35, sharpness: 1)
-            }
-            doThisAfter(0.55) {
-              Hap.shared.play(intensity: 0.75, sharpness: 1)
-            }
-            doThisAfter(0.75) {
-              Hap.shared.play(intensity: 0.45, sharpness: 1)
-            }
-            doThisAfter(0.85) {
-              Hap.shared.play(intensity: 0.65, sharpness: 1)
-            }
-            doThisAfter(1.1) {
-              Hap.shared.play(intensity: 0.5, sharpness: 1)
-            }
-          }
-        }
-      }
+      Hap.shared.playSequence(Self.celebrationSequence)
     }
   }
 }
