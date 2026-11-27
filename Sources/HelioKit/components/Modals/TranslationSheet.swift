@@ -18,16 +18,25 @@ enum OnDeviceTranslation {
   }
 
   static func canonicalLanguageCode(_ raw: String) -> String {
-    let normalized = raw.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+    let normalized = raw.trimmingCharacters(in: .whitespacesAndNewlines)
     guard !normalized.isEmpty else { return "" }
-    if let separator = normalized.firstIndex(where: { $0 == "-" || $0 == "_" }) {
-      return String(normalized[..<separator])
+    let components = Locale.Language.Components(identifier: normalized)
+    guard let language = components.languageCode?.identifier.lowercased(), !language.isEmpty else {
+      return ""
     }
-    return normalized
+    if let script = components.script?.identifier, !script.isEmpty {
+      return "\(language)-\(script)"
+    }
+    return language
   }
 
   static func makeLanguage(_ code: String) -> Locale.Language {
-    Locale.Language(languageCode: Locale.LanguageCode(canonicalLanguageCode(code)))
+    let canonical = canonicalLanguageCode(code)
+    let components = Locale.Language.Components(identifier: canonical)
+    if let languageCode = components.languageCode {
+      return Locale.Language(languageCode: languageCode, script: components.script, region: nil)
+    }
+    return Locale.Language(identifier: canonical)
   }
 
   static func targetLanguageCode(preferredLanguages: [String] = Locale.preferredLanguages) -> String {
