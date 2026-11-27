@@ -46,6 +46,7 @@ class Nav: Identifiable, Equatable {
     case editingCredential(RedditCredential)
     case editingTheme(HelioTheme)
     case selectText(String)
+    case translateText(String)
 
     var id: String {
       var newID = ""
@@ -55,6 +56,7 @@ class Nav: Identifiable, Equatable {
       case let .redditSignIn(cred): newID = "reddit-sign-in-\(cred?.id.uuidString ?? "new")"
       case let .editingTheme(theme): newID = theme.id
       case let .selectText(text): newID = "select-text-\(text.hashValue)"
+      case let .translateText(text): newID = "translate-text-\(text.hashValue)"
       }
       return "\(newID)-presenting-sheet-Nav"
     }

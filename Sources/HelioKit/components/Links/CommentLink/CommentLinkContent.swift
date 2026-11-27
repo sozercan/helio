@@ -363,6 +363,10 @@ struct CommentLinkActions: View {
       Button {
         Nav.present(.selectText(body))
       } label: { Label("Select Text", systemImage: "selection.pin.in.out") }
+
+      Button {
+        Nav.present(.translateText(body))
+      } label: { Label("Translate", systemImage: "translate") }
     }
 
     if let permalink = data.permalink {

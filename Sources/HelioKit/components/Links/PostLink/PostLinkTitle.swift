@@ -42,6 +42,11 @@ struct PostMenuItems: View {
 
   var body: some View {
     PostLinkContext(post: post)
+    if let data = post.data, !data.title.isEmpty {
+      Button("Translate", systemImage: "translate") {
+        Nav.present(.translateText(OnDeviceTranslation.postTranslationText(title: data.title, selftext: data.selftext)))
+      }
+    }
     Button("Share", systemImage: "square.and.arrow.up") {
       if let permalink = post.data?.permalink {
         ShareUtils.shareItem(item: "https://reddit.com\(permalink.escape.urlEncoded)")
