@@ -20,12 +20,14 @@ struct SubredditsStack: View {
 
   var body: some View {
     let layout = SplitLayout(sizeClass: horizontalSizeClass, frame: frame, division: WindowMetrics.shared.divisionFrame)
-    let _ = layoutSwitch.show(usesPanes: layout.usesPanes)
+    let _ = layoutSwitch.show(layout: layout)
     Group {
       if layout.usesPanes {
         panes(layout)
-      } else {
+      } else if layout.showsColumns {
         splitView(layout)
+      } else {
+        compactStack
       }
     }
     .environment(\.screenStateScope, layoutSwitch)
@@ -46,19 +48,33 @@ struct SubredditsStack: View {
 
   @MainActor
   private final class LayoutSwitch {
-    private var usesPanes: Bool?
+    private enum Mode: Equatable { case compact, splitView, panes }
+    private var mode: Mode?
 
-    func show(usesPanes: Bool) {
-      if let shown = self.usesPanes, shown != usesPanes {
+    func show(layout: SplitLayout) {
+      let next: Mode = layout.usesPanes ? .panes : layout.showsColumns ? .splitView : .compact
+      if let shown = self.mode, shown != next {
         ScreenStates.shared.beginHandoff(in: self)
       }
-      self.usesPanes = usesPanes
+      self.mode = next
     }
   }
 
+  private var compactStack: some View {
+    NavigationStack(path: $router.compactPath) {
+      subsList(inSidebar: false)
+        .navigationDestination(for: Router.CompactPathEntry.self) { entry in
+          RouterDestinationView(dest: entry.dest, tabID: .posts)
+            .environment(\.navColumn, entry.column)
+        }
+    }
+    .environment(\.navColumn, .feed)
+    .columnContentWidth()
+  }
+
   private func splitView(_ layout: SplitLayout) -> some View {
-    NavigationSplitView(columnVisibility: $columnVisibility, preferredCompactColumn: compactColumn) {
-      subsList(inSidebar: layout.showsColumns)
+    NavigationSplitView(columnVisibility: $columnVisibility) {
+      subsList(inSidebar: true)
     } content: {
       NavigationStack(path: $router.feedPath) {
         feedRoot
@@ -73,7 +89,7 @@ struct SubredditsStack: View {
       postColumn(layout)
     }
     .navigationSplitViewStyle(.balanced)
-    .environment(\.horizontalSizeClass, layout.showsColumns ? .regular : .compact)
+    .environment(\.horizontalSizeClass, .regular)
   }
 
   private static let panesCoordinateSpace = "duo-split-panes"
@@ -205,6 +221,7 @@ struct SubredditsStack: View {
       case let .reddit(.subFeed(sub)):
         SubredditPosts(subreddit: sub)
           .id("\(Router.NavDest.reddit(.subFeed(sub)).subredditFeedName ?? sub.id)-sub-first-tab")
+          .attachViewControllerToRouter(tabID: .posts)
       case let .reddit(.post(post)):
         if let sub = post.helioData?.subreddit {
           PostView(post: post, subreddit: sub)
@@ -227,19 +244,6 @@ struct SubredditsStack: View {
     } else {
       ContentUnavailableView("No Feed Selected", systemImage: "rectangle.stack", description: Text("Pick a feed or subreddit."))
         .attachViewControllerToRouter(tabID: .posts)
-    }
-  }
-
-  private var compactColumn: Binding<NavigationSplitViewColumn> {
-    Binding {
-      router.postColumnStart != nil ? .detail : router.firstSelected != nil ? .content : .sidebar
-    } set: { column in
-      guard !router.firstIsSidebarSelection else { return }
-      if column == .content {
-        router.closePost()
-      } else if column == .sidebar {
-        router.firstSelected = nil
-      }
     }
   }
 }

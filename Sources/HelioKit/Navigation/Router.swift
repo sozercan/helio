@@ -11,29 +11,55 @@ class ViewControllerHolder: Identifiable, Equatable {
   }
 
   let routerID: String
-  var controller: UIViewController? {
-    didSet { updateContentPopGesture() }
-  }
-
+  private var navigationControllers = NSHashTable<UINavigationController>.weakObjects()
   private var swipeAnywhereEnabled = false
-  private var isAtRoot = true
 
   init(routerID: String) {
     self.routerID = routerID
   }
 
+  func attach(_ controller: UIViewController) {
+    for nav in Self.ancestorNavigationControllers(of: controller) {
+      navigationControllers.add(nav)
+      updateContentPopGesture(on: nav)
+    }
+  }
+
+  private static func ancestorNavigationControllers(of controller: UIViewController) -> [UINavigationController] {
+    var result: [UINavigationController] = []
+    var current: UIViewController? = controller
+    while let candidate = current {
+      if let nav = candidate as? UINavigationController, !result.contains(where: { $0 === nav }) {
+        result.append(nav)
+      }
+      if let nav = candidate.navigationController, !result.contains(where: { $0 === nav }) {
+        result.append(nav)
+      }
+      current = candidate.parent
+    }
+    return result
+  }
+
   func setSwipeAnywhereEnabled(_ enabled: Bool) {
     swipeAnywhereEnabled = enabled
-    updateContentPopGesture()
+    updateContentPopGestures()
   }
 
-  func setAtRoot(_ atRoot: Bool) {
-    isAtRoot = atRoot
-    updateContentPopGesture()
+  func updateContentPopGestures() {
+    for nav in navigationControllers.allObjects {
+      updateContentPopGesture(on: nav)
+    }
   }
 
-  private func updateContentPopGesture() {
-    controller?.navigationController?.interactiveContentPopGestureRecognizer?.isEnabled = swipeAnywhereEnabled && !isAtRoot
+  func scheduleContentPopGestureUpdate() {
+    updateContentPopGestures()
+    Task { @MainActor [weak self] in
+      self?.updateContentPopGestures()
+    }
+  }
+
+  private func updateContentPopGesture(on nav: UINavigationController) {
+    nav.interactiveContentPopGestureRecognizer?.isEnabled = swipeAnywhereEnabled
   }
 }
 
@@ -79,6 +105,7 @@ class Router: Hashable, Equatable, Identifiable {
       if fullPath.isEmpty != isAtRoot {
         isAtRoot = fullPath.isEmpty
       }
+      navController.scheduleContentPopGestureUpdate()
       guard !suppressNextFeedVisitNotification else { return }
       if let feedName = ReadingSessionStore.latestFeedName(in: fullPath) {
         onFeedVisit?(feedName, false)
@@ -110,9 +137,7 @@ class Router: Hashable, Equatable, Identifiable {
     }
   }
 
-  private(set) var isAtRoot = true {
-    didSet { navController.setAtRoot(isAtRoot) }
-  }
+  private(set) var isAtRoot = true
 
   var navController: ViewControllerHolder
 
@@ -131,12 +156,21 @@ class Router: Hashable, Equatable, Identifiable {
     withAnimation { self.fullPath.removeAll() }
   }
 
+  func openAdjacentPost(_ dest: NavDest) {
+    guard !fullPath.isEmpty else {
+      navigateTo(dest)
+      return
+    }
+    let feedStack = Array(fullPath[..<(postColumnStart ?? fullPath.count)])
+    fullPath = feedStack + [dest]
+  }
+
   func navigateTo(_ dest: NavDest, _ reset: Bool = false, from column: Column? = nil) {
     let explicitFeed = ReadingSessionStore.feedIdentifier(for: dest)
     setPath(reportingExplicitFeed: explicitFeed) {
       if reset {
         path = [dest]
-      } else if column == .feed, !fullPath.isEmpty {
+      } else if column == .feed, showsPostBesideFeed, !fullPath.isEmpty {
         let feedStack = Array(fullPath[..<(postColumnStart ?? fullPath.count)])
         fullPath = feedStack + [dest] + (dest.opensInPostColumn ? [] : postColumn)
       } else {
@@ -155,6 +189,23 @@ class Router: Hashable, Equatable, Identifiable {
 
   var postColumn: [NavDest] {
     postColumnStart.map { Array(fullPath[$0...]) } ?? []
+  }
+
+  struct CompactPathEntry: Hashable {
+    let dest: NavDest
+    let column: Column
+  }
+
+  var compactPath: [CompactPathEntry] {
+    get {
+      let postStart = postColumnStart
+      return fullPath.enumerated().map { index, dest in
+        CompactPathEntry(dest: dest, column: postStart.map { index >= $0 } == true ? .post : .feed)
+      }
+    }
+    set {
+      fullPath = newValue.map(\.dest)
+    }
   }
 
   var feedPath: [NavDest] {
