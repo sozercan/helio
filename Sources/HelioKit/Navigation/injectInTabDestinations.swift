@@ -95,16 +95,37 @@ struct RouterDestinationView: View {
 private struct AttachViewControllerToRouterView: UIViewRepresentable {
   var tabID: Nav.TabIdentifier
   var disable: Bool
-  func makeUIView(context: Context) -> some UIView {
-    UIView()
+  func makeUIView(context: Context) -> AttachControllerView {
+    let view = AttachControllerView()
+    view.tabID = tabID
+    view.swipeAnywhereEnabled = !disable
+    return view
   }
 
-  func updateUIView(_ uiView: UIViewType, context: Context) {
-    DispatchQueue.main.async {
-      if let controller = uiView.parentViewController {
-        Nav.shared[tabID].navController.controller = controller
+  func updateUIView(_ uiView: AttachControllerView, context: Context) {
+    uiView.tabID = tabID
+    uiView.swipeAnywhereEnabled = !disable
+    uiView.attachToRouter()
+  }
+}
+
+private final class AttachControllerView: UIView {
+  var tabID: Nav.TabIdentifier = .posts
+  var swipeAnywhereEnabled = false
+
+  override func didMoveToWindow() {
+    super.didMoveToWindow()
+    attachToRouter()
+  }
+
+  func attachToRouter() {
+    let tabID = tabID
+    let swipeAnywhereEnabled = swipeAnywhereEnabled
+    Task { @MainActor [weak self] in
+      if let controller = self?.parentViewController {
+        Nav.shared[tabID].navController.attach(controller)
       }
-      Nav.shared[tabID].navController.setSwipeAnywhereEnabled(!disable)
+      Nav.shared[tabID].navController.setSwipeAnywhereEnabled(swipeAnywhereEnabled)
     }
   }
 }

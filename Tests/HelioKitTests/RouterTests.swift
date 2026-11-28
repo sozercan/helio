@@ -216,6 +216,7 @@ struct RouterTests {
 
   @Test func anotherPostFromTheFeedReplacesThePostColumn() {
     let router = Router(id: "test")
+    router.showsPostBesideFeed = true
     router.firstSelected = feed("apple")
     router.navigateTo(post, from: .feed)
     router.navigateTo(user, from: .post)
@@ -225,6 +226,7 @@ struct RouterTests {
 
   @Test func screensOpenedFromThePostStackInThePostColumn() {
     let router = Router(id: "test")
+    router.showsPostBesideFeed = true
     router.firstSelected = feed("apple")
     router.navigateTo(post, from: .feed)
     router.navigateTo(user, from: .post)
@@ -237,6 +239,7 @@ struct RouterTests {
   @Test func aWebPageFromTheFeedOpensInThePostColumnAndOneFromThePostStacksOnIt() throws {
     let page = try Router.NavDest.web(#require(URL(string: "https://example.com/article")))
     let router = Router(id: "test")
+    router.showsPostBesideFeed = true
     router.firstSelected = feed("apple")
     router.navigateTo(post, from: .feed)
     router.navigateTo(page, from: .feed)
@@ -251,6 +254,7 @@ struct RouterTests {
 
   @Test func aSubredditFromTheFeedStacksOnTheFeedAndKeepsTheOpenPost() {
     let router = Router(id: "test")
+    router.showsPostBesideFeed = true
     router.firstSelected = feed("apple")
     router.navigateTo(post, from: .feed)
     router.navigateTo(sub, from: .feed)
@@ -352,6 +356,80 @@ struct RouterTests {
     let router = Router(id: "test")
     router.feedPath = [sub]
     #expect(router.fullPath.isEmpty)
+  }
+
+  @Test func compactStackPushesPostOpenedFromPostOnTopInsteadOfReplacing() {
+    let router = Router(id: "test")
+    router.showsPostBesideFeed = false
+    router.firstSelected = feed("apple")
+    router.navigateTo(post, from: .feed)
+    router.navigateTo(otherPost, from: .feed)
+    #expect(router.fullPath == [feed("apple"), post, otherPost])
+    router.goBack()
+    #expect(router.fullPath == [feed("apple"), post])
+    router.goBack()
+    #expect(router.fullPath == [feed("apple")])
+  }
+
+  @Test func compactStackPushesSubredditAndWebPageOnTopOfPost() throws {
+    let page = try Router.NavDest.web(#require(URL(string: "https://example.com/article")))
+    let router = Router(id: "test")
+    router.showsPostBesideFeed = false
+    router.firstSelected = feed("apple")
+    router.navigateTo(post, from: .feed)
+    router.navigateTo(page, from: .feed)
+    #expect(router.fullPath == [feed("apple"), post, page])
+    router.goBack()
+    #expect(router.fullPath == [feed("apple"), post])
+
+    router.navigateTo(sub, from: .feed)
+    #expect(router.fullPath == [feed("apple"), post, sub])
+    router.goBack()
+    #expect(router.fullPath == [feed("apple"), post])
+  }
+
+  @Test @MainActor func contentPopGestureTracksEveryAttachedNavigationControllerIndependently() {
+    let holder = ViewControllerHolder(routerID: "posts")
+    let feedRoot = UIViewController()
+    let feedPushed = UIViewController()
+    let feedNav = UINavigationController(rootViewController: feedRoot)
+    let postRoot = UIViewController()
+    let postPushed = UIViewController()
+    let postNav = UINavigationController(rootViewController: postRoot)
+
+    holder.attach(feedRoot)
+    holder.attach(postRoot)
+    holder.setSwipeAnywhereEnabled(true)
+
+    #expect(feedNav.interactiveContentPopGestureRecognizer?.isEnabled == false)
+    #expect(postNav.interactiveContentPopGestureRecognizer?.isEnabled == false)
+
+    feedNav.setViewControllers([feedRoot, feedPushed], animated: false)
+    holder.updateContentPopGestures()
+    #expect(feedNav.interactiveContentPopGestureRecognizer?.isEnabled == true)
+    #expect(postNav.interactiveContentPopGestureRecognizer?.isEnabled == false)
+
+    postNav.setViewControllers([postRoot, postPushed], animated: false)
+    holder.updateContentPopGestures()
+    #expect(feedNav.interactiveContentPopGestureRecognizer?.isEnabled == true)
+    #expect(postNav.interactiveContentPopGestureRecognizer?.isEnabled == true)
+
+    holder.setSwipeAnywhereEnabled(false)
+    #expect(feedNav.interactiveContentPopGestureRecognizer?.isEnabled == false)
+    #expect(postNav.interactiveContentPopGestureRecognizer?.isEnabled == false)
+  }
+
+  @Test @MainActor func attachWalksUpToEnclosingNavigationControllers() {
+    let holder = ViewControllerHolder(routerID: "posts")
+    let leaf = UIViewController()
+    let container = UIViewController()
+    container.addChild(leaf)
+    let nav = UINavigationController(rootViewController: container)
+    nav.setViewControllers([container, UIViewController()], animated: false)
+
+    holder.setSwipeAnywhereEnabled(true)
+    holder.attach(leaf)
+    #expect(nav.interactiveContentPopGestureRecognizer?.isEnabled == true)
   }
 }
 

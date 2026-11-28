@@ -199,7 +199,7 @@ final class CommandTargets {
 
   private func openLoadedPost(_ offset: Int, in router: Router) {
     guard let post = adjacentPost(offset, in: router) else { return }
-    router.navigateTo(.reddit(.post(post)), from: .feed)
+    router.openAdjacentPost(.reddit(.post(post)))
     if let feed = postsFeed, targets.contains(where: { $0.id == feed.id }) {
       feed.target.reveal?(post)
     }
