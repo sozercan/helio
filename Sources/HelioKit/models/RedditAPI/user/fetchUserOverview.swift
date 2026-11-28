@@ -13,6 +13,7 @@ enum UserListingSection: String, CaseIterable, Hashable, Identifiable {
   case downvoted
   case saved
   case hidden
+  case friends
 
   var id: String {
     rawValue
@@ -30,6 +31,7 @@ enum UserListingSection: String, CaseIterable, Hashable, Identifiable {
     case .downvoted: "Downvoted"
     case .saved: "Saved"
     case .hidden: "Hidden"
+    case .friends: "Friends"
     }
   }
 
@@ -42,6 +44,7 @@ enum UserListingSection: String, CaseIterable, Hashable, Identifiable {
     case .downvoted: "Downvoted"
     case .saved: "Saved"
     case .hidden: "Hidden"
+    case .friends: "Friends' posts"
     }
   }
 
@@ -54,6 +57,7 @@ enum UserListingSection: String, CaseIterable, Hashable, Identifiable {
     case .downvoted: "arrow.down"
     case .saved: "bookmark"
     case .hidden: "eye.slash"
+    case .friends: "person.2"
     }
   }
 
@@ -64,8 +68,18 @@ enum UserListingSection: String, CaseIterable, Hashable, Identifiable {
   var isPrivate: Bool {
     switch self {
     case .overview, .submitted, .comments: false
-    case .upvoted, .downvoted, .saved, .hidden: true
+    case .upvoted, .downvoted, .saved, .hidden, .friends: true
     }
+  }
+
+  func endpointPath(for userName: String) -> String? {
+    if self == .friends {
+      return "/r/friends.json"
+    }
+    guard let encodedName = userName.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed), !encodedName.isEmpty else {
+      return nil
+    }
+    return "/user/\(encodedName)/\(endpointSegment).json"
   }
 }
 
@@ -77,10 +91,10 @@ extension RedditAPI {
     limit: Int = Defaults[.SubredditFeedDefSettings].chunkLoadSize,
     altCredential: RedditCredential? = nil,
   ) async -> ([Either<PostData, CommentData>]?, String?)? {
-    guard let encodedName = userName.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed), !encodedName.isEmpty else {
+    guard let path = section.endpointPath(for: userName) else {
       return nil
     }
-    let endpoint = "\(RedditAPI.redditApiURLBase)/user/\(encodedName)/\(section.endpointSegment).json"
+    let endpoint = "\(RedditAPI.redditApiURLBase)\(path)"
     guard var urlComponents = URLComponents(string: endpoint) else {
       userOverviewLogger.error("Unable to create a valid URL for user listing section \(section.rawValue, privacy: .public)")
       return nil
