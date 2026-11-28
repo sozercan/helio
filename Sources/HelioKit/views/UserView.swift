@@ -9,13 +9,25 @@ struct UserView: View {
   @Default(.GeneralDefSettings) private var generalDefSettings
   @Environment(\.useTheme) private var selectedTheme
   @Environment(\.navColumn) private var navColumn
+  @Environment(\.screenStateScope) private var screenStateScope
 
-  @State private var selectedSection: UserListingSection = .overview
+  @State private var lease: ScreenStateLease<UserViewSession>
+  private var selectedSection: UserListingSection {
+    get { lease.model.selectedSection }
+    nonmutating set { lease.model.selectedSection = newValue }
+  }
+
   @State private var forceRefresh = false
   @State private var updatingFriend = false
   @State private var refreshingUser = false
   @State private var profileRefreshFailed = false
   @State private var userFetchID = UUID()
+
+  init(user: User, isOwnProfile: Bool = false) {
+    self.user = user
+    self.isOwnProfile = isOwnProfile
+    _lease = State(initialValue: ScreenStates.shared.lease("user", owner: user) { UserViewSession() })
+  }
 
   private var selectedAuthorization: RedditCredential.AuthorizationID? {
     RedditCredentialsManager.shared.selectedCredential(id: generalDefSettings.redditCredentialSelectedID)?.authorizationID
@@ -307,8 +319,11 @@ struct UserView: View {
       .listRowSeparator(.hidden)
       .listRowBackground(Color.clear)
       .transition(.opacity)
-    }, disableSearch: true, forceRefresh: $forceRefresh)
+    }, disableSearch: true, forceRefresh: $forceRefresh, stateOwner: user)
       .navigationBarTitleDisplayMode(.inline)
+      .onAppear {
+        lease.adopt(in: screenStateScope)
+      }
       .task {
         if user.data == nil || !isCurrentUser {
           await reloadUserForCurrentAccount()
@@ -327,4 +342,10 @@ struct UserView: View {
         }
       }
   }
+}
+
+@MainActor
+@Observable
+final class UserViewSession {
+  var selectedSection: UserListingSection = .overview
 }

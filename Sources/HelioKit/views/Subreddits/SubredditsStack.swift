@@ -63,7 +63,10 @@ struct SubredditsStack: View {
   private var compactStack: some View {
     NavigationStack(path: $router.fullPath) {
       subsList(inSidebar: false)
-        .injectInTabDestinations()
+        .navigationDestination(for: Router.NavDest.self) { dest in
+          RouterDestinationView(dest: dest)
+            .environment(\.navColumn, router.column(for: dest))
+        }
     }
     .environment(\.navColumn, .feed)
     .columnContentWidth()

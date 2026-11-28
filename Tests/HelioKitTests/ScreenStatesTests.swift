@@ -242,4 +242,18 @@ struct ScreenStatesTests {
     let new = states.lease("post|", owner: home, now: start) { Model() }
     #expect(new.model !== preview.model)
   }
+
+  @Test func userViewSessionHandsSelectedSectionOverAcrossLayoutChanges() {
+    let states = ScreenStates()
+    let user = User(id: "someone")
+    let old = states.lease("user", owner: user, now: start) { UserViewSession() }
+    old.adopt(in: posts)
+    old.model.selectedSection = .submitted
+
+    states.beginHandoff(in: posts, now: start, endsItself: false)
+    let new = states.lease("user", owner: user, now: start) { UserViewSession() }
+    new.adopt(in: posts)
+    #expect(new.model === old.model)
+    #expect(new.model.selectedSection == .submitted)
+  }
 }

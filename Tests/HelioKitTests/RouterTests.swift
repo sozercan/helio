@@ -379,11 +379,15 @@ struct RouterTests {
     router.navigateTo(post, from: .feed)
     router.navigateTo(page, from: .feed)
     #expect(router.fullPath == [feed("apple"), post, page])
+    #expect(router.column(for: feed("apple")) == .feed)
+    #expect(router.column(for: post) == .post)
+    #expect(router.column(for: page) == .post)
     router.goBack()
     #expect(router.fullPath == [feed("apple"), post])
 
     router.navigateTo(sub, from: .feed)
     #expect(router.fullPath == [feed("apple"), post, sub])
+    #expect(router.column(for: sub) == .post)
     router.goBack()
     #expect(router.fullPath == [feed("apple"), post])
   }

@@ -191,6 +191,13 @@ class Router: Hashable, Equatable, Identifiable {
     postColumnStart.map { Array(fullPath[$0...]) } ?? []
   }
 
+  func column(for dest: NavDest) -> Column {
+    if let start = postColumnStart, let index = fullPath.lastIndex(of: dest), index >= start {
+      return .post
+    }
+    return .feed
+  }
+
   var feedPath: [NavDest] {
     get { Array(fullPath.dropFirst().prefix(max(0, (postColumnStart ?? fullPath.count) - 1))) }
     set {
