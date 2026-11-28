@@ -464,6 +464,22 @@ struct RouterTests {
     #expect(SwipeUI<PostData, PostHelioData>.clampedDragOffset(translationWidth: 80, initialOffset: 30, actionsSet: rightOnly) == 50)
     #expect(SwipeUI<PostData, PostHelioData>.clampedDragOffset(translationWidth: -80, initialOffset: -30, actionsSet: rightOnly) == 0)
   }
+
+  @Test @MainActor func reversingAnArmedOneSidedSwipeToZeroClearsActionInsteadOfTriggering() {
+    let none = AnySwipeAction(NoneAction())
+    let upvote = AnySwipeAction(UpvotePostAction())
+    let leftOnly = SwipeActionsSet(id: "left", leftFirst: upvote, leftSecond: none, rightFirst: none, rightSecond: none)
+    let post = Post(id: "abc", subID: "apple")
+    post.data = PostData.fixture(id: "abc")
+
+    let armedOffset = SwipeUI<PostData, PostHelioData>.clampedDragOffset(translationWidth: -120, initialOffset: -30, actionsSet: leftOnly)
+    #expect(armedOffset == -90)
+    #expect(SwipeUI<PostData, PostHelioData>.triggeredAction(for: armedOffset, actionsSet: leftOnly, entity: post) == .leftFirst)
+
+    let reversedOffset = SwipeUI<PostData, PostHelioData>.clampedDragOffset(translationWidth: 20, initialOffset: -30, actionsSet: leftOnly)
+    #expect(reversedOffset == 0)
+    #expect(SwipeUI<PostData, PostHelioData>.triggeredAction(for: reversedOffset, actionsSet: leftOnly, entity: post) == .none)
+  }
 }
 
 struct SplitLayoutTests {
