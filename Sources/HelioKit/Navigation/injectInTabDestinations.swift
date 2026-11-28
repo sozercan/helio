@@ -23,6 +23,7 @@ extension View {
 
 struct RouterDestinationView: View {
   let dest: Router.NavDest
+  var tabID: Nav.TabIdentifier?
 
   var body: some View {
     Group {
@@ -33,6 +34,7 @@ struct RouterDestinationView: View {
       }
     }
     .ignoresPaneHingeInsets()
+    .if(tabID != nil) { $0.attachViewControllerToRouter(tabID: tabID!) }
   }
 
   @ViewBuilder

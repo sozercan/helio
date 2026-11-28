@@ -379,42 +379,46 @@ struct RouterTests {
     router.navigateTo(post, from: .feed)
     router.navigateTo(page, from: .feed)
     #expect(router.fullPath == [feed("apple"), post, page])
-    #expect(router.column(for: feed("apple")) == .feed)
-    #expect(router.column(for: post) == .post)
-    #expect(router.column(for: page) == .post)
+    #expect(router.compactPath.map(\.column) == [.feed, .post, .post])
     router.goBack()
     #expect(router.fullPath == [feed("apple"), post])
 
     router.navigateTo(sub, from: .feed)
     #expect(router.fullPath == [feed("apple"), post, sub])
-    #expect(router.column(for: sub) == .post)
+    #expect(router.compactPath.map(\.column) == [.feed, .post, .post])
     router.goBack()
     #expect(router.fullPath == [feed("apple"), post])
+  }
+
+  @Test func compactPathClassifiesEqualFeedsByPositionAcrossPostBoundary() {
+    let router = Router(id: "test")
+    router.showsPostBesideFeed = false
+    let apple = feed("apple")
+    router.firstSelected = apple
+    router.navigateTo(post, from: .feed)
+    router.navigateTo(apple, from: .post)
+
+    #expect(router.compactPath == [
+      Router.CompactPathEntry(dest: apple, column: .feed),
+      Router.CompactPathEntry(dest: post, column: .post),
+      Router.CompactPathEntry(dest: apple, column: .post),
+    ])
+
+    router.compactPath.removeLast()
+    #expect(router.fullPath == [apple, post])
   }
 
   @Test @MainActor func contentPopGestureTracksEveryAttachedNavigationControllerIndependently() {
     let holder = ViewControllerHolder(routerID: "posts")
     let feedRoot = UIViewController()
-    let feedPushed = UIViewController()
     let feedNav = UINavigationController(rootViewController: feedRoot)
     let postRoot = UIViewController()
-    let postPushed = UIViewController()
     let postNav = UINavigationController(rootViewController: postRoot)
 
     holder.attach(feedRoot)
     holder.attach(postRoot)
     holder.setSwipeAnywhereEnabled(true)
 
-    #expect(feedNav.interactiveContentPopGestureRecognizer?.isEnabled == false)
-    #expect(postNav.interactiveContentPopGestureRecognizer?.isEnabled == false)
-
-    feedNav.setViewControllers([feedRoot, feedPushed], animated: false)
-    holder.updateContentPopGestures()
-    #expect(feedNav.interactiveContentPopGestureRecognizer?.isEnabled == true)
-    #expect(postNav.interactiveContentPopGestureRecognizer?.isEnabled == false)
-
-    postNav.setViewControllers([postRoot, postPushed], animated: false)
-    holder.updateContentPopGestures()
     #expect(feedNav.interactiveContentPopGestureRecognizer?.isEnabled == true)
     #expect(postNav.interactiveContentPopGestureRecognizer?.isEnabled == true)
 
@@ -429,11 +433,36 @@ struct RouterTests {
     let container = UIViewController()
     container.addChild(leaf)
     let nav = UINavigationController(rootViewController: container)
-    nav.setViewControllers([container, UIViewController()], animated: false)
 
     holder.setSwipeAnywhereEnabled(true)
     holder.attach(leaf)
     #expect(nav.interactiveContentPopGestureRecognizer?.isEnabled == true)
+  }
+
+  @Test func swipeActionsSetReportsActiveDirections() {
+    let none = AnySwipeAction(NoneAction())
+    let upvote = AnySwipeAction(UpvotePostAction())
+
+    let allNone = SwipeActionsSet(id: "none", leftFirst: none, leftSecond: none, rightFirst: none, rightSecond: none)
+    #expect(!allNone.hasLeftActions)
+    #expect(!allNone.hasRightActions)
+    #expect(!allNone.hasAnyActions)
+    #expect(SwipeUI<PostData, PostHelioData>.clampedDragOffset(translationWidth: 80, initialOffset: 30, actionsSet: allNone) == 0)
+    #expect(SwipeUI<PostData, PostHelioData>.clampedDragOffset(translationWidth: -80, initialOffset: -30, actionsSet: allNone) == 0)
+
+    let leftOnly = SwipeActionsSet(id: "left", leftFirst: upvote, leftSecond: none, rightFirst: none, rightSecond: none)
+    #expect(leftOnly.hasLeftActions)
+    #expect(!leftOnly.hasRightActions)
+    #expect(leftOnly.hasAnyActions)
+    #expect(SwipeUI<PostData, PostHelioData>.clampedDragOffset(translationWidth: 80, initialOffset: 30, actionsSet: leftOnly) == 0)
+    #expect(SwipeUI<PostData, PostHelioData>.clampedDragOffset(translationWidth: -80, initialOffset: -30, actionsSet: leftOnly) == -50)
+
+    let rightOnly = SwipeActionsSet(id: "right", leftFirst: none, leftSecond: none, rightFirst: upvote, rightSecond: none)
+    #expect(!rightOnly.hasLeftActions)
+    #expect(rightOnly.hasRightActions)
+    #expect(rightOnly.hasAnyActions)
+    #expect(SwipeUI<PostData, PostHelioData>.clampedDragOffset(translationWidth: 80, initialOffset: 30, actionsSet: rightOnly) == 50)
+    #expect(SwipeUI<PostData, PostHelioData>.clampedDragOffset(translationWidth: -80, initialOffset: -30, actionsSet: rightOnly) == 0)
   }
 }
 

@@ -29,7 +29,7 @@ class ViewControllerHolder: Identifiable, Equatable {
     var result: [UINavigationController] = []
     var current: UIViewController? = controller
     while let candidate = current {
-      if let nav = candidate as? UINavigationController {
+      if let nav = candidate as? UINavigationController, !result.contains(where: { $0 === nav }) {
         result.append(nav)
       }
       if let nav = candidate.navigationController, !result.contains(where: { $0 === nav }) {
@@ -59,7 +59,7 @@ class ViewControllerHolder: Identifiable, Equatable {
   }
 
   private func updateContentPopGesture(on nav: UINavigationController) {
-    nav.interactiveContentPopGestureRecognizer?.isEnabled = swipeAnywhereEnabled && nav.viewControllers.count > 1
+    nav.interactiveContentPopGestureRecognizer?.isEnabled = swipeAnywhereEnabled
   }
 }
 
@@ -191,11 +191,21 @@ class Router: Hashable, Equatable, Identifiable {
     postColumnStart.map { Array(fullPath[$0...]) } ?? []
   }
 
-  func column(for dest: NavDest) -> Column {
-    if let start = postColumnStart, let index = fullPath.lastIndex(of: dest), index >= start {
-      return .post
+  struct CompactPathEntry: Hashable {
+    let dest: NavDest
+    let column: Column
+  }
+
+  var compactPath: [CompactPathEntry] {
+    get {
+      let postStart = postColumnStart
+      return fullPath.enumerated().map { index, dest in
+        CompactPathEntry(dest: dest, column: postStart.map { index >= $0 } == true ? .post : .feed)
+      }
     }
-    return .feed
+    set {
+      fullPath = newValue.map(\.dest)
+    }
   }
 
   var feedPath: [NavDest] {

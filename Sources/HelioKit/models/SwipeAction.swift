@@ -27,6 +27,18 @@ struct SwipeActionsSet: Codable, Defaults.Serializable, Equatable, Hashable, Ide
   @Boxed var leftSecond: AnySwipeAction
   @Boxed var rightFirst: AnySwipeAction
   @Boxed var rightSecond: AnySwipeAction
+
+  var hasLeftActions: Bool {
+    leftFirst.id != "none" || leftSecond.id != "none"
+  }
+
+  var hasRightActions: Bool {
+    rightFirst.id != "none" || rightSecond.id != "none"
+  }
+
+  var hasAnyActions: Bool {
+    hasLeftActions || hasRightActions
+  }
 }
 
 let allPostSwipeActions: [AnySwipeAction] = [

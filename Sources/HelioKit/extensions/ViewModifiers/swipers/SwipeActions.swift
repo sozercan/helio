@@ -68,6 +68,106 @@ struct SwipeUI<T: GenericRedditEntityDataType, B: Hashable>: ViewModifier {
     return nil
   }
 
+  private var gestureActive: Bool {
+    !disabled && !enableSwipeAnywhere && actionsSet.hasAnyActions
+  }
+
+  static func clampedDragOffset(translationWidth x: CGFloat, initialOffset offset: CGFloat, actionsSet: SwipeActionsSet) -> CGFloat {
+    let delta = x - offset
+    if delta > 0, !actionsSet.hasRightActions {
+      return 0
+    }
+    if delta < 0, !actionsSet.hasLeftActions {
+      return 0
+    }
+    return delta
+  }
+
+  private func handleDragChanged(_ val: DragGesture.Value) {
+    let x = val.translation.width
+    if offset == nil, x != 0 {
+      offset = x
+    }
+    if let offset {
+      let clamped = Self.clampedDragOffset(translationWidth: x, initialOffset: offset, actionsSet: actionsSet)
+      if controlledDragAmount != nil {
+        controlledDragAmount?.wrappedValue = clamped
+      } else {
+        dragAmount = clamped
+      }
+    }
+  }
+
+  private func handleDragEnded(_ val: DragGesture.Value) {
+    let x = val.translation.width
+    let predictedEnd = val.predictedEndTranslation.width
+    offset = nil
+    let distance = abs(0 - x)
+    var initialVel = distance > 0 ? abs(predictedEnd / distance) : 0
+    initialVel = initialVel < 3.75 ? 0 : initialVel * 2
+
+    withAnimation(motionAware(.interpolatingSpring(stiffness: 150, damping: 16, initialVelocity: initialVel))) {
+      if controlledDragAmount != nil {
+        controlledDragAmount?.wrappedValue = 0
+      } else {
+        dragAmount = 0
+      }
+    } completion: {
+      enableBG = false
+    }
+  }
+
+  private func handleDragOffsetChange(_ newValue: CGFloat) {
+    if !controlledIsSource {
+      return
+    }
+    if !enableBG {
+      enableBG = true
+    }
+    if newValue == 0 {
+      Task(priority: .background) { [triggeredAction] in
+        switch triggeredAction {
+        case .leftFirst:
+          await actionsSet.leftFirst.action(entity!)
+        case .leftSecond:
+          await actionsSet.leftSecond.action(entity!)
+        case .rightFirst:
+          await actionsSet.rightFirst.action(entity!)
+        case .rightSecond:
+          await actionsSet.rightSecond.action(entity!)
+        default:
+          break
+        }
+      }
+      withAnimation(motionAware(.interpolatingSpring(stiffness: 150, damping: 17))) { triggeredAction = .none }
+      return
+    }
+
+    var triggering: TriggeredAction = .none
+
+    if actionsSet.rightFirst.id != "none", actionsSet.rightFirst.enabled(entity!), newValue >= firstActionThreshold {
+      triggering = .rightFirst
+    }
+    if actionsSet.rightSecond.id != "none", actionsSet.rightSecond.enabled(entity!), newValue >= secondActionThreshold {
+      triggering = .rightSecond
+    }
+    if actionsSet.leftFirst.id != "none", actionsSet.leftFirst.enabled(entity!), newValue <= -firstActionThreshold {
+      triggering = .leftFirst
+    }
+    if actionsSet.leftSecond.id != "none", actionsSet.leftSecond.enabled(entity!), newValue <= -secondActionThreshold {
+      triggering = .leftSecond
+    }
+
+    if triggering != triggeredAction {
+      let increasing = triggering.rawValue > triggeredAction.rawValue
+      let isSecond = triggering == .leftSecond || triggering == .rightSecond
+
+      withAnimation(motionAware(isSecond ? .default.speed(2) : .interpolatingSpring(stiffness: 200, damping: 15, initialVelocity: increasing ? 35 : 0))) {
+        triggeredAction = triggering
+      }
+    }
+  }
+
   func body(content: Content) -> some View {
     let actualOffsetX = controlledDragAmount?.wrappedValue ?? dragAmount
     let offsetXInterpolate = interpolatorBuilder([0, firstActionThreshold], value: actualOffsetX)
@@ -78,7 +178,7 @@ struct SwipeUI<T: GenericRedditEntityDataType, B: Hashable>: ViewModifier {
       .overlay { Color.primary.opacity(pressed ? 0.1 : 0) }
       .offset(x: actualOffset)
       .background {
-        if !enableSwipeAnywhere, controlledIsSource, enableBG {
+        if gestureActive, controlledIsSource, enableBG {
           HStack {
             SwipeUIBtn(info: infoRight(), secondActiveFunc: actionsSet.rightSecond.active, firstActiveFunc: actionsSet.rightFirst.active, entity: entity!)
               .scaleEffect(triggeredAction == .rightSecond ? 1.1 : triggeredAction == .rightFirst ? 1 : max(0.001, offsetXInterpolate([-0.9, 0.85], false)))
@@ -112,91 +212,15 @@ struct SwipeUI<T: GenericRedditEntityDataType, B: Hashable>: ViewModifier {
         }
       }
       .gesture(
-        enableSwipeAnywhere
-          ? nil
-          : DragGesture(minimumDistance: 30, coordinateSpace: .local)
-          .onChanged { val in
-            let x = val.translation.width
-            if offset == nil, x != 0 {
-              offset = x
-            }
-            if let offset {
-              if controlledDragAmount != nil {
-                controlledDragAmount?.wrappedValue = x - offset
-              } else {
-                dragAmount = x - offset
-              }
-            }
-          }
-          .onEnded { val in
-            let x = val.translation.width
-            let predictedEnd = val.predictedEndTranslation.width
-            offset = nil
-            let distance = abs(0 - x)
-            var initialVel = abs(predictedEnd / distance)
-            initialVel = initialVel < 3.75 ? 0 : initialVel * 2
-
-            withAnimation(motionAware(.interpolatingSpring(stiffness: 150, damping: 16, initialVelocity: initialVel))) {
-              if controlledDragAmount != nil {
-                controlledDragAmount?.wrappedValue = 0
-              } else {
-                dragAmount = 0
-              }
-            } completion: {
-              enableBG = false
-            }
-          },
-        including: disabled ? .none : .all,
+        gestureActive
+          ? DragGesture(minimumDistance: 30, coordinateSpace: .local)
+          .onChanged(handleDragChanged)
+          .onEnded(handleDragEnded)
+          : nil,
+        including: gestureActive ? .all : .none,
       )
       .onChange(of: (controlledDragAmount?.wrappedValue ?? dragAmount)) { newValue in
-        if !controlledIsSource {
-          return
-        }
-        if !enableBG {
-          enableBG = true
-        }
-        if newValue == 0 {
-          Task(priority: .background) { [triggeredAction] in
-            switch triggeredAction {
-            case .leftFirst:
-              await actionsSet.leftFirst.action(entity!)
-            case .leftSecond:
-              await actionsSet.leftSecond.action(entity!)
-            case .rightFirst:
-              await actionsSet.rightFirst.action(entity!)
-            case .rightSecond:
-              await actionsSet.rightSecond.action(entity!)
-            default:
-              break
-            }
-          }
-          withAnimation(motionAware(.interpolatingSpring(stiffness: 150, damping: 17))) { triggeredAction = .none }
-          return
-        }
-
-        var triggering: TriggeredAction = .none
-
-        if actionsSet.rightFirst.id != "none", actionsSet.rightFirst.enabled(entity!), newValue >= firstActionThreshold {
-          triggering = .rightFirst
-        }
-        if actionsSet.rightSecond.id != "none", actionsSet.rightSecond.enabled(entity!), newValue >= secondActionThreshold {
-          triggering = .rightSecond
-        }
-        if actionsSet.leftFirst.id != "none", actionsSet.leftFirst.enabled(entity!), newValue <= -firstActionThreshold {
-          triggering = .leftFirst
-        }
-        if actionsSet.leftSecond.id != "none", actionsSet.leftSecond.enabled(entity!), newValue <= -secondActionThreshold {
-          triggering = .leftSecond
-        }
-
-        if triggering != triggeredAction {
-          let increasing = triggering.rawValue > triggeredAction.rawValue
-          let isSecond = triggering == .leftSecond || triggering == .rightSecond
-
-          withAnimation(motionAware(isSecond ? .default.speed(2) : .interpolatingSpring(stiffness: 200, damping: 15, initialVelocity: increasing ? 35 : 0))) {
-            triggeredAction = triggering
-          }
-        }
+        handleDragOffsetChange(newValue)
       }
       .sensoryFeedback(trigger: triggeredAction) { oldValue, newValue in
         if newValue == .none, (controlledDragAmount?.wrappedValue ?? dragAmount) == 0 {

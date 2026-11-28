@@ -61,11 +61,11 @@ struct SubredditsStack: View {
   }
 
   private var compactStack: some View {
-    NavigationStack(path: $router.fullPath) {
+    NavigationStack(path: $router.compactPath) {
       subsList(inSidebar: false)
-        .navigationDestination(for: Router.NavDest.self) { dest in
-          RouterDestinationView(dest: dest)
-            .environment(\.navColumn, router.column(for: dest))
+        .navigationDestination(for: Router.CompactPathEntry.self) { entry in
+          RouterDestinationView(dest: entry.dest, tabID: .posts)
+            .environment(\.navColumn, entry.column)
         }
     }
     .environment(\.navColumn, .feed)
